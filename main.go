@@ -28,7 +28,6 @@ var (
 
 type game struct {
 	world   *ecs.World
-	pEntity *ecscommon.Entity // TODO: Replace with player component
 	tickIdx uint64
 }
 
@@ -41,11 +40,18 @@ func (g *game) Update() error {
 	// r = math.Atan2(dY, dX)
 	var err error
 
-	if g.pEntity == nil {
+	if len(g.world.Players) == 0 {
 		log.Fatalf("no player entity found")
 	}
 
-	pVelComp, ok := g.world.Velocities[*g.pEntity]
+	pC, ok := g.world.Players["player 1"]
+	if !ok {
+		log.Fatalf("'player 1' not found")
+	}
+
+	pE := pC.Entity
+
+	pVelComp, ok := g.world.Velocities[pE]
 	if !ok {
 		log.Fatalf("player entity does not have a velocity component")
 	}
@@ -68,7 +74,7 @@ func (g *game) Update() error {
 	// DEBUG: For testing purposes only
 	if inpututil.IsKeyJustPressed(ebiten.KeyT) {
 		maps.DeleteFunc(g.world.Transforms,
-			func(k ecscommon.Entity, _ *components.Transform) bool { return k == *g.pEntity })
+			func(k ecscommon.Entity, _ *components.Transform) bool { return k == pE })
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
 		DEBUG = !DEBUG
@@ -181,8 +187,15 @@ func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 func main() {
 	ebiten.SetVsyncEnabled(false)
 
-	p := g.world.AddEntity()
-	g.pEntity = &p
+	pE := g.world.AddEntity()
+	pKm := ecscommon.KeyMaps{
+		Up:    ebiten.KeyW,
+		Down:  ebiten.KeyS,
+		Left:  ebiten.KeyA,
+		Right: ebiten.KeyD,
+	}
+
+	g.world.AddPlayer("player 1", pE, pKm)
 
 	pParComp := components.NewParentComponent()
 	pChiComp := components.NewChildrenComponent()
@@ -209,12 +222,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	g.world.Parents[p] = pParComp
-	g.world.Children[p] = pChiComp
-	g.world.Transforms[p] = pTraComp
-	g.world.Velocities[p] = pVelComp
-	g.world.Sprites[p] = pSprComp
-	g.world.Colliders[p] = pColComp
+	g.world.Parents[pE] = pParComp
+	g.world.Children[pE] = pChiComp
+	g.world.Transforms[pE] = pTraComp
+	g.world.Velocities[pE] = pVelComp
+	g.world.Sprites[pE] = pSprComp
+	g.world.Colliders[pE] = pColComp
 
 	e := g.world.AddEntity()
 

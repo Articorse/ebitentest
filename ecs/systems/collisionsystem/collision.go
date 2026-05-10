@@ -208,7 +208,9 @@ func GetSHGProximities(
 						}
 					}
 
-					proximateEntities[eA] = append(proximateEntities[eA], eB)
+					if !slices.Contains(proximateEntities[eA], eB) {
+						proximateEntities[eA] = append(proximateEntities[eA], eB)
+					}
 				}
 			}
 		}
