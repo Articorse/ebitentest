@@ -293,6 +293,7 @@ func detectAABBCollision(a, b []utils.Vec2) bool {
 
 func DrawColliders(
 	screen *ebiten.Image,
+	camera utils.Vec2,
 	colliders map[ecscommon.Entity]*components.Collider,
 	transforms map[ecscommon.Entity]*components.Transform,
 	collisions map[ecscommon.Entity][]ecscommon.Entity,
@@ -336,10 +337,10 @@ func DrawColliders(
 
 		vector.StrokeLine(
 			screen,
-			float32(v0.X),
-			float32(v0.Y),
-			float32(v1.X),
-			float32(v1.Y),
+			float32(v0.X-camera.X),
+			float32(v0.Y-camera.Y),
+			float32(v1.X-camera.X),
+			float32(v1.Y-camera.Y),
 			1,
 			lineColor,
 			false,
@@ -356,10 +357,10 @@ func DrawColliders(
 
 			vector.StrokeLine(
 				screen,
-				float32(v0.X),
-				float32(v0.Y),
-				float32(v1.X),
-				float32(v1.Y),
+				float32(v0.X-camera.X),
+				float32(v0.Y-camera.Y),
+				float32(v1.X-camera.X),
+				float32(v1.Y-camera.Y),
 				1,
 				lineColor,
 				false,
@@ -372,6 +373,7 @@ func DrawColliders(
 
 func DrawAABBs(
 	screen *ebiten.Image,
+	camera utils.Vec2,
 	colliders map[ecscommon.Entity]*components.Collider,
 	transforms map[ecscommon.Entity]*components.Transform,
 	aabbcollisions map[ecscommon.Entity][]ecscommon.Entity,
@@ -415,10 +417,10 @@ func DrawAABBs(
 		for i := 0; i < len(verts)-1; i++ {
 			vector.StrokeLine(
 				screen,
-				float32(verts[i].X),
-				float32(verts[i].Y),
-				float32(verts[i+1].X),
-				float32(verts[i+1].Y),
+				float32(verts[i].X-camera.X),
+				float32(verts[i].Y-camera.Y),
+				float32(verts[i+1].X-camera.X),
+				float32(verts[i+1].Y-camera.Y),
 				1,
 				lineColor,
 				false,

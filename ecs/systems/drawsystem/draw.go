@@ -3,12 +3,14 @@ package drawsystem
 import (
 	"ebittest/ecs/components"
 	"ebittest/ecs/ecscommon"
+	"ebittest/utils"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 func DrawFrame(
 	screen *ebiten.Image,
+	camera utils.Vec2,
 	sprites map[ecscommon.Entity]*components.Sprite,
 	transforms map[ecscommon.Entity]*components.Transform,
 ) error {
@@ -35,7 +37,7 @@ func DrawFrame(
 		opts.GeoM.Scale(s, s)
 		opts.GeoM.Translate(-float64(w)*s/2, -float64(h)*s/2)
 		opts.GeoM.Rotate(r)
-		opts.GeoM.Translate(v.X, v.Y)
+		opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
 
 		screen.DrawImage(sprComp.Image, &opts)
 	}

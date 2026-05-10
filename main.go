@@ -23,12 +23,16 @@ var (
 	g         = game{world: ecs.NewWorld()}
 	tickState = ecscommon.NewTickState()
 
+	height = 360
+	width  = 640
+
 	DEBUG = true
 )
 
 type game struct {
 	world   *ecs.World
 	tickIdx uint64
+	camera  utils.Vec2
 }
 
 func (g *game) Update() error {
@@ -44,16 +48,20 @@ func (g *game) Update() error {
 		log.Fatalf("no player entity found")
 	}
 
-	pC, ok := g.world.Players["player 1"]
+	pConf, ok := g.world.Players["player 1"]
 	if !ok {
 		log.Fatalf("'player 1' not found")
 	}
-
-	pE := pC.Entity
+	pE := pConf.Entity
 
 	pVelComp, ok := g.world.Velocities[pE]
 	if !ok {
 		log.Fatalf("player entity does not have a velocity component")
+	}
+
+	pTraComp, ok := g.world.Transforms[pE]
+	if !ok {
+		log.Fatalf("player entity does not have a transform component")
 	}
 
 	v := utils.Vec2{X: 0, Y: 0}
@@ -69,6 +77,22 @@ func (g *game) Update() error {
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyS) {
 		v.Y += 1
+	}
+
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		g.camera.X -= 10
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		g.camera.Y -= 10
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
+		g.camera.X += 10
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		g.camera.Y += 10
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyC) {
+		g.camera = pTraComp.Pos.Subtract(utils.Vec2{X: float64(width) / 2, Y: float64(height) / 2})
 	}
 
 	// DEBUG: For testing purposes only
@@ -141,7 +165,7 @@ func (g *game) Update() error {
 
 func (g *game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
-	if err := drawsystem.DrawFrame(screen, g.world.Sprites, g.world.Transforms); err != nil {
+	if err := drawsystem.DrawFrame(screen, g.camera, g.world.Sprites, g.world.Transforms); err != nil {
 		log.Println("error while drawing frame: ", err, "removing entity")
 		var invalidComponentsErr *ecscommon.ErrorMissingComponent
 		if errors.As(err, &invalidComponentsErr) {
@@ -151,7 +175,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	// DEBUG
 	if DEBUG {
-		if err := collisionsystem.DrawColliders(screen, g.world.Colliders, g.world.Transforms, tickState.Collisions); err != nil {
+		if err := collisionsystem.DrawColliders(screen, g.camera, g.world.Colliders, g.world.Transforms, tickState.Collisions); err != nil {
 			log.Println("error while drawing colliders: ", err, "removing entity")
 			var invalidComponentsErr *ecscommon.ErrorMissingComponent
 			if errors.As(err, &invalidComponentsErr) {
@@ -159,7 +183,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 			}
 		}
 
-		if err := collisionsystem.DrawAABBs(screen, g.world.Colliders, g.world.Transforms, tickState.AABBCollisions); err != nil {
+		if err := collisionsystem.DrawAABBs(screen, g.camera, g.world.Colliders, g.world.Transforms, tickState.AABBCollisions); err != nil {
 			log.Println("error while drawing AABBs: ", err, "removing entity")
 			var invalidComponentsErr *ecscommon.ErrorMissingComponent
 			if errors.As(err, &invalidComponentsErr) {
@@ -181,7 +205,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 }
 
 func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 640, 360
+	return width, height
 }
 
 func main() {

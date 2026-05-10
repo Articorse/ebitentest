@@ -29,6 +29,13 @@ func (a Vec2) Add(b Vec2) Vec2 {
 	}
 }
 
+func (a Vec2) Subtract(b Vec2) Vec2 {
+	return Vec2{
+		X: a.X - b.X,
+		Y: a.Y - b.Y,
+	}
+}
+
 func (v Vec2) Multiply(f float64) Vec2 {
 	return Vec2{
 		X: v.X * f,
