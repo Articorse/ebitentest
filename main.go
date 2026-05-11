@@ -6,6 +6,7 @@ import (
 	"ebittest/ecs/ecscommon"
 	"ebittest/ecs/systems/collisionsystem"
 	"ebittest/ecs/systems/drawsystem"
+	"ebittest/ecs/systems/inputsystem"
 	"ebittest/ecs/systems/movementsystem"
 	"ebittest/utils"
 	"errors"
@@ -30,9 +31,34 @@ var (
 )
 
 type game struct {
-	world   *ecs.World
-	tickIdx uint64
-	camera  utils.Vec2
+	world        *ecs.World
+	tickIdx      uint64
+	camera       utils.Vec2
+	cameraFollow bool
+	inputLog     map[uint64]map[ecscommon.PlayerId]ecscommon.InputState
+}
+
+func LocalInputSource(playerId ecscommon.PlayerId, tick uint64) ecscommon.InputState {
+	is := ecscommon.InputState{}
+	if ebiten.IsKeyPressed(g.world.Players[playerId].KeyMaps.Left) {
+		is.Left = true
+	}
+	if ebiten.IsKeyPressed(g.world.Players[playerId].KeyMaps.Right) {
+		is.Right = true
+	}
+	if ebiten.IsKeyPressed(g.world.Players[playerId].KeyMaps.Up) {
+		is.Up = true
+	}
+	if ebiten.IsKeyPressed(g.world.Players[playerId].KeyMaps.Down) {
+		is.Down = true
+	}
+	return is
+}
+
+func ReplayInputSource(log map[uint64]map[ecscommon.PlayerId]ecscommon.InputState) ecscommon.InputSourceFunc {
+	return func(playerId ecscommon.PlayerId, tick uint64) ecscommon.InputState {
+		return log[tick][playerId]
+	}
 }
 
 func (g *game) Update() error {
@@ -52,31 +78,18 @@ func (g *game) Update() error {
 	if !ok {
 		log.Fatalf("'player 1' not found")
 	}
-	pE := pConf.Entity
 
-	pVelComp, ok := g.world.Velocities[pE]
-	if !ok {
-		log.Fatalf("player entity does not have a velocity component")
-	}
+	pE := pConf.Entity
 
 	pTraComp, ok := g.world.Transforms[pE]
 	if !ok {
 		log.Fatalf("player entity does not have a transform component")
 	}
 
-	v := utils.Vec2{X: 0, Y: 0}
-
-	if ebiten.IsKeyPressed(ebiten.KeyA) {
-		v.X -= 1
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyW) {
-		v.Y -= 1
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		v.X += 1
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyS) {
-		v.Y += 1
+	g.inputLog[g.tickIdx] = inputsystem.GetTickInputs(g.world.Players, g.tickIdx, LocalInputSource)
+	err = inputsystem.HandleInputs(g.world, g.inputLog[g.tickIdx])
+	if err != nil {
+		log.Printf("error during handling inputs: %v", err)
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
@@ -91,7 +104,11 @@ func (g *game) Update() error {
 	if ebiten.IsKeyPressed(ebiten.KeyDown) {
 		g.camera.Y += 10
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyC) {
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
+		g.cameraFollow = !g.cameraFollow
+	}
+	if g.cameraFollow {
 		g.camera = pTraComp.Pos.Subtract(utils.Vec2{X: float64(width) / 2, Y: float64(height) / 2})
 	}
 
@@ -103,10 +120,6 @@ func (g *game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
 		DEBUG = !DEBUG
 	}
-
-	v = v.Normalized()
-
-	pVelComp.Vector = pVelComp.Vector.Add(v.Multiply(2))
 
 	tickState = ecscommon.NewTickState()
 
@@ -199,7 +212,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 		}
 
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f\nTick: %d", ebiten.ActualFPS(), g.tickIdx))
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("SHG Cells: %v\nProximate Entities: %d", tickState.CollisionGrid, proximateEntitiesCount), 0, 50)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("SHG Cells: %v\nProximate Pairs: %d", tickState.CollisionGrid, proximateEntitiesCount), 0, 50)
 	}
 	// END DEBUG
 }
@@ -210,6 +223,8 @@ func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func main() {
 	ebiten.SetVsyncEnabled(false)
+
+	g.inputLog = make(map[uint64]map[ecscommon.PlayerId]ecscommon.InputState)
 
 	pE := g.world.AddEntity()
 	pKm := ecscommon.KeyMaps{

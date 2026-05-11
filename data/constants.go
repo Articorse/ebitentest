@@ -5,6 +5,7 @@ import "image/color"
 const (
 	VelocityThreshold       = 0.01
 	DefaultDrag             = 0.8
+	DefaultAcceleration     = 2
 	SpatialHashGridCellSize = 200
 )
 
