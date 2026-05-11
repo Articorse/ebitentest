@@ -7,6 +7,7 @@ type PlayerConfig struct {
 	KeyMaps KeyMaps
 }
 
+// TODO: Associate with inputs, not players
 type KeyMaps struct {
 	Up    ebiten.Key
 	Down  ebiten.Key

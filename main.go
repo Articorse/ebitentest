@@ -9,11 +9,13 @@ import (
 	"ebittest/ecs/systems/inputsystem"
 	"ebittest/ecs/systems/movementsystem"
 	"ebittest/utils"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image/color"
 	"log"
 	"maps"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -26,6 +28,8 @@ var (
 
 	height = 360
 	width  = 640
+
+	// replay = make(map[uint64]map[ecscommon.PlayerId]ecscommon.InputState)
 
 	DEBUG = true
 )
@@ -74,22 +78,34 @@ func (g *game) Update() error {
 		log.Fatalf("no player entity found")
 	}
 
-	pConf, ok := g.world.Players["player 1"]
-	if !ok {
-		log.Fatalf("'player 1' not found")
-	}
-
-	pE := pConf.Entity
-
-	pTraComp, ok := g.world.Transforms[pE]
-	if !ok {
-		log.Fatalf("player entity does not have a transform component")
-	}
+	// g.inputLog[g.tickIdx] = inputsystem.GetTickInputs(g.world.Players, g.tickIdx, ReplayInputSource(replay))
+	// err = inputsystem.HandleInputs(g.world, g.inputLog[g.tickIdx])
+	// if err != nil {
+	// 	log.Printf("error during handling inputs: %v", err)
+	// }
 
 	g.inputLog[g.tickIdx] = inputsystem.GetTickInputs(g.world.Players, g.tickIdx, LocalInputSource)
 	err = inputsystem.HandleInputs(g.world, g.inputLog[g.tickIdx])
 	if err != nil {
 		log.Printf("error during handling inputs: %v", err)
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		f, err := os.Create("replay.json")
+		if err != nil {
+			log.Println("error creating replay file: ", err)
+		}
+		defer f.Close()
+
+		j, err := json.Marshal(g.inputLog)
+		if err != nil {
+			log.Println("error marshalling replay log: ", err)
+		}
+
+		_, err = f.Write(j)
+		if err != nil {
+			log.Println("error writing replay file: ", err)
+		}
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
@@ -103,6 +119,17 @@ func (g *game) Update() error {
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyDown) {
 		g.camera.Y += 10
+	}
+
+	pConf, ok := g.world.Players["player 1"]
+	if !ok {
+		log.Fatalf("player 1 not found")
+	}
+
+	pE := pConf.Entity
+	pTraComp, ok := g.world.Transforms[pE]
+	if !ok {
+		log.Fatalf("player entity does not have a transform component")
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
@@ -225,6 +252,16 @@ func main() {
 	ebiten.SetVsyncEnabled(false)
 
 	g.inputLog = make(map[uint64]map[ecscommon.PlayerId]ecscommon.InputState)
+
+	// f, err := os.ReadFile("replay.json")
+	// if err != nil {
+	// 	log.Println("error reading replay file: ", err)
+	// } else {
+	// 	err = json.Unmarshal(f, &replay)
+	// 	if err != nil {
+	// 		log.Println("error unmarshalling replay file: ", err)
+	// 	}
+	// }
 
 	pE := g.world.AddEntity()
 	pKm := ecscommon.KeyMaps{
