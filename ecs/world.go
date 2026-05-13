@@ -3,55 +3,45 @@ package ecs
 import (
 	"ebittest/ecs/components"
 	"ebittest/ecs/ecscommon"
-	"fmt"
 	"slices"
 )
 
 type World struct {
-	nextEntity ecscommon.Entity
-	Entities   []ecscommon.Entity
-	Players    map[ecscommon.PlayerId]*ecscommon.PlayerConfig
-	Parents    map[ecscommon.Entity]*components.Parent
-	Children   map[ecscommon.Entity]*components.Children
-	Transforms map[ecscommon.Entity]*components.Transform
-	Velocities map[ecscommon.Entity]*components.Velocity
-	Sprites    map[ecscommon.Entity]*components.Sprite
-	Colliders  map[ecscommon.Entity]*components.Collider
+	nextEntity     ecscommon.EntityId
+	Entities       []ecscommon.EntityId
+	PlayerEntities map[ecscommon.PlayerId]ecscommon.EntityId
+	InputConfigs   map[ecscommon.PlayerId]*ecscommon.InputConfig
+	Parents        map[ecscommon.EntityId]*components.Parent
+	Children       map[ecscommon.EntityId]*components.Children
+	Transforms     map[ecscommon.EntityId]*components.Transform
+	Velocities     map[ecscommon.EntityId]*components.Velocity
+	Sprites        map[ecscommon.EntityId]*components.Sprite
+	Colliders      map[ecscommon.EntityId]*components.Collider
 }
 
 func NewWorld() *World {
 	return &World{
-		nextEntity: 0,
-		Entities:   []ecscommon.Entity{},
-		Players:    make(map[ecscommon.PlayerId]*ecscommon.PlayerConfig),
-		Parents:    make(map[ecscommon.Entity]*components.Parent),
-		Children:   make(map[ecscommon.Entity]*components.Children),
-		Transforms: make(map[ecscommon.Entity]*components.Transform),
-		Velocities: make(map[ecscommon.Entity]*components.Velocity),
-		Sprites:    make(map[ecscommon.Entity]*components.Sprite),
-		Colliders:  make(map[ecscommon.Entity]*components.Collider),
+		nextEntity:     0,
+		Entities:       []ecscommon.EntityId{},
+		PlayerEntities: make(map[ecscommon.PlayerId]ecscommon.EntityId),
+		InputConfigs:   make(map[ecscommon.PlayerId]*ecscommon.InputConfig),
+		Parents:        make(map[ecscommon.EntityId]*components.Parent),
+		Children:       make(map[ecscommon.EntityId]*components.Children),
+		Transforms:     make(map[ecscommon.EntityId]*components.Transform),
+		Velocities:     make(map[ecscommon.EntityId]*components.Velocity),
+		Sprites:        make(map[ecscommon.EntityId]*components.Sprite),
+		Colliders:      make(map[ecscommon.EntityId]*components.Collider),
 	}
 }
 
-func (x *World) AddEntity() ecscommon.Entity {
+func (x *World) AddEntity() ecscommon.EntityId {
 	x.nextEntity++
 	return x.nextEntity - 1
 }
 
-func (x *World) AddPlayer(pId ecscommon.PlayerId, e ecscommon.Entity, km ecscommon.KeyMaps) (*ecscommon.PlayerConfig, error) {
-	if _, ok := x.Players[pId]; ok {
-		return nil, fmt.Errorf("player %s already exists", pId)
-	}
-
-	p := &ecscommon.PlayerConfig{Entity: e, KeyMaps: km}
-	x.Players[pId] = p
-
-	return p, nil
-}
-
-func (x *World) RemoveEntity(e ecscommon.Entity) error {
+func (x *World) RemoveEntity(e ecscommon.EntityId) error {
 	x.Entities = slices.DeleteFunc(x.Entities,
-		func(ent ecscommon.Entity) bool { return ent == e })
+		func(ent ecscommon.EntityId) bool { return ent == e })
 
 	delete(x.Parents, e)
 	delete(x.Children, e)
@@ -68,18 +58,9 @@ func (x *World) RemoveEntity(e ecscommon.Entity) error {
 
 	for _, c := range x.Children {
 		if slices.Contains(c.Entities, &e) {
-			slices.DeleteFunc(c.Entities, func(ent *ecscommon.Entity) bool { return *ent == e })
+			slices.DeleteFunc(c.Entities, func(ent *ecscommon.EntityId) bool { return *ent == e })
 		}
 	}
 
-	return nil
-}
-
-func (x *World) RemovePlayer(pId ecscommon.PlayerId) error {
-	if _, ok := x.Players[pId]; !ok {
-		return fmt.Errorf("player %s not found", pId)
-	}
-
-	delete(x.Players, pId)
 	return nil
 }

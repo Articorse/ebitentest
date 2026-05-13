@@ -11,9 +11,9 @@ import (
 // TODO: Calculate transforms on each tick to avoid recalculating for each child
 
 func GetTransform(
-	e ecscommon.Entity,
-	transforms map[ecscommon.Entity]*components.Transform,
-	parents map[ecscommon.Entity]*components.Parent,
+	e ecscommon.EntityId,
+	transforms map[ecscommon.EntityId]*components.Transform,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) (*components.Transform, error) {
 	pt, err := GetParentTransform(e, transforms, parents)
 	if err != nil {
@@ -38,10 +38,10 @@ func GetTransform(
 }
 
 func Attach(
-	c ecscommon.Entity,
-	p ecscommon.Entity,
-	transforms map[ecscommon.Entity]*components.Transform,
-	parents map[ecscommon.Entity]*components.Parent,
+	c ecscommon.EntityId,
+	p ecscommon.EntityId,
+	transforms map[ecscommon.EntityId]*components.Transform,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
 	if err := Detach(c, transforms, parents); err != nil {
 		return fmt.Errorf("error during detach", err)
@@ -80,9 +80,9 @@ func Attach(
 
 // If error handling is changed, check Attach()
 func Detach(
-	e ecscommon.Entity,
-	transforms map[ecscommon.Entity]*components.Transform,
-	parents map[ecscommon.Entity]*components.Parent,
+	e ecscommon.EntityId,
+	transforms map[ecscommon.EntityId]*components.Transform,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
 	pt, err := GetParentTransform(e, transforms, parents)
 	if err != nil {
@@ -116,9 +116,9 @@ func Detach(
 }
 
 func GetParentTransform(
-	e ecscommon.Entity,
-	transforms map[ecscommon.Entity]*components.Transform,
-	parents map[ecscommon.Entity]*components.Parent,
+	e ecscommon.EntityId,
+	transforms map[ecscommon.EntityId]*components.Transform,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) (*components.Transform, error) {
 
 	pc, err := GetParentComponent(e, parents)
@@ -135,8 +135,8 @@ func GetParentTransform(
 }
 
 func GetParentComponent(
-	e ecscommon.Entity,
-	parents map[ecscommon.Entity]*components.Parent,
+	e ecscommon.EntityId,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) (*components.Parent, error) {
 	pc, ok := parents[e]
 	if !ok {

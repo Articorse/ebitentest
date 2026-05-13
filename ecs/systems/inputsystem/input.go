@@ -8,12 +8,12 @@ import (
 )
 
 func GetTickInputs(
-	players map[ecscommon.PlayerId]*ecscommon.PlayerConfig,
+	playerInputs map[ecscommon.PlayerId]*ecscommon.InputConfig,
 	tick uint64,
 	inputSource ecscommon.InputSourceFunc,
 ) map[ecscommon.PlayerId]ecscommon.InputState {
 	tickInputs := make(map[ecscommon.PlayerId]ecscommon.InputState)
-	for playerId := range players {
+	for playerId := range playerInputs {
 		input := inputSource(playerId, tick)
 		tickInputs[playerId] = input
 	}
@@ -21,14 +21,12 @@ func GetTickInputs(
 }
 
 func HandleInputs(w *ecs.World, allInputs map[ecscommon.PlayerId]ecscommon.InputState) error {
-	var err error
 	for playerId, input := range allInputs {
-		pConf, ok := w.Players[playerId]
+		pE, ok := w.PlayerEntities[playerId]
 		if !ok {
-			err = fmt.Errorf("player %s not found in world: %v", playerId, err)
+			return fmt.Errorf("player %s does not have an associated entity: %v", playerId)
 		}
 
-		pE := pConf.Entity
 		pVelComp, hasVel := w.Velocities[pE]
 
 		if hasVel {
@@ -52,5 +50,5 @@ func HandleInputs(w *ecs.World, allInputs map[ecscommon.PlayerId]ecscommon.Input
 		}
 	}
 
-	return err
+	return nil
 }

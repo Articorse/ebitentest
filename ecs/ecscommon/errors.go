@@ -3,7 +3,7 @@ package ecscommon
 import "fmt"
 
 type ErrorMissingComponent struct {
-	Entity           Entity
+	Entity           EntityId
 	PresentComponent string
 	MissingComponent string
 }

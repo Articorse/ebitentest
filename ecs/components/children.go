@@ -4,7 +4,7 @@ import "ebittest/ecs/ecscommon"
 
 // Do not instantiate directly, use NewChildrenComp().
 type Children struct {
-	Entities []*ecscommon.Entity
+	Entities []*ecscommon.EntityId
 }
 
 func NewChildrenComponent() *Children {

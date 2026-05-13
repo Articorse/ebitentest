@@ -1,4 +1,4 @@
 package ecscommon
 
 // Do not instantiate directly, use World.AddEntity()
-type Entity uint64
+type EntityId uint64

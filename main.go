@@ -5,6 +5,7 @@ import (
 	"ebittest/ecs/components"
 	"ebittest/ecs/ecscommon"
 	"ebittest/ecs/systems/collisionsystem"
+	"ebittest/ecs/systems/commonsystems"
 	"ebittest/ecs/systems/drawsystem"
 	"ebittest/ecs/systems/inputsystem"
 	"ebittest/ecs/systems/movementsystem"
@@ -23,8 +24,7 @@ import (
 )
 
 var (
-	g         = game{world: ecs.NewWorld()}
-	tickState = ecscommon.NewTickState()
+	g = game{world: ecs.NewWorld()}
 
 	height = 360
 	width  = 640
@@ -37,6 +37,7 @@ var (
 type game struct {
 	world        *ecs.World
 	tickIdx      uint64
+	tickState    ecscommon.TickState
 	camera       utils.Vec2
 	cameraFollow bool
 	inputLog     map[uint64]map[ecscommon.PlayerId]ecscommon.InputState
@@ -44,16 +45,16 @@ type game struct {
 
 func LocalInputSource(playerId ecscommon.PlayerId, tick uint64) ecscommon.InputState {
 	is := ecscommon.InputState{}
-	if ebiten.IsKeyPressed(g.world.Players[playerId].KeyMaps.Left) {
+	if ebiten.IsKeyPressed(g.world.InputConfigs[playerId].Left) {
 		is.Left = true
 	}
-	if ebiten.IsKeyPressed(g.world.Players[playerId].KeyMaps.Right) {
+	if ebiten.IsKeyPressed(g.world.InputConfigs[playerId].Right) {
 		is.Right = true
 	}
-	if ebiten.IsKeyPressed(g.world.Players[playerId].KeyMaps.Up) {
+	if ebiten.IsKeyPressed(g.world.InputConfigs[playerId].Up) {
 		is.Up = true
 	}
-	if ebiten.IsKeyPressed(g.world.Players[playerId].KeyMaps.Down) {
+	if ebiten.IsKeyPressed(g.world.InputConfigs[playerId].Down) {
 		is.Down = true
 	}
 	return is
@@ -74,7 +75,7 @@ func (g *game) Update() error {
 	// r = math.Atan2(dY, dX)
 	var err error
 
-	if len(g.world.Players) == 0 {
+	if len(g.world.PlayerEntities) == 0 {
 		log.Fatalf("no player entity found")
 	}
 
@@ -84,7 +85,7 @@ func (g *game) Update() error {
 	// 	log.Printf("error during handling inputs: %v", err)
 	// }
 
-	g.inputLog[g.tickIdx] = inputsystem.GetTickInputs(g.world.Players, g.tickIdx, LocalInputSource)
+	g.inputLog[g.tickIdx] = inputsystem.GetTickInputs(g.world.InputConfigs, g.tickIdx, LocalInputSource)
 	err = inputsystem.HandleInputs(g.world, g.inputLog[g.tickIdx])
 	if err != nil {
 		log.Printf("error during handling inputs: %v", err)
@@ -121,12 +122,11 @@ func (g *game) Update() error {
 		g.camera.Y += 10
 	}
 
-	pConf, ok := g.world.Players["player 1"]
+	pE, ok := g.world.PlayerEntities["player 1"]
 	if !ok {
 		log.Fatalf("player 1 not found")
 	}
 
-	pE := pConf.Entity
 	pTraComp, ok := g.world.Transforms[pE]
 	if !ok {
 		log.Fatalf("player entity does not have a transform component")
@@ -142,13 +142,13 @@ func (g *game) Update() error {
 	// DEBUG: For testing purposes only
 	if inpututil.IsKeyJustPressed(ebiten.KeyT) {
 		maps.DeleteFunc(g.world.Transforms,
-			func(k ecscommon.Entity, _ *components.Transform) bool { return k == pE })
+			func(k ecscommon.EntityId, _ *components.Transform) bool { return k == pE })
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
 		DEBUG = !DEBUG
 	}
 
-	tickState = ecscommon.NewTickState()
+	g.tickState = *ecscommon.NewTickState()
 
 	if err := movementsystem.Tick(g.world.Velocities, g.world.Transforms); err != nil {
 		log.Println("movement system error: ", err, "removing entity")
@@ -158,7 +158,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	tickState.CollisionGrid, err = collisionsystem.PopulateSpatialHashGrid(g.world.Colliders, g.world.Transforms)
+	g.tickState.CollisionGrid, err = commonsystems.PopulateSpatialHashGrid(g.world.Transforms)
 	if err != nil {
 		log.Println("error during populating spatial hash grid: ", err, "removing entity")
 		var invalidComponentsErr *ecscommon.ErrorMissingComponent
@@ -167,7 +167,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	proximateEntities, err := collisionsystem.GetSHGProximities(tickState.CollisionGrid, g.world.Colliders, g.world.Transforms)
+	proximateEntities, err := collisionsystem.GetSHGProximities(g.tickState.CollisionGrid, g.world.Colliders, g.world.Transforms)
 	if err != nil {
 		log.Println("error during spatial hash grid proximity checking: ", err, "removing entity")
 		var invalidComponentsErr *ecscommon.ErrorMissingComponent
@@ -194,9 +194,9 @@ func (g *game) Update() error {
 		}
 	}
 
-	tickState.ProximateEntities = proximateEntities
-	tickState.AABBCollisions = aabbcollisions
-	tickState.Collisions = collisions
+	g.tickState.ProximateEntities = proximateEntities
+	g.tickState.AABBCollisions = aabbcollisions
+	g.tickState.Collisions = collisions
 
 	g.tickIdx++
 
@@ -205,7 +205,13 @@ func (g *game) Update() error {
 
 func (g *game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
-	if err := drawsystem.DrawFrame(screen, g.camera, g.world.Sprites, g.world.Transforms); err != nil {
+	if err := drawsystem.DrawFrame(
+		screen,
+		g.camera,
+		g.tickState.CollisionGrid,
+		g.world.Sprites,
+		g.world.Transforms,
+	); err != nil {
 		log.Println("error while drawing frame: ", err, "removing entity")
 		var invalidComponentsErr *ecscommon.ErrorMissingComponent
 		if errors.As(err, &invalidComponentsErr) {
@@ -215,7 +221,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	// DEBUG
 	if DEBUG {
-		if err := collisionsystem.DrawColliders(screen, g.camera, g.world.Colliders, g.world.Transforms, tickState.Collisions); err != nil {
+		if err := collisionsystem.DrawColliders(screen, g.camera, g.world.Colliders, g.world.Transforms, g.tickState.Collisions); err != nil {
 			log.Println("error while drawing colliders: ", err, "removing entity")
 			var invalidComponentsErr *ecscommon.ErrorMissingComponent
 			if errors.As(err, &invalidComponentsErr) {
@@ -223,7 +229,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 			}
 		}
 
-		if err := collisionsystem.DrawAABBs(screen, g.camera, g.world.Colliders, g.world.Transforms, tickState.AABBCollisions); err != nil {
+		if err := collisionsystem.DrawAABBs(screen, g.camera, g.world.Colliders, g.world.Transforms, g.tickState.AABBCollisions); err != nil {
 			log.Println("error while drawing AABBs: ", err, "removing entity")
 			var invalidComponentsErr *ecscommon.ErrorMissingComponent
 			if errors.As(err, &invalidComponentsErr) {
@@ -232,14 +238,14 @@ func (g *game) Draw(screen *ebiten.Image) {
 		}
 
 		proximateEntitiesCount := 0
-		for _, others := range tickState.ProximateEntities {
+		for _, others := range g.tickState.ProximateEntities {
 			for range others {
 				proximateEntitiesCount++
 			}
 		}
 
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f\nTick: %d", ebiten.ActualFPS(), g.tickIdx))
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("SHG Cells: %v\nProximate Pairs: %d", tickState.CollisionGrid, proximateEntitiesCount), 0, 50)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("SHG Cells: %v\nProximate Pairs: %d", g.tickState.CollisionGrid, proximateEntitiesCount), 0, 50)
 	}
 	// END DEBUG
 }
@@ -252,6 +258,7 @@ func main() {
 	ebiten.SetVsyncEnabled(false)
 
 	g.inputLog = make(map[uint64]map[ecscommon.PlayerId]ecscommon.InputState)
+	g.tickState = *ecscommon.NewTickState()
 
 	// f, err := os.ReadFile("replay.json")
 	// if err != nil {
@@ -264,14 +271,15 @@ func main() {
 	// }
 
 	pE := g.world.AddEntity()
-	pKm := ecscommon.KeyMaps{
-		Up:    ebiten.KeyW,
-		Down:  ebiten.KeyS,
-		Left:  ebiten.KeyA,
-		Right: ebiten.KeyD,
-	}
+	g.world.PlayerEntities["player 1"] = pE
 
-	g.world.AddPlayer("player 1", pE, pKm)
+	g.world.InputConfigs["player 1"] = &ecscommon.InputConfig{
+		Up:              ebiten.KeyW,
+		Down:            ebiten.KeyS,
+		Left:            ebiten.KeyA,
+		Right:           ebiten.KeyD,
+		InputSourceFunc: LocalInputSource,
+	}
 
 	pParComp := components.NewParentComponent()
 	pChiComp := components.NewChildrenComponent()
@@ -315,7 +323,7 @@ func main() {
 	eVelComp := components.NewVelocityComponent()
 	eSprComp := components.NewSpriteComponent()
 
-	eSpr, _, err := ebitenutil.NewImageFromFile("assets/sprites/slime.png")
+	eSpr, _, err := ebitenutil.NewImageFromFile("assets/sprites/tree.png")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -8,11 +8,16 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+// TODO: Iterate over sprites based on Layer,
+// then use SHG to make slices of entities based on cell position,
+// then sort each slice on their Y position + LayerYOffset,
+// then draw
 func DrawFrame(
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	sprites map[ecscommon.Entity]*components.Sprite,
-	transforms map[ecscommon.Entity]*components.Transform,
+	shg map[ecscommon.CellKey][]ecscommon.EntityId,
+	sprites map[ecscommon.EntityId]*components.Sprite,
+	transforms map[ecscommon.EntityId]*components.Transform,
 ) error {
 	for e, sprComp := range sprites {
 		traComp, ok := transforms[e]

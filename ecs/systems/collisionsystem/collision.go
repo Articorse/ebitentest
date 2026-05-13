@@ -13,11 +13,11 @@ import (
 )
 
 func GetCollisions(
-	potentialCollisions map[ecscommon.Entity][]ecscommon.Entity,
-	colliders map[ecscommon.Entity]*components.Collider,
-	transforms map[ecscommon.Entity]*components.Transform,
-) (map[ecscommon.Entity][]ecscommon.Entity, error) {
-	collisions := make(map[ecscommon.Entity][]ecscommon.Entity)
+	potentialCollisions map[ecscommon.EntityId][]ecscommon.EntityId,
+	colliders map[ecscommon.EntityId]*components.Collider,
+	transforms map[ecscommon.EntityId]*components.Transform,
+) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
+	collisions := make(map[ecscommon.EntityId][]ecscommon.EntityId)
 
 	for eA, colEntities := range potentialCollisions {
 		for _, eB := range colEntities {
@@ -84,7 +84,7 @@ func GetCollisions(
 			if intersectionFound {
 				v, ok := collisions[eA]
 				if !ok {
-					collisions[eA] = []ecscommon.Entity{eB}
+					collisions[eA] = []ecscommon.EntityId{eB}
 				}
 				collisions[eA] = append(v, eB)
 			}
@@ -95,11 +95,11 @@ func GetCollisions(
 }
 
 func GetAABBCollisions(
-	proximateEntities map[ecscommon.Entity][]ecscommon.Entity,
-	colliders map[ecscommon.Entity]*components.Collider,
-	transforms map[ecscommon.Entity]*components.Transform,
-) (map[ecscommon.Entity][]ecscommon.Entity, error) {
-	collisions := make(map[ecscommon.Entity][]ecscommon.Entity)
+	proximateEntities map[ecscommon.EntityId][]ecscommon.EntityId,
+	colliders map[ecscommon.EntityId]*components.Collider,
+	transforms map[ecscommon.EntityId]*components.Transform,
+) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
+	collisions := make(map[ecscommon.EntityId][]ecscommon.EntityId)
 
 	for eA, colEntities := range proximateEntities {
 		for _, eB := range colEntities {
@@ -153,7 +153,7 @@ func GetAABBCollisions(
 			if detectAABBCollision(a, b) {
 				v, ok := collisions[eA]
 				if !ok {
-					collisions[eA] = []ecscommon.Entity{eB}
+					collisions[eA] = []ecscommon.EntityId{eB}
 				}
 				collisions[eA] = append(v, eB)
 			}
@@ -164,11 +164,11 @@ func GetAABBCollisions(
 }
 
 func GetSHGProximities(
-	grid map[ecscommon.CellKey][]ecscommon.Entity,
-	colliders map[ecscommon.Entity]*components.Collider,
-	transforms map[ecscommon.Entity]*components.Transform,
-) (map[ecscommon.Entity][]ecscommon.Entity, error) {
-	proximateEntities := make(map[ecscommon.Entity][]ecscommon.Entity)
+	grid map[ecscommon.CellKey][]ecscommon.EntityId,
+	colliders map[ecscommon.EntityId]*components.Collider,
+	transforms map[ecscommon.EntityId]*components.Transform,
+) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
+	proximateEntities := make(map[ecscommon.EntityId][]ecscommon.EntityId)
 
 	for eA, _ := range colliders {
 		traA, ok := transforms[eA]
@@ -219,36 +219,6 @@ func GetSHGProximities(
 	return proximateEntities, nil
 }
 
-func PopulateSpatialHashGrid(
-	colliders map[ecscommon.Entity]*components.Collider,
-	transforms map[ecscommon.Entity]*components.Transform,
-) (map[ecscommon.CellKey][]ecscommon.Entity, error) {
-	grid := make(map[ecscommon.CellKey][]ecscommon.Entity)
-
-	for e, col := range colliders {
-		tra, ok := transforms[e]
-		if !ok {
-			return nil, &ecscommon.ErrorMissingComponent{
-				Entity:           e,
-				PresentComponent: "Collider",
-				MissingComponent: "Transform",
-			}
-		}
-
-		minCellX := int((tra.Pos.X + col.AABB[0].X) / data.SpatialHashGridCellSize)
-		minCellY := int((tra.Pos.Y + col.AABB[0].Y) / data.SpatialHashGridCellSize)
-		maxCellX := int((tra.Pos.X + col.AABB[1].X) / data.SpatialHashGridCellSize)
-		maxCellY := int((tra.Pos.Y + col.AABB[1].Y) / data.SpatialHashGridCellSize)
-		for x := minCellX; x <= maxCellX; x++ {
-			for y := minCellY; y <= maxCellY; y++ {
-				grid[ecscommon.CellKey{X: x, Y: y}] = append(grid[ecscommon.CellKey{X: x, Y: y}], e)
-			}
-		}
-	}
-
-	return grid, nil
-}
-
 func detectAABBCollision(a, b []utils.Vec2) bool {
 	minAx := a[0].X
 	minAy := a[0].Y
@@ -294,9 +264,9 @@ func detectAABBCollision(a, b []utils.Vec2) bool {
 func DrawColliders(
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	colliders map[ecscommon.Entity]*components.Collider,
-	transforms map[ecscommon.Entity]*components.Transform,
-	collisions map[ecscommon.Entity][]ecscommon.Entity,
+	colliders map[ecscommon.EntityId]*components.Collider,
+	transforms map[ecscommon.EntityId]*components.Transform,
+	collisions map[ecscommon.EntityId][]ecscommon.EntityId,
 ) error {
 	for e, col := range colliders {
 		tra, ok := transforms[e]
@@ -374,9 +344,9 @@ func DrawColliders(
 func DrawAABBs(
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	colliders map[ecscommon.Entity]*components.Collider,
-	transforms map[ecscommon.Entity]*components.Transform,
-	aabbcollisions map[ecscommon.Entity][]ecscommon.Entity,
+	colliders map[ecscommon.EntityId]*components.Collider,
+	transforms map[ecscommon.EntityId]*components.Transform,
+	aabbcollisions map[ecscommon.EntityId][]ecscommon.EntityId,
 ) error {
 	for e, col := range colliders {
 		tra, ok := transforms[e]

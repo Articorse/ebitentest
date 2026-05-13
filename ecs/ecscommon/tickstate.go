@@ -1,10 +1,10 @@
 package ecscommon
 
-type tickState struct {
-	Collisions        map[Entity][]Entity
-	AABBCollisions    map[Entity][]Entity
-	ProximateEntities map[Entity][]Entity
-	CollisionGrid     map[CellKey][]Entity
+type TickState struct {
+	Collisions        map[EntityId][]EntityId
+	AABBCollisions    map[EntityId][]EntityId
+	ProximateEntities map[EntityId][]EntityId
+	CollisionGrid     map[CellKey][]EntityId
 }
 
 type CellKey struct {
@@ -12,11 +12,11 @@ type CellKey struct {
 	Y int
 }
 
-func NewTickState() *tickState {
-	return &tickState{
-		Collisions:        make(map[Entity][]Entity),
-		AABBCollisions:    make(map[Entity][]Entity),
-		ProximateEntities: make(map[Entity][]Entity),
-		CollisionGrid:     make(map[CellKey][]Entity),
+func NewTickState() *TickState {
+	return &TickState{
+		Collisions:        make(map[EntityId][]EntityId),
+		AABBCollisions:    make(map[EntityId][]EntityId),
+		ProximateEntities: make(map[EntityId][]EntityId),
+		CollisionGrid:     make(map[CellKey][]EntityId),
 	}
 }

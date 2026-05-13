@@ -12,8 +12,10 @@ type Sprite struct {
 	OffsetPos      utils.Vec2
 	OffsetScale    float64
 	OffsetRotation float64
+	LayerYOffset   uint8
+	Layer          uint8
 }
 
 func NewSpriteComponent() *Sprite {
-	return &Sprite{OffsetScale: 1}
+	return &Sprite{OffsetScale: 1, Layer: 20}
 }

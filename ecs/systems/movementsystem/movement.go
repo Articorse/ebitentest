@@ -8,8 +8,8 @@ import (
 )
 
 func Tick(
-	velocities map[ecscommon.Entity]*components.Velocity,
-	transforms map[ecscommon.Entity]*components.Transform,
+	velocities map[ecscommon.EntityId]*components.Velocity,
+	transforms map[ecscommon.EntityId]*components.Transform,
 ) error {
 	for e, velComp := range velocities {
 		traComp, ok := transforms[e]
