@@ -14,7 +14,7 @@ func Tick(
 	for e, velComp := range velocities {
 		traComp, ok := transforms[e]
 		if !ok {
-			return &ecscommon.ErrorMissingComponent{
+			return &ecscommon.ErrorMissingComponentDependency{
 				Entity:           e,
 				PresentComponent: "Velocity",
 				MissingComponent: "Transform",

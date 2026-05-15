@@ -33,7 +33,7 @@ func GetCollisions(
 
 			traA, ok := transforms[eA]
 			if !ok {
-				return nil, &ecscommon.ErrorMissingComponent{
+				return nil, &ecscommon.ErrorMissingComponentDependency{
 					Entity:           eA,
 					PresentComponent: "Collider",
 					MissingComponent: "Transform",
@@ -42,7 +42,7 @@ func GetCollisions(
 			}
 			traB, ok := transforms[eB]
 			if !ok {
-				return nil, &ecscommon.ErrorMissingComponent{
+				return nil, &ecscommon.ErrorMissingComponentDependency{
 					Entity:           eB,
 					PresentComponent: "Collider",
 					MissingComponent: "Transform",
@@ -119,7 +119,7 @@ func GetAABBCollisions(
 
 			traA, ok := transforms[eA]
 			if !ok {
-				return nil, &ecscommon.ErrorMissingComponent{
+				return nil, &ecscommon.ErrorMissingComponentDependency{
 					Entity:           eA,
 					PresentComponent: "Collider",
 					MissingComponent: "Transform",
@@ -128,7 +128,7 @@ func GetAABBCollisions(
 			}
 			traB, ok := transforms[eB]
 			if !ok {
-				return nil, &ecscommon.ErrorMissingComponent{
+				return nil, &ecscommon.ErrorMissingComponentDependency{
 					Entity:           eB,
 					PresentComponent: "Collider",
 					MissingComponent: "Transform",
@@ -161,62 +161,6 @@ func GetAABBCollisions(
 	}
 
 	return collisions, nil
-}
-
-func GetSHGProximities(
-	grid map[ecscommon.CellKey][]ecscommon.EntityId,
-	colliders map[ecscommon.EntityId]*components.Collider,
-	transforms map[ecscommon.EntityId]*components.Transform,
-) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
-	proximateEntities := make(map[ecscommon.EntityId][]ecscommon.EntityId)
-
-	for eA, _ := range colliders {
-		traA, ok := transforms[eA]
-		if !ok {
-			return nil, &ecscommon.ErrorMissingComponent{
-				Entity:           eA,
-				PresentComponent: "Collider",
-				MissingComponent: "Transform",
-			}
-		}
-		cellX := int(traA.Pos.X / data.SpatialHashGridCellSize)
-		cellY := int(traA.Pos.Y / data.SpatialHashGridCellSize)
-		for dx := -1; dx <= 1; dx++ {
-			for dy := -1; dy <= 1; dy++ {
-				for _, eB := range grid[ecscommon.CellKey{X: cellX + dx, Y: cellY + dy}] {
-					if eA == eB {
-						continue
-					}
-
-					_, ok := colliders[eB]
-					if !ok {
-						continue
-					}
-
-					_, ok = transforms[eB]
-					if !ok {
-						return nil, &ecscommon.ErrorMissingComponent{
-							Entity:           eB,
-							PresentComponent: "Collider",
-							MissingComponent: "Transform",
-						}
-					}
-
-					if proximateEntity, ok := proximateEntities[eB]; ok {
-						if slices.Contains(proximateEntity, eA) {
-							continue
-						}
-					}
-
-					if !slices.Contains(proximateEntities[eA], eB) {
-						proximateEntities[eA] = append(proximateEntities[eA], eB)
-					}
-				}
-			}
-		}
-	}
-
-	return proximateEntities, nil
 }
 
 func detectAABBCollision(a, b []utils.Vec2) bool {
@@ -271,7 +215,7 @@ func DrawColliders(
 	for e, col := range colliders {
 		tra, ok := transforms[e]
 		if !ok {
-			return &ecscommon.ErrorMissingComponent{
+			return &ecscommon.ErrorMissingComponentDependency{
 				Entity:           e,
 				PresentComponent: "Collider",
 				MissingComponent: "Transform",
@@ -351,7 +295,7 @@ func DrawAABBs(
 	for e, col := range colliders {
 		tra, ok := transforms[e]
 		if !ok {
-			return &ecscommon.ErrorMissingComponent{
+			return &ecscommon.ErrorMissingComponentDependency{
 				Entity:           e,
 				PresentComponent: "Collider",
 				MissingComponent: "Transform",

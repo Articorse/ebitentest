@@ -12,6 +12,8 @@ type Velocity struct {
 	Drag         float64
 }
 
+func (Velocity) isComponent() {}
+
 func NewVelocityComponent() *Velocity {
 	return &Velocity{Drag: data.DefaultDrag, Acceleration: data.DefaultAcceleration}
 }

@@ -7,6 +7,8 @@ type Parent struct {
 	Entity *ecscommon.EntityId
 }
 
+func (Parent) isComponent() {}
+
 func NewParentComponent() *Parent {
 	return &Parent{}
 }

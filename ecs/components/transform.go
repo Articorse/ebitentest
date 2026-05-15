@@ -9,6 +9,8 @@ type Transform struct {
 	Rotation float64
 }
 
+func (Transform) isComponent() {}
+
 func NewTransformComponent() *Transform {
 	return &Transform{Scale: 1}
 }

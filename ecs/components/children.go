@@ -7,6 +7,8 @@ type Children struct {
 	Entities []*ecscommon.EntityId
 }
 
+func (Children) isComponent() {}
+
 func NewChildrenComponent() *Children {
 	return &Children{}
 }

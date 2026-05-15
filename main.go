@@ -152,7 +152,7 @@ func (g *game) Update() error {
 
 	if err := movementsystem.Tick(g.world.Velocities, g.world.Transforms); err != nil {
 		log.Println("movement system error: ", err, "removing entity")
-		var invalidComponentsErr *ecscommon.ErrorMissingComponent
+		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
 			g.world.RemoveEntity(invalidComponentsErr.Entity)
 		}
@@ -161,16 +161,16 @@ func (g *game) Update() error {
 	g.tickState.CollisionGrid, err = commonsystems.PopulateSpatialHashGrid(g.world.Transforms)
 	if err != nil {
 		log.Println("error during populating spatial hash grid: ", err, "removing entity")
-		var invalidComponentsErr *ecscommon.ErrorMissingComponent
+		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
 			g.world.RemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
-	proximateEntities, err := collisionsystem.GetSHGProximities(g.tickState.CollisionGrid, g.world.Colliders, g.world.Transforms)
+	proximateEntities, err := commonsystems.GetSHGProximities(g.tickState.CollisionGrid, g.world.Colliders, g.world.Transforms)
 	if err != nil {
 		log.Println("error during spatial hash grid proximity checking: ", err, "removing entity")
-		var invalidComponentsErr *ecscommon.ErrorMissingComponent
+		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
 			g.world.RemoveEntity(invalidComponentsErr.Entity)
 		}
@@ -179,7 +179,7 @@ func (g *game) Update() error {
 	aabbcollisions, err := collisionsystem.GetAABBCollisions(proximateEntities, g.world.Colliders, g.world.Transforms)
 	if err != nil {
 		log.Println("error during AABB collision checking: ", err, "removing entity")
-		var invalidComponentsErr *ecscommon.ErrorMissingComponent
+		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
 			g.world.RemoveEntity(invalidComponentsErr.Entity)
 		}
@@ -188,7 +188,7 @@ func (g *game) Update() error {
 	collisions, err := collisionsystem.GetCollisions(aabbcollisions, g.world.Colliders, g.world.Transforms)
 	if err != nil {
 		log.Println("error during collision checking: ", err, "removing entity")
-		var invalidComponentsErr *ecscommon.ErrorMissingComponent
+		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
 			g.world.RemoveEntity(invalidComponentsErr.Entity)
 		}
@@ -212,10 +212,14 @@ func (g *game) Draw(screen *ebiten.Image) {
 		g.world.Sprites,
 		g.world.Transforms,
 	); err != nil {
-		log.Println("error while drawing frame: ", err, "removing entity")
-		var invalidComponentsErr *ecscommon.ErrorMissingComponent
-		if errors.As(err, &invalidComponentsErr) {
-			g.world.RemoveEntity(invalidComponentsErr.Entity)
+		log.Println("error while drawing frame, removing offending entity: ", err)
+		var missingDependencyError *ecscommon.ErrorMissingComponentDependency
+		if errors.As(err, &missingDependencyError) {
+			g.world.RemoveEntity(missingDependencyError.Entity)
+		}
+		var missingExpectedComponentError *ecscommon.ErrorMissingExpectedComponent
+		if errors.As(err, &missingExpectedComponentError) {
+			g.world.RemoveEntity(missingExpectedComponentError.Entity)
 		}
 	}
 
@@ -223,7 +227,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 	if DEBUG {
 		if err := collisionsystem.DrawColliders(screen, g.camera, g.world.Colliders, g.world.Transforms, g.tickState.Collisions); err != nil {
 			log.Println("error while drawing colliders: ", err, "removing entity")
-			var invalidComponentsErr *ecscommon.ErrorMissingComponent
+			var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
 				g.world.RemoveEntity(invalidComponentsErr.Entity)
 			}
@@ -231,7 +235,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 		if err := collisionsystem.DrawAABBs(screen, g.camera, g.world.Colliders, g.world.Transforms, g.tickState.AABBCollisions); err != nil {
 			log.Println("error while drawing AABBs: ", err, "removing entity")
-			var invalidComponentsErr *ecscommon.ErrorMissingComponent
+			var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
 				g.world.RemoveEntity(invalidComponentsErr.Entity)
 			}
@@ -284,15 +288,13 @@ func main() {
 	pParComp := components.NewParentComponent()
 	pChiComp := components.NewChildrenComponent()
 	pTraComp := components.NewTransformComponent()
+	pTraComp.Pos.X = 100
+	pTraComp.Pos.Y = 100
 	pVelComp := components.NewVelocityComponent()
-	pSprComp := components.NewSpriteComponent()
-
-	pSpr, _, err := ebitenutil.NewImageFromFile("assets/sprites/slime.png")
+	pSprComp, err := components.NewSpriteComponent("assets/sprites/slime.png")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	pSprComp.Image = pSpr
 
 	pColComp, err := components.NewColliderComponent(
 		[]utils.Vec2{
@@ -321,14 +323,10 @@ func main() {
 	eTraComp.Pos.X = 450
 	eTraComp.Pos.Y = 250
 	eVelComp := components.NewVelocityComponent()
-	eSprComp := components.NewSpriteComponent()
-
-	eSpr, _, err := ebitenutil.NewImageFromFile("assets/sprites/tree.png")
+	eSprComp, err := components.NewSpriteComponent("assets/sprites/tree.png")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	eSprComp.Image = eSpr
 
 	eColComp, err := components.NewColliderComponent(
 		[]utils.Vec2{

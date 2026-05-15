@@ -11,6 +11,8 @@ type Collider struct {
 	AABB     []utils.Vec2
 }
 
+func (Collider) isComponent() {}
+
 func NewColliderComponent(v []utils.Vec2) (*Collider, error) {
 	if !isSimple(v) {
 		return nil, fmt.Errorf("collider has self-intersections")
