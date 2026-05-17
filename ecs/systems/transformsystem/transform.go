@@ -25,16 +25,16 @@ func GetTransform(
 		return nil, fmt.Errorf("could not find transform of entity %d", e)
 	}
 
-	cos := math.Cos(pt.Rotation)
-	sin := math.Sin(pt.Rotation)
+	cos := math.Cos(pt.GetRotation())
+	sin := math.Sin(pt.GetRotation())
 
-	return &components.Transform{
-		Pos: utils.Vec2{
-			X: pt.Pos.X + (t.Pos.X*cos - t.Pos.Y*sin),
-			Y: pt.Pos.Y + (t.Pos.X*sin + t.Pos.Y*cos)},
-		Scale:    t.Scale * pt.Scale,
-		Rotation: t.Rotation + pt.Rotation,
-	}, nil
+	return components.NewTransformComponent(
+		utils.Vec2{
+			X: pt.GetPos().X + (t.GetPos().X*cos - t.GetPos().Y*sin),
+			Y: pt.GetPos().Y + (t.GetPos().X*sin + t.GetPos().Y*cos)},
+		t.GetScale()*pt.GetScale(),
+		t.GetRotation()+pt.GetRotation(),
+	), nil
 }
 
 func Attach(
@@ -62,16 +62,16 @@ func Attach(
 		return fmt.Errorf("could not find transform of entity %d", c)
 	}
 
-	cos := math.Cos(pt.Rotation)
-	sin := math.Sin(pt.Rotation)
+	cos := math.Cos(pt.GetRotation())
+	sin := math.Sin(pt.GetRotation())
 
-	t = &components.Transform{
-		Pos: utils.Vec2{
-			X: pt.Pos.X + (t.Pos.X*cos - t.Pos.Y*sin),
-			Y: pt.Pos.Y + (t.Pos.X*sin + t.Pos.Y*cos)},
-		Scale:    t.Scale / pt.Scale,
-		Rotation: t.Rotation - pt.Rotation,
-	}
+	t = components.NewTransformComponent(
+		utils.Vec2{
+			X: pt.GetPos().X + (t.GetPos().X*cos - t.GetPos().Y*sin),
+			Y: pt.GetPos().Y + (t.GetPos().X*sin + t.GetPos().Y*cos)},
+		t.GetScale()/pt.GetScale(),
+		t.GetRotation()-pt.GetRotation(),
+	)
 
 	pc.Entity = &p
 
@@ -99,16 +99,16 @@ func Detach(
 		return fmt.Errorf("could not get transform of entity %d", e)
 	}
 
-	cos := math.Cos(pt.Rotation)
-	sin := math.Sin(pt.Rotation)
+	cos := math.Cos(pt.GetRotation())
+	sin := math.Sin(pt.GetRotation())
 
-	t = &components.Transform{
-		Pos: utils.Vec2{
-			X: pt.Pos.X + (t.Pos.X*cos - t.Pos.Y*sin),
-			Y: pt.Pos.Y + (t.Pos.X*sin + t.Pos.Y*cos)},
-		Scale:    t.Scale * pt.Scale,
-		Rotation: t.Rotation + pt.Rotation,
-	}
+	t = components.NewTransformComponent(
+		utils.Vec2{
+			X: pt.GetPos().X + (t.GetPos().X*cos - t.GetPos().Y*sin),
+			Y: pt.GetPos().Y + (t.GetPos().X*sin + t.GetPos().Y*cos)},
+		t.GetScale()*pt.GetScale(),
+		t.GetRotation()+pt.GetRotation(),
+	)
 
 	pc.Entity = nil
 

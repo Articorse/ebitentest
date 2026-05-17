@@ -3,6 +3,7 @@ package main
 import (
 	"ebittest/ecs"
 	"ebittest/ecs/components"
+	"ebittest/ecs/components/hitboxes"
 	"ebittest/ecs/ecscommon"
 	"ebittest/ecs/systems/collisionsystem"
 	"ebittest/ecs/systems/commonsystems"
@@ -31,7 +32,10 @@ var (
 
 	// replay = make(map[uint64]map[ecscommon.PlayerId]ecscommon.InputState)
 
-	DEBUG = true
+	DEBUG        = true
+	max_vel      = 0.0
+	prev_pos     = utils.Vec2{}
+	max_pos_diff = 0.0
 )
 
 type game struct {
@@ -136,7 +140,7 @@ func (g *game) Update() error {
 		g.cameraFollow = !g.cameraFollow
 	}
 	if g.cameraFollow {
-		g.camera = pTraComp.Pos.Subtract(utils.Vec2{X: float64(width) / 2, Y: float64(height) / 2})
+		g.camera = pTraComp.GetPos().Subtract(utils.Vec2{X: float64(width) / 2, Y: float64(height) / 2})
 	}
 
 	// DEBUG: For testing purposes only
@@ -147,6 +151,18 @@ func (g *game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
 		DEBUG = !DEBUG
 	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		max_vel = 0
+		max_pos_diff = 0
+	}
+
+	pos_diff := prev_pos.Subtract(g.world.Transforms[ecscommon.EntityId(0)].GetPos()).Length()
+	if max_pos_diff < pos_diff {
+		max_pos_diff = pos_diff
+	}
+	prev_pos = g.world.Transforms[ecscommon.EntityId(0)].GetPos()
+	// END DEBUG
 
 	g.tickState = *ecscommon.NewTickState()
 
@@ -192,6 +208,11 @@ func (g *game) Update() error {
 		if errors.As(err, &invalidComponentsErr) {
 			g.world.RemoveEntity(invalidComponentsErr.Entity)
 		}
+	}
+
+	_, err = collisionsystem.ResolveCollisions(collisions, g.world.Colliders, g.world.Transforms, g.world.Velocities)
+	if err != nil {
+		log.Println("error during collision resolution: ", err)
 	}
 
 	g.tickState.ProximateEntities = proximateEntities
@@ -241,6 +262,10 @@ func (g *game) Draw(screen *ebiten.Image) {
 			}
 		}
 
+		if err := collisionsystem.DrawCollisions(screen, g.camera, g.tickState.Collisions, g.world.Transforms); err != nil {
+			log.Println("error while drawing collisions: ", err)
+		}
+
 		proximateEntitiesCount := 0
 		for _, others := range g.tickState.ProximateEntities {
 			for range others {
@@ -248,8 +273,12 @@ func (g *game) Draw(screen *ebiten.Image) {
 			}
 		}
 
-		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f\nTick: %d", ebiten.ActualFPS(), g.tickIdx))
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("SHG Cells: %v\nProximate Pairs: %d", g.tickState.CollisionGrid, proximateEntitiesCount), 0, 50)
+		vel := g.world.Velocities[ecscommon.EntityId(0)].Vector.Length()
+		if vel > max_vel {
+			max_vel = vel
+		}
+
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f\nTick: %d\nVel: %v\nMaxVel: %f\nMaxPosDiff: %v\nSHG Cells: %v\nProximate Pairs: %d", ebiten.ActualFPS(), g.tickIdx, g.world.Velocities[ecscommon.EntityId(0)].Vector, max_vel, max_pos_diff, g.tickState.CollisionGrid, proximateEntitiesCount))
 	}
 	// END DEBUG
 }
@@ -287,26 +316,19 @@ func main() {
 
 	pParComp := components.NewParentComponent()
 	pChiComp := components.NewChildrenComponent()
-	pTraComp := components.NewTransformComponent()
-	pTraComp.Pos.X = 100
-	pTraComp.Pos.Y = 100
+	pTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := components.NewVelocityComponent()
 	pSprComp, err := components.NewSpriteComponent("assets/sprites/slime.png")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pColComp, err := components.NewColliderComponent(
-		[]utils.Vec2{
-			utils.Vec2{X: -20, Y: -20},
-			utils.Vec2{X: 25, Y: -25},
-			utils.Vec2{X: 20, Y: 20},
-			utils.Vec2{X: -25, Y: 25},
-		},
-	)
+	pHitbox, err := hitboxes.NewCircleHitbox(5, utils.Vec2{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	pColComp := components.NewColliderComponent(components.Mob, []hitboxes.Hitbox{pHitbox})
 
 	g.world.Parents[pE] = pParComp
 	g.world.Children[pE] = pChiComp
@@ -319,26 +341,15 @@ func main() {
 
 	eParComp := components.NewParentComponent()
 	eChiComp := components.NewChildrenComponent()
-	eTraComp := components.NewTransformComponent()
-	eTraComp.Pos.X = 450
-	eTraComp.Pos.Y = 250
+	eTraComp := components.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
 	eVelComp := components.NewVelocityComponent()
 	eSprComp, err := components.NewSpriteComponent("assets/sprites/tree.png")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	eColComp, err := components.NewColliderComponent(
-		[]utils.Vec2{
-			utils.Vec2{X: -20, Y: -20},
-			utils.Vec2{X: 25, Y: -25},
-			utils.Vec2{X: 20, Y: 20},
-			utils.Vec2{X: -25, Y: 25},
-		},
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
+	eHitbox, err := hitboxes.NewRectangleHitbox(10, 5, utils.Vec2{X: -1, Y: 9})
+	eColComp := components.NewColliderComponent(components.Static, []hitboxes.Hitbox{eHitbox})
 
 	g.world.Parents[e] = eParComp
 	g.world.Children[e] = eChiComp

@@ -106,8 +106,8 @@ func DrawFrame(
 				return -1
 			}
 
-			aTotalY := uint64(traCompA.Pos.Y) + uint64(sprCompA.LayerYOffset)
-			bTotalY := uint64(traCompB.Pos.Y) + uint64(sprCompB.LayerYOffset)
+			aTotalY := uint64(traCompA.GetPos().Y) + uint64(sprCompA.LayerYOffset)
+			bTotalY := uint64(traCompB.GetPos().Y) + uint64(sprCompB.LayerYOffset)
 
 			if aTotalY == bTotalY {
 				return int(b - a)
@@ -127,9 +127,9 @@ func DrawFrame(
 			sprCompBE, _ := sprites[batchEntity]
 			traCompBE, _ := transforms[batchEntity]
 
-			v := traCompBE.Pos.Add(sprCompBE.OffsetPos)
-			r := traCompBE.Rotation + sprCompBE.OffsetRotation
-			s := traCompBE.Scale * sprCompBE.OffsetScale
+			v := traCompBE.GetPos().Add(sprCompBE.OffsetPos)
+			r := traCompBE.GetRotation() + sprCompBE.OffsetRotation
+			s := traCompBE.GetScale() * sprCompBE.OffsetScale
 
 			opts := ebiten.DrawImageOptions{}
 			w, h := sprCompBE.Image.Bounds().Dx(), sprCompBE.Image.Bounds().Dy()
@@ -187,8 +187,8 @@ func getNeighborsRecursive(
 
 	visitedEntities[eA] = struct{}{}
 
-	startCellX := int(traCompA.Pos.X / data.SpatialHashGridCellSize)
-	startCellY := int(traCompA.Pos.Y / data.SpatialHashGridCellSize)
+	startCellX := int(traCompA.GetPos().X / data.SpatialHashGridCellSize)
+	startCellY := int(traCompA.GetPos().Y / data.SpatialHashGridCellSize)
 
 	for dx := -1; dx <= 1; dx++ {
 		for dy := -1; dy <= 1; dy++ {

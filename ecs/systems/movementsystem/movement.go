@@ -21,7 +21,7 @@ func Tick(
 			}
 		}
 
-		traComp.Pos = traComp.Pos.Add(velComp.Vector)
+		traComp.SetPos(traComp.GetPos().Add(velComp.Vector))
 		velComp.Vector = velComp.Vector.Multiply(velComp.Drag)
 
 		if math.Abs(velComp.Vector.X) < data.VelocityThreshold {

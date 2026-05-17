@@ -12,8 +12,8 @@ func PopulateSpatialHashGrid(
 ) (map[ecscommon.CellKey][]ecscommon.EntityId, error) {
 	grid := make(map[ecscommon.CellKey][]ecscommon.EntityId)
 	for e, tra := range transforms {
-		x := int(tra.Pos.X / data.SpatialHashGridCellSize)
-		y := int(tra.Pos.Y / data.SpatialHashGridCellSize)
+		x := int(tra.GetPos().X / data.SpatialHashGridCellSize)
+		y := int(tra.GetPos().Y / data.SpatialHashGridCellSize)
 		grid[ecscommon.CellKey{X: x, Y: y}] = append(grid[ecscommon.CellKey{X: x, Y: y}], e)
 	}
 
@@ -36,8 +36,8 @@ func GetSHGProximities[T components.Component](
 				MissingComponent: "Transform",
 			}
 		}
-		cellX := int(traA.Pos.X / data.SpatialHashGridCellSize)
-		cellY := int(traA.Pos.Y / data.SpatialHashGridCellSize)
+		cellX := int(traA.GetPos().X / data.SpatialHashGridCellSize)
+		cellY := int(traA.GetPos().Y / data.SpatialHashGridCellSize)
 		for dx := -1; dx <= 1; dx++ {
 			for dy := -1; dy <= 1; dy++ {
 				for _, eB := range shg[ecscommon.CellKey{X: cellX + dx, Y: cellY + dy}] {

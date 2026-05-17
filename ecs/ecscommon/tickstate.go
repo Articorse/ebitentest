@@ -1,7 +1,9 @@
 package ecscommon
 
+import "ebittest/utils"
+
 type TickState struct {
-	Collisions        map[EntityId][]EntityId
+	Collisions        map[EntityId]map[EntityId]utils.Vec2
 	AABBCollisions    map[EntityId][]EntityId
 	ProximateEntities map[EntityId][]EntityId
 	CollisionGrid     map[CellKey][]EntityId
@@ -14,7 +16,7 @@ type CellKey struct {
 
 func NewTickState() *TickState {
 	return &TickState{
-		Collisions:        make(map[EntityId][]EntityId),
+		Collisions:        make(map[EntityId]map[EntityId]utils.Vec2),
 		AABBCollisions:    make(map[EntityId][]EntityId),
 		ProximateEntities: make(map[EntityId][]EntityId),
 		CollisionGrid:     make(map[CellKey][]EntityId),

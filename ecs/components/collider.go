@@ -1,97 +1,74 @@
 package components
 
 import (
+	"ebittest/ecs/components/hitboxes"
 	"ebittest/utils"
-	"fmt"
-	"math"
+)
+
+type ColliderType uint8
+
+const (
+	Mob ColliderType = iota
+	Static
+	Trigger
 )
 
 type Collider struct {
-	Vertices []utils.Vec2
-	AABB     []utils.Vec2
+	Type     ColliderType
+	Hitboxes []hitboxes.Hitbox
+	center   utils.Vec2
+	aabb     [2]utils.Vec2
 }
 
 func (Collider) isComponent() {}
 
-func NewColliderComponent(v []utils.Vec2) (*Collider, error) {
-	if !isSimple(v) {
-		return nil, fmt.Errorf("collider has self-intersections")
+func NewColliderComponent(t ColliderType, h []hitboxes.Hitbox) *Collider {
+	c := &Collider{
+		Type:     t,
+		Hitboxes: h,
 	}
 
-	if !isConvex(v) {
-		return nil, fmt.Errorf("collider must be convex")
-	}
+	c.center = hitboxes.CalculateCenter(h)
 
-	aabb := generateAABB(v)
-
-	return &Collider{Vertices: v, AABB: aabb}, nil
-}
-
-func generateAABB(vertices []utils.Vec2) []utils.Vec2 {
-	maxX := math.Inf(-1)
-	maxY := math.Inf(-1)
-	minX := math.Inf(0)
-	minY := math.Inf(0)
-
-	for _, v := range vertices {
-		if v.X > maxX {
-			maxX = v.X
+	if len(h) == 0 {
+		c.aabb = [2]utils.Vec2{
+			utils.Vec2{X: 0, Y: 0},
+			utils.Vec2{X: 0, Y: 0},
 		}
-		if v.X < minX {
-			minX = v.X
-		}
-		if v.Y > maxY {
-			maxY = v.Y
-		}
-		if v.Y < minY {
-			minY = v.Y
-		}
-	}
+	} else {
+		firstAABB := h[0].GetAABB()
+		minX, minY := firstAABB[0].X, firstAABB[0].Y
+		maxX, maxY := firstAABB[1].X, firstAABB[1].Y
 
-	return []utils.Vec2{
-		{X: minX, Y: minY},
-		{X: maxX, Y: maxY},
-	}
-}
-
-func isConvex(vertices []utils.Vec2) bool {
-	n := len(vertices)
-	if n < 3 {
-		return false
-	}
-	var sign float64
-	for i := 0; i < n; i++ {
-		a := vertices[i]
-		b := vertices[(i+1)%n]
-		c := vertices[(i+2)%n]
-		cross := (b.X-a.X)*(c.Y-b.Y) - (b.Y-a.Y)*(c.X-b.X)
-		if cross != 0 {
-			if sign == 0 {
-				sign = cross
-			} else if sign*cross < 0 {
-				return false
+		for _, hitbox := range h {
+			aabb := hitbox.GetAABB()
+			if aabb[0].X < minX {
+				minX = aabb[0].X
+			}
+			if aabb[0].Y < minY {
+				minY = aabb[0].Y
+			}
+			if aabb[1].X > maxX {
+				maxX = aabb[1].X
+			}
+			if aabb[1].Y > maxY {
+				maxY = aabb[1].Y
 			}
 		}
-	}
-	return true
-}
 
-func isSimple(vertices []utils.Vec2) bool {
-	n := len(vertices)
-	for i := 0; i < n; i++ {
-		a1 := vertices[i]
-		a2 := vertices[(i+1)%n]
-		for j := i + 1; j < n; j++ {
-			// Skip adjacent edges and the same edge
-			if utils.AbsInt(i-j) <= 1 || (i == 0 && j == n-1) || (j == 0 && i == n-1) {
-				continue
-			}
-			b1 := vertices[j]
-			b2 := vertices[(j+1)%n]
-			if utils.SegmentsIntersect(a1, a2, b1, b2) {
-				return false
-			}
+		c.aabb = [2]utils.Vec2{
+			utils.Vec2{X: minX, Y: minY},
+			utils.Vec2{X: maxX, Y: maxY},
 		}
 	}
-	return true
+
+	return c
+}
+
+func (x *Collider) GetCenter() utils.Vec2 {
+	return x.center
+}
+
+func (x *Collider) GetAABB() [2]utils.Vec2 {
+	return x.aabb
 }

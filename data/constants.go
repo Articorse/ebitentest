@@ -1,12 +1,17 @@
 package data
 
-import "image/color"
+import (
+	"image/color"
+)
 
 const (
 	VelocityThreshold       = 0.01
 	DefaultDrag             = 0.8
-	DefaultAcceleration     = 2
+	DefaultAcceleration     = 1
 	SpatialHashGridCellSize = 200
+	Bounciness              = 0.0
+	StaticCollisionForce    = 5
+	AABBMultiplier          = 1.3
 )
 
 var (
@@ -14,4 +19,5 @@ var (
 	Debug_ColliderCollidedColor     = color.RGBA{255, 0, 0, 255}
 	Debug_AABBColliderColor         = color.RGBA{255, 255, 0, 255}
 	Debug_AABBColliderCollidedColor = color.RGBA{255, 0, 255, 255}
+	Debug_CollisionVectorColor      = color.RGBA{255, 0, 0, 255}
 )

@@ -43,6 +43,22 @@ func (v Vec2) Multiply(f float64) Vec2 {
 	}
 }
 
+func (v Vec2) Dot(v2 Vec2) float64 {
+	return v.X*v2.X + v.Y*v2.Y
+}
+
+func (v Vec2) SameDirection(v2 Vec2) bool {
+	return v.X*v2.X >= 0 && v.Y*v2.Y >= 0
+}
+
+func (v Vec2) Length() float64 {
+	return math.Sqrt(v.X*v.X + v.Y*v.Y)
+}
+
+func (v Vec2) IsZero() bool {
+	return v.X == 0 && v.Y == 0
+}
+
 func SegmentsIntersect(a1, a2, b1, b2 Vec2) bool {
 	return CCW(a1, b1, b2) != CCW(a2, b1, b2) && CCW(a1, a2, b1) != CCW(a1, a2, b2)
 }
