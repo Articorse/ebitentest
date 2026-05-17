@@ -166,7 +166,7 @@ func (g *game) Update() error {
 
 	g.tickState = *ecscommon.NewTickState()
 
-	if err := movementsystem.Tick(g.world.Velocities, g.world.Transforms); err != nil {
+	if err := movementsystem.TickEarly(g.world.Velocities, g.world.Transforms); err != nil {
 		log.Println("movement system error: ", err, "removing entity")
 		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
@@ -213,6 +213,11 @@ func (g *game) Update() error {
 	_, err = collisionsystem.ResolveCollisions(collisions, g.world.Colliders, g.world.Transforms, g.world.Velocities)
 	if err != nil {
 		log.Println("error during collision resolution: ", err)
+	}
+
+	err = movementsystem.TickLate(g.world.Transforms)
+  if err != nil {
+		log.Println("movement system late tick error: ", err)
 	}
 
 	g.tickState.ProximateEntities = proximateEntities

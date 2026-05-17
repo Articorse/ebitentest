@@ -7,7 +7,8 @@ import (
 	"math"
 )
 
-func Tick(
+// Should be called before other systems modify Transforms or Velocities
+func TickEarly(
 	velocities map[ecscommon.EntityId]*components.Velocity,
 	transforms map[ecscommon.EntityId]*components.Transform,
 ) error {
@@ -31,6 +32,17 @@ func Tick(
 		if math.Abs(velComp.Vector.Y) < data.VelocityThreshold {
 			velComp.Vector.Y = 0
 		}
+	}
+
+	return nil
+}
+
+// Should be called after other systems modify Transforms or Velocities
+func TickLate(
+	transforms map[ecscommon.EntityId]*components.Transform,
+) error {
+	for _, traComp := range transforms {
+		traComp.SetPrevPos(traComp.GetPos())
 	}
 
 	return nil

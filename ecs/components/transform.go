@@ -21,12 +21,15 @@ func (x *Transform) GetPos() utils.Vec2 {
 }
 
 func (x *Transform) SetPos(p utils.Vec2) {
-	x.prevPos = x.pos
 	x.pos = p
 }
 
 func (x *Transform) GetPrevPos() utils.Vec2 {
 	return x.prevPos
+}
+
+func (x *Transform) SetPrevPos(p utils.Vec2) {
+	x.prevPos = p
 }
 
 func (x *Transform) GetScale() float64 {
