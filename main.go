@@ -32,10 +32,11 @@ var (
 
 	// replay = make(map[uint64]map[ecscommon.PlayerId]ecscommon.InputState)
 
-	DEBUG        = true
-	max_vel      = 0.0
-	prev_pos     = utils.Vec2{}
-	max_pos_diff = 0.0
+	DEBUG_LEVEL               = 0
+	max_vel                   = 0.0
+	prev_pos                  = utils.Vec2{}
+	max_pos_diff              = 0.0
+	resolvedCollisions uint64 = 0
 )
 
 type game struct {
@@ -149,7 +150,10 @@ func (g *game) Update() error {
 			func(k ecscommon.EntityId, _ *components.Transform) bool { return k == pE })
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
-		DEBUG = !DEBUG
+		DEBUG_LEVEL++
+		if DEBUG_LEVEL > 2 {
+			DEBUG_LEVEL = 0
+		}
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
@@ -210,13 +214,13 @@ func (g *game) Update() error {
 		}
 	}
 
-	_, err = collisionsystem.ResolveCollisions(collisions, g.world.Colliders, g.world.Transforms, g.world.Velocities)
+	resolvedCollisions, err = collisionsystem.ResolveCollisions(collisions, g.world.Colliders, g.world.Transforms, g.world.Velocities)
 	if err != nil {
 		log.Println("error during collision resolution: ", err)
 	}
 
 	err = movementsystem.TickLate(g.world.Transforms)
-  if err != nil {
+	if err != nil {
 		log.Println("movement system late tick error: ", err)
 	}
 
@@ -249,8 +253,19 @@ func (g *game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// DEBUG
-	if DEBUG {
+	g.DrawDebug(screen)
+}
+
+func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
+	return width, height
+}
+
+func (g *game) DrawDebug(screen *ebiten.Image) {
+	if DEBUG_LEVEL == 1 {
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f", ebiten.ActualFPS()))
+	}
+
+	if DEBUG_LEVEL == 2 {
 		if err := collisionsystem.DrawColliders(screen, g.camera, g.world.Colliders, g.world.Transforms, g.tickState.Collisions); err != nil {
 			log.Println("error while drawing colliders: ", err, "removing entity")
 			var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
@@ -283,13 +298,8 @@ func (g *game) Draw(screen *ebiten.Image) {
 			max_vel = vel
 		}
 
-		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f\nTick: %d\nVel: %v\nMaxVel: %f\nMaxPosDiff: %v\nSHG Cells: %v\nProximate Pairs: %d", ebiten.ActualFPS(), g.tickIdx, g.world.Velocities[ecscommon.EntityId(0)].Vector, max_vel, max_pos_diff, g.tickState.CollisionGrid, proximateEntitiesCount))
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f\nTick: %d\nVel: %v\nMaxVel: %f\nMaxPosDiff: %v\nSHG Cells: %v\nProximate Pairs: %d\nResolved Collisions: %d", ebiten.ActualFPS(), g.tickIdx, g.world.Velocities[ecscommon.EntityId(0)].Vector, max_vel, max_pos_diff, g.tickState.CollisionGrid, proximateEntitiesCount, resolvedCollisions))
 	}
-	// END DEBUG
-}
-
-func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return width, height
 }
 
 func main() {
