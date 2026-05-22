@@ -1,14 +1,11 @@
 package ecscommon
 
-import "github.com/hajimehoshi/ebiten/v2"
+import "ebittest/utils"
 
 type InputState struct {
 	Up, Down, Left, Right bool
+	MousePos              utils.Vec2
+	Use                   bool
 }
 
-type InputConfig struct {
-	Up, Down, Left, Right ebiten.Key
-	InputSourceFunc InputSourceFunc
-}
-
-type InputSourceFunc func(playerId PlayerId, tick uint64) InputState
+type InputSourceFunc func(entityId EntityId, tick uint64) InputState

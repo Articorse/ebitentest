@@ -4,33 +4,41 @@ import (
 	"ebittest/data"
 	"ebittest/ecs/components"
 	"ebittest/ecs/ecscommon"
-	"math"
+	"ebittest/utils"
+	"fmt"
+	"log"
 )
 
 // Should be called before other systems modify Transforms or Velocities
 func TickEarly(
 	velocities map[ecscommon.EntityId]*components.Velocity,
 	transforms map[ecscommon.EntityId]*components.Transform,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
-	for e, velComp := range velocities {
-		traComp, ok := transforms[e]
-		if !ok {
-			return &ecscommon.ErrorMissingComponentDependency{
-				Entity:           e,
-				PresentComponent: "Velocity",
-				MissingComponent: "Transform",
-			}
+	tm := components.TransformManager{}
+	vm := components.VelocityManager{}
+
+	for e, _ := range velocities {
+		localPos, err := tm.GetLocalPos(e, transforms)
+		if err != nil {
+			return fmt.Errorf("error getting local position of entity %d: %v", e, err)
 		}
 
-		traComp.SetPos(traComp.GetPos().Add(velComp.Vector))
-		velComp.Vector = velComp.Vector.Multiply(velComp.Drag)
-
-		if math.Abs(velComp.Vector.X) < data.VelocityThreshold {
-			velComp.Vector.X = 0
+		drag, err := vm.GetDrag(e, velocities)
+		if err != nil {
+			return fmt.Errorf("error getting drag of entity %d: %v", e, err)
 		}
 
-		if math.Abs(velComp.Vector.Y) < data.VelocityThreshold {
-			velComp.Vector.Y = 0
+		localVelVec, err := vm.GetLocalVector(e, velocities)
+		if err != nil {
+			return fmt.Errorf("error getting local velocity vector of entity %d: %v", e, err)
+		}
+
+		tm.SetLocalPos(e, localPos.Add(localVelVec), transforms)
+		vm.SetLocalVector(e, localVelVec.Multiply(drag), velocities)
+
+		if localVelVec.Length() < data.VelocityThreshold {
+			vm.SetLocalVector(e, utils.Vec2{X: 0, Y: 0}, velocities)
 		}
 	}
 
@@ -41,8 +49,20 @@ func TickEarly(
 func TickLate(
 	transforms map[ecscommon.EntityId]*components.Transform,
 ) error {
-	for _, traComp := range transforms {
-		traComp.SetPrevPos(traComp.GetPos())
+	tm := components.TransformManager{}
+
+	for e, _ := range transforms {
+		localPrevPos, err := tm.GetLocalPos(e, transforms)
+		if err != nil {
+			log.Printf("error getting local previous position of root entity: %v\n", err)
+			continue
+		}
+
+		err = tm.SetLocalPrevPos(e, localPrevPos, transforms)
+		if err != nil {
+			log.Printf("error setting local position of root entity: %v\n", err)
+			continue
+		}
 	}
 
 	return nil

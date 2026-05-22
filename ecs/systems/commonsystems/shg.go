@@ -4,16 +4,26 @@ import (
 	"ebittest/data"
 	"ebittest/ecs/components"
 	"ebittest/ecs/ecscommon"
+	"log"
 	"slices"
 )
 
 func PopulateSpatialHashGrid(
 	transforms map[ecscommon.EntityId]*components.Transform,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) (map[ecscommon.CellKey][]ecscommon.EntityId, error) {
 	grid := make(map[ecscommon.CellKey][]ecscommon.EntityId)
-	for e, tra := range transforms {
-		x := int(tra.GetPos().X / data.SpatialHashGridCellSize)
-		y := int(tra.GetPos().Y / data.SpatialHashGridCellSize)
+	tm := components.TransformManager{}
+
+	for e, _ := range transforms {
+		worldPos, err := tm.GetWorldPos(e, transforms, parents)
+		if err != nil {
+			log.Printf("error getting world position of entity %d: %v", e, err)
+			continue
+		}
+
+		x := int(worldPos.X / data.SpatialHashGridCellSize)
+		y := int(worldPos.Y / data.SpatialHashGridCellSize)
 		grid[ecscommon.CellKey{X: x, Y: y}] = append(grid[ecscommon.CellKey{X: x, Y: y}], e)
 	}
 
@@ -24,20 +34,20 @@ func GetSHGProximities[T components.Component](
 	shg map[ecscommon.CellKey][]ecscommon.EntityId,
 	requiredComponentMap map[ecscommon.EntityId]*T,
 	transforms map[ecscommon.EntityId]*components.Transform,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
 	proximateEntities := make(map[ecscommon.EntityId][]ecscommon.EntityId)
 
 	for eA, _ := range requiredComponentMap {
-		traA, ok := transforms[eA]
-		if !ok {
-			return nil, &ecscommon.ErrorMissingComponentDependency{
-				Entity:           eA,
-				PresentComponent: "Collider",
-				MissingComponent: "Transform",
-			}
+		tm := components.TransformManager{}
+		worldPosA, err := tm.GetWorldPos(eA, transforms, parents)
+		if err != nil {
+			log.Printf("error getting world position of entity %d: %v", eA, err)
+			continue
 		}
-		cellX := int(traA.GetPos().X / data.SpatialHashGridCellSize)
-		cellY := int(traA.GetPos().Y / data.SpatialHashGridCellSize)
+
+		cellX := int(worldPosA.X / data.SpatialHashGridCellSize)
+		cellY := int(worldPosA.Y / data.SpatialHashGridCellSize)
 		for dx := -1; dx <= 1; dx++ {
 			for dy := -1; dy <= 1; dy++ {
 				for _, eB := range shg[ecscommon.CellKey{X: cellX + dx, Y: cellY + dy}] {

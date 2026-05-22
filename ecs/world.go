@@ -7,30 +7,28 @@ import (
 )
 
 type World struct {
-	nextEntity     ecscommon.EntityId
-	Entities       []ecscommon.EntityId
-	PlayerEntities map[ecscommon.PlayerId]ecscommon.EntityId
-	InputConfigs   map[ecscommon.PlayerId]*ecscommon.InputConfig
-	Parents        map[ecscommon.EntityId]*components.Parent
-	Children       map[ecscommon.EntityId]*components.Children
-	Transforms     map[ecscommon.EntityId]*components.Transform
-	Velocities     map[ecscommon.EntityId]*components.Velocity
-	Sprites        map[ecscommon.EntityId]*components.Sprite
-	Colliders      map[ecscommon.EntityId]*components.Collider
+	nextEntity ecscommon.EntityId
+	Entities   []ecscommon.EntityId
+	Inputs     map[ecscommon.EntityId]*components.Input
+	Parents    map[ecscommon.EntityId]*components.Parent
+	Children   map[ecscommon.EntityId]*components.Children
+	Transforms map[ecscommon.EntityId]*components.Transform
+	Velocities map[ecscommon.EntityId]*components.Velocity
+	Sprites    map[ecscommon.EntityId]*components.Sprite
+	Colliders  map[ecscommon.EntityId]*components.Collider
 }
 
 func NewWorld() *World {
 	return &World{
-		nextEntity:     0,
-		Entities:       []ecscommon.EntityId{},
-		PlayerEntities: make(map[ecscommon.PlayerId]ecscommon.EntityId),
-		InputConfigs:   make(map[ecscommon.PlayerId]*ecscommon.InputConfig),
-		Parents:        make(map[ecscommon.EntityId]*components.Parent),
-		Children:       make(map[ecscommon.EntityId]*components.Children),
-		Transforms:     make(map[ecscommon.EntityId]*components.Transform),
-		Velocities:     make(map[ecscommon.EntityId]*components.Velocity),
-		Sprites:        make(map[ecscommon.EntityId]*components.Sprite),
-		Colliders:      make(map[ecscommon.EntityId]*components.Collider),
+		nextEntity: 0,
+		Entities:   []ecscommon.EntityId{},
+		Inputs:     make(map[ecscommon.EntityId]*components.Input),
+		Parents:    make(map[ecscommon.EntityId]*components.Parent),
+		Children:   make(map[ecscommon.EntityId]*components.Children),
+		Transforms: make(map[ecscommon.EntityId]*components.Transform),
+		Velocities: make(map[ecscommon.EntityId]*components.Velocity),
+		Sprites:    make(map[ecscommon.EntityId]*components.Sprite),
+		Colliders:  make(map[ecscommon.EntityId]*components.Collider),
 	}
 }
 
@@ -51,8 +49,8 @@ func (x *World) RemoveEntity(e ecscommon.EntityId) error {
 	delete(x.Colliders, e)
 
 	for _, p := range x.Parents {
-		if *p.Entity == e {
-			p.Entity = nil
+		if p.Entity == e {
+			p.Entity = -1
 		}
 	}
 

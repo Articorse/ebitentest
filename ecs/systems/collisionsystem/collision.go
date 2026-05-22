@@ -17,71 +17,77 @@ func ResolveCollisions(
 	transforms map[ecscommon.EntityId]*components.Transform,
 	velocities map[ecscommon.EntityId]*components.Velocity,
 ) (collisionsResolved uint64, err error) {
+	tm := components.TransformManager{}
+	vm := components.VelocityManager{}
+
 	for eA, cols := range collisions {
 		for eB, colVector := range cols {
 			colA, ok := colliders[eA]
 			if !ok {
-				return collisionsResolved, fmt.Errorf("colliding entity has no collider: ", eA)
+				log.Printf("colliding entity has no collider: %d\n", eA)
+				continue
 			}
 			colB, ok := colliders[eB]
 			if !ok {
-				return collisionsResolved, fmt.Errorf("colliding entity has no collider: ", eB)
-			}
-
-			traA, ok := transforms[eA]
-			if !ok {
-				return collisionsResolved, &ecscommon.ErrorMissingComponentDependency{
-					Entity:           eA,
-					PresentComponent: "Collider",
-					MissingComponent: "Transform",
-				}
-			}
-			traB, ok := transforms[eB]
-			if !ok {
-				return collisionsResolved, &ecscommon.ErrorMissingComponentDependency{
-					Entity:           eB,
-					PresentComponent: "Collider",
-					MissingComponent: "Transform",
-				}
-			}
-
-			velA, ok := velocities[eA]
-			if !ok {
-				continue
-			}
-			velB, ok := velocities[eB]
-			if !ok {
+				log.Printf("colliding entity has no collider: %d\n", eB)
 				continue
 			}
 
-			var mobTra *components.Transform
-			var mobVel *components.Velocity
-			var staticVel *components.Velocity
+			var mobEnt ecscommon.EntityId
+			var mobLocalPos utils.Vec2
+			var mobLocalVelVec utils.Vec2
+			var staticLocalVelVec utils.Vec2
 
 			if colA.Type == components.Mob && colB.Type == components.Static {
-				mobTra = traA
-				mobVel = velA
-				staticVel = velB
+				mobEnt = eA
+				mobLocalPos, err = tm.GetLocalPos(eA, transforms)
+				if err != nil {
+					log.Printf("Error getting local position for entity %d: %v\n", eA, err)
+					continue
+				}
+				mobLocalVelVec, err = vm.GetLocalVector(eA, velocities)
+				if err != nil {
+					log.Printf("Error getting local velocity vector for entity %d: %v\n", eA, err)
+					continue
+				}
+				staticLocalVelVec, err = vm.GetLocalVector(eB, velocities)
+				if err != nil {
+					log.Printf("Error getting local velocity vector for entity %d: %v\n", eB, err)
+					continue
+				}
 			} else if colB.Type == components.Mob && colA.Type == components.Static {
 				colVector = colVector.Multiply(-1)
-				mobTra = traB
-				mobVel = velB
-				staticVel = velA
+				mobEnt = eB
+				mobLocalPos, err = tm.GetLocalPos(eB, transforms)
+				if err != nil {
+					log.Printf("Error getting local position for entity %d: %v\n", eB, err)
+					continue
+				}
+				mobLocalVelVec, err = vm.GetLocalVector(eB, velocities)
+				if err != nil {
+					log.Printf("Error getting local velocity vector for entity %d: %v\n", eB, err)
+					continue
+				}
+				staticLocalVelVec, err = vm.GetLocalVector(eA, velocities)
+				if err != nil {
+					log.Printf("Error getting local velocity vector for entity %d: %v\n", eA, err)
+					continue
+				}
 			} else {
 				continue
 			}
 
-			mobTra.SetPos(mobTra.GetPos().Add(colVector))
+			tm.SetLocalPos(mobEnt, mobLocalPos.Add(colVector), transforms)
 
 			normal := colVector.Normalized()
-			relativeVelocity := mobVel.Vector.Subtract(staticVel.Vector)
+			relativeVelocity := mobLocalVelVec.Subtract(staticLocalVelVec)
 			velocityAlongNormal := relativeVelocity.Dot(normal)
 
 			if velocityAlongNormal < 0 {
 				restitution := data.Bounciness
 				impulseMagnitude := -(1 + restitution) * velocityAlongNormal
 				impulse := normal.Multiply(impulseMagnitude)
-				mobVel.Vector = mobVel.Vector.Add(impulse)
+				vm.SetLocalVector(mobEnt, mobLocalVelVec.Add(impulse), velocities)
 			}
 
 			collisionsResolved++
@@ -95,8 +101,10 @@ func GetCollisions(
 	potentialCollisions map[ecscommon.EntityId][]ecscommon.EntityId,
 	colliders map[ecscommon.EntityId]*components.Collider,
 	transforms map[ecscommon.EntityId]*components.Transform,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) (map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2, error) {
 	collisions := make(map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2)
+	tm := components.TransformManager{}
 
 	for eA, colEntities := range potentialCollisions {
 		for _, eB := range colEntities {
@@ -108,24 +116,6 @@ func GetCollisions(
 			colB, ok := colliders[eB]
 			if !ok {
 				return nil, fmt.Errorf("colliding entity has no collider: ", eB)
-			}
-
-			traA, ok := transforms[eA]
-			if !ok {
-				return nil, &ecscommon.ErrorMissingComponentDependency{
-					Entity:           eA,
-					PresentComponent: "Collider",
-					MissingComponent: "Transform",
-				}
-
-			}
-			traB, ok := transforms[eB]
-			if !ok {
-				return nil, &ecscommon.ErrorMissingComponentDependency{
-					Entity:           eB,
-					PresentComponent: "Collider",
-					MissingComponent: "Transform",
-				}
 			}
 
 			if eA == eB {
@@ -148,15 +138,15 @@ func GetCollisions(
 					case *hitboxes.RectangleHitbox:
 						switch bH := bHitbox.(type) {
 						case *hitboxes.RectangleHitbox:
-							collisionVector = getRectangleRectangleCollision(*aH, *bH, *colA, *colB, *traA, *traB)
+							collisionVector = getRectangleRectangleCollision(eA, eB, *aH, *bH, transforms, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						case *hitboxes.CircleHitbox:
-							collisionVector = getRectangleCircleCollision(*aH, *bH, *colA, *colB, *traA, *traB)
+							collisionVector = getRectangleCircleCollision(eA, eB, *aH, *bH, transforms, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						case *hitboxes.PolygonHitbox:
-							collisionVector = getRectanglePolygonCollision(*aH, *bH, *colA, *colB, *traA, *traB)
+							collisionVector = getRectanglePolygonCollision(eA, eB, *aH, *bH, transforms, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						default:
@@ -165,16 +155,16 @@ func GetCollisions(
 					case *hitboxes.CircleHitbox:
 						switch bH := bHitbox.(type) {
 						case *hitboxes.RectangleHitbox:
-							collisionVector = getRectangleCircleCollision(*bH, *aH, *colB, *colA, *traB, *traA)
+							collisionVector = getRectangleCircleCollision(eB, eA, *bH, *aH, transforms, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 							collisionVector = collisionVector.Multiply(-1)
 						case *hitboxes.CircleHitbox:
-							collisionVector = getCircleCircleCollision(*aH, *bH, *colA, *colB, *traA, *traB)
+							collisionVector = getCircleCircleCollision(eA, eB, *aH, *bH, transforms, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						case *hitboxes.PolygonHitbox:
-							collisionVector = getCirclePolygonCollision(*aH, *bH, *colA, *colB, *traA, *traB)
+							collisionVector = getCirclePolygonCollision(eA, eB, *aH, *bH, transforms, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						default:
@@ -183,17 +173,17 @@ func GetCollisions(
 					case *hitboxes.PolygonHitbox:
 						switch bH := bHitbox.(type) {
 						case *hitboxes.RectangleHitbox:
-							collisionVector = getRectanglePolygonCollision(*bH, *aH, *colB, *colA, *traB, *traA)
+							collisionVector = getRectanglePolygonCollision(eB, eA, *bH, *aH, transforms, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 							collisionVector = collisionVector.Multiply(-1)
 						case *hitboxes.CircleHitbox:
-							collisionVector = getCirclePolygonCollision(*bH, *aH, *colB, *colA, *traB, *traA)
+							collisionVector = getCirclePolygonCollision(eB, eA, *bH, *aH, transforms, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 							collisionVector = collisionVector.Multiply(-1)
 						case *hitboxes.PolygonHitbox:
-							collisionVector = getPolygonPolygonCollision(*aH, *bH, *colA, *colB, *traA, *traB)
+							collisionVector = getPolygonPolygonCollision(eA, eB, *aH, *bH, transforms, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						default:
@@ -203,7 +193,19 @@ func GetCollisions(
 				}
 			}
 
-			prevRelativePosVector := traA.GetPrevPos().Add(aCollidedHitbox.GetOffset()).Subtract(traB.GetPrevPos().Add(bCollidedHitbox.GetOffset()))
+			aLocalPrevPos, err := tm.GetLocalPrevPos(eA, transforms)
+			if err != nil {
+				log.Printf("Error getting local previous position for entity %d: %v\n", eA, err)
+				continue
+			}
+
+			bLocalPrevPos, err := tm.GetLocalPrevPos(eB, transforms)
+			if err != nil {
+				log.Printf("Error getting local previous position for entity %d: %v\n", eB, err)
+				continue
+			}
+
+			prevRelativePosVector := aLocalPrevPos.Add(aCollidedHitbox.GetOffset()).Subtract(bLocalPrevPos.Add(bCollidedHitbox.GetOffset()))
 			if prevRelativePosVector.Dot(collisionVector) < 0 {
 				collisionVector = collisionVector.Multiply(-1)
 			}
@@ -224,8 +226,10 @@ func GetAABBCollisions(
 	proximateEntities map[ecscommon.EntityId][]ecscommon.EntityId,
 	colliders map[ecscommon.EntityId]*components.Collider,
 	transforms map[ecscommon.EntityId]*components.Transform,
+	parents map[ecscommon.EntityId]*components.Parent,
 ) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
 	collisions := make(map[ecscommon.EntityId][]ecscommon.EntityId)
+	tm := components.TransformManager{}
 
 	for eA, colEntities := range proximateEntities {
 		for _, eB := range colEntities {
@@ -243,37 +247,31 @@ func GetAABBCollisions(
 				return nil, fmt.Errorf("colliding entity has no collider: ", eB)
 			}
 
-			traA, ok := transforms[eA]
-			if !ok {
-				return nil, &ecscommon.ErrorMissingComponentDependency{
-					Entity:           eA,
-					PresentComponent: "Collider",
-					MissingComponent: "Transform",
-				}
-
-			}
-			traB, ok := transforms[eB]
-			if !ok {
-				return nil, &ecscommon.ErrorMissingComponentDependency{
-					Entity:           eB,
-					PresentComponent: "Collider",
-					MissingComponent: "Transform",
-				}
-			}
-
 			if collidedEntities, ok := collisions[eB]; ok {
 				if slices.Contains(collidedEntities, eA) {
 					continue
 				}
 			}
 
+			aWorldPos, err := tm.GetWorldPos(eA, transforms, parents)
+			if err != nil {
+				log.Printf("Error getting world position for entity %d: %v\n", eA, err)
+				continue
+			}
+
+			bWorldPos, err := tm.GetWorldPos(eB, transforms, parents)
+			if err != nil {
+				log.Printf("Error getting world position for entity %d: %v\n", eB, err)
+				continue
+			}
+
 			a := [2]utils.Vec2{
-				utils.Vec2{X: traA.GetPos().X + colA.GetAABB()[0].X, Y: traA.GetPos().Y + colA.GetAABB()[0].Y},
-				utils.Vec2{X: traA.GetPos().X + colA.GetAABB()[1].X, Y: traA.GetPos().Y + colA.GetAABB()[1].Y},
+				utils.Vec2{X: aWorldPos.X + colA.GetAABB()[0].X, Y: aWorldPos.Y + colA.GetAABB()[0].Y},
+				utils.Vec2{X: aWorldPos.X + colA.GetAABB()[1].X, Y: aWorldPos.Y + colA.GetAABB()[1].Y},
 			}
 			b := [2]utils.Vec2{
-				utils.Vec2{X: traB.GetPos().X + colB.GetAABB()[0].X, Y: traB.GetPos().Y + colB.GetAABB()[0].Y},
-				utils.Vec2{X: traB.GetPos().X + colB.GetAABB()[1].X, Y: traB.GetPos().Y + colB.GetAABB()[1].Y},
+				utils.Vec2{X: bWorldPos.X + colB.GetAABB()[0].X, Y: bWorldPos.Y + colB.GetAABB()[0].Y},
+				utils.Vec2{X: bWorldPos.X + colB.GetAABB()[1].X, Y: bWorldPos.Y + colB.GetAABB()[1].Y},
 			}
 
 			if detectAABBCollision(a, b) {
