@@ -49,7 +49,7 @@ func (*VelocityManager) GetWorldVector(
 	tm := TransformManager{}
 	vm := VelocityManager{}
 
-	pWorldPos, err := vm.GetWorldVector(parComp.Entity, velocities, transforms, parents)
+	pWorldVelVec, err := vm.GetWorldVector(parComp.Entity, velocities, transforms, parents)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("error getting world velocity vector of parent entity %d: %v", parComp.Entity, ok)
 	}
@@ -63,8 +63,8 @@ func (*VelocityManager) GetWorldVector(
 	sin := math.Sin(pWorldRot)
 
 	return utils.Vec2{
-		X: pWorldPos.X + (velComp.vector.X*cos - velComp.vector.Y*sin),
-		Y: pWorldPos.Y + (velComp.vector.X*sin + velComp.vector.Y*cos),
+		X: pWorldVelVec.X + (velComp.vector.X*cos - velComp.vector.Y*sin),
+		Y: pWorldVelVec.Y + (velComp.vector.X*sin + velComp.vector.Y*cos),
 	}, nil
 }
 

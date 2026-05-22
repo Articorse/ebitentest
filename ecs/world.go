@@ -11,7 +11,6 @@ type World struct {
 	Entities   []ecscommon.EntityId
 	Inputs     map[ecscommon.EntityId]*components.Input
 	Parents    map[ecscommon.EntityId]*components.Parent
-	Children   map[ecscommon.EntityId]*components.Children
 	Transforms map[ecscommon.EntityId]*components.Transform
 	Velocities map[ecscommon.EntityId]*components.Velocity
 	Sprites    map[ecscommon.EntityId]*components.Sprite
@@ -24,7 +23,6 @@ func NewWorld() *World {
 		Entities:   []ecscommon.EntityId{},
 		Inputs:     make(map[ecscommon.EntityId]*components.Input),
 		Parents:    make(map[ecscommon.EntityId]*components.Parent),
-		Children:   make(map[ecscommon.EntityId]*components.Children),
 		Transforms: make(map[ecscommon.EntityId]*components.Transform),
 		Velocities: make(map[ecscommon.EntityId]*components.Velocity),
 		Sprites:    make(map[ecscommon.EntityId]*components.Sprite),
@@ -42,7 +40,6 @@ func (x *World) RemoveEntity(e ecscommon.EntityId) error {
 		func(ent ecscommon.EntityId) bool { return ent == e })
 
 	delete(x.Parents, e)
-	delete(x.Children, e)
 	delete(x.Transforms, e)
 	delete(x.Velocities, e)
 	delete(x.Sprites, e)
@@ -51,12 +48,6 @@ func (x *World) RemoveEntity(e ecscommon.EntityId) error {
 	for _, p := range x.Parents {
 		if p.Entity == e {
 			p.Entity = -1
-		}
-	}
-
-	for _, c := range x.Children {
-		if slices.Contains(c.Entities, &e) {
-			slices.DeleteFunc(c.Entities, func(ent *ecscommon.EntityId) bool { return *ent == e })
 		}
 	}
 

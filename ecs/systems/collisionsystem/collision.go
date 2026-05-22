@@ -6,7 +6,6 @@ import (
 	"ebittest/ecs/components/hitboxes"
 	"ebittest/ecs/ecscommon"
 	"ebittest/utils"
-	"fmt"
 	"log"
 	"slices"
 )
@@ -19,17 +18,19 @@ func ResolveCollisions(
 ) (collisionsResolved uint64, err error) {
 	tm := components.TransformManager{}
 	vm := components.VelocityManager{}
+	cm := components.ColliderManager{}
 
 	for eA, cols := range collisions {
 		for eB, colVector := range cols {
-			colA, ok := colliders[eA]
-			if !ok {
-				log.Printf("colliding entity has no collider: %d\n", eA)
+			aColType, err := cm.GetColliderType(eA, colliders)
+			if err != nil {
+				log.Printf("Error getting collider type for entity %d: %v\n", eA, err)
 				continue
 			}
-			colB, ok := colliders[eB]
-			if !ok {
-				log.Printf("colliding entity has no collider: %d\n", eB)
+
+			bColType, err := cm.GetColliderType(eB, colliders)
+			if err != nil {
+				log.Printf("Error getting collider type for entity %d: %v\n", eB, err)
 				continue
 			}
 
@@ -38,7 +39,7 @@ func ResolveCollisions(
 			var mobLocalVelVec utils.Vec2
 			var staticLocalVelVec utils.Vec2
 
-			if colA.Type == components.Mob && colB.Type == components.Static {
+			if aColType == components.Collider_Mob && bColType == components.Collider_Static {
 				mobEnt = eA
 				mobLocalPos, err = tm.GetLocalPos(eA, transforms)
 				if err != nil {
@@ -55,7 +56,7 @@ func ResolveCollisions(
 					log.Printf("Error getting local velocity vector for entity %d: %v\n", eB, err)
 					continue
 				}
-			} else if colB.Type == components.Mob && colA.Type == components.Static {
+			} else if bColType == components.Collider_Mob && aColType == components.Collider_Static {
 				colVector = colVector.Multiply(-1)
 				mobEnt = eB
 				mobLocalPos, err = tm.GetLocalPos(eB, transforms)
@@ -105,19 +106,10 @@ func GetCollisions(
 ) (map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2, error) {
 	collisions := make(map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2)
 	tm := components.TransformManager{}
+	cm := components.ColliderManager{}
 
 	for eA, colEntities := range potentialCollisions {
 		for _, eB := range colEntities {
-			colA, ok := colliders[eA]
-			if !ok {
-				return nil, fmt.Errorf("colliding entity has no collider: ", eA)
-			}
-
-			colB, ok := colliders[eB]
-			if !ok {
-				return nil, fmt.Errorf("colliding entity has no collider: ", eB)
-			}
-
 			if eA == eB {
 				continue
 			}
@@ -128,12 +120,24 @@ func GetCollisions(
 				}
 			}
 
+			aColHitboxes, err := cm.GetHitboxes(eA, colliders)
+			if err != nil {
+				log.Printf("Error getting collider hitboxes for entity %d: %v\n", eA, err)
+				continue
+			}
+
+			bColHitboxes, err := cm.GetHitboxes(eB, colliders)
+			if err != nil {
+				log.Printf("Error getting collider hitboxes for entity %d: %v\n", eB, err)
+				continue
+			}
+
 			var collisionVector utils.Vec2
 			var aCollidedHitbox hitboxes.Hitbox
 			var bCollidedHitbox hitboxes.Hitbox
 
-			for _, aHitbox := range colA.Hitboxes {
-				for _, bHitbox := range colB.Hitboxes {
+			for _, aHitbox := range aColHitboxes {
+				for _, bHitbox := range bColHitboxes {
 					switch aH := aHitbox.(type) {
 					case *hitboxes.RectangleHitbox:
 						switch bH := bHitbox.(type) {
@@ -193,19 +197,19 @@ func GetCollisions(
 				}
 			}
 
-			aLocalPrevPos, err := tm.GetLocalPrevPos(eA, transforms)
+			aWorldPrevPos, err := tm.GetWorldPrevPos(eA, transforms, parents)
 			if err != nil {
-				log.Printf("Error getting local previous position for entity %d: %v\n", eA, err)
+				log.Printf("Error getting world previous position for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			bLocalPrevPos, err := tm.GetLocalPrevPos(eB, transforms)
+			bWorldPrevPos, err := tm.GetWorldPrevPos(eB, transforms, parents)
 			if err != nil {
-				log.Printf("Error getting local previous position for entity %d: %v\n", eB, err)
+				log.Printf("Error getting world previous position for entity %d: %v\n", eB, err)
 				continue
 			}
 
-			prevRelativePosVector := aLocalPrevPos.Add(aCollidedHitbox.GetOffset()).Subtract(bLocalPrevPos.Add(bCollidedHitbox.GetOffset()))
+			prevRelativePosVector := aWorldPrevPos.Add(aCollidedHitbox.GetOffset()).Subtract(bWorldPrevPos.Add(bCollidedHitbox.GetOffset()))
 			if prevRelativePosVector.Dot(collisionVector) < 0 {
 				collisionVector = collisionVector.Multiply(-1)
 			}
@@ -230,21 +234,12 @@ func GetAABBCollisions(
 ) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
 	collisions := make(map[ecscommon.EntityId][]ecscommon.EntityId)
 	tm := components.TransformManager{}
+	cm := components.ColliderManager{}
 
 	for eA, colEntities := range proximateEntities {
 		for _, eB := range colEntities {
 			if eA == eB {
 				continue
-			}
-
-			colA, ok := colliders[eA]
-			if !ok {
-				return nil, fmt.Errorf("colliding entity has no collider: ", eA)
-			}
-
-			colB, ok := colliders[eB]
-			if !ok {
-				return nil, fmt.Errorf("colliding entity has no collider: ", eB)
 			}
 
 			if collidedEntities, ok := collisions[eB]; ok {
@@ -265,13 +260,25 @@ func GetAABBCollisions(
 				continue
 			}
 
+			aAABB, err := cm.GetAABB(eA, colliders)
+			if err != nil {
+				log.Printf("Error getting AABB for entity %d: %v\n", eA, err)
+				continue
+			}
+
+			bAABB, err := cm.GetAABB(eB, colliders)
+			if err != nil {
+				log.Printf("Error getting AABB for entity %d: %v\n", eB, err)
+				continue
+			}
+
 			a := [2]utils.Vec2{
-				utils.Vec2{X: aWorldPos.X + colA.GetAABB()[0].X, Y: aWorldPos.Y + colA.GetAABB()[0].Y},
-				utils.Vec2{X: aWorldPos.X + colA.GetAABB()[1].X, Y: aWorldPos.Y + colA.GetAABB()[1].Y},
+				utils.Vec2{X: aWorldPos.X + aAABB[0].X, Y: aWorldPos.Y + aAABB[0].Y},
+				utils.Vec2{X: aWorldPos.X + aAABB[1].X, Y: aWorldPos.Y + aAABB[1].Y},
 			}
 			b := [2]utils.Vec2{
-				utils.Vec2{X: bWorldPos.X + colB.GetAABB()[0].X, Y: bWorldPos.Y + colB.GetAABB()[0].Y},
-				utils.Vec2{X: bWorldPos.X + colB.GetAABB()[1].X, Y: bWorldPos.Y + colB.GetAABB()[1].Y},
+				utils.Vec2{X: bWorldPos.X + bAABB[0].X, Y: bWorldPos.Y + bAABB[0].Y},
+				utils.Vec2{X: bWorldPos.X + bAABB[1].X, Y: bWorldPos.Y + bAABB[1].Y},
 			}
 
 			if detectAABBCollision(a, b) {

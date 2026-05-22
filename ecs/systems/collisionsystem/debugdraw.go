@@ -23,7 +23,7 @@ func DrawCollisions(
 	for eA, cols := range collisions {
 		tm := components.TransformManager{}
 
-		aWorldPos, err := tm.GetWorldPos(eA,transforms, parents)
+		aWorldPos, err := tm.GetWorldPos(eA, transforms, parents)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", eA, err)
 			continue
@@ -54,8 +54,9 @@ func DrawColliders(
 	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2,
 	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
-	for e, col := range colliders {
+	for e, _ := range colliders {
 		tm := components.TransformManager{}
+		cm := components.ColliderManager{}
 
 		worldPos, err := tm.GetWorldPos(e, transforms, parents)
 		if err != nil {
@@ -76,7 +77,13 @@ func DrawColliders(
 			}
 		}
 
-		for _, hitbox := range col.Hitboxes {
+		hbs, err := cm.GetHitboxes(e, colliders)
+		if err != nil {
+			log.Printf("Error getting hitboxes for entity %d: %v\n", e, err)
+			continue
+		}
+
+		for _, hitbox := range hbs {
 			switch h := hitbox.(type) {
 			case *hitboxes.RectangleHitbox:
 				verts := []utils.Vec2{
@@ -140,8 +147,9 @@ func DrawAABBs(
 	parents map[ecscommon.EntityId]*components.Parent,
 	aabbcollisions map[ecscommon.EntityId][]ecscommon.EntityId,
 ) error {
-	for e, col := range colliders {
+	for e, _ := range colliders {
 		tm := components.TransformManager{}
+		cm := components.ColliderManager{}
 
 		worldPos, err := tm.GetWorldPos(e, transforms, parents)
 		if err != nil {
@@ -167,12 +175,18 @@ func DrawAABBs(
 			lineColor = data.Debug_AABBColliderCollidedColor
 		}
 
+		aabb, err := cm.GetAABB(e, colliders)
+		if err != nil {
+			log.Printf("Error getting AABB for entity %d: %v\n", e, err)
+			continue
+		}
+
 		verts := []utils.Vec2{
-			utils.Vec2{X: worldPos.X + col.GetAABB()[0].X, Y: worldPos.Y + col.GetAABB()[0].Y},
-			utils.Vec2{X: worldPos.X + col.GetAABB()[1].X, Y: worldPos.Y + col.GetAABB()[0].Y},
-			utils.Vec2{X: worldPos.X + col.GetAABB()[1].X, Y: worldPos.Y + col.GetAABB()[1].Y},
-			utils.Vec2{X: worldPos.X + col.GetAABB()[0].X, Y: worldPos.Y + col.GetAABB()[1].Y},
-			utils.Vec2{X: worldPos.X + col.GetAABB()[0].X, Y: worldPos.Y + col.GetAABB()[0].Y},
+			utils.Vec2{X: worldPos.X + aabb[0].X, Y: worldPos.Y + aabb[0].Y},
+			utils.Vec2{X: worldPos.X + aabb[1].X, Y: worldPos.Y + aabb[0].Y},
+			utils.Vec2{X: worldPos.X + aabb[1].X, Y: worldPos.Y + aabb[1].Y},
+			utils.Vec2{X: worldPos.X + aabb[0].X, Y: worldPos.Y + aabb[1].Y},
+			utils.Vec2{X: worldPos.X + aabb[0].X, Y: worldPos.Y + aabb[0].Y},
 		}
 
 		for i := 0; i < len(verts)-1; i++ {

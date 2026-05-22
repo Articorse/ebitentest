@@ -403,7 +403,6 @@ func main() {
 	}
 
 	pParComp := components.NewParentComponent()
-	pChiComp := components.NewChildrenComponent()
 	pTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := components.NewVelocityComponent()
 	pSprComp, err := components.NewSpriteComponent("assets/sprites/slime.png")
@@ -416,10 +415,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pColComp := components.NewColliderComponent(components.Mob, []hitboxes.Hitbox{pHitbox})
+	pColComp := components.NewColliderComponent(components.Collider_Mob, []hitboxes.Hitbox{pHitbox})
 
 	g.world.Parents[g.playerEntity] = pParComp
-	g.world.Children[g.playerEntity] = pChiComp
 	g.world.Transforms[g.playerEntity] = pTraComp
 	g.world.Velocities[g.playerEntity] = pVelComp
 	g.world.Sprites[g.playerEntity] = pSprComp
@@ -428,7 +426,6 @@ func main() {
 	gun := g.world.AddEntity()
 	gunParComp := components.NewParentComponent()
 
-	gunChiComp := components.NewChildrenComponent()
 	gunTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	gunVelComp := components.NewVelocityComponent()
 
@@ -442,10 +439,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	gunColComp := components.NewColliderComponent(components.Mob, []hitboxes.Hitbox{gunHitbox})
+	gunColComp := components.NewColliderComponent(components.Collider_Mob, []hitboxes.Hitbox{gunHitbox})
 
 	g.world.Parents[gun] = gunParComp
-	g.world.Children[gun] = gunChiComp
 	g.world.Transforms[gun] = gunTraComp
 	g.world.Velocities[gun] = gunVelComp
 	g.world.Sprites[gun] = gunSprComp
@@ -468,7 +464,6 @@ func main() {
 	}
 
 	eParComp := components.NewParentComponent()
-	eChiComp := components.NewChildrenComponent()
 	eTraComp := components.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
 	eVelComp := components.NewVelocityComponent()
 	eSprComp, err := components.NewSpriteComponent("assets/sprites/tree.png")
@@ -477,10 +472,9 @@ func main() {
 	}
 
 	eHitbox, err := hitboxes.NewRectangleHitbox(10, 5, utils.Vec2{X: -1, Y: 9})
-	eColComp := components.NewColliderComponent(components.Static, []hitboxes.Hitbox{eHitbox})
+	eColComp := components.NewColliderComponent(components.Collider_Static, []hitboxes.Hitbox{eHitbox})
 
 	g.world.Parents[e] = eParComp
-	g.world.Children[e] = eChiComp
 	g.world.Transforms[e] = eTraComp
 	g.world.Velocities[e] = eVelComp
 	g.world.Sprites[e] = eSprComp
