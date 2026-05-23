@@ -51,37 +51,48 @@ type game struct {
 	camera       utils.Vec2
 	cameraFollow bool
 
-	inputLog map[uint64]map[ecscommon.EntityId]ecscommon.InputState
+	inputLog map[uint64]map[ecscommon.EntityId]components.InputState
 
 	recording          bool
 	recordingStartTick uint64
-	recordedInputs     map[uint64]ecscommon.InputState
+	recordedInputs     map[uint64]components.InputState
 
 	replaying       bool
 	replayStartTick uint64
-	replayInputs    map[uint64]ecscommon.InputState
+	replayInputs    map[uint64]components.InputState
 	replayEntity    ecscommon.EntityId
 }
 
-func KeyboardMouseInputSource(entityId ecscommon.EntityId, tick uint64) ecscommon.InputState {
-	is := ecscommon.InputState{}
+func KeyboardMouseInputSource(
+	e ecscommon.EntityId,
+	tick uint64,
+	inputs map[ecscommon.EntityId]*components.Input,
+) components.InputState {
+	im := components.InputManager{}
+	is := components.InputState{}
 
-	if ebiten.IsKeyPressed(g.world.Inputs[entityId].Left) {
+	config, err := im.GetInputConfig(e, inputs)
+	if err != nil {
+		log.Printf("error getting input config for entity %d: %v\n", e, err)
+		return is
+	}
+
+	if ebiten.IsKeyPressed(config.Left) {
 		is.Left = true
 	}
-	if ebiten.IsKeyPressed(g.world.Inputs[entityId].Right) {
+	if ebiten.IsKeyPressed(config.Right) {
 		is.Right = true
 	}
-	if ebiten.IsKeyPressed(g.world.Inputs[entityId].Up) {
+	if ebiten.IsKeyPressed(config.Up) {
 		is.Up = true
 	}
-	if ebiten.IsKeyPressed(g.world.Inputs[entityId].Down) {
+	if ebiten.IsKeyPressed(config.Down) {
 		is.Down = true
 	}
 
 	mX, mY := ebiten.CursorPosition()
 	is.MousePos = utils.Vec2{X: float64(mX), Y: float64(mY)}
-	if inpututil.IsMouseButtonJustPressed(g.world.Inputs[entityId].Use) {
+	if inpututil.IsMouseButtonJustPressed(config.Use) {
 		is.Use = true
 		fmt.Println("use key just pressed")
 	}
@@ -89,14 +100,21 @@ func KeyboardMouseInputSource(entityId ecscommon.EntityId, tick uint64) ecscommo
 	return is
 }
 
-func DemoInputSource(log map[uint64]map[ecscommon.EntityId]ecscommon.InputState) ecscommon.InputSourceFunc {
-	return func(entityId ecscommon.EntityId, tick uint64) ecscommon.InputState {
+func DemoInputSource(
+	log map[uint64]map[ecscommon.EntityId]components.InputState,
+	inputs map[ecscommon.EntityId]*components.Input,
+) components.InputSourceFunc {
+	return func(entityId ecscommon.EntityId, tick uint64, inputs map[ecscommon.EntityId]*components.Input) components.InputState {
 		return log[tick][entityId]
 	}
 }
 
-func DummyInputSource(entityId ecscommon.EntityId, tick uint64) ecscommon.InputState {
-	return ecscommon.InputState{}
+func DummyInputSource(
+	entityId ecscommon.EntityId,
+	tick uint64,
+	inputs map[ecscommon.EntityId]*components.Input,
+) components.InputState {
+	return components.InputState{}
 }
 
 func (g *game) Update() error {
@@ -106,10 +124,17 @@ func (g *game) Update() error {
 	// dY := float64(mY) - pCenterY
 	// r = math.Atan2(dY, dX)
 	var err error
+	im := components.InputManager{}
 
-	tickInputs := make(map[ecscommon.EntityId]ecscommon.InputState)
-	for eid, inputComp := range g.world.Inputs {
-		tickInputs[eid] = inputComp.InputSourceFunc(eid, g.tickIdx)
+	tickInputs := make(map[ecscommon.EntityId]components.InputState)
+	for eid, _ := range g.world.Inputs {
+		inputSourceFunc, err := im.GetInputSourceFunc(eid, g.world.Inputs)
+		if err != nil {
+			log.Printf("error getting input source func for entity %d: %v\n", eid, err)
+			continue
+		}
+
+		tickInputs[eid] = inputSourceFunc(eid, g.tickIdx, g.world.Inputs)
 	}
 	g.inputLog[g.tickIdx] = tickInputs
 
@@ -166,7 +191,7 @@ func (g *game) Update() error {
 		if !g.recording {
 			g.recording = true
 			g.recordingStartTick = g.tickIdx
-			g.recordedInputs = make(map[uint64]ecscommon.InputState)
+			g.recordedInputs = make(map[uint64]components.InputState)
 		} else {
 			g.recording = false
 			// TODO: Save to file
@@ -182,14 +207,27 @@ func (g *game) Update() error {
 		g.replayStartTick = g.tickIdx
 		// TODO: Load from file
 		g.replayInputs = g.recordedInputs
-		g.world.Inputs[g.replayEntity].InputSourceFunc = func(entityId ecscommon.EntityId, tick uint64) ecscommon.InputState {
+
+		replaySource := func(
+			entityId ecscommon.EntityId,
+			tick uint64,
+			inputs map[ecscommon.EntityId]*components.Input,
+		) components.InputState {
 			relTick := tick - g.replayStartTick
 			relTickInput, ok := g.replayInputs[relTick]
 			if !ok {
-				g.world.Inputs[g.replayEntity].InputSourceFunc = DummyInputSource
-				return ecscommon.InputState{}
+				err := im.SetInputSourceFunc(g.replayEntity, DummyInputSource, g.world.Inputs)
+				if err != nil {
+					log.Println("error setting dummy input source func: ", err)
+				}
+				return components.InputState{}
 			}
 			return relTickInput
+		}
+
+		err := im.SetInputSourceFunc(g.replayEntity, replaySource, g.world.Inputs)
+		if err != nil {
+			log.Println("error setting replay input source func: ", err)
 		}
 	}
 
@@ -388,20 +426,20 @@ func main() {
 
 	ebiten.SetVsyncEnabled(false)
 
-	g.inputLog = make(map[uint64]map[ecscommon.EntityId]ecscommon.InputState)
+	g.inputLog = make(map[uint64]map[ecscommon.EntityId]components.InputState)
 	g.tickState = *ecscommon.NewTickState()
 
 	g.playerEntity = g.world.AddEntity()
 
-	g.world.Inputs[g.playerEntity] = &components.Input{
-		Up:              ebiten.KeyW,
-		Down:            ebiten.KeyS,
-		Left:            ebiten.KeyA,
-		Right:           ebiten.KeyD,
-		Use:             ebiten.MouseButtonLeft,
-		InputSourceFunc: KeyboardMouseInputSource,
+	pInputConfig := components.InputConfig{
+		Up:    ebiten.KeyW,
+		Down:  ebiten.KeyS,
+		Left:  ebiten.KeyA,
+		Right: ebiten.KeyD,
+		Use:   ebiten.MouseButtonLeft,
 	}
 
+	pInpComp := components.NewInputComponent(pInputConfig, KeyboardMouseInputSource)
 	pParComp := components.NewParentComponent()
 	pTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := components.NewVelocityComponent()
@@ -417,6 +455,7 @@ func main() {
 
 	pColComp := components.NewColliderComponent(components.Collider_Mob, []hitboxes.Hitbox{pHitbox})
 
+	g.world.Inputs[g.playerEntity] = pInpComp
 	g.world.Parents[g.playerEntity] = pParComp
 	g.world.Transforms[g.playerEntity] = pTraComp
 	g.world.Velocities[g.playerEntity] = pVelComp
@@ -455,13 +494,15 @@ func main() {
 	e := g.world.AddEntity()
 	g.replayEntity = e
 
-	g.world.Inputs[e] = &components.Input{
-		Up:              ebiten.KeyF24,
-		Down:            ebiten.KeyF24,
-		Left:            ebiten.KeyF24,
-		Right:           ebiten.KeyF24,
-		InputSourceFunc: DummyInputSource,
+	eInputConfig := components.InputConfig{
+		Up:    ebiten.KeyF24,
+		Down:  ebiten.KeyF24,
+		Left:  ebiten.KeyF24,
+		Right: ebiten.KeyF24,
 	}
+
+	eInput := components.NewInputComponent(eInputConfig, DummyInputSource)
+	g.world.Inputs[e] = eInput
 
 	eParComp := components.NewParentComponent()
 	eTraComp := components.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)

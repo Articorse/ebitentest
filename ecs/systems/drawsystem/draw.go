@@ -21,31 +21,33 @@ func DrawFrame(
 	transforms map[ecscommon.EntityId]*components.Transform,
 	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
-	tm := components.TransformManager{}
+	sm := components.SpriteManager{}
+
 	batches := make(map[uint8][][]ecscommon.EntityId)
 	visitedSprites := make(map[ecscommon.EntityId]struct{})
 	i := 0
 
-	for e, sprComp := range sprites {
+	for e, _ := range sprites {
 		if _, ok := visitedSprites[e]; ok {
 			continue
 		}
 		visitedSprites[e] = struct{}{}
 
-		_, ok := transforms[e]
-		if !ok {
-			return &ecscommon.ErrorMissingComponentDependency{
-				Entity:           e,
-				PresentComponent: "Sprite",
-				MissingComponent: "Transform",
-			}
+		sprImg, err := sm.GetImage(e, sprites)
+		if err != nil {
+			return fmt.Errorf("Error getting sprite image for entity %d: %v\n", e, err)
 		}
 
-		if sprComp.Image == nil {
+		if sprImg == nil {
 			continue
 		}
 
-		layer := sprComp.Layer
+		sprLayer, err := sm.GetLayer(e, sprites)
+		if err != nil {
+			return fmt.Errorf("Error getting sprite layer for entity %d: %v\n", e, err)
+		}
+
+		layer := sprLayer
 		batches[layer] = append(batches[layer], []ecscommon.EntityId{})
 		batches[layer][i] = append(batches[layer][i], e)
 
@@ -55,17 +57,14 @@ func DrawFrame(
 		}
 
 		for j, n := range neighbors {
-			sprCompN, ok := sprites[n]
-			if !ok {
-				return &ecscommon.ErrorMissingExpectedComponent{
-					Entity:           n,
-					MissingComponent: "Sprite",
-				}
-			}
-
 			visitedSprites[neighbors[j]] = struct{}{}
 
-			if sprCompN.Image == nil {
+			nSprImg, err := sm.GetImage(n, sprites)
+			if err != nil {
+				return fmt.Errorf("Error getting sprite image for entity %d: %v\n", n, err)
+			}
+
+			if nSprImg == nil {
 				continue
 			}
 
@@ -73,35 +72,15 @@ func DrawFrame(
 		}
 
 		slices.SortStableFunc(batches[layer][i], func(a, b ecscommon.EntityId) int {
-			sprCompA, ok := sprites[a]
-			if !ok {
-				err = &ecscommon.ErrorMissingExpectedComponent{
-					Entity:           a,
-					MissingComponent: "Sprite",
-				}
-				return -1
-			}
-			sprCompB, ok := sprites[b]
-			if !ok {
-				err = &ecscommon.ErrorMissingExpectedComponent{
-					Entity:           b,
-					MissingComponent: "Sprite",
-				}
-				return -1
-			}
-
-			worldPosA, err := tm.GetWorldPos(a, transforms, parents)
+			aTotalY, err := sm.GetWorldLayerYOffset(a, sprites, transforms, parents)
 			if err != nil {
 				return -1
 			}
 
-			worldPosB, err := tm.GetWorldPos(b, transforms, parents)
+			bTotalY, err := sm.GetWorldLayerYOffset(b, sprites, transforms, parents)
 			if err != nil {
 				return -1
 			}
-
-			aTotalY := uint64(worldPosA.Y) + uint64(sprCompA.LayerYOffset)
-			bTotalY := uint64(worldPosB.Y) + uint64(sprCompB.LayerYOffset)
 
 			if aTotalY == bTotalY {
 				return int(b - a)
@@ -118,35 +97,34 @@ func DrawFrame(
 		}
 
 		for _, batchEntity := range batches[layer][i] {
-			sprCompBE, _ := sprites[batchEntity]
-
-			beWorldPos, err := tm.GetWorldPos(batchEntity, transforms, parents)
+			v, err := sm.GetWorldOffsetPos(batchEntity, sprites, transforms, parents)
 			if err != nil {
-				return fmt.Errorf("error getting world position of entity %d: %v", batchEntity, err)
+				return fmt.Errorf("error getting world offset position of entity %d: %v", batchEntity, err)
 			}
 
-			beWorldRot, err := tm.GetWorldRotation(batchEntity, transforms, parents)
+			r, err := sm.GetWorldOffsetRotation(batchEntity, sprites, transforms, parents)
 			if err != nil {
-				return fmt.Errorf("error getting world rotation of entity %d: %v", batchEntity, err)
+				return fmt.Errorf("error getting world offset rotation of entity %d: %v", batchEntity, err)
 			}
 
-			beWorldScale, err := tm.GetWorldScale(batchEntity, transforms, parents)
+			s, err := sm.GetWorldOffsetScale(batchEntity, sprites, transforms, parents)
 			if err != nil {
-				return fmt.Errorf("error getting world scale of entity %d: %v", batchEntity, err)
+				return fmt.Errorf("error getting world offset scale of entity %d: %v", batchEntity, err)
 			}
 
-			v := beWorldPos.Add(sprCompBE.OffsetPos)
-			r := beWorldRot + sprCompBE.OffsetRotation
-			s := beWorldScale * sprCompBE.OffsetScale
+			img, err := sm.GetImage(batchEntity, sprites)
+			if err != nil {
+				return fmt.Errorf("Error getting sprite image for entity %d: %v\n", batchEntity, err)
+			}
 
 			opts := ebiten.DrawImageOptions{}
-			w, h := sprCompBE.Image.Bounds().Dx(), sprCompBE.Image.Bounds().Dy()
+			w, h := img.Bounds().Dx(), img.Bounds().Dy()
 			opts.GeoM.Scale(s, s)
 			opts.GeoM.Translate(-float64(w)*s/2, -float64(h)*s/2)
 			opts.GeoM.Rotate(r)
 			opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
 
-			screen.DrawImage(sprCompBE.Image, &opts)
+			screen.DrawImage(img, &opts)
 		}
 		i++
 	}
@@ -179,14 +157,7 @@ func getNeighborsRecursive(
 	parents map[ecscommon.EntityId]*components.Parent,
 ) (neighbors []ecscommon.EntityId, _visited map[ecscommon.EntityId]struct{}, err error) {
 	tm := components.TransformManager{}
-
-	sprCompA, ok := sprites[eA]
-	if !ok {
-		return nil, nil, &ecscommon.ErrorMissingExpectedComponent{
-			Entity:           eA,
-			MissingComponent: "Sprite",
-		}
-	}
+	sm := components.SpriteManager{}
 
 	visitedEntities[eA] = struct{}{}
 
@@ -214,21 +185,17 @@ func getNeighborsRecursive(
 				}
 				visitedEntities[eB] = struct{}{}
 
-				sprCompB, ok := sprites[eB]
-				if !ok {
-					continue
+				aLayer, err := sm.GetLayer(eA, sprites)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error getting sprite layer for entity %d: %v", eA, err)
 				}
 
-				_, ok = transforms[eB]
-				if !ok {
-					return nil, nil, &ecscommon.ErrorMissingComponentDependency{
-						Entity:           eB,
-						PresentComponent: "Sprite",
-						MissingComponent: "Transform",
-					}
+				bLayer, err := sm.GetLayer(eB, sprites)
+				if err != nil {
+					return nil, nil, fmt.Errorf("error getting sprite layer for entity %d: %v", eB, err)
 				}
 
-				if sprCompA.Layer != sprCompB.Layer {
+				if aLayer != bLayer {
 					continue
 				}
 

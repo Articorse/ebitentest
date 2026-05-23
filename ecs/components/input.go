@@ -1,13 +1,15 @@
 package components
 
 import (
-	"ebittest/ecs/ecscommon"
-
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-type Input struct {
+type InputConfig struct {
 	Up, Down, Left, Right ebiten.Key
 	Use                   ebiten.MouseButton
-	InputSourceFunc       ecscommon.InputSourceFunc
+}
+
+type Input struct {
+	config          InputConfig
+	inputSourceFunc InputSourceFunc
 }

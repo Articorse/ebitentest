@@ -10,11 +10,11 @@ import (
 func GetTickInputs(
 	inputs map[ecscommon.EntityId]*components.Input,
 	tick uint64,
-	inputSource ecscommon.InputSourceFunc,
-) map[ecscommon.EntityId]ecscommon.InputState {
-	tickInputs := make(map[ecscommon.EntityId]ecscommon.InputState)
+	inputSource components.InputSourceFunc,
+) map[ecscommon.EntityId]components.InputState {
+	tickInputs := make(map[ecscommon.EntityId]components.InputState)
 	for e := range inputs {
-		input := inputSource(e, tick)
+		input := inputSource(e, tick, inputs)
 		tickInputs[e] = input
 	}
 	return tickInputs
@@ -22,7 +22,7 @@ func GetTickInputs(
 
 func HandleInputs(
 	velocities map[ecscommon.EntityId]*components.Velocity,
-	allInputs map[ecscommon.EntityId]ecscommon.InputState,
+	allInputs map[ecscommon.EntityId]components.InputState,
 ) error {
 	vm := components.VelocityManager{}
 
