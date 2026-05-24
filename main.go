@@ -4,6 +4,7 @@ import (
 	"ebittest/ecs"
 	"ebittest/ecs/components"
 	"ebittest/ecs/components/hitboxes"
+	"ebittest/ecs/components/inputsources"
 	"ebittest/ecs/ecscommon"
 	"ebittest/ecs/systems/collisionsystem"
 	"ebittest/ecs/systems/commonsystems"
@@ -61,60 +62,6 @@ type game struct {
 	replayStartTick uint64
 	replayInputs    map[uint64]components.InputState
 	replayEntity    ecscommon.EntityId
-}
-
-func KeyboardMouseInputSource(
-	e ecscommon.EntityId,
-	tick uint64,
-	inputs map[ecscommon.EntityId]*components.Input,
-) components.InputState {
-	im := components.InputManager{}
-	is := components.InputState{}
-
-	config, err := im.GetInputConfig(e, inputs)
-	if err != nil {
-		log.Printf("error getting input config for entity %d: %v\n", e, err)
-		return is
-	}
-
-	if ebiten.IsKeyPressed(config.Left) {
-		is.Left = true
-	}
-	if ebiten.IsKeyPressed(config.Right) {
-		is.Right = true
-	}
-	if ebiten.IsKeyPressed(config.Up) {
-		is.Up = true
-	}
-	if ebiten.IsKeyPressed(config.Down) {
-		is.Down = true
-	}
-
-	mX, mY := ebiten.CursorPosition()
-	is.MousePos = utils.Vec2{X: float64(mX), Y: float64(mY)}
-	if inpututil.IsMouseButtonJustPressed(config.Use) {
-		is.Use = true
-		fmt.Println("use key just pressed")
-	}
-
-	return is
-}
-
-func DemoInputSource(
-	log map[uint64]map[ecscommon.EntityId]components.InputState,
-	inputs map[ecscommon.EntityId]*components.Input,
-) components.InputSourceFunc {
-	return func(entityId ecscommon.EntityId, tick uint64, inputs map[ecscommon.EntityId]*components.Input) components.InputState {
-		return log[tick][entityId]
-	}
-}
-
-func DummyInputSource(
-	entityId ecscommon.EntityId,
-	tick uint64,
-	inputs map[ecscommon.EntityId]*components.Input,
-) components.InputState {
-	return components.InputState{}
 }
 
 func (g *game) Update() error {
@@ -216,7 +163,7 @@ func (g *game) Update() error {
 			relTick := tick - g.replayStartTick
 			relTickInput, ok := g.replayInputs[relTick]
 			if !ok {
-				err := im.SetInputSourceFunc(g.replayEntity, DummyInputSource, g.world.Inputs)
+				err := im.SetInputSourceFunc(g.replayEntity, inputsources.DummyInputSource, g.world.Inputs)
 				if err != nil {
 					log.Println("error setting dummy input source func: ", err)
 				}
@@ -439,7 +386,7 @@ func main() {
 		Use:   ebiten.MouseButtonLeft,
 	}
 
-	pInpComp := components.NewInputComponent(pInputConfig, KeyboardMouseInputSource)
+	pInpComp := components.NewInputComponent(pInputConfig, inputsources.KeyboardMouseInputSource)
 	pParComp := components.NewParentComponent()
 	pTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := components.NewVelocityComponent()
@@ -501,7 +448,7 @@ func main() {
 		Right: ebiten.KeyF24,
 	}
 
-	eInput := components.NewInputComponent(eInputConfig, DummyInputSource)
+	eInput := components.NewInputComponent(eInputConfig, inputsources.DummyInputSource)
 	g.world.Inputs[e] = eInput
 
 	eParComp := components.NewParentComponent()
