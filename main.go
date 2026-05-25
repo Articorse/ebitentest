@@ -155,22 +155,7 @@ func (g *game) Update() error {
 		// TODO: Load from file
 		g.replayInputs = g.recordedInputs
 
-		replaySource := func(
-			entityId ecscommon.EntityId,
-			tick uint64,
-			inputs map[ecscommon.EntityId]*components.Input,
-		) components.InputState {
-			relTick := tick - g.replayStartTick
-			relTickInput, ok := g.replayInputs[relTick]
-			if !ok {
-				err := im.SetInputSourceFunc(g.replayEntity, inputsources.DummyInputSource, g.world.Inputs)
-				if err != nil {
-					log.Println("error setting dummy input source func: ", err)
-				}
-				return components.InputState{}
-			}
-			return relTickInput
-		}
+		replaySource := inputsources.NewReplayInputSource(g.replayStartTick, g.replayInputs)
 
 		err := im.SetInputSourceFunc(g.replayEntity, replaySource, g.world.Inputs)
 		if err != nil {
@@ -370,12 +355,11 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
 	ebiten.SetVsyncEnabled(false)
-
 	g.inputLog = make(map[uint64]map[ecscommon.EntityId]components.InputState)
 	g.tickState = *ecscommon.NewTickState()
 
+	// Player
 	g.playerEntity = g.world.AddEntity()
 
 	pInputConfig := components.InputConfig{
@@ -390,7 +374,7 @@ func main() {
 	pParComp := components.NewParentComponent()
 	pTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := components.NewVelocityComponent()
-	pSprComp, err := components.NewSpriteComponent("assets/sprites/slime.png")
+	pSprComp, err := components.NewSpriteComponent("assets/sprites/slime.png", 20)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -415,7 +399,7 @@ func main() {
 	gunTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	gunVelComp := components.NewVelocityComponent()
 
-	gunSprComp, err := components.NewSpriteComponent("assets/sprites/gun.png")
+	gunSprComp, err := components.NewSpriteComponent("assets/sprites/gun.png", 30)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -454,7 +438,7 @@ func main() {
 	eParComp := components.NewParentComponent()
 	eTraComp := components.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
 	eVelComp := components.NewVelocityComponent()
-	eSprComp, err := components.NewSpriteComponent("assets/sprites/tree.png")
+	eSprComp, err := components.NewSpriteComponent("assets/sprites/tree.png", 20)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -467,6 +451,50 @@ func main() {
 	g.world.Velocities[e] = eVelComp
 	g.world.Sprites[e] = eSprComp
 	g.world.Colliders[e] = eColComp
+
+	plat := g.world.AddEntity()
+
+	var inputLoop []components.InputState
+
+	for range 50 {
+		inputLoop = append(inputLoop, components.InputState{Left: true})
+	}
+	for range 50 {
+		inputLoop = append(inputLoop, components.InputState{Right: true})
+	}
+
+	platInputSource := inputsources.NewLoopInputSource(inputLoop, 0)
+
+	platInput := components.NewInputComponent(components.InputConfig{}, platInputSource)
+	g.world.Inputs[plat] = platInput
+
+	platParComp := components.NewParentComponent()
+	platTraComp := components.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
+	platVelComp := components.NewVelocityComponent()
+
+	platSprComp, err := components.NewSpriteComponent("assets/sprites/platform.png", 10)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	platHitbox, err := hitboxes.NewRectangleHitbox(28, 28, utils.Vec2{X: 0, Y: 0})
+	platColComp := components.NewColliderComponent(components.Collider_Trigger, []hitboxes.Hitbox{platHitbox})
+
+	g.world.Parents[plat] = platParComp
+	g.world.Transforms[plat] = platTraComp
+	g.world.Velocities[plat] = platVelComp
+	g.world.Sprites[plat] = platSprComp
+	g.world.Colliders[plat] = platColComp
+
+	err = vm.SetAcceleration(plat, 0.3, g.world.Velocities)
+	if err != nil {
+		log.Fatal("error setting platform acceleration: ", err)
+	}
+
+	err = pm.Attach(g.playerEntity, plat, g.world.Transforms, g.world.Parents)
+	if err != nil {
+		log.Fatal("error attaching player to platform: ", err)
+	}
 
 	ebiten.SetWindowSize(1920, 1080)
 	ebiten.SetWindowTitle("ebittest")

@@ -97,12 +97,12 @@ func (*VelocityManager) SetLocalVector(
 	vector utils.Vec2,
 	velocities map[ecscommon.EntityId]*Velocity,
 ) error {
-	traComp, ok := velocities[e]
+	valComp, ok := velocities[e]
 	if !ok {
 		return fmt.Errorf("could not get velocity component of entity %d", e)
 	}
 
-	traComp.vector = vector
+	valComp.vector = vector
 	return nil
 }
 
@@ -150,5 +150,33 @@ func (*VelocityManager) SetWorldVector(
 		Y: (velComp.vector.X*sin + velComp.vector.Y*cos) - pWorldPos.Y,
 	}
 
+	return nil
+}
+
+func (*VelocityManager) SetDrag(
+	e ecscommon.EntityId,
+	drag float64,
+	velocities map[ecscommon.EntityId]*Velocity,
+) error {
+	valComp, ok := velocities[e]
+	if !ok {
+		return fmt.Errorf("could not get velocity component of entity %d", e)
+	}
+
+	valComp.drag = drag
+	return nil
+}
+
+func (*VelocityManager) SetAcceleration(
+	e ecscommon.EntityId,
+	acceleration float64,
+	velocities map[ecscommon.EntityId]*Velocity,
+) error {
+	valComp, ok := velocities[e]
+	if !ok {
+		return fmt.Errorf("could not get velocity component of entity %d", e)
+	}
+
+	valComp.acceleration = acceleration
 	return nil
 }

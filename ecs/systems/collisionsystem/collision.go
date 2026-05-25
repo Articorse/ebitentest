@@ -10,6 +10,7 @@ import (
 	"slices"
 )
 
+// TODO: Add collision masks and check for valid collisions only in GetCollisions()
 func ResolveCollisions(
 	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2,
 	colliders map[ecscommon.EntityId]*components.Collider,

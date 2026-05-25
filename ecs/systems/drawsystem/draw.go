@@ -25,7 +25,7 @@ func DrawFrame(
 
 	batches := make(map[uint8][][]ecscommon.EntityId)
 	visitedSprites := make(map[ecscommon.EntityId]struct{})
-	i := 0
+	layerIdxMap := make(map[uint8]uint64)
 
 	for e, _ := range sprites {
 		if _, ok := visitedSprites[e]; ok {
@@ -42,12 +42,20 @@ func DrawFrame(
 			continue
 		}
 
-		sprLayer, err := sm.GetLayer(e, sprites)
+		layer, err := sm.GetLayer(e, sprites)
 		if err != nil {
 			return fmt.Errorf("Error getting sprite layer for entity %d: %v\n", e, err)
 		}
 
-		layer := sprLayer
+		i, ok := layerIdxMap[layer]
+		if !ok {
+			layerIdxMap[layer] = 0
+			i = 0
+		} else {
+			layerIdxMap[layer] = layerIdxMap[layer] + 1
+			i = layerIdxMap[layer]
+		}
+
 		batches[layer] = append(batches[layer], []ecscommon.EntityId{})
 		batches[layer][i] = append(batches[layer][i], e)
 
@@ -95,38 +103,50 @@ func DrawFrame(
 		if err != nil {
 			return err
 		}
-
-		for _, batchEntity := range batches[layer][i] {
-			v, err := sm.GetWorldOffsetPos(batchEntity, sprites, transforms, parents)
-			if err != nil {
-				return fmt.Errorf("error getting world offset position of entity %d: %v", batchEntity, err)
-			}
-
-			r, err := sm.GetWorldOffsetRotation(batchEntity, sprites, transforms, parents)
-			if err != nil {
-				return fmt.Errorf("error getting world offset rotation of entity %d: %v", batchEntity, err)
-			}
-
-			s, err := sm.GetWorldOffsetScale(batchEntity, sprites, transforms, parents)
-			if err != nil {
-				return fmt.Errorf("error getting world offset scale of entity %d: %v", batchEntity, err)
-			}
-
-			img, err := sm.GetImage(batchEntity, sprites)
-			if err != nil {
-				return fmt.Errorf("Error getting sprite image for entity %d: %v\n", batchEntity, err)
-			}
-
-			opts := ebiten.DrawImageOptions{}
-			w, h := img.Bounds().Dx(), img.Bounds().Dy()
-			opts.GeoM.Scale(s, s)
-			opts.GeoM.Translate(-float64(w)*s/2, -float64(h)*s/2)
-			opts.GeoM.Rotate(r)
-			opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
-
-			screen.DrawImage(img, &opts)
-		}
 		i++
+	}
+
+	batchKeys := maps.Keys(batches)
+	var orderedKeys []uint8
+	for layerNum := range batchKeys {
+		orderedKeys = append(orderedKeys, layerNum)
+	}
+
+	slices.Sort(orderedKeys)
+
+	for _, li := range orderedKeys {
+		for bi := range batches[li] {
+			for _, batchEntity := range batches[li][bi] {
+				v, err := sm.GetWorldOffsetPos(batchEntity, sprites, transforms, parents)
+				if err != nil {
+					return fmt.Errorf("error getting world offset position of entity %d: %v", batchEntity, err)
+				}
+
+				r, err := sm.GetWorldOffsetRotation(batchEntity, sprites, transforms, parents)
+				if err != nil {
+					return fmt.Errorf("error getting world offset rotation of entity %d: %v", batchEntity, err)
+				}
+
+				s, err := sm.GetWorldOffsetScale(batchEntity, sprites, transforms, parents)
+				if err != nil {
+					return fmt.Errorf("error getting world offset scale of entity %d: %v", batchEntity, err)
+				}
+
+				img, err := sm.GetImage(batchEntity, sprites)
+				if err != nil {
+					return fmt.Errorf("Error getting sprite image for entity %d: %v\n", batchEntity, err)
+				}
+
+				opts := ebiten.DrawImageOptions{}
+				w, h := img.Bounds().Dx(), img.Bounds().Dy()
+				opts.GeoM.Scale(s, s)
+				opts.GeoM.Translate(-float64(w)*s/2, -float64(h)*s/2)
+				opts.GeoM.Rotate(r)
+				opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
+
+				screen.DrawImage(img, &opts)
+			}
+		}
 	}
 
 	return nil

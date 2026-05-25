@@ -12,8 +12,8 @@ import (
 
 type SpriteManager struct{}
 
-func NewSpriteComponent(imageUri string) (*Sprite, error) {
-	s := &Sprite{offsetScale: 1, layer: 20}
+func NewSpriteComponent(imageUri string, layer uint8) (*Sprite, error) {
+	s := &Sprite{offsetScale: 1, layer: layer}
 	spr, img, err := ebitenutil.NewImageFromFile(imageUri)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load sprite image: %w", err)
