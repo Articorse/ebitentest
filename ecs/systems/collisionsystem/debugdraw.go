@@ -148,14 +148,7 @@ func DrawAABBs(
 	aabbcollisions map[ecscommon.EntityId][]ecscommon.EntityId,
 ) error {
 	for e, _ := range colliders {
-		tm := components.TransformManager{}
 		cm := components.ColliderManager{}
-
-		worldPos, err := tm.GetWorldPos(e, transforms, parents)
-		if err != nil {
-			log.Printf("Error getting world position for entity %d: %v\n", e, err)
-			continue
-		}
 
 		lineColor := data.Debug_AABBColliderColor
 
@@ -175,18 +168,18 @@ func DrawAABBs(
 			lineColor = data.Debug_AABBColliderCollidedColor
 		}
 
-		aabb, err := cm.GetAABB(e, colliders)
+		aabb, err := cm.GetWorldPaddedAABB(e, colliders, transforms, parents)
 		if err != nil {
 			log.Printf("Error getting AABB for entity %d: %v\n", e, err)
 			continue
 		}
 
 		verts := []utils.Vec2{
-			utils.Vec2{X: worldPos.X + aabb[0].X, Y: worldPos.Y + aabb[0].Y},
-			utils.Vec2{X: worldPos.X + aabb[1].X, Y: worldPos.Y + aabb[0].Y},
-			utils.Vec2{X: worldPos.X + aabb[1].X, Y: worldPos.Y + aabb[1].Y},
-			utils.Vec2{X: worldPos.X + aabb[0].X, Y: worldPos.Y + aabb[1].Y},
-			utils.Vec2{X: worldPos.X + aabb[0].X, Y: worldPos.Y + aabb[0].Y},
+			utils.Vec2{X: aabb[0].X, Y: aabb[0].Y},
+			utils.Vec2{X: aabb[1].X, Y: aabb[0].Y},
+			utils.Vec2{X: aabb[1].X, Y: aabb[1].Y},
+			utils.Vec2{X: aabb[0].X, Y: aabb[1].Y},
+			utils.Vec2{X: aabb[0].X, Y: aabb[0].Y},
 		}
 
 		for i := 0; i < len(verts)-1; i++ {

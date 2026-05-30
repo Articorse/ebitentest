@@ -30,30 +30,27 @@ func (*TransformManager) GetWorldPos(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) (utils.Vec2, error) {
+	pm := ParentManager{}
+	tm := TransformManager{}
+
 	traComp, ok := transforms[e]
 	if !ok {
 		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		return traComp.pos, nil
 	}
 
-	if parComp.Entity == -1 {
-		return traComp.pos, nil
+	pWorldPos, err := tm.GetWorldPos(parEntity, transforms, parents)
+	if err != nil {
+		return utils.Vec2{}, fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, ok)
 	}
 
-	tm := TransformManager{}
-
-	pWorldPos, err := tm.GetWorldPos(parComp.Entity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world position of parent entity %d: %v", parComp.Entity, ok)
-	}
-
-	pWorldRot, err := tm.GetWorldRotation(parComp.Entity, transforms, parents)
-	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.Entity, err)
+		return utils.Vec2{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	cos := math.Cos(pWorldRot)
@@ -82,30 +79,27 @@ func (*TransformManager) GetWorldPrevPos(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) (utils.Vec2, error) {
+	pm := ParentManager{}
+	tm := TransformManager{}
+
 	traComp, ok := transforms[e]
 	if !ok {
 		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		return traComp.prevPos, nil
 	}
 
-	if parComp.Entity == -1 {
-		return traComp.prevPos, nil
+	pWorldPos, err := tm.GetWorldPrevPos(parEntity, transforms, parents)
+	if err != nil {
+		return utils.Vec2{}, fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, ok)
 	}
 
-	tm := TransformManager{}
-
-	pWorldPos, err := tm.GetWorldPrevPos(parComp.Entity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world position of parent entity %d: %v", parComp.Entity, ok)
-	}
-
-	pWorldRot, err := tm.GetWorldRotation(parComp.Entity, transforms, parents)
-	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.Entity, err)
+		return utils.Vec2{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	cos := math.Cos(pWorldRot)
@@ -134,25 +128,22 @@ func (*TransformManager) GetWorldRotation(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) (float64, error) {
+	pm := ParentManager{}
+	tm := TransformManager{}
+
 	traComp, ok := transforms[e]
 	if !ok {
 		return 0, fmt.Errorf("could not get transform of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		return traComp.rotation, nil
 	}
 
-	if parComp.Entity == -1 {
-		return traComp.rotation, nil
-	}
-
-	tm := TransformManager{}
-
-	pWorldRot, err := tm.GetWorldRotation(parComp.Entity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
 	if err != nil {
-		return 0, fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.Entity, err)
+		return 0, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	return pWorldRot + traComp.rotation, nil
@@ -175,25 +166,22 @@ func (*TransformManager) GetWorldScale(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) (float64, error) {
+	pm := ParentManager{}
+	tm := TransformManager{}
+
 	traComp, ok := transforms[e]
 	if !ok {
 		return 0, fmt.Errorf("could not get transform of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		return traComp.scale, nil
 	}
 
-	if parComp.Entity == -1 {
-		return traComp.scale, nil
-	}
-
-	tm := TransformManager{}
-
-	pWorldSca, err := tm.GetWorldScale(parComp.Entity, transforms, parents)
+	pWorldSca, err := tm.GetWorldScale(parEntity, transforms, parents)
 	if err != nil {
-		return 0, fmt.Errorf("error getting world scale of parent entity %d: %v", parComp.Entity, err)
+		return 0, fmt.Errorf("error getting world scale of parent entity %d: %v", parEntity, err)
 	}
 
 	return pWorldSca * traComp.scale, nil
@@ -219,32 +207,28 @@ func (*TransformManager) SetWorldPos(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) error {
+	pm := ParentManager{}
+	tm := TransformManager{}
+
 	traComp, ok := transforms[e]
 	if !ok {
 		return fmt.Errorf("could not get transform of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		traComp.pos = pos
 		return nil
 	}
 
-	if parComp.Entity == -1 {
-		traComp.pos = pos
-		return nil
+	pWorldPos, err := tm.GetWorldPos(parEntity, transforms, parents)
+	if err != nil {
+		return fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, err)
 	}
 
-	tm := TransformManager{}
-
-	pWorldPos, err := tm.GetWorldPos(parComp.Entity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world position of parent entity %d: %v", parComp.Entity, err)
-	}
-
-	pWorldRot, err := tm.GetWorldRotation(parComp.Entity, transforms, parents)
-	if err != nil {
-		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	cos := math.Cos(pWorldRot)
@@ -278,33 +262,29 @@ func (*TransformManager) SetWorldPrevPos(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) error {
+	pm := ParentManager{}
+	tm := TransformManager{}
+
 	traComp, ok := transforms[e]
 	if !ok {
 		return fmt.Errorf("could not get transform of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		traComp.prevPos = pos
 		return nil
 	}
 
-	if parComp.Entity == -1 {
-		traComp.prevPos = pos
-		return nil
-	}
-
-	tm := TransformManager{}
-
-	pWorldPrevPos, err := tm.GetWorldPrevPos(parComp.Entity, transforms, parents)
+	pWorldPrevPos, err := tm.GetWorldPrevPos(parEntity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world position of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, err)
 	}
 
 	// TODO: Check if I might not need to add a PrevRotation to Transform
-	pWorldRot, err := tm.GetWorldRotation(parComp.Entity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	cos := math.Cos(pWorldRot)
@@ -338,27 +318,23 @@ func (*TransformManager) SetWorldRotation(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) error {
+	pm := ParentManager{}
+	tm := TransformManager{}
+
 	traComp, ok := transforms[e]
 	if !ok {
 		return fmt.Errorf("could not get transform of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		traComp.rotation = rot
 		return nil
 	}
 
-	if parComp.Entity == -1 {
-		traComp.rotation = rot
-		return nil
-	}
-
-	tm := TransformManager{}
-
-	pWorldRot, err := tm.GetWorldRotation(parComp.Entity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	traComp.rotation = pWorldRot + rot
@@ -386,27 +362,23 @@ func (*TransformManager) SetWorldScale(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) error {
+	pm := ParentManager{}
+	tm := TransformManager{}
+
 	traComp, ok := transforms[e]
 	if !ok {
 		return fmt.Errorf("could not get transform of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		traComp.scale = scale
 		return nil
 	}
 
-	if parComp.Entity == -1 {
-		traComp.scale = scale
-		return nil
-	}
-
-	tm := TransformManager{}
-
-	pWorldScale, err := tm.GetWorldScale(parComp.Entity, transforms, parents)
+	pWorldScale, err := tm.GetWorldScale(parEntity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world scale of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world scale of parent entity %d: %v", parEntity, err)
 	}
 
 	traComp.scale = scale / pWorldScale

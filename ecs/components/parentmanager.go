@@ -4,13 +4,26 @@ import (
 	"ebittest/ecs/ecscommon"
 	"ebittest/utils"
 	"fmt"
+	"log"
 	"math"
 )
 
 type ParentManager struct{}
 
 func NewParentComponent() *Parent {
-	return &Parent{Entity: -1}
+	return &Parent{entity: -1}
+}
+
+func (*ParentManager) GetEntity(
+	e ecscommon.EntityId,
+	parents map[ecscommon.EntityId]*Parent,
+) ecscommon.EntityId {
+	parComp, ok := parents[e]
+	if !ok {
+		return -1
+	}
+
+	return parComp.entity
 }
 
 func (*ParentManager) Attach(
@@ -20,39 +33,37 @@ func (*ParentManager) Attach(
 	parents map[ecscommon.EntityId]*Parent,
 ) error {
 	tm := TransformManager{}
+	pm := ParentManager{}
 
 	parComp, ok := parents[c]
 	if ok {
-		if err := tm.Detach(c, transforms, parents); err != nil {
+		if err := pm.Detach(c, transforms, parents); err != nil {
 			return fmt.Errorf("error during detach: %v", err)
 		}
 	}
 
-	parComp.Entity = p
+	parComp.entity = p
 
-	traComp, ok := transforms[c]
-	if !ok {
-		return fmt.Errorf("could not find transform of entity %d", c)
+	traComp, _ := transforms[c]
+	pTraComp, _ := transforms[p]
+
+	if traComp == nil || pTraComp == nil {
+		return nil
 	}
 
-	pTraComp := transforms[p]
-	if pTraComp == nil {
-		return fmt.Errorf("could not get parent while attaching entity %d to entity %d", c, p)
-	}
-
-	pWorldPos, err := tm.GetWorldPos(parComp.Entity, transforms, parents)
+	pWorldPos, err := tm.GetWorldPos(parComp.entity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world position of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world position of parent entity %d: %v", parComp.entity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parComp.Entity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parComp.entity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.entity, err)
 	}
 
-	pWorldScale, err := tm.GetWorldScale(parComp.Entity, transforms, parents)
+	pWorldScale, err := tm.GetWorldScale(parComp.entity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world scale of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world scale of parent entity %d: %v", parComp.entity, err)
 	}
 
 	cos := math.Cos(pTraComp.rotation)
@@ -69,40 +80,40 @@ func (*ParentManager) Attach(
 }
 
 // If error handling is changed, check Attach()
-func (*TransformManager) Detach(
+func (*ParentManager) Detach(
 	e ecscommon.EntityId,
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) error {
+	tm := TransformManager{}
+
 	parComp, ok := parents[e]
 	if !ok {
 		return nil
 	}
 
-	if parComp.Entity == -1 {
+	if parComp.entity == -1 {
 		return nil
 	}
 
 	traComp, ok := transforms[e]
 	if !ok {
-		return fmt.Errorf("could not get transform of entity %d", e)
+		return nil
 	}
 
-	tm := TransformManager{}
-
-	pWorldPos, err := tm.GetWorldPos(parComp.Entity, transforms, parents)
+	pWorldPos, err := tm.GetWorldPos(parComp.entity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world position of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world position of parent entity %d: %v", parComp.entity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parComp.Entity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parComp.entity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.entity, err)
 	}
 
-	pWorldScale, err := tm.GetWorldScale(parComp.Entity, transforms, parents)
+	pWorldScale, err := tm.GetWorldScale(parComp.entity, transforms, parents)
 	if err != nil {
-		return fmt.Errorf("error getting world scale of parent entity %d: %v", parComp.Entity, err)
+		return fmt.Errorf("error getting world scale of parent entity %d: %v", parComp.entity, err)
 	}
 
 	cos := math.Cos(pWorldRot)
@@ -116,7 +127,27 @@ func (*TransformManager) Detach(
 	traComp.scale = pWorldScale
 	traComp.rotation = pWorldRot
 
-	parComp.Entity = -1
+	parComp.entity = -1
+
+	return nil
+}
+
+func (*ParentManager) RemoveParentFromAllEntities(
+	e ecscommon.EntityId,
+	parents map[ecscommon.EntityId]*Parent,
+	transforms map[ecscommon.EntityId]*Transform,
+) error {
+	pm := ParentManager{}
+
+	for pE, p := range parents {
+		if p.entity == e {
+			err := pm.Detach(pE, transforms, parents)
+			if err != nil {
+				log.Printf("error detaching entity %d from parent entity %d: %v", pE, e, err)
+				continue
+			}
+		}
+	}
 
 	return nil
 }

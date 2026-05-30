@@ -79,30 +79,33 @@ func DrawFrame(
 			batches[layer][i] = append(batches[layer][i], n)
 		}
 
-		slices.SortStableFunc(batches[layer][i], func(a, b ecscommon.EntityId) int {
-			aTotalY, err := sm.GetWorldLayerYOffset(a, sprites, transforms, parents)
-			if err != nil {
+		if len(batches[layer][i]) > 1 {
+			slices.SortStableFunc(batches[layer][i], func(a, b ecscommon.EntityId) int {
+				aTotalY, err := sm.GetWorldLayerYOffset(a, sprites, transforms, parents)
+				if err != nil {
+					return -1
+				}
+
+				bTotalY, err := sm.GetWorldLayerYOffset(b, sprites, transforms, parents)
+				if err != nil {
+					return -1
+				}
+
+				if aTotalY == bTotalY {
+					return int(b - a)
+				}
+
+				lower := aTotalY > bTotalY
+				if lower {
+					return 1
+				}
 				return -1
-			}
-
-			bTotalY, err := sm.GetWorldLayerYOffset(b, sprites, transforms, parents)
+			})
 			if err != nil {
-				return -1
+				return err
 			}
-
-			if aTotalY == bTotalY {
-				return int(b - a)
-			}
-
-			lower := aTotalY > bTotalY
-			if lower {
-				return 1
-			}
-			return -1
-		})
-		if err != nil {
-			return err
 		}
+
 		i++
 	}
 
@@ -186,6 +189,11 @@ func getNeighborsRecursive(
 		return nil, nil, fmt.Errorf("error getting world position of entity %d: %v", eA, err)
 	}
 
+	aLayer, err := sm.GetLayer(eA, sprites)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting sprite layer for entity %d: %v", eA, err)
+	}
+
 	startCellX := int(aWorldPos.X / data.SpatialHashGridCellSize)
 	startCellY := int(aWorldPos.Y / data.SpatialHashGridCellSize)
 
@@ -204,11 +212,6 @@ func getNeighborsRecursive(
 					continue
 				}
 				visitedEntities[eB] = struct{}{}
-
-				aLayer, err := sm.GetLayer(eA, sprites)
-				if err != nil {
-					return nil, nil, fmt.Errorf("error getting sprite layer for entity %d: %v", eA, err)
-				}
 
 				bLayer, err := sm.GetLayer(eB, sprites)
 				if err != nil {

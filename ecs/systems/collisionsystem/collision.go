@@ -103,6 +103,7 @@ func GetCollisions(
 	potentialCollisions map[ecscommon.EntityId][]ecscommon.EntityId,
 	colliders map[ecscommon.EntityId]*components.Collider,
 	transforms map[ecscommon.EntityId]*components.Transform,
+	velocities map[ecscommon.EntityId]*components.Velocity,
 	parents map[ecscommon.EntityId]*components.Parent,
 ) (map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2, error) {
 	collisions := make(map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2)
@@ -143,15 +144,15 @@ func GetCollisions(
 					case *hitboxes.RectangleHitbox:
 						switch bH := bHitbox.(type) {
 						case *hitboxes.RectangleHitbox:
-							collisionVector = getRectangleRectangleCollision(eA, eB, *aH, *bH, transforms, parents)
+							collisionVector = getRectangleRectangleCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						case *hitboxes.CircleHitbox:
-							collisionVector = getRectangleCircleCollision(eA, eB, *aH, *bH, transforms, parents)
+							collisionVector = getRectangleCircleCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						case *hitboxes.PolygonHitbox:
-							collisionVector = getRectanglePolygonCollision(eA, eB, *aH, *bH, transforms, parents)
+							collisionVector = getRectanglePolygonCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						default:
@@ -160,16 +161,16 @@ func GetCollisions(
 					case *hitboxes.CircleHitbox:
 						switch bH := bHitbox.(type) {
 						case *hitboxes.RectangleHitbox:
-							collisionVector = getRectangleCircleCollision(eB, eA, *bH, *aH, transforms, parents)
+							collisionVector = getRectangleCircleCollision(eB, eA, *bH, *aH, transforms, velocities, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 							collisionVector = collisionVector.Multiply(-1)
 						case *hitboxes.CircleHitbox:
-							collisionVector = getCircleCircleCollision(eA, eB, *aH, *bH, transforms, parents)
+							collisionVector = getCircleCircleCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						case *hitboxes.PolygonHitbox:
-							collisionVector = getCirclePolygonCollision(eA, eB, *aH, *bH, transforms, parents)
+							collisionVector = getCirclePolygonCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						default:
@@ -178,17 +179,17 @@ func GetCollisions(
 					case *hitboxes.PolygonHitbox:
 						switch bH := bHitbox.(type) {
 						case *hitboxes.RectangleHitbox:
-							collisionVector = getRectanglePolygonCollision(eB, eA, *bH, *aH, transforms, parents)
+							collisionVector = getRectanglePolygonCollision(eB, eA, *bH, *aH, transforms, velocities, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 							collisionVector = collisionVector.Multiply(-1)
 						case *hitboxes.CircleHitbox:
-							collisionVector = getCirclePolygonCollision(eB, eA, *bH, *aH, transforms, parents)
+							collisionVector = getCirclePolygonCollision(eB, eA, *bH, *aH, transforms, velocities, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 							collisionVector = collisionVector.Multiply(-1)
 						case *hitboxes.PolygonHitbox:
-							collisionVector = getPolygonPolygonCollision(eA, eB, *aH, *bH, transforms, parents)
+							collisionVector = getPolygonPolygonCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
 							aCollidedHitbox = aHitbox
 							bCollidedHitbox = bHitbox
 						default:
@@ -234,12 +235,45 @@ func GetAABBCollisions(
 	parents map[ecscommon.EntityId]*components.Parent,
 ) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
 	collisions := make(map[ecscommon.EntityId][]ecscommon.EntityId)
-	tm := components.TransformManager{}
 	cm := components.ColliderManager{}
 
 	for eA, colEntities := range proximateEntities {
+		aLayers, err := cm.GetLayers(eA, colliders)
+		if err != nil {
+			log.Printf("Error getting collider layers for entity %d: %v\n", eA, err)
+			continue
+		}
+
+		aMask, err := cm.GetMask(eA, colliders)
+		if err != nil {
+			log.Printf("Error getting collider mask for entity %d: %v\n", eA, err)
+			continue
+		}
+
+		aAABB, err := cm.GetWorldPaddedAABB(eA, colliders, transforms, parents)
+		if err != nil {
+			log.Printf("Error getting AABB for entity %d: %v\n", eA, err)
+			continue
+		}
+
 		for _, eB := range colEntities {
 			if eA == eB {
+				continue
+			}
+
+			bLayers, err := cm.GetLayers(eB, colliders)
+			if err != nil {
+				log.Printf("Error getting collider layers for entity %d: %v\n", eB, err)
+				continue
+			}
+
+			bMask, err := cm.GetMask(eB, colliders)
+			if err != nil {
+				log.Printf("Error getting collider mask for entity %d: %v\n", eB, err)
+				continue
+			}
+
+			if aLayers&bMask == 0 || bLayers&aMask == 0 {
 				continue
 			}
 
@@ -249,40 +283,13 @@ func GetAABBCollisions(
 				}
 			}
 
-			aWorldPos, err := tm.GetWorldPos(eA, transforms, parents)
-			if err != nil {
-				log.Printf("Error getting world position for entity %d: %v\n", eA, err)
-				continue
-			}
-
-			bWorldPos, err := tm.GetWorldPos(eB, transforms, parents)
-			if err != nil {
-				log.Printf("Error getting world position for entity %d: %v\n", eB, err)
-				continue
-			}
-
-			aAABB, err := cm.GetAABB(eA, colliders)
-			if err != nil {
-				log.Printf("Error getting AABB for entity %d: %v\n", eA, err)
-				continue
-			}
-
-			bAABB, err := cm.GetAABB(eB, colliders)
+			bAABB, err := cm.GetWorldPaddedAABB(eB, colliders, transforms, parents)
 			if err != nil {
 				log.Printf("Error getting AABB for entity %d: %v\n", eB, err)
 				continue
 			}
 
-			a := [2]utils.Vec2{
-				utils.Vec2{X: aWorldPos.X + aAABB[0].X, Y: aWorldPos.Y + aAABB[0].Y},
-				utils.Vec2{X: aWorldPos.X + aAABB[1].X, Y: aWorldPos.Y + aAABB[1].Y},
-			}
-			b := [2]utils.Vec2{
-				utils.Vec2{X: bWorldPos.X + bAABB[0].X, Y: bWorldPos.Y + bAABB[0].Y},
-				utils.Vec2{X: bWorldPos.X + bAABB[1].X, Y: bWorldPos.Y + bAABB[1].Y},
-			}
-
-			if detectAABBCollision(a, b) {
+			if utils.DetectAABBCollision(aAABB, bAABB) {
 				v, ok := collisions[eA]
 				if !ok {
 					collisions[eA] = []ecscommon.EntityId{eB}
@@ -293,46 +300,4 @@ func GetAABBCollisions(
 	}
 
 	return collisions, nil
-}
-
-func detectAABBCollision(a, b [2]utils.Vec2) bool {
-	minAx := a[0].X
-	minAy := a[0].Y
-	maxAx := a[0].X
-	maxAy := a[0].Y
-	for _, v := range a {
-		if v.X < minAx {
-			minAx = v.X
-		}
-		if v.X > maxAx {
-			maxAx = v.X
-		}
-		if v.Y < minAy {
-			minAy = v.Y
-		}
-		if v.Y > maxAy {
-			maxAy = v.Y
-		}
-	}
-
-	minBx := b[0].X
-	minBy := b[0].Y
-	maxBx := b[0].X
-	maxBy := b[0].Y
-	for _, v := range b {
-		if v.X < minBx {
-			minBx = v.X
-		}
-		if v.X > maxBx {
-			maxBx = v.X
-		}
-		if v.Y < minBy {
-			minBy = v.Y
-		}
-		if v.Y > maxBy {
-			maxBy = v.Y
-		}
-	}
-
-	return minAx <= maxBx && maxAx >= minBx && minAy <= maxBy && maxAy >= minBy
 }

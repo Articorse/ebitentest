@@ -13,3 +13,5 @@ type Input struct {
 	config          InputConfig
 	inputSourceFunc InputSourceFunc
 }
+
+func (Input) isComponent() {}

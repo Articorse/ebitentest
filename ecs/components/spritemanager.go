@@ -113,25 +113,23 @@ func (*SpriteManager) GetWorldOffsetRotation(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) (float64, error) {
+	pm := ParentManager{}
+
 	sprComp, ok := sprites[e]
 	if !ok {
 		return 0, fmt.Errorf("could not get sprite of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
-		return sprComp.offsetRotation, nil
-	}
-
-	if parComp.Entity == -1 {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		return sprComp.offsetRotation, nil
 	}
 
 	tm := TransformManager{}
 
-	pWorldRot, err := tm.GetWorldRotation(parComp.Entity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
 	if err != nil {
-		return 0, fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.Entity, err)
+		return 0, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	return pWorldRot + sprComp.offsetRotation, nil
@@ -155,25 +153,23 @@ func (*SpriteManager) GetWorldOffsetScale(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) (float64, error) {
+	pm := ParentManager{}
+
 	sprComp, ok := sprites[e]
 	if !ok {
 		return 0, fmt.Errorf("could not get sprite of entity %d", e)
 	}
 
-	parComp, ok := parents[e]
-	if !ok {
-		return sprComp.offsetScale, nil
-	}
-
-	if parComp.Entity == -1 {
+	parEntity := pm.GetEntity(e, parents)
+	if parEntity == -1 {
 		return sprComp.offsetScale, nil
 	}
 
 	tm := TransformManager{}
 
-	pWorldSca, err := tm.GetWorldScale(parComp.Entity, transforms, parents)
+	pWorldSca, err := tm.GetWorldScale(parEntity, transforms, parents)
 	if err != nil {
-		return 0, fmt.Errorf("error getting world scale of parent entity %d: %v", parComp.Entity, err)
+		return 0, fmt.Errorf("error getting world scale of parent entity %d: %v", parEntity, err)
 	}
 
 	return pWorldSca * sprComp.offsetScale, nil

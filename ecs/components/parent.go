@@ -4,7 +4,7 @@ import "ebittest/ecs/ecscommon"
 
 // Do not instantiate directly, use NewParentComp().
 type Parent struct {
-	Entity ecscommon.EntityId
+	entity ecscommon.EntityId
 }
 
 func (Parent) isComponent() {}

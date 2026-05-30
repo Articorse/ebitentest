@@ -11,6 +11,7 @@ import (
 	"ebittest/ecs/systems/drawsystem"
 	"ebittest/ecs/systems/inputsystem"
 	"ebittest/ecs/systems/movementsystem"
+	"ebittest/ecs/systems/platformsystem"
 	"ebittest/utils"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,7 @@ import (
 	"image/color"
 	"log"
 	"maps"
+	"math/rand"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -72,6 +74,7 @@ func (g *game) Update() error {
 	// r = math.Atan2(dY, dX)
 	var err error
 	im := components.InputManager{}
+	pm := components.ParentManager{}
 
 	tickInputs := make(map[ecscommon.EntityId]components.InputState)
 	for eid, _ := range g.world.Inputs {
@@ -181,14 +184,11 @@ func (g *game) Update() error {
 			func(k ecscommon.EntityId, _ *components.Transform) bool { return k == g.playerEntity })
 	}
 
-	gParComp, ok := g.world.Parents[ecscommon.EntityId(1)]
-	if !ok {
-		log.Println("player has no parent component")
-	}
-
 	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
-		if gParComp.Entity > -1 {
-			err = tm.Detach(ecscommon.EntityId(1), g.world.Transforms, g.world.Parents)
+		parEnt := pm.GetEntity(ecscommon.EntityId(1), g.world.Parents)
+
+		if parEnt > -1 {
+			err = pm.Detach(ecscommon.EntityId(1), g.world.Transforms, g.world.Parents)
 			if err != nil {
 				log.Println("error detaching gun: ", err)
 			}
@@ -250,7 +250,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	collisions, err := collisionsystem.GetCollisions(aabbcollisions, g.world.Colliders, g.world.Transforms, g.world.Parents)
+	collisions, err := collisionsystem.GetCollisions(aabbcollisions, g.world.Colliders, g.world.Transforms, g.world.Velocities, g.world.Parents)
 	if err != nil {
 		log.Println("error during collision checking: ", err, "removing entity")
 		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
@@ -262,6 +262,11 @@ func (g *game) Update() error {
 	resolvedCollisions, err = collisionsystem.ResolveCollisions(collisions, g.world.Colliders, g.world.Transforms, g.world.Velocities)
 	if err != nil {
 		log.Println("error during collision resolution: ", err)
+	}
+
+	err = platformsystem.Tick(g.tickState.CollisionGrid, g.world.Platforms, g.world.Transforms, g.world.Colliders, g.world.Parents)
+	if err != nil {
+		log.Println("platform system tick error: ", err)
 	}
 
 	err = movementsystem.TickLate(g.world.Transforms)
@@ -280,6 +285,7 @@ func (g *game) Update() error {
 
 func (g *game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
+
 	if err := drawsystem.DrawFrame(
 		screen,
 		g.camera,
@@ -384,7 +390,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pColComp := components.NewColliderComponent(components.Collider_Mob, []hitboxes.Hitbox{pHitbox})
+	pColComp := components.NewColliderComponent(
+		components.Collider_Mob,
+		[]hitboxes.Hitbox{pHitbox},
+		components.Layer_Player,
+		components.Layer_EnemyProjectile|
+			components.Layer_Terrain|
+			components.Layer_Platform,
+	)
 
 	g.world.Inputs[g.playerEntity] = pInpComp
 	g.world.Parents[g.playerEntity] = pParComp
@@ -404,18 +417,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	gunHitbox, err := hitboxes.NewCircleHitbox(5, utils.Vec2{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	gunColComp := components.NewColliderComponent(components.Collider_Mob, []hitboxes.Hitbox{gunHitbox})
-
 	g.world.Parents[gun] = gunParComp
 	g.world.Transforms[gun] = gunTraComp
 	g.world.Velocities[gun] = gunVelComp
 	g.world.Sprites[gun] = gunSprComp
-	g.world.Colliders[gun] = gunColComp
 
 	err = pm.Attach(gun, g.playerEntity, g.world.Transforms, g.world.Parents)
 	if err != nil {
@@ -424,35 +429,6 @@ func main() {
 
 	e := g.world.AddEntity()
 	g.replayEntity = e
-
-	eInputConfig := components.InputConfig{
-		Up:    ebiten.KeyF24,
-		Down:  ebiten.KeyF24,
-		Left:  ebiten.KeyF24,
-		Right: ebiten.KeyF24,
-	}
-
-	eInput := components.NewInputComponent(eInputConfig, inputsources.DummyInputSource)
-	g.world.Inputs[e] = eInput
-
-	eParComp := components.NewParentComponent()
-	eTraComp := components.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
-	eVelComp := components.NewVelocityComponent()
-	eSprComp, err := components.NewSpriteComponent("assets/sprites/tree.png", 20)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	eHitbox, err := hitboxes.NewRectangleHitbox(10, 5, utils.Vec2{X: -1, Y: 9})
-	eColComp := components.NewColliderComponent(components.Collider_Static, []hitboxes.Hitbox{eHitbox})
-
-	g.world.Parents[e] = eParComp
-	g.world.Transforms[e] = eTraComp
-	g.world.Velocities[e] = eVelComp
-	g.world.Sprites[e] = eSprComp
-	g.world.Colliders[e] = eColComp
-
-	plat := g.world.AddEntity()
 
 	var inputLoop []components.InputState
 
@@ -463,9 +439,40 @@ func main() {
 		inputLoop = append(inputLoop, components.InputState{Right: true})
 	}
 
-	platInputSource := inputsources.NewLoopInputSource(inputLoop, 0)
+	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
 
-	platInput := components.NewInputComponent(components.InputConfig{}, platInputSource)
+	eInpComp := components.NewInputComponent(components.InputConfig{}, loopSource)
+	g.world.Inputs[e] = eInpComp
+
+	eParComp := components.NewParentComponent()
+	eTraComp := components.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
+	eVelComp := components.NewVelocityComponent()
+	eSprComp, err := components.NewSpriteComponent("assets/sprites/tree.png", 20)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	eHitbox, err := hitboxes.NewRectangleHitbox(10, 5, utils.Vec2{X: -1, Y: 9})
+	eColComp := components.NewColliderComponent(
+		components.Collider_Static,
+		[]hitboxes.Hitbox{eHitbox},
+		components.Layer_Terrain,
+		components.Layer_Player|
+			components.Layer_Enemy|
+			components.Layer_EnemyProjectile|
+			components.Layer_FriendlyProjectile|
+			components.Layer_Platform,
+	)
+
+	g.world.Parents[e] = eParComp
+	g.world.Transforms[e] = eTraComp
+	g.world.Velocities[e] = eVelComp
+	g.world.Sprites[e] = eSprComp
+	g.world.Colliders[e] = eColComp
+
+	plat := g.world.AddEntity()
+
+	platInput := components.NewInputComponent(components.InputConfig{}, loopSource)
 	g.world.Inputs[plat] = platInput
 
 	platParComp := components.NewParentComponent()
@@ -478,22 +485,36 @@ func main() {
 	}
 
 	platHitbox, err := hitboxes.NewRectangleHitbox(28, 28, utils.Vec2{X: 0, Y: 0})
-	platColComp := components.NewColliderComponent(components.Collider_Trigger, []hitboxes.Hitbox{platHitbox})
+	platColComp := components.NewColliderComponent(
+		components.Collider_Trigger,
+		[]hitboxes.Hitbox{platHitbox},
+		components.Layer_Platform,
+		components.Layer_Player|
+			components.Layer_Enemy|
+			components.Layer_Terrain,
+	)
+
+	platPlaComp := components.NewPlatformComponent()
 
 	g.world.Parents[plat] = platParComp
 	g.world.Transforms[plat] = platTraComp
 	g.world.Velocities[plat] = platVelComp
 	g.world.Sprites[plat] = platSprComp
 	g.world.Colliders[plat] = platColComp
+	g.world.Platforms[plat] = platPlaComp
 
 	err = vm.SetAcceleration(plat, 0.3, g.world.Velocities)
 	if err != nil {
 		log.Fatal("error setting platform acceleration: ", err)
 	}
 
-	err = pm.Attach(g.playerEntity, plat, g.world.Transforms, g.world.Parents)
-	if err != nil {
-		log.Fatal("error attaching player to platform: ", err)
+	// err = pm.Attach(g.playerEntity, plat, g.world.Transforms, g.world.Parents)
+	// if err != nil {
+	// 	log.Fatal("error attaching player to platform: ", err)
+	// }
+
+	for _ = range 500 {
+		g.AddRandomEntity()
 	}
 
 	ebiten.SetWindowSize(1920, 1080)
@@ -502,4 +523,34 @@ func main() {
 	if err := ebiten.RunGame(&g); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func (g *game) AddRandomEntity() {
+	e := g.world.AddEntity()
+
+	x := rand.Intn(10000)
+	y := rand.Intn(10000)
+
+	traComp := components.NewTransformComponent(utils.Vec2{X: float64(x), Y: float64(y)}, 1, 0)
+	sprComp, err := components.NewSpriteComponent("assets/sprites/tree.png", 20)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	velComp := components.NewVelocityComponent()
+	hitbox, err := hitboxes.NewRectangleHitbox(10, 5, utils.Vec2{X: -1, Y: 9})
+	colComp := components.NewColliderComponent(
+		components.Collider_Static,
+		[]hitboxes.Hitbox{hitbox},
+		components.Layer_Terrain,
+		components.Layer_Player|
+			components.Layer_Enemy|
+			components.Layer_EnemyProjectile|
+			components.Layer_FriendlyProjectile,
+	)
+
+	g.world.Transforms[e] = traComp
+	g.world.Sprites[e] = sprComp
+	g.world.Velocities[e] = velComp
+	g.world.Colliders[e] = colComp
 }

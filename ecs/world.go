@@ -3,6 +3,7 @@ package ecs
 import (
 	"ebittest/ecs/components"
 	"ebittest/ecs/ecscommon"
+	"fmt"
 	"slices"
 )
 
@@ -15,6 +16,7 @@ type World struct {
 	Velocities map[ecscommon.EntityId]*components.Velocity
 	Sprites    map[ecscommon.EntityId]*components.Sprite
 	Colliders  map[ecscommon.EntityId]*components.Collider
+	Platforms  map[ecscommon.EntityId]*components.Platform
 }
 
 func NewWorld() *World {
@@ -27,6 +29,7 @@ func NewWorld() *World {
 		Velocities: make(map[ecscommon.EntityId]*components.Velocity),
 		Sprites:    make(map[ecscommon.EntityId]*components.Sprite),
 		Colliders:  make(map[ecscommon.EntityId]*components.Collider),
+		Platforms:  make(map[ecscommon.EntityId]*components.Platform),
 	}
 }
 
@@ -45,10 +48,10 @@ func (x *World) RemoveEntity(e ecscommon.EntityId) error {
 	delete(x.Sprites, e)
 	delete(x.Colliders, e)
 
-	for _, p := range x.Parents {
-		if p.Entity == e {
-			p.Entity = -1
-		}
+	pm := components.ParentManager{}
+	err := pm.RemoveParentFromAllEntities(e, x.Parents, x.Transforms)
+	if err != nil {
+		return fmt.Errorf("error removing entity %d from parent component of all entities: %v", e, err)
 	}
 
 	return nil

@@ -10,8 +10,7 @@ const (
 	DefaultAcceleration     = 1
 	SpatialHashGridCellSize = 200
 	Bounciness              = 0.0
-	StaticCollisionForce    = 5
-	AABBMultiplier          = 1.3
+	AABBPadding             = 20
 )
 
 var (
