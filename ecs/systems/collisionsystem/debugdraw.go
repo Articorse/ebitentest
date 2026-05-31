@@ -64,6 +64,18 @@ func DrawColliders(
 			continue
 		}
 
+		drawWindow := [2]utils.Vec2{
+			utils.Vec2{X: 0 - data.SpatialHashGridCellSize, Y: 0 - data.SpatialHashGridCellSize},
+			utils.Vec2{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
+		}
+
+		if worldPos.X < drawWindow[0].X ||
+			worldPos.X > drawWindow[1].X ||
+			worldPos.Y < drawWindow[0].Y ||
+			worldPos.Y > drawWindow[1].Y {
+			continue
+		}
+
 		lineColor := data.Debug_ColliderColor
 
 		if _, ok := collisions[e]; ok {
@@ -149,6 +161,25 @@ func DrawAABBs(
 ) error {
 	for e, _ := range colliders {
 		cm := components.ColliderManager{}
+		tm := components.TransformManager{}
+
+		worldPos, err := tm.GetWorldPos(e, transforms, parents)
+		if err != nil {
+			log.Printf("Error getting world position for entity %d: %v\n", e, err)
+			continue
+		}
+
+		drawWindow := [2]utils.Vec2{
+			utils.Vec2{X: 0 - data.SpatialHashGridCellSize, Y: 0 - data.SpatialHashGridCellSize},
+			utils.Vec2{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
+		}
+
+		if worldPos.X < drawWindow[0].X ||
+			worldPos.X > drawWindow[1].X ||
+			worldPos.Y < drawWindow[0].Y ||
+			worldPos.Y > drawWindow[1].Y {
+			continue
+		}
 
 		lineColor := data.Debug_AABBColliderColor
 

@@ -5,6 +5,8 @@ import (
 )
 
 const (
+	CameraWidth             = 640
+	CameraHeight            = 360
 	VelocityThreshold       = 0.01
 	DefaultDrag             = 0.8
 	DefaultAcceleration     = 1

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/components"
 	"ebittest/ecs/components/hitboxes"
@@ -29,9 +30,6 @@ import (
 
 var (
 	g = game{world: ecs.NewWorld()}
-
-	height = 360
-	width  = 640
 
 	DEBUG_LEVEL               = 0
 	max_vel                   = 0.0
@@ -133,7 +131,7 @@ func (g *game) Update() error {
 			log.Println("error getting player world position for camera follow: ", err)
 		}
 
-		g.camera = pWorldPos.Subtract(utils.Vec2{X: float64(width) / 2, Y: float64(height) / 2})
+		g.camera = pWorldPos.Subtract(utils.Vec2{X: float64(data.CameraWidth) / 2, Y: float64(data.CameraHeight) / 2})
 	}
 
 	// Replay
@@ -309,7 +307,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 }
 
 func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return width, height
+	return data.CameraWidth, data.CameraHeight
 }
 
 func (g *game) DrawDebug(screen *ebiten.Image) {
@@ -513,9 +511,9 @@ func main() {
 	// 	log.Fatal("error attaching player to platform: ", err)
 	// }
 
-	// for _ = range 500 {
-	// 	g.AddRandomEntity()
-	// }
+	for _ = range 500 {
+		g.AddRandomEntity()
+	}
 
 	ebiten.SetWindowSize(1920, 1080)
 	ebiten.SetWindowTitle("ebittest")
