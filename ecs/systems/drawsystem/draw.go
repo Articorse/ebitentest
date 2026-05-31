@@ -22,6 +22,7 @@ func DrawFrame(
 	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
 	sm := components.SpriteManager{}
+	pm := components.ParentManager{}
 
 	batches := make(map[uint8][][]ecscommon.EntityId)
 	visitedSprites := make(map[ecscommon.EntityId]struct{})
@@ -80,7 +81,17 @@ func DrawFrame(
 		}
 
 		if len(batches[layer][i]) > 1 {
-			slices.SortStableFunc(batches[layer][i], func(a, b ecscommon.EntityId) int {
+			var err error
+
+			hierarchies, err := pm.GetOrderedHierarchies(batches[layer][i], parents)
+			if err != nil {
+				return fmt.Errorf("error getting ordered hierarchies for batch in layer %d: %v", layer, err)
+			}
+
+			slices.SortStableFunc(hierarchies, func(aRoot, bRoot [][]ecscommon.EntityId) int {
+				a := aRoot[0][0]
+				b := bRoot[0][0]
+
 				aTotalY, err := sm.GetWorldLayerYOffset(a, sprites, transforms, parents)
 				if err != nil {
 					return -1
@@ -104,6 +115,16 @@ func DrawFrame(
 			if err != nil {
 				return err
 			}
+
+			flatOrder := []ecscommon.EntityId{}
+			for _, hBatch := range hierarchies {
+				for _, hLevel := range hBatch {
+					slices.SortStableFunc(hLevel, func(a ecscommon.EntityId, b ecscommon.EntityId) int { return int(b - a) })
+					flatOrder = append(flatOrder, hLevel...)
+				}
+			}
+
+			batches[layer][i] = flatOrder
 		}
 
 		i++
@@ -117,27 +138,27 @@ func DrawFrame(
 
 	slices.Sort(orderedKeys)
 
-	for _, li := range orderedKeys {
-		for bi := range batches[li] {
-			for _, batchEntity := range batches[li][bi] {
+	for _, layer := range orderedKeys {
+		for _, batch := range batches[layer] {
+			for _, batchEntity := range batch {
 				v, err := sm.GetWorldOffsetPos(batchEntity, sprites, transforms, parents)
 				if err != nil {
-					return fmt.Errorf("error getting world offset position of entity %d: %v", batchEntity, err)
+					return fmt.Errorf("error getting world offset position of batchEntity %d: %v", batchEntity, err)
 				}
 
 				r, err := sm.GetWorldOffsetRotation(batchEntity, sprites, transforms, parents)
 				if err != nil {
-					return fmt.Errorf("error getting world offset rotation of entity %d: %v", batchEntity, err)
+					return fmt.Errorf("error getting world offset rotation of batchEntity %d: %v", batchEntity, err)
 				}
 
 				s, err := sm.GetWorldOffsetScale(batchEntity, sprites, transforms, parents)
 				if err != nil {
-					return fmt.Errorf("error getting world offset scale of entity %d: %v", batchEntity, err)
+					return fmt.Errorf("error getting world offset scale of batchEntity %d: %v", batchEntity, err)
 				}
 
 				img, err := sm.GetImage(batchEntity, sprites)
 				if err != nil {
-					return fmt.Errorf("Error getting sprite image for entity %d: %v\n", batchEntity, err)
+					return fmt.Errorf("Error getting sprite image for batchEntity %d: %v\n", batchEntity, err)
 				}
 
 				opts := ebiten.DrawImageOptions{}

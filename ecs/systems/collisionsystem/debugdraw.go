@@ -87,19 +87,19 @@ func DrawColliders(
 			switch h := hitbox.(type) {
 			case *hitboxes.RectangleHitbox:
 				verts := []utils.Vec2{
-					utils.Vec2{X: worldPos.X + h.GetOffset().X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetOffset().Y + h.GetAABB()[0].Y},
-					utils.Vec2{X: worldPos.X + h.GetOffset().X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetOffset().Y + h.GetAABB()[0].Y},
-					utils.Vec2{X: worldPos.X + h.GetOffset().X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetOffset().Y + h.GetAABB()[1].Y},
-					utils.Vec2{X: worldPos.X + h.GetOffset().X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetOffset().Y + h.GetAABB()[1].Y},
-					utils.Vec2{X: worldPos.X + h.GetOffset().X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetOffset().Y + h.GetAABB()[0].Y},
+					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
+					utils.Vec2{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[0].Y},
+					utils.Vec2{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[1].Y},
+					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[1].Y},
+					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
 				}
-				for _, v := range verts[:len(verts)-1] {
+				for i, _ := range verts[:len(verts)-1] {
 					vector.StrokeLine(
 						screen,
-						float32(v.X-camera.X),
-						float32(v.Y-camera.Y),
-						float32(v.X-camera.X),
-						float32(v.Y-camera.Y),
+						float32(verts[i].X-camera.X),
+						float32(verts[i].Y-camera.Y),
+						float32(verts[i+1].X-camera.X),
+						float32(verts[i+1].Y-camera.Y),
 						1,
 						lineColor,
 						false,

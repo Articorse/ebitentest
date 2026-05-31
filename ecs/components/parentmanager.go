@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"slices"
 )
 
 type ParentManager struct{}
@@ -150,4 +151,109 @@ func (*ParentManager) RemoveParentFromAllEntities(
 	}
 
 	return nil
+}
+
+func (*ParentManager) GetChildEntities(
+	p ecscommon.EntityId,
+	parents map[ecscommon.EntityId]*Parent,
+) ([]ecscommon.EntityId, error) {
+	children := []ecscommon.EntityId{}
+
+	for c, parComp := range parents {
+		if parComp.entity == p {
+			children = append(children, c)
+		}
+	}
+
+	return children, nil
+}
+
+func (*ParentManager) GetOrderedHierarchies(
+	entities []ecscommon.EntityId,
+	parents map[ecscommon.EntityId]*Parent,
+) ([][][]ecscommon.EntityId, error) {
+	if len(entities) == 0 {
+		return [][][]ecscommon.EntityId{}, fmt.Errorf("Entities slice empty")
+	}
+
+	pm := ParentManager{}
+
+	checkedEntities := map[ecscommon.EntityId]struct{}{}
+	orderedHierarchies := [][][]ecscommon.EntityId{}
+
+	for _, e := range entities {
+		if len(checkedEntities) == len(entities) {
+			break
+		}
+
+		if _, ok := checkedEntities[e]; ok {
+			continue
+		}
+
+		root := e
+
+		for {
+			currentParent := pm.GetEntity(root, parents)
+
+			if currentParent == -1 || !slices.Contains(entities, currentParent) {
+				break
+			}
+
+			root = currentParent
+		}
+
+		hierarchy := [][]ecscommon.EntityId{}
+		hierarchy, err := getChildHierarchyRecursive(
+			root,
+			0,
+			hierarchy,
+			checkedEntities,
+			parents,
+			entities,
+		)
+		if err != nil {
+			return [][][]ecscommon.EntityId{},
+				fmt.Errorf("error getting child hierarchy of root entity %d: %v", root, err)
+		}
+
+		orderedHierarchies = append(orderedHierarchies, hierarchy)
+	}
+
+	return orderedHierarchies, nil
+}
+
+func getChildHierarchyRecursive(
+	e ecscommon.EntityId,
+	level int,
+	hierarchy [][]ecscommon.EntityId,
+	checkedEntities map[ecscommon.EntityId]struct{},
+	parents map[ecscommon.EntityId]*Parent,
+	entities []ecscommon.EntityId,
+) ([][]ecscommon.EntityId, error) {
+	pm := ParentManager{}
+
+	if len(hierarchy) <= level {
+		hierarchy = append(hierarchy, []ecscommon.EntityId{})
+	}
+
+	hierarchy[level] = append(hierarchy[level], e)
+	checkedEntities[e] = struct{}{}
+
+	children, err := pm.GetChildEntities(e, parents)
+	if err != nil {
+		return [][]ecscommon.EntityId{}, fmt.Errorf("error getting child entities of entity %d: %v", e, err)
+	}
+
+	for _, c := range children {
+		if !slices.Contains(entities, c) {
+			continue
+		}
+
+		hierarchy, err = getChildHierarchyRecursive(c, level+1, hierarchy, checkedEntities, parents, entities)
+		if err != nil {
+			return [][]ecscommon.EntityId{}, fmt.Errorf("error getting child hierarchy of child entity %d: %v", c, err)
+		}
+	}
+
+	return hierarchy, nil
 }

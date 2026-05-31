@@ -347,7 +347,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 
 		pLocalVelVec, err := vm.GetLocalVector(g.playerEntity, g.world.Velocities)
 		if err != nil {
-			log.Fatalf("error getting player local velocity for debug: ", err)
+			log.Fatalf("error getting player local velocity for debug: %v", err)
 		}
 
 		vel := pLocalVelVec.Length()
@@ -412,7 +412,7 @@ func main() {
 	gunTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	gunVelComp := components.NewVelocityComponent()
 
-	gunSprComp, err := components.NewSpriteComponent("assets/sprites/gun.png", 30)
+	gunSprComp, err := components.NewSpriteComponent("assets/sprites/gun.png", 20)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -441,7 +441,7 @@ func main() {
 
 	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
 
-	eInpComp := components.NewInputComponent(components.InputConfig{}, loopSource)
+	eInpComp := components.NewInputComponent(components.InputConfig{}, inputsources.DummyInputSource)
 	g.world.Inputs[e] = eInpComp
 
 	eParComp := components.NewParentComponent()
@@ -513,9 +513,9 @@ func main() {
 	// 	log.Fatal("error attaching player to platform: ", err)
 	// }
 
-	for _ = range 500 {
-		g.AddRandomEntity()
-	}
+	// for _ = range 500 {
+	// 	g.AddRandomEntity()
+	// }
 
 	ebiten.SetWindowSize(1920, 1080)
 	ebiten.SetWindowTitle("ebittest")
