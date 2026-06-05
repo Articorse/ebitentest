@@ -8,3 +8,9 @@ type Parent struct {
 }
 
 func (Parent) isComponent() {}
+
+func (x Parent) Copy() Parent {
+	return Parent{
+		entity: x.entity,
+	}
+}

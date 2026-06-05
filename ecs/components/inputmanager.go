@@ -10,7 +10,7 @@ type InputManager struct{}
 
 type InputState struct {
 	Up, Down, Left, Right bool
-	MousePos              utils.Vec2
+	MouseScreenPos        utils.Vec2
 	Use                   bool
 }
 

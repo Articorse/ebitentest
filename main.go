@@ -4,7 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/components"
-	"ebittest/ecs/components/hitboxes"
+	"ebittest/ecs/components/collidershapes"
 	"ebittest/ecs/components/inputsources"
 	"ebittest/ecs/ecscommon"
 	"ebittest/ecs/systems/collisionsystem"
@@ -13,6 +13,7 @@ import (
 	"ebittest/ecs/systems/inputsystem"
 	"ebittest/ecs/systems/movementsystem"
 	"ebittest/ecs/systems/platformsystem"
+	"ebittest/ecs/systems/timersystem"
 	"ebittest/utils"
 	"encoding/json"
 	"errors"
@@ -65,11 +66,6 @@ type game struct {
 }
 
 func (g *game) Update() error {
-	// pCenterX := g.p.x + float64(g.p.img.Bounds().Dx())/2
-	// pCenterY := g.p.y + float64(g.p.img.Bounds().Dy())/2
-	// dX := float64(mX) - pCenterX
-	// dY := float64(mY) - pCenterY
-	// r = math.Atan2(dY, dX)
 	var err error
 	im := components.InputManager{}
 	pm := components.ParentManager{}
@@ -86,7 +82,11 @@ func (g *game) Update() error {
 	}
 	g.inputLog[g.tickIdx] = tickInputs
 
-	err = inputsystem.HandleInputs(g.world.Velocities, g.inputLog[g.tickIdx])
+	err = inputsystem.HandleInputs(
+		g.camera,
+		g.world,
+		g.inputLog[g.tickIdx],
+	)
 	if err != nil {
 		log.Printf("error during handling inputs: %v", err)
 	}
@@ -211,6 +211,10 @@ func (g *game) Update() error {
 
 	// END DEBUG
 
+	err = timersystem.Tick(g.world)
+	if err != nil {
+		log.Println("timer system tick error: ", err)
+	}
 	g.tickState = *ecscommon.NewTickState()
 
 	if err := movementsystem.TickEarly(g.world.Velocities, g.world.Transforms, g.world.Parents); err != nil {
@@ -230,7 +234,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	proximateEntities, err := commonsystems.GetSHGProximities(g.tickState.CollisionGrid, g.world.Colliders, g.world.Transforms, g.world.Parents)
+	proximateEntities, err := commonsystems.GetSHGProximities(g.tickState.CollisionGrid, g.world.PhysicsColliders, g.world.Transforms, g.world.Parents)
 	if err != nil {
 		log.Println("error during spatial hash grid proximity checking: ", err, "removing entity")
 		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
@@ -239,7 +243,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	aabbcollisions, err := collisionsystem.GetAABBCollisions(proximateEntities, g.world.Colliders, g.world.Transforms, g.world.Parents)
+	aabbcollisions, err := collisionsystem.GetAABBCollisions(proximateEntities, g.world.PhysicsColliders, g.world.CollisionLayers, g.world.Transforms, g.world.Parents)
 	if err != nil {
 		log.Println("error during AABB collision checking: ", err, "removing entity")
 		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
@@ -248,21 +252,26 @@ func (g *game) Update() error {
 		}
 	}
 
-	collisions, err := collisionsystem.GetCollisions(aabbcollisions, g.world.Colliders, g.world.Transforms, g.world.Velocities, g.world.Parents)
+	collisions, err := collisionsystem.GetCollisions(aabbcollisions, g.world.PhysicsColliders, g.world.Transforms, g.world.Velocities, g.world.Parents)
 	if err != nil {
-		log.Println("error during collision checking: ", err, "removing entity")
+		log.Println("error during physics collision checking: ", err, "removing entity")
 		var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
 			g.world.RemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
-	resolvedCollisions, err = collisionsystem.ResolveCollisions(collisions, g.world.Colliders, g.world.Transforms, g.world.Velocities)
+	resolvedCollisions, err = collisionsystem.ResolveCollisions(collisions, g.world.PhysicsColliders, g.world.Transforms, g.world.Velocities)
 	if err != nil {
 		log.Println("error during collision resolution: ", err)
 	}
 
-	err = platformsystem.Tick(g.tickState.CollisionGrid, g.world.Platforms, g.world.Transforms, g.world.Colliders, g.world.Parents)
+	// _, err = damagesystem.DealContactDamage(triggerCollisions, g.world)
+	// if err != nil {
+	// 	log.Println("error during dealing contact damage: ", err)
+	// }
+
+	err = platformsystem.Tick(g.tickState.CollisionGrid, g.world.Platforms, g.world.Transforms, g.world.CollisionLayers, g.world.PlatformColliders, g.world.Parents)
 	if err != nil {
 		log.Println("platform system tick error: ", err)
 	}
@@ -316,15 +325,15 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 	}
 
 	if DEBUG_LEVEL == 2 {
-		if err := collisionsystem.DrawColliders(screen, g.camera, g.world.Colliders, g.world.Transforms, g.tickState.Collisions, g.world.Parents); err != nil {
-			log.Println("error while drawing colliders: ", err, "removing entity")
+		if err := collisionsystem.DrawColliders(screen, g.camera, g.world.PhysicsColliders, g.world.Transforms, g.tickState.Collisions, g.world.Parents); err != nil {
+			log.Println("error while drawing physics colliders: ", err, "removing entity")
 			var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
 				g.world.RemoveEntity(invalidComponentsErr.Entity)
 			}
 		}
 
-		if err := collisionsystem.DrawAABBs(screen, g.camera, g.world.Colliders, g.world.Transforms, g.world.Parents, g.tickState.AABBCollisions); err != nil {
+		if err := collisionsystem.DrawAABBs(screen, g.camera, g.world.PhysicsColliders, g.world.Transforms, g.world.Parents, g.tickState.AABBCollisions); err != nil {
 			log.Println("error while drawing AABBs: ", err, "removing entity")
 			var invalidComponentsErr *ecscommon.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
@@ -360,6 +369,8 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	ebiten.SetVsyncEnabled(false)
+	ebiten.SetTPS(data.TPS)
+
 	g.inputLog = make(map[uint64]map[ecscommon.EntityId]components.InputState)
 	g.tickState = *ecscommon.NewTickState()
 
@@ -374,7 +385,7 @@ func main() {
 		Use:   ebiten.MouseButtonLeft,
 	}
 
-	pInpComp := components.NewInputComponent(pInputConfig, inputsources.KeyboardMouseInputSource)
+	pInpComp := components.NewInputComponent(pInputConfig, inputsources.KeyboardInputSource)
 	pParComp := components.NewParentComponent()
 	pTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := components.NewVelocityComponent()
@@ -383,14 +394,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pHitbox, err := hitboxes.NewCircleHitbox(5, utils.Vec2{X: 0, Y: 0})
+	pColShape, err := collidershapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pColComp := components.NewColliderComponent(
+	pColComp := components.NewPhysicsColliderComponent(
 		components.Collider_Mob,
-		[]hitboxes.Hitbox{pHitbox},
+		[]collidershapes.Shape{pColShape},
+	)
+
+	pColLayerComp := components.NewCollisionLayersComponent(
 		components.Layer_Player,
 		components.Layer_EnemyProjectile|
 			components.Layer_Terrain|
@@ -402,11 +416,11 @@ func main() {
 	g.world.Transforms[g.playerEntity] = pTraComp
 	g.world.Velocities[g.playerEntity] = pVelComp
 	g.world.Sprites[g.playerEntity] = pSprComp
-	g.world.Colliders[g.playerEntity] = pColComp
+	g.world.PhysicsColliders[g.playerEntity] = pColComp
+	g.world.CollisionLayers[g.playerEntity] = pColLayerComp
 
 	gun := g.world.AddEntity()
 	gunParComp := components.NewParentComponent()
-
 	gunTraComp := components.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	gunVelComp := components.NewVelocityComponent()
 
@@ -415,18 +429,33 @@ func main() {
 		log.Fatal(err)
 	}
 
+	gunInpComp := components.NewInputComponent(components.InputConfig{}, inputsources.MouseInputSource)
+
+	bulletTraComp := components.NewTransformComponent(utils.Vec2{}, 1, 0)
+	bulletVelComp := components.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
+	bulletTLComp := components.NewTimedLifeComponent(500)
+	bulletDmgComp := components.NewContactDamageComponent(g.playerEntity, []int64{5}, 10)
+	bulletSprComp, err := components.NewSpriteComponent("assets/sprites/bullet.png", 20)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	gunSpaComp := components.NewSpawnerComponent(
+		utils.Vec2{X: 13, Y: 0},
+		[]components.Component{bulletTraComp, bulletSprComp, bulletVelComp, bulletTLComp, bulletDmgComp},
+	)
+
+	g.world.Inputs[gun] = gunInpComp
 	g.world.Parents[gun] = gunParComp
 	g.world.Transforms[gun] = gunTraComp
 	g.world.Velocities[gun] = gunVelComp
 	g.world.Sprites[gun] = gunSprComp
+	g.world.Spawners[gun] = gunSpaComp
 
 	err = pm.Attach(gun, g.playerEntity, g.world.Transforms, g.world.Parents)
 	if err != nil {
 		log.Fatal("error attaching gun to player: ", err)
 	}
-
-	e := g.world.AddEntity()
-	g.replayEntity = e
 
 	var inputLoop []components.InputState
 
@@ -439,21 +468,27 @@ func main() {
 
 	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
 
-	eInpComp := components.NewInputComponent(components.InputConfig{}, inputsources.DummyInputSource)
-	g.world.Inputs[e] = eInpComp
+	tree := g.world.AddEntity()
+	g.replayEntity = tree
 
-	eParComp := components.NewParentComponent()
-	eTraComp := components.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
-	eVelComp := components.NewVelocityComponent()
-	eSprComp, err := components.NewSpriteComponent("assets/sprites/tree.png", 20)
+	treeInpComp := components.NewInputComponent(components.InputConfig{}, inputsources.DummyInputSource)
+	g.world.Inputs[tree] = treeInpComp
+
+	treeParComp := components.NewParentComponent()
+	treeTraComp := components.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
+	treeVelComp := components.NewVelocityComponent()
+	treeSprComp, err := components.NewSpriteComponent("assets/sprites/tree.png", 20)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	eHitbox, err := hitboxes.NewRectangleHitbox(10, 5, utils.Vec2{X: -1, Y: 9})
-	eColComp := components.NewColliderComponent(
+	treeColShape, err := collidershapes.NewRectangleShape(10, 5, utils.Vec2{X: -1, Y: 9})
+	treeColComp := components.NewPhysicsColliderComponent(
 		components.Collider_Static,
-		[]hitboxes.Hitbox{eHitbox},
+		[]collidershapes.Shape{treeColShape},
+	)
+
+	treeColLayerComp := components.NewCollisionLayersComponent(
 		components.Layer_Terrain,
 		components.Layer_Player|
 			components.Layer_Enemy|
@@ -462,11 +497,48 @@ func main() {
 			components.Layer_Platform,
 	)
 
-	g.world.Parents[e] = eParComp
-	g.world.Transforms[e] = eTraComp
-	g.world.Velocities[e] = eVelComp
-	g.world.Sprites[e] = eSprComp
-	g.world.Colliders[e] = eColComp
+	g.world.Parents[tree] = treeParComp
+	g.world.Transforms[tree] = treeTraComp
+	g.world.Velocities[tree] = treeVelComp
+	g.world.Sprites[tree] = treeSprComp
+	g.world.PhysicsColliders[tree] = treeColComp
+	g.world.CollisionLayers[tree] = treeColLayerComp
+
+	enemy := g.world.AddEntity()
+
+	enemyTraComp := components.NewTransformComponent(utils.Vec2{X: 300, Y: 150}, 1, 0)
+	enemyVelComp := components.NewVelocityComponent()
+	enemyParComp := components.NewParentComponent()
+	enemySprComp, err := components.NewSpriteComponent("assets/sprites/evilslime.png", 20)
+	if err != nil {
+		log.Fatal(err)
+	}
+	enemyHpComp := components.NewHitpointsComponent(20)
+	enemyColShape, err := collidershapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
+	enemyColComp := components.NewPhysicsColliderComponent(
+		components.Collider_Mob,
+		[]collidershapes.Shape{enemyColShape},
+	)
+
+	enemyColLayerComp := components.NewCollisionLayersComponent(
+		components.Layer_Enemy,
+		components.Layer_Player|
+			components.Layer_Enemy|
+			components.Layer_EnemyProjectile|
+			components.Layer_FriendlyProjectile|
+			components.Layer_Platform,
+	)
+
+	enemyInput := components.NewInputComponent(components.InputConfig{}, inputsources.DummyInputSource)
+	g.world.Inputs[enemy] = enemyInput
+
+	g.world.Parents[enemy] = enemyParComp
+	g.world.Transforms[enemy] = enemyTraComp
+	g.world.Velocities[enemy] = enemyVelComp
+	g.world.Sprites[enemy] = enemySprComp
+	g.world.Hitpoints[enemy] = enemyHpComp
+	g.world.PhysicsColliders[enemy] = enemyColComp
+	g.world.CollisionLayers[enemy] = enemyColLayerComp
 
 	plat := g.world.AddEntity()
 
@@ -482,13 +554,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	platHitbox, err := hitboxes.NewRectangleHitbox(28, 28, utils.Vec2{X: 0, Y: 0})
-	platColComp := components.NewColliderComponent(
-		components.Collider_Trigger,
-		[]hitboxes.Hitbox{platHitbox},
+	platColShape, err := collidershapes.NewRectangleShape(28, 28, utils.Vec2{X: 0, Y: 0})
+	platColComp := components.NewPlatformColliderComponent(
+		[]collidershapes.Shape{platColShape},
+	)
+
+	platColLayerComp := components.NewCollisionLayersComponent(
 		components.Layer_Platform,
 		components.Layer_Player|
 			components.Layer_Enemy|
+			components.Layer_EnemyProjectile|
+			components.Layer_FriendlyProjectile|
 			components.Layer_Terrain,
 	)
 
@@ -498,7 +574,8 @@ func main() {
 	g.world.Transforms[plat] = platTraComp
 	g.world.Velocities[plat] = platVelComp
 	g.world.Sprites[plat] = platSprComp
-	g.world.Colliders[plat] = platColComp
+	g.world.PlatformColliders[plat] = platColComp
+	g.world.CollisionLayers[plat] = platColLayerComp
 	g.world.Platforms[plat] = platPlaComp
 
 	err = vm.SetAcceleration(plat, 0.3, g.world.Velocities)
@@ -511,9 +588,9 @@ func main() {
 	// 	log.Fatal("error attaching player to platform: ", err)
 	// }
 
-	for _ = range 500 {
-		g.AddRandomEntity()
-	}
+	// for _ = range 500 {
+	// 	g.AddRandomEntity()
+	// }
 
 	ebiten.SetWindowSize(1920, 1080)
 	ebiten.SetWindowTitle("ebittest")
@@ -536,19 +613,24 @@ func (g *game) AddRandomEntity() {
 	}
 
 	velComp := components.NewVelocityComponent()
-	hitbox, err := hitboxes.NewRectangleHitbox(10, 5, utils.Vec2{X: -1, Y: 9})
-	colComp := components.NewColliderComponent(
+	shape, err := collidershapes.NewRectangleShape(10, 5, utils.Vec2{X: -1, Y: 9})
+	colComp := components.NewPhysicsColliderComponent(
 		components.Collider_Static,
-		[]hitboxes.Hitbox{hitbox},
+		[]collidershapes.Shape{shape},
+	)
+
+	colLayerComp := components.NewCollisionLayersComponent(
 		components.Layer_Terrain,
 		components.Layer_Player|
 			components.Layer_Enemy|
 			components.Layer_EnemyProjectile|
-			components.Layer_FriendlyProjectile,
+			components.Layer_FriendlyProjectile|
+			components.Layer_Platform,
 	)
 
 	g.world.Transforms[e] = traComp
 	g.world.Sprites[e] = sprComp
 	g.world.Velocities[e] = velComp
-	g.world.Colliders[e] = colComp
+	g.world.PhysicsColliders[e] = colComp
+	g.world.CollisionLayers[e] = colLayerComp
 }

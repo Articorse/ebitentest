@@ -13,3 +13,12 @@ type Transform struct {
 }
 
 func (Transform) isComponent() {}
+
+func (x Transform) Copy() Transform {
+	return Transform{
+		pos:      x.pos,
+		prevPos:  x.prevPos,
+		scale:    x.scale,
+		rotation: x.rotation,
+	}
+}

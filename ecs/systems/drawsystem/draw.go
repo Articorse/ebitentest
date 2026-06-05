@@ -29,8 +29,8 @@ func DrawFrame(
 	visitedSprites := make(map[ecscommon.EntityId]struct{})
 	layerIdxMap := make(map[uint8]uint64)
 	drawWindow := [2]utils.Vec2{
-		utils.Vec2{X: 0 - data.SpatialHashGridCellSize, Y: 0 - data.SpatialHashGridCellSize},
-		utils.Vec2{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
+		utils.Vec2{X: camera.X - data.SpatialHashGridCellSize, Y: camera.Y - data.SpatialHashGridCellSize},
+		utils.Vec2{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
 	}
 
 	for e, _ := range sprites {

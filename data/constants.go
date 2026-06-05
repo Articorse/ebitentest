@@ -5,6 +5,7 @@ import (
 )
 
 const (
+	TPS                     = 60
 	CameraWidth             = 640
 	CameraHeight            = 360
 	VelocityThreshold       = 0.01

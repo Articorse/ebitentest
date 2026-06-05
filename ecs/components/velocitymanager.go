@@ -14,6 +14,14 @@ func NewVelocityComponent() *Velocity {
 	return &Velocity{drag: data.DefaultDrag, acceleration: data.DefaultAcceleration}
 }
 
+func NewVelocityComponentWithParams(
+	vector utils.Vec2,
+	acceleration float64,
+	drag float64,
+) *Velocity {
+	return &Velocity{vector: vector, acceleration: acceleration, drag: drag}
+}
+
 func (*VelocityManager) GetLocalVector(
 	e ecscommon.EntityId,
 	velocities map[ecscommon.EntityId]*Velocity,
@@ -87,6 +95,20 @@ func (*VelocityManager) GetDrag(
 	}
 
 	return velComp.drag, nil
+}
+
+func (*VelocityManager) AddForce(
+	e ecscommon.EntityId,
+	force utils.Vec2,
+	velocities map[ecscommon.EntityId]*Velocity,
+) error {
+	valComp, ok := velocities[e]
+	if !ok {
+		return fmt.Errorf("could not get velocity component of entity %d", e)
+	}
+
+	valComp.vector = valComp.vector.Add(force)
+	return nil
 }
 
 func (*VelocityManager) SetLocalVector(

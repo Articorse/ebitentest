@@ -1,33 +1,33 @@
-package hitboxes
+package collidershapes
 
 import (
 	"ebittest/utils"
 	"fmt"
 )
 
-type PolygonHitbox struct {
+type PolygonShape struct {
 	vertices []utils.Vec2
 	offset   utils.Vec2
 	aabb     [2]utils.Vec2
 }
 
-func (PolygonHitbox) isHitbox() {}
+func (PolygonShape) isShape() {}
 
-func (x *PolygonHitbox) GetVertices() []utils.Vec2 {
+func (x *PolygonShape) GetVertices() []utils.Vec2 {
 	return x.vertices
 }
 
-func (x *PolygonHitbox) GetOffset() utils.Vec2 {
+func (x *PolygonShape) GetOffset() utils.Vec2 {
 	return x.offset
 }
 
-func (x *PolygonHitbox) GetAABB() [2]utils.Vec2 {
+func (x *PolygonShape) GetAABB() [2]utils.Vec2 {
 	return x.aabb
 }
 
-func NewPolygonHitbox(v []utils.Vec2, o utils.Vec2) (*PolygonHitbox, error) {
+func NewPolygonShape(v []utils.Vec2, o utils.Vec2) (*PolygonShape, error) {
 	if len(v) < 3 {
-		return nil, fmt.Errorf("a polygon hitbox must have at least 3 vertices")
+		return nil, fmt.Errorf("a polygon shape must have at least 3 vertices")
 	}
 
 	var minX, minY, maxX, maxY float64
@@ -49,7 +49,7 @@ func NewPolygonHitbox(v []utils.Vec2, o utils.Vec2) (*PolygonHitbox, error) {
 		}
 	}
 
-	return &PolygonHitbox{
+	return &PolygonShape{
 		vertices: v,
 		offset:   o,
 		aabb: [2]utils.Vec2{

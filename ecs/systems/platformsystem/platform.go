@@ -12,15 +12,17 @@ func Tick(
 	shg map[ecscommon.CellKey][]ecscommon.EntityId,
 	platforms map[ecscommon.EntityId]*components.Platform,
 	transforms map[ecscommon.EntityId]*components.Transform,
-	colliders map[ecscommon.EntityId]*components.Collider,
+	collisionLayers map[ecscommon.EntityId]*components.CollisionLayer,
+	colliders map[ecscommon.EntityId]*components.PlatformCollider,
 	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
 	tm := components.TransformManager{}
-	cm := components.ColliderManager{}
+	pcm := components.PlatformColliderManager{}
+	clm := components.CollisionLayersManager{}
 	pm := components.ParentManager{}
 
 	for eA, _ := range platforms {
-		aAABB, err := cm.GetWorldAABB(eA, colliders, transforms, parents)
+		aAABB, err := pcm.GetWorldAABB(eA, colliders, transforms, parents)
 		if err != nil {
 			log.Printf("error getting AABB of entity %d: %v", eA, err)
 			continue
@@ -32,13 +34,13 @@ func Tick(
 			continue
 		}
 
-		aLayers, err := cm.GetLayers(eA, colliders)
+		aLayers, err := clm.GetLayers(eA, collisionLayers)
 		if err != nil {
 			log.Printf("error getting layers of entity %d: %v", eA, err)
 			continue
 		}
 
-		aMask, err := cm.GetMask(eA, colliders)
+		aMask, err := clm.GetMask(eA, collisionLayers)
 		if err != nil {
 			log.Printf("error getting mask of entity %d: %v", eA, err)
 			continue
@@ -54,18 +56,18 @@ func Tick(
 						continue
 					}
 
-					_, ok := colliders[eB]
+					_, ok := collisionLayers[eB]
 					if !ok {
 						continue
 					}
 
-					bLayers, err := cm.GetLayers(eB, colliders)
+					bLayers, err := clm.GetLayers(eB, collisionLayers)
 					if err != nil {
 						log.Printf("error getting layers of entity %d: %v", eB, err)
 						continue
 					}
 
-					bMask, err := cm.GetMask(eB, colliders)
+					bMask, err := clm.GetMask(eB, collisionLayers)
 					if err != nil {
 						log.Printf("error getting mask of entity %d: %v", eB, err)
 						continue

@@ -10,7 +10,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
-func KeyboardMouseInputSource(
+func MouseInputSource(
 	e ecscommon.EntityId,
 	tick uint64,
 	inputs map[ecscommon.EntityId]*components.Input,
@@ -24,24 +24,11 @@ func KeyboardMouseInputSource(
 		return is
 	}
 
-	if ebiten.IsKeyPressed(config.Left) {
-		is.Left = true
-	}
-	if ebiten.IsKeyPressed(config.Right) {
-		is.Right = true
-	}
-	if ebiten.IsKeyPressed(config.Up) {
-		is.Up = true
-	}
-	if ebiten.IsKeyPressed(config.Down) {
-		is.Down = true
-	}
-
 	mX, mY := ebiten.CursorPosition()
-	is.MousePos = utils.Vec2{X: float64(mX), Y: float64(mY)}
+	is.MouseScreenPos = utils.Vec2{X: float64(mX), Y: float64(mY)}
+
 	if inpututil.IsMouseButtonJustPressed(config.Use) {
 		is.Use = true
-		log.Println("use key just pressed")
 	}
 
 	return is

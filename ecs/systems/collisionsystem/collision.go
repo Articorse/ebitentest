@@ -3,26 +3,25 @@ package collisionsystem
 import (
 	"ebittest/data"
 	"ebittest/ecs/components"
-	"ebittest/ecs/components/hitboxes"
+	"ebittest/ecs/components/collidershapes"
 	"ebittest/ecs/ecscommon"
 	"ebittest/utils"
 	"log"
-	"slices"
 )
 
 // TODO: Add collision masks and check for valid collisions only in GetCollisions()
 func ResolveCollisions(
-	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2,
-	colliders map[ecscommon.EntityId]*components.Collider,
+	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]ecscommon.Collision,
+	colliders map[ecscommon.EntityId]*components.PhysicsCollider,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	velocities map[ecscommon.EntityId]*components.Velocity,
 ) (collisionsResolved uint64, err error) {
 	tm := components.TransformManager{}
 	vm := components.VelocityManager{}
-	cm := components.ColliderManager{}
+	cm := components.PhysicsColliderManager{}
 
 	for eA, cols := range collisions {
-		for eB, colVector := range cols {
+		for eB, c := range cols {
 			aColType, err := cm.GetColliderType(eA, colliders)
 			if err != nil {
 				log.Printf("Error getting collider type for entity %d: %v\n", eA, err)
@@ -58,7 +57,7 @@ func ResolveCollisions(
 					continue
 				}
 			} else if bColType == components.Collider_Mob && aColType == components.Collider_Static {
-				colVector = colVector.Multiply(-1)
+				c.Vector = c.Vector.Multiply(-1)
 				mobEnt = eB
 				mobLocalPos, err = tm.GetLocalPos(eB, transforms)
 				if err != nil {
@@ -79,9 +78,9 @@ func ResolveCollisions(
 				continue
 			}
 
-			tm.SetLocalPos(mobEnt, mobLocalPos.Add(colVector), transforms)
+			tm.SetLocalPos(mobEnt, mobLocalPos.Add(c.Vector), transforms)
 
-			normal := colVector.Normalized()
+			normal := c.Vector.Normalized()
 			relativeVelocity := mobLocalVelVec.Subtract(staticLocalVelVec)
 			velocityAlongNormal := relativeVelocity.Dot(normal)
 
@@ -101,14 +100,14 @@ func ResolveCollisions(
 
 func GetCollisions(
 	potentialCollisions map[ecscommon.EntityId][]ecscommon.EntityId,
-	colliders map[ecscommon.EntityId]*components.Collider,
+	colliders map[ecscommon.EntityId]*components.PhysicsCollider,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	velocities map[ecscommon.EntityId]*components.Velocity,
 	parents map[ecscommon.EntityId]*components.Parent,
-) (map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2, error) {
-	collisions := make(map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2)
+) (map[ecscommon.EntityId]map[ecscommon.EntityId]ecscommon.Collision, error) {
+	collisions := make(map[ecscommon.EntityId]map[ecscommon.EntityId]ecscommon.Collision)
 	tm := components.TransformManager{}
-	cm := components.ColliderManager{}
+	cm := components.PhysicsColliderManager{}
 
 	for eA, colEntities := range potentialCollisions {
 		for _, eB := range colEntities {
@@ -122,78 +121,85 @@ func GetCollisions(
 				}
 			}
 
-			aColHitboxes, err := cm.GetHitboxes(eA, colliders)
+			aColShapes, err := cm.GetShapes(eA, colliders)
 			if err != nil {
-				log.Printf("Error getting collider hitboxes for entity %d: %v\n", eA, err)
+				log.Printf("Error getting collider shapes for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			bColHitboxes, err := cm.GetHitboxes(eB, colliders)
+			bColShapes, err := cm.GetShapes(eB, colliders)
 			if err != nil {
-				log.Printf("Error getting collider hitboxes for entity %d: %v\n", eB, err)
+				log.Printf("Error getting collider shapes for entity %d: %v\n", eB, err)
 				continue
 			}
 
+			collisionFound := false
 			var collisionVector utils.Vec2
-			var aCollidedHitbox hitboxes.Hitbox
-			var bCollidedHitbox hitboxes.Hitbox
+			var aCollidedShapes collidershapes.Shape
+			var bCollidedShapes collidershapes.Shape
+			var aCollidedIdx int
+			var bCollidedIdx int
 
-			for _, aHitbox := range aColHitboxes {
-				for _, bHitbox := range bColHitboxes {
-					switch aH := aHitbox.(type) {
-					case *hitboxes.RectangleHitbox:
-						switch bH := bHitbox.(type) {
-						case *hitboxes.RectangleHitbox:
-							collisionVector = getRectangleRectangleCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
-							aCollidedHitbox = aHitbox
-							bCollidedHitbox = bHitbox
-						case *hitboxes.CircleHitbox:
-							collisionVector = getRectangleCircleCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
-							aCollidedHitbox = aHitbox
-							bCollidedHitbox = bHitbox
-						case *hitboxes.PolygonHitbox:
-							collisionVector = getRectanglePolygonCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
-							aCollidedHitbox = aHitbox
-							bCollidedHitbox = bHitbox
+			for aColShapeIdx, aColShape := range aColShapes {
+				if collisionFound {
+					break
+				}
+
+				for bColShapeIdx, bColShape := range bColShapes {
+					if collisionFound {
+						break
+					}
+
+					aCollidedShapes = aColShape
+					bCollidedShapes = bColShape
+					aCollidedIdx = aColShapeIdx
+					bCollidedIdx = bColShapeIdx
+
+					switch aS := aColShape.(type) {
+					case *collidershapes.RectangleShape:
+						switch bS := bColShape.(type) {
+						case *collidershapes.RectangleShape:
+							collisionVector = getRectangleRectangleCollision(eA, eB, *aS, *bS, transforms, velocities, parents)
+							collisionFound = true
+						case *collidershapes.CircleShape:
+							collisionVector = getRectangleCircleCollision(eA, eB, *aS, *bS, transforms, velocities, parents)
+							collisionFound = true
+						case *collidershapes.PolygonShape:
+							collisionVector = getRectanglePolygonCollision(eA, eB, *aS, *bS, transforms, velocities, parents)
+							collisionFound = true
 						default:
-							log.Printf("unsupported hitbox type for collision detection: %T", bH)
+							log.Printf("unsupported collider shape type for collision detection: %T", bS)
 						}
-					case *hitboxes.CircleHitbox:
-						switch bH := bHitbox.(type) {
-						case *hitboxes.RectangleHitbox:
-							collisionVector = getRectangleCircleCollision(eB, eA, *bH, *aH, transforms, velocities, parents)
-							aCollidedHitbox = aHitbox
-							bCollidedHitbox = bHitbox
+					case *collidershapes.CircleShape:
+						switch bS := bColShape.(type) {
+						case *collidershapes.RectangleShape:
+							collisionVector = getRectangleCircleCollision(eB, eA, *bS, *aS, transforms, velocities, parents)
 							collisionVector = collisionVector.Multiply(-1)
-						case *hitboxes.CircleHitbox:
-							collisionVector = getCircleCircleCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
-							aCollidedHitbox = aHitbox
-							bCollidedHitbox = bHitbox
-						case *hitboxes.PolygonHitbox:
-							collisionVector = getCirclePolygonCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
-							aCollidedHitbox = aHitbox
-							bCollidedHitbox = bHitbox
+							collisionFound = true
+						case *collidershapes.CircleShape:
+							collisionVector = getCircleCircleCollision(eA, eB, *aS, *bS, transforms, velocities, parents)
+							collisionFound = true
+						case *collidershapes.PolygonShape:
+							collisionVector = getCirclePolygonCollision(eA, eB, *aS, *bS, transforms, velocities, parents)
+							collisionFound = true
 						default:
-							log.Printf("unsupported hitbox type for collision detection: %T", bH)
+							log.Printf("unsupported collider shape type for collision detection: %T", bS)
 						}
-					case *hitboxes.PolygonHitbox:
-						switch bH := bHitbox.(type) {
-						case *hitboxes.RectangleHitbox:
-							collisionVector = getRectanglePolygonCollision(eB, eA, *bH, *aH, transforms, velocities, parents)
-							aCollidedHitbox = aHitbox
-							bCollidedHitbox = bHitbox
+					case *collidershapes.PolygonShape:
+						switch bS := bColShape.(type) {
+						case *collidershapes.RectangleShape:
+							collisionVector = getRectanglePolygonCollision(eB, eA, *bS, *aS, transforms, velocities, parents)
 							collisionVector = collisionVector.Multiply(-1)
-						case *hitboxes.CircleHitbox:
-							collisionVector = getCirclePolygonCollision(eB, eA, *bH, *aH, transforms, velocities, parents)
-							aCollidedHitbox = aHitbox
-							bCollidedHitbox = bHitbox
+							collisionFound = true
+						case *collidershapes.CircleShape:
+							collisionVector = getCirclePolygonCollision(eB, eA, *bS, *aS, transforms, velocities, parents)
 							collisionVector = collisionVector.Multiply(-1)
-						case *hitboxes.PolygonHitbox:
-							collisionVector = getPolygonPolygonCollision(eA, eB, *aH, *bH, transforms, velocities, parents)
-							aCollidedHitbox = aHitbox
-							bCollidedHitbox = bHitbox
+							collisionFound = true
+						case *collidershapes.PolygonShape:
+							collisionVector = getPolygonPolygonCollision(eA, eB, *aS, *bS, transforms, velocities, parents)
+							collisionFound = true
 						default:
-							log.Printf("unsupported hitbox type for collision detection: %T", bH)
+							log.Printf("unsupported collider shape type for collision detection: %T", bS)
 						}
 					}
 				}
@@ -211,90 +217,20 @@ func GetCollisions(
 				continue
 			}
 
-			prevRelativePosVector := aWorldPrevPos.Add(aCollidedHitbox.GetOffset()).Subtract(bWorldPrevPos.Add(bCollidedHitbox.GetOffset()))
+			prevRelativePosVector := aWorldPrevPos.Add(aCollidedShapes.GetOffset()).Subtract(bWorldPrevPos.Add(bCollidedShapes.GetOffset()))
 			if prevRelativePosVector.Dot(collisionVector) < 0 {
 				collisionVector = collisionVector.Multiply(-1)
 			}
 
 			if !collisionVector.IsZero() {
 				if _, ok := collisions[eA]; !ok {
-					collisions[eA] = make(map[ecscommon.EntityId]utils.Vec2)
+					collisions[eA] = make(map[ecscommon.EntityId]ecscommon.Collision)
 				}
-				collisions[eA][eB] = collisionVector
-			}
-		}
-	}
-
-	return collisions, nil
-}
-
-func GetAABBCollisions(
-	proximateEntities map[ecscommon.EntityId][]ecscommon.EntityId,
-	colliders map[ecscommon.EntityId]*components.Collider,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	parents map[ecscommon.EntityId]*components.Parent,
-) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
-	collisions := make(map[ecscommon.EntityId][]ecscommon.EntityId)
-	cm := components.ColliderManager{}
-
-	for eA, colEntities := range proximateEntities {
-		aLayers, err := cm.GetLayers(eA, colliders)
-		if err != nil {
-			log.Printf("Error getting collider layers for entity %d: %v\n", eA, err)
-			continue
-		}
-
-		aMask, err := cm.GetMask(eA, colliders)
-		if err != nil {
-			log.Printf("Error getting collider mask for entity %d: %v\n", eA, err)
-			continue
-		}
-
-		aAABB, err := cm.GetWorldPaddedAABB(eA, colliders, transforms, parents)
-		if err != nil {
-			log.Printf("Error getting AABB for entity %d: %v\n", eA, err)
-			continue
-		}
-
-		for _, eB := range colEntities {
-			if eA == eB {
-				continue
-			}
-
-			bLayers, err := cm.GetLayers(eB, colliders)
-			if err != nil {
-				log.Printf("Error getting collider layers for entity %d: %v\n", eB, err)
-				continue
-			}
-
-			bMask, err := cm.GetMask(eB, colliders)
-			if err != nil {
-				log.Printf("Error getting collider mask for entity %d: %v\n", eB, err)
-				continue
-			}
-
-			if aLayers&bMask == 0 || bLayers&aMask == 0 {
-				continue
-			}
-
-			if collidedEntities, ok := collisions[eB]; ok {
-				if slices.Contains(collidedEntities, eA) {
-					continue
+				collisions[eA][eB] = ecscommon.Collision{
+					Vector:     collisionVector,
+					AShapeIdx: aCollidedIdx,
+					BShapeIdx: bCollidedIdx,
 				}
-			}
-
-			bAABB, err := cm.GetWorldPaddedAABB(eB, colliders, transforms, parents)
-			if err != nil {
-				log.Printf("Error getting AABB for entity %d: %v\n", eB, err)
-				continue
-			}
-
-			if utils.DetectAABBCollision(aAABB, bAABB) {
-				v, ok := collisions[eA]
-				if !ok {
-					collisions[eA] = []ecscommon.EntityId{eB}
-				}
-				collisions[eA] = append(v, eB)
 			}
 		}
 	}

@@ -12,3 +12,11 @@ type Velocity struct {
 }
 
 func (Velocity) isComponent() {}
+
+func (x Velocity) Copy() Velocity {
+	return Velocity{
+		vector:       x.vector,
+		acceleration: x.acceleration,
+		drag:         x.drag,
+	}
+}

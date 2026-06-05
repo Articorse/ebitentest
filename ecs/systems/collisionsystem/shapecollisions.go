@@ -2,7 +2,7 @@ package collisionsystem
 
 import (
 	"ebittest/ecs/components"
-	"ebittest/ecs/components/hitboxes"
+	"ebittest/ecs/components/collidershapes"
 	"ebittest/ecs/ecscommon"
 	"ebittest/utils"
 	"log"
@@ -12,8 +12,8 @@ import (
 func getRectangleCircleCollision(
 	rEnt ecscommon.EntityId,
 	cEnt ecscommon.EntityId,
-	rHit hitboxes.RectangleHitbox,
-	cHit hitboxes.CircleHitbox,
+	rHit collidershapes.RectangleShape,
+	cHit collidershapes.CircleShape,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	velocities map[ecscommon.EntityId]*components.Velocity,
 	parents map[ecscommon.EntityId]*components.Parent,
@@ -136,8 +136,8 @@ func getRectangleCircleCollision(
 func getRectangleRectangleCollision(
 	r1Ent ecscommon.EntityId,
 	r2Ent ecscommon.EntityId,
-	r1Hit hitboxes.RectangleHitbox,
-	r2Hit hitboxes.RectangleHitbox,
+	r1Hit collidershapes.RectangleShape,
+	r2Hit collidershapes.RectangleShape,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	velocities map[ecscommon.EntityId]*components.Velocity,
 	parents map[ecscommon.EntityId]*components.Parent,
@@ -263,8 +263,8 @@ func getRectangleRectangleCollision(
 func getCircleCircleCollision(
 	c1Ent ecscommon.EntityId,
 	c2Ent ecscommon.EntityId,
-	c1Hit hitboxes.CircleHitbox,
-	c2Hit hitboxes.CircleHitbox,
+	c1Hit collidershapes.CircleShape,
+	c2Hit collidershapes.CircleShape,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	velocities map[ecscommon.EntityId]*components.Velocity,
 	parents map[ecscommon.EntityId]*components.Parent,
@@ -353,13 +353,13 @@ func getCircleCircleCollision(
 func getRectanglePolygonCollision(
 	rEnt ecscommon.EntityId,
 	pEnt ecscommon.EntityId,
-	rHit hitboxes.RectangleHitbox,
-	pHit hitboxes.PolygonHitbox,
+	rHit collidershapes.RectangleShape,
+	pHit collidershapes.PolygonShape,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	velocities map[ecscommon.EntityId]*components.Velocity,
 	parents map[ecscommon.EntityId]*components.Parent,
 ) utils.Vec2 {
-	rectAsPolygon, err := hitboxes.NewPolygonHitbox(
+	rectAsPolygon, err := collidershapes.NewPolygonShape(
 		[]utils.Vec2{
 			utils.Vec2{X: rHit.GetAABB()[0].X, Y: rHit.GetAABB()[0].Y},
 			utils.Vec2{X: rHit.GetAABB()[1].X, Y: rHit.GetAABB()[0].Y},
@@ -380,8 +380,8 @@ func getRectanglePolygonCollision(
 func getCirclePolygonCollision(
 	cEnt ecscommon.EntityId,
 	pEnt ecscommon.EntityId,
-	cHit hitboxes.CircleHitbox,
-	pHit hitboxes.PolygonHitbox,
+	cHit collidershapes.CircleShape,
+	pHit collidershapes.PolygonShape,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	velocities map[ecscommon.EntityId]*components.Velocity,
 	parents map[ecscommon.EntityId]*components.Parent,
@@ -462,8 +462,8 @@ func getCirclePolygonCollision(
 func getPolygonPolygonCollision(
 	p1Ent ecscommon.EntityId,
 	p2Ent ecscommon.EntityId,
-	p1Hit hitboxes.PolygonHitbox,
-	p2Hit hitboxes.PolygonHitbox,
+	p1Hit collidershapes.PolygonShape,
+	p2Hit collidershapes.PolygonShape,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	velocities map[ecscommon.EntityId]*components.Velocity,
 	parents map[ecscommon.EntityId]*components.Parent,
@@ -536,7 +536,7 @@ func getPolygonPolygonCollision(
 	return utils.Vec2{X: 0, Y: 0}
 }
 
-func GetWorldPolygonVertices(p hitboxes.PolygonHitbox, worldPos utils.Vec2) []utils.Vec2 {
+func GetWorldPolygonVertices(p collidershapes.PolygonShape, worldPos utils.Vec2) []utils.Vec2 {
 	verts := p.GetVertices()
 	worldVerts := make([]utils.Vec2, len(verts))
 	for i, v := range verts {

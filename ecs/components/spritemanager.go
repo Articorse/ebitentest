@@ -113,26 +113,19 @@ func (*SpriteManager) GetWorldOffsetRotation(
 	transforms map[ecscommon.EntityId]*Transform,
 	parents map[ecscommon.EntityId]*Parent,
 ) (float64, error) {
-	pm := ParentManager{}
-
 	sprComp, ok := sprites[e]
 	if !ok {
 		return 0, fmt.Errorf("could not get sprite of entity %d", e)
 	}
 
-	parEntity := pm.GetEntity(e, parents)
-	if parEntity == -1 {
-		return sprComp.offsetRotation, nil
-	}
-
 	tm := TransformManager{}
 
-	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
+	WorldRot, err := tm.GetWorldRotation(e, transforms, parents)
 	if err != nil {
-		return 0, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
+		return 0, fmt.Errorf("error getting world rotation of parent entity %d: %v", e, err)
 	}
 
-	return pWorldRot + sprComp.offsetRotation, nil
+	return WorldRot + sprComp.offsetRotation, nil
 }
 
 func (*SpriteManager) GetLocalOffsetScale(

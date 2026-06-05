@@ -1,36 +1,36 @@
-package hitboxes
+package collidershapes
 
 import (
 	"ebittest/utils"
 	"fmt"
 )
 
-type CircleHitbox struct {
+type CircleShape struct {
 	radius float64
 	offset utils.Vec2
 	aabb   [2]utils.Vec2
 }
 
-func (CircleHitbox) isHitbox() {}
+func (CircleShape) isShape() {}
 
-func (x *CircleHitbox) GetAABB() [2]utils.Vec2 {
+func (x *CircleShape) GetAABB() [2]utils.Vec2 {
 	return x.aabb
 }
 
-func (x *CircleHitbox) GetOffset() utils.Vec2 {
+func (x *CircleShape) GetOffset() utils.Vec2 {
 	return x.offset
 }
 
-func (x *CircleHitbox) GetRadius() float64 {
+func (x *CircleShape) GetRadius() float64 {
 	return x.radius
 }
 
-func NewCircleHitbox(r float64, o utils.Vec2) (*CircleHitbox, error) {
+func NewCircleShape(r float64, o utils.Vec2) (*CircleShape, error) {
 	if r < 0 {
 		return nil, fmt.Errorf("radius must be non-negative")
 	}
 
-	return &CircleHitbox{
+	return &CircleShape{
 		radius: r,
 		offset: o,
 		aabb: [2]utils.Vec2{

@@ -3,7 +3,7 @@ package collisionsystem
 import (
 	"ebittest/data"
 	"ebittest/ecs/components"
-	"ebittest/ecs/components/hitboxes"
+	"ebittest/ecs/components/collidershapes"
 	"ebittest/ecs/ecscommon"
 	"ebittest/utils"
 	"log"
@@ -16,7 +16,7 @@ import (
 func DrawCollisions(
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2,
+	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]ecscommon.Collision,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
@@ -29,13 +29,13 @@ func DrawCollisions(
 			continue
 		}
 
-		for _, colVector := range cols {
+		for _, col := range cols {
 			vector.StrokeLine(
 				screen,
 				float32(aWorldPos.X-camera.X),
 				float32(aWorldPos.Y-camera.Y),
-				float32(aWorldPos.X+colVector.X*10-camera.X),
-				float32(aWorldPos.Y+colVector.Y*10-camera.Y),
+				float32(aWorldPos.X+col.Vector.X*10-camera.X),
+				float32(aWorldPos.Y+col.Vector.Y*10-camera.Y),
 				2,
 				data.Debug_CollisionVectorColor,
 				false,
@@ -49,14 +49,14 @@ func DrawCollisions(
 func DrawColliders(
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	colliders map[ecscommon.EntityId]*components.Collider,
+	colliders map[ecscommon.EntityId]*components.PhysicsCollider,
 	transforms map[ecscommon.EntityId]*components.Transform,
-	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]utils.Vec2,
+	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]ecscommon.Collision,
 	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
 	for e, _ := range colliders {
 		tm := components.TransformManager{}
-		cm := components.ColliderManager{}
+		cm := components.PhysicsColliderManager{}
 
 		worldPos, err := tm.GetWorldPos(e, transforms, parents)
 		if err != nil {
@@ -89,15 +89,15 @@ func DrawColliders(
 			}
 		}
 
-		hbs, err := cm.GetHitboxes(e, colliders)
+		colShapes, err := cm.GetShapes(e, colliders)
 		if err != nil {
-			log.Printf("Error getting hitboxes for entity %d: %v\n", e, err)
+			log.Printf("Error getting collider shapes for entity %d: %v\n", e, err)
 			continue
 		}
 
-		for _, hitbox := range hbs {
-			switch h := hitbox.(type) {
-			case *hitboxes.RectangleHitbox:
+		for _, shape := range colShapes {
+			switch h := shape.(type) {
+			case *collidershapes.RectangleShape:
 				verts := []utils.Vec2{
 					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
 					utils.Vec2{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[0].Y},
@@ -117,7 +117,7 @@ func DrawColliders(
 						false,
 					)
 				}
-			case *hitboxes.CircleHitbox:
+			case *collidershapes.CircleShape:
 				center := utils.Vec2{X: worldPos.X + h.GetOffset().X, Y: worldPos.Y + h.GetOffset().Y}
 				vector.StrokeCircle(
 					screen,
@@ -128,7 +128,7 @@ func DrawColliders(
 					lineColor,
 					false,
 				)
-			case *hitboxes.PolygonHitbox:
+			case *collidershapes.PolygonShape:
 				var verts []utils.Vec2
 				for _, v := range h.GetVertices() {
 					verts = append(verts, utils.Vec2{X: worldPos.X + v.X, Y: worldPos.Y + v.Y})
@@ -154,13 +154,13 @@ func DrawColliders(
 func DrawAABBs(
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	colliders map[ecscommon.EntityId]*components.Collider,
+	colliders map[ecscommon.EntityId]*components.PhysicsCollider,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	parents map[ecscommon.EntityId]*components.Parent,
 	aabbcollisions map[ecscommon.EntityId][]ecscommon.EntityId,
 ) error {
 	for e, _ := range colliders {
-		cm := components.ColliderManager{}
+		cm := components.PhysicsColliderManager{}
 		tm := components.TransformManager{}
 
 		worldPos, err := tm.GetWorldPos(e, transforms, parents)

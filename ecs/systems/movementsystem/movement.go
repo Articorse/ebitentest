@@ -7,6 +7,7 @@ import (
 	"ebittest/utils"
 	"fmt"
 	"log"
+	"math"
 )
 
 // Should be called before other systems modify Transforms or Velocities
@@ -34,7 +35,20 @@ func TickEarly(
 			return fmt.Errorf("error getting local velocity vector of entity %d: %v", e, err)
 		}
 
-		tm.SetLocalPos(e, localPos.Add(localVelVec), transforms)
+		localRot, err := tm.GetLocalRotation(e, transforms)
+		if err != nil {
+			return fmt.Errorf("error getting local rotation of entity %d: %v", e, err)
+		}
+
+		cos := math.Cos(localRot)
+		sin := math.Sin(localRot)
+
+		movementVector := utils.Vec2{
+			X: (localVelVec.X*cos - localVelVec.Y*sin),
+			Y: (localVelVec.X*sin + localVelVec.Y*cos),
+		}
+
+		tm.SetLocalPos(e, localPos.Add(movementVector), transforms)
 		vm.SetLocalVector(e, localVelVec.Multiply(drag), velocities)
 
 		if localVelVec.Length() < data.VelocityThreshold {
