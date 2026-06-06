@@ -6,6 +6,7 @@ import (
 	"ebittest/ecs/collidershapes"
 	"ebittest/ecs/common"
 	"ebittest/utils"
+	"image/color"
 	"log"
 	"slices"
 
@@ -15,6 +16,7 @@ import (
 
 func DrawCollisions(
 	screen *ebiten.Image,
+	color color.RGBA,
 	camera utils.Vec2,
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	world *ecs.World,
@@ -36,7 +38,7 @@ func DrawCollisions(
 				float32(aWorldPos.X+col.Vector.X*10-camera.X),
 				float32(aWorldPos.Y+col.Vector.Y*10-camera.Y),
 				2,
-				data.Debug_CollisionVectorColor,
+				color,
 				false,
 			)
 		}
@@ -47,6 +49,8 @@ func DrawCollisions(
 
 func DrawColliders(
 	colManager ecs.IColliderManager,
+	baseColor color.RGBA,
+	collidedColor color.RGBA,
 	screen *ebiten.Image,
 	camera utils.Vec2,
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
@@ -73,14 +77,14 @@ func DrawColliders(
 			continue
 		}
 
-		lineColor := data.Debug_ColliderColor
+		lineColor := baseColor
 
 		if _, ok := collisions[e]; ok {
-			lineColor = data.Debug_ColliderCollidedColor
+			lineColor = collidedColor
 		} else {
 			for _, c := range collisions {
 				if _, ok := c[e]; ok {
-					lineColor = data.Debug_ColliderCollidedColor
+					lineColor = collidedColor
 					break
 				}
 			}
@@ -150,6 +154,8 @@ func DrawColliders(
 
 func DrawAABBs(
 	colManager ecs.IColliderManager,
+	baseColor color.RGBA,
+	collidedColor color.RGBA,
 	screen *ebiten.Image,
 	camera utils.Vec2,
 	aabbcollisions map[common.EntityId][]common.EntityId,
@@ -176,7 +182,7 @@ func DrawAABBs(
 			continue
 		}
 
-		lineColor := data.Debug_AABBColliderColor
+		lineColor := baseColor
 
 		isColliding := false
 		if _, ok := aabbcollisions[e]; ok {
@@ -191,7 +197,7 @@ func DrawAABBs(
 		}
 
 		if isColliding {
-			lineColor = data.Debug_AABBColliderCollidedColor
+			lineColor = collidedColor
 		}
 
 		aabb, err := colManager.GetWorldPaddedAABB(e, world)

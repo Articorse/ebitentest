@@ -3,10 +3,15 @@ package ecs
 import (
 	"ebittest/ecs/common"
 	"fmt"
+	"maps"
 )
 
 type World struct {
-	nextEntity        common.EntityId
+	nextEntity common.EntityId
+
+	TickIdx   uint64
+	TickState common.TickState
+
 	Inputs            map[common.EntityId]*input
 	Parents           map[common.EntityId]*parent
 	Transforms        map[common.EntityId]*transform
@@ -25,7 +30,11 @@ type World struct {
 
 func NewWorld() *World {
 	return &World{
-		nextEntity:        0,
+		nextEntity: 0,
+
+		TickIdx:   0,
+		TickState: common.TickState{},
+
 		Inputs:            make(map[common.EntityId]*input),
 		Parents:           make(map[common.EntityId]*parent),
 		Transforms:        make(map[common.EntityId]*transform),
@@ -68,6 +77,45 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	if err != nil {
 		return fmt.Errorf("error removing entity %d from parent component of all entities: %v", e, err)
 	}
+
+	maps.DeleteFunc(x.TickState.AABBCollisions, func(k common.EntityId, v []common.EntityId) bool {
+		if k == e {
+			return true
+		}
+		for _, vE := range v {
+			if vE == e {
+				return true
+			}
+		}
+		return false
+	})
+
+	maps.DeleteFunc(x.TickState.CollisionGrid, func(k common.CellKey, v []common.EntityId) bool {
+		for _, vE := range v {
+			if vE == e {
+				return true
+			}
+		}
+		return false
+	})
+
+	maps.DeleteFunc(x.TickState.Collisions, func(k common.EntityId, v map[common.EntityId]common.Collision) bool {
+		for vE, _ := range v {
+			if vE == e {
+				return true
+			}
+		}
+		return false
+	})
+
+	maps.DeleteFunc(x.TickState.ProximateEntities, func(k common.EntityId, v []common.EntityId) bool {
+		for _, vE := range v {
+			if vE == e {
+				return true
+			}
+		}
+		return false
+	})
 
 	return nil
 }

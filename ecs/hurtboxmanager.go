@@ -11,7 +11,7 @@ type HurtboxColliderManager struct {
 }
 
 func NewHurtboxColliderComponent(
-	shapes []collidershapes.Shape,
+	shapes ...collidershapes.Shape,
 ) *hurtboxCollider {
 	return &hurtboxCollider{baseCollider: newBaseCollider(shapes)}
 }

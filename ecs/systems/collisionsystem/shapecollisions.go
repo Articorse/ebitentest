@@ -280,33 +280,37 @@ func getCircleCircleCollision(
 	center1 := utils.Vec2{X: c1WorldPos.X + c1Hit.GetOffset().X, Y: c1WorldPos.Y + c1Hit.GetOffset().Y}
 	center2 := utils.Vec2{X: c2WorldPos.X + c2Hit.GetOffset().X, Y: c2WorldPos.Y + c2Hit.GetOffset().Y}
 
-	c1Vel, err := vm.GetLocalVector(c1Ent, world.Velocities)
+	c1Vel, err := vm.GetWorldVector(c1Ent, world.Velocities, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting velocity for circle entity %d: %v\n", c1Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	c2Vel, err := vm.GetLocalVector(c2Ent, world.Velocities)
+	c2Vel, err := vm.GetWorldVector(c2Ent, world.Velocities, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting velocity for circle entity %d: %v\n", c2Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
 
 	relVel := c1Vel.Subtract(c2Vel)
+	r := c1Hit.GetRadius() + c2Hit.GetRadius()
+
+	// 1. Check for initial overlap (resolves static overlaps and handles relVel == 0)
+	initialVector := center2.Subtract(center1)
+	initialDist := initialVector.Length()
+	if initialDist < r {
+		penetrationDepth := r - initialDist
+		if initialDist != 0 {
+			return initialVector.Normalized().Multiply(penetrationDepth)
+		}
+		return utils.Vec2{X: penetrationDepth, Y: 0}
+	}
 
 	if relVel.IsZero() {
-		collisionVector := center2.Subtract(center1)
-		distance := collisionVector.Length()
-		penetrationDepth := c1Hit.GetRadius() + c2Hit.GetRadius() - distance
-		if penetrationDepth > 0 && distance != 0 {
-			return collisionVector.Normalized().Multiply(penetrationDepth)
-		}
 		return utils.Vec2{X: 0, Y: 0}
 	}
 
-	// CCD: Sweep circle1 along relVel against circle2
-	s := center1
-	f := s.Subtract(center2)
-	r := c1Hit.GetRadius() + c2Hit.GetRadius()
+	// 2. CCD: Sweep circle1 along relVel against circle2
+	f := center1.Subtract(center2)
 
 	a := relVel.Dot(relVel)
 	b := 2 * f.Dot(relVel)
@@ -317,30 +321,30 @@ func getCircleCircleCollision(
 		return utils.Vec2{X: 0, Y: 0}
 	}
 	sqrtDisc := math.Sqrt(discriminant)
+
+	// Since we handled initial overlap (c < 0), t1 is guaranteed to be the entry point
 	t1 := (-b - sqrtDisc) / (2 * a)
-	t2 := (-b + sqrtDisc) / (2 * a)
 
-	var t float64 = -1
-	if t1 >= 0 && t1 <= 1 {
-		t = t1
-	} else if t2 >= 0 && t2 <= 1 {
-		t = t2
-	}
-	if t < 0 {
+	if t1 < 0 || t1 > 1 {
 		return utils.Vec2{X: 0, Y: 0}
 	}
 
-	contact1 := s.Add(relVel.Multiply(t))
-	contact2 := center2
-	collisionNormal := contact2.Subtract(contact1)
-	distance := collisionNormal.Length()
-	if distance == 0 {
+	contact1 := center1.Add(relVel.Multiply(t1))
+	collisionNormal := center2.Subtract(contact1)
+	if collisionNormal.Length() == 0 {
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	penetrationDepth := r - distance
+	normal := collisionNormal.Normalized()
+
+	// Penetration depth is the amount of movement remaining AFTER contact,
+	// projected onto the contact normal. This handles pass-through correctly too.
+	overshoot := relVel.Multiply(1 - t1)
+	penetrationDepth := overshoot.Dot(normal)
+
 	if penetrationDepth > 0 {
-		return collisionNormal.Normalized().Multiply(penetrationDepth)
+		return normal.Multiply(penetrationDepth)
 	}
+
 	return utils.Vec2{X: 0, Y: 0}
 }
 

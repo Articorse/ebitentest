@@ -5,12 +5,11 @@ import (
 	"ebittest/ecs"
 	"ebittest/utils"
 	"fmt"
-	"log"
 	"math"
 )
 
 // Should be called before other systems modify Transforms or Velocities
-func TickEarly(world *ecs.World) error {
+func Tick(world *ecs.World) error {
 	tm := ecs.TransformManager{}
 	vm := ecs.VelocityManager{}
 
@@ -48,27 +47,6 @@ func TickEarly(world *ecs.World) error {
 
 		if localVelVec.Length() < data.VelocityThreshold {
 			vm.SetLocalVector(e, utils.Vec2{X: 0, Y: 0}, world.Velocities)
-		}
-	}
-
-	return nil
-}
-
-// Should be called after other systems modify Transforms or Velocities
-func TickLate(world *ecs.World) error {
-	tm := ecs.TransformManager{}
-
-	for e, _ := range world.Transforms {
-		localPrevPos, err := tm.GetLocalPos(e, world.Transforms)
-		if err != nil {
-			log.Printf("error getting local previous position of root entity: %v\n", err)
-			continue
-		}
-
-		err = tm.SetLocalPrevPos(e, localPrevPos, world.Transforms)
-		if err != nil {
-			log.Printf("error setting local position of root entity: %v\n", err)
-			continue
 		}
 	}
 

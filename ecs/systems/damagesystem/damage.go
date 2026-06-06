@@ -6,6 +6,28 @@ import (
 	"log"
 )
 
+func Tick(world *ecs.World) {
+	hpm := ecs.HitpointsManager{}
+
+	for e, _ := range world.Hitpoints {
+		invulCur, err := hpm.GetInvulCurrent(e, world.Hitpoints)
+		if err != nil {
+			log.Printf("Error getting invulnerability current for entity %d: %v\n", e, err)
+			continue
+		}
+
+		if invulCur == 0 {
+			continue
+		}
+
+		err = hpm.TickInvul(e, world.Hitpoints)
+		if err != nil {
+			log.Printf("Error ticking invulnerability for entity %d: %v\n", e, err)
+			continue
+		}
+	}
+}
+
 func DealContactDamage(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	world *ecs.World,
@@ -14,35 +36,47 @@ func DealContactDamage(
 	cdm := ecs.ContactDamageManager{}
 	hpm := ecs.HitpointsManager{}
 
-	for eA, cols := range collisions {
-		for eB, c := range cols {
-			var hitE common.EntityId
-			var dmgE common.EntityId
-
-			hitE = eA
-			_, err := hpm.GetCurrent(eA, world.Hitpoints)
+	for dmgE, cols := range collisions {
+		for hitE, c := range cols {
+			isInvul, err := hpm.IsInvul(hitE, world.Hitpoints)
 			if err != nil {
-				_, err = hpm.GetCurrent(eB, world.Hitpoints)
-				if err != nil {
-					hitE = eB
-				} else {
-					continue
-				}
+				log.Printf("Error checking invulnerability for entity %d: %v\n", hitE, err)
+				continue
 			}
 
-			dmgE = eA
-			damageTiers, _ := cdm.GetDamageTiers(eA, world.ContactDamages)
-			if damageTiers == nil {
-				damageTiers, _ = cdm.GetDamageTiers(eB, world.ContactDamages)
-				dmgE = eB
+			if isInvul {
+				continue
 			}
-			if damageTiers == nil {
+
+			damageTiers, err := cdm.GetDamageTiers(dmgE, world.ContactDamages)
+			if err != nil {
+				log.Printf("Error getting damage tiers for entity %d: %v\n", dmgE, err)
+				continue
+			}
+
+			if hitE == dmgE {
 				continue
 			}
 
 			knockback, err := cdm.GetKnockback(dmgE, world.ContactDamages)
 			if err != nil {
 				log.Printf("Error getting knockback for entity %d: %v\n", dmgE, err)
+				continue
+			}
+
+			dmgVelVector, err := vm.GetWorldVector(dmgE, world.Velocities, world.Transforms, world.Parents)
+			if err != nil {
+				log.Printf("Error getting world velocity vector for entity %d: %v\n", dmgE, err)
+				continue
+			}
+
+			dmgEForceNorm := dmgVelVector.Normalized()
+			colForceNorm := c.Vector.Normalized()
+			finalForceNorm := dmgEForceNorm.Multiply(0.5).Add(colForceNorm.Multiply(0.5))
+
+			err = vm.SetWorldVector(hitE, finalForceNorm.Multiply(knockback), world.Velocities, world.Transforms, world.Parents)
+			if err != nil {
+				log.Printf("Error applying knockback to entity %d: %v\n", hitE, err)
 				continue
 			}
 
@@ -53,16 +87,7 @@ func DealContactDamage(
 			// 	continue
 			// }
 
-			var shapeIdx int
-			switch dmgE {
-			case eA:
-				shapeIdx = c.AShapeIdx
-			case eB:
-				shapeIdx = c.BShapeIdx
-			default:
-				log.Printf("Error determining collider shape index for entities %d and %d\n", eA, eB)
-				continue
-			}
+			shapeIdx := c.BShapeIdx
 
 			if len(damageTiers) <= shapeIdx {
 				log.Printf("Error: collider shape index %d out of range for damage tiers of entity %d\n", shapeIdx, dmgE)
@@ -75,9 +100,17 @@ func DealContactDamage(
 				continue
 			}
 
-			err = world.RemoveEntity(dmgE)
+			dieOnContact, err := cdm.GetDieOnContact(dmgE, world.ContactDamages)
 			if err != nil {
-				log.Printf("Error removing entity %d: %v\n", dmgE, err)
+				log.Printf("Error getting die on contact for entity %d: %v\n", dmgE, err)
+				continue
+			}
+
+			if dieOnContact {
+				err = world.RemoveEntity(dmgE)
+				if err != nil {
+					log.Printf("Error removing entity %d: %v\n", dmgE, err)
+				}
 			}
 
 			if dead {
@@ -86,12 +119,6 @@ func DealContactDamage(
 				if err != nil {
 					log.Printf("Error removing entity %d: %v\n", hitE, err)
 				}
-			}
-
-			err = vm.AddForce(hitE, c.Vector.Normalized().Multiply(knockback), world.Velocities)
-			if err != nil {
-				log.Printf("Error applying knockback to entity %d: %v\n", hitE, err)
-				continue
 			}
 		}
 	}

@@ -37,6 +37,7 @@ func ResolvePhysicsCollisions(
 			var staticLocalVelVec utils.Vec2
 
 			if aColType == ecs.Collider_Mob && bColType == ecs.Collider_Static {
+				c.Vector = c.Vector.Multiply(-1)
 				mobEnt = eA
 				mobLocalPos, err = tm.GetLocalPos(eA, world.Transforms)
 				if err != nil {
@@ -54,7 +55,6 @@ func ResolvePhysicsCollisions(
 					continue
 				}
 			} else if bColType == ecs.Collider_Mob && aColType == ecs.Collider_Static {
-				c.Vector = c.Vector.Multiply(-1)
 				mobEnt = eB
 				mobLocalPos, err = tm.GetLocalPos(eB, world.Transforms)
 				if err != nil {

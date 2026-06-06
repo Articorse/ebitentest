@@ -49,27 +49,28 @@ func (*VelocityManager) GetWorldVector(
 		return utils.Vec2{}, fmt.Errorf("could not get velocity component of entity %d", e)
 	}
 
+	parVelVectorOffset := utils.Vec2{}
+
 	parEntity := pm.GetEntity(e, parents)
-	if parEntity == -1 {
-		return velComp.vector, nil
+	if parEntity != -1 {
+		var err error
+		parVelVectorOffset, err = vm.GetWorldVector(parEntity, velocities, transforms, parents)
+		if err != nil {
+			return utils.Vec2{}, fmt.Errorf("error getting world velocity vector of parent entity %d: %v", parEntity, ok)
+		}
 	}
 
-	pWorldVelVec, err := vm.GetWorldVector(parEntity, velocities, transforms, parents)
+	worldRot, err := tm.GetWorldRotation(e, transforms, parents)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world velocity vector of parent entity %d: %v", parEntity, ok)
+		return utils.Vec2{}, fmt.Errorf("error getting world rotation of entity %d: %v", parEntity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
-	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
-	}
-
-	cos := math.Cos(pWorldRot)
-	sin := math.Sin(pWorldRot)
+	cos := math.Cos(worldRot)
+	sin := math.Sin(worldRot)
 
 	return utils.Vec2{
-		X: pWorldVelVec.X + (velComp.vector.X*cos - velComp.vector.Y*sin),
-		Y: pWorldVelVec.Y + (velComp.vector.X*sin + velComp.vector.Y*cos),
+		X: parVelVectorOffset.X + (velComp.vector.X*cos - velComp.vector.Y*sin),
+		Y: parVelVectorOffset.Y + (velComp.vector.X*sin + velComp.vector.Y*cos),
 	}, nil
 }
 

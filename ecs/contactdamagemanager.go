@@ -9,13 +9,15 @@ type ContactDamageManager struct{}
 
 func NewContactDamageComponent(
 	source common.EntityId,
-	damageTiers []int64,
 	knockback float64,
+	dieOnContact bool,
+	damageTiers ...int64,
 ) *contactDamage {
 	return &contactDamage{
-		source:      source,
-		damageTiers: damageTiers,
-		knockback:   knockback,
+		source:       source,
+		knockback:    knockback,
+		dieOnContact: dieOnContact,
+		damageTiers:  damageTiers,
 	}
 }
 
@@ -53,4 +55,16 @@ func (*ContactDamageManager) GetKnockback(
 	}
 
 	return cdComp.knockback, nil
+}
+
+func (*ContactDamageManager) GetDieOnContact(
+	e common.EntityId,
+	contactDamages map[common.EntityId]*contactDamage,
+) (bool, error) {
+	cdComp, ok := contactDamages[e]
+	if !ok {
+		return false, fmt.Errorf("could not get contact damage component of entity %d", e)
+	}
+
+	return cdComp.dieOnContact, nil
 }

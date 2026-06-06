@@ -16,11 +16,28 @@ func GetCollisions(
 	world *ecs.World,
 ) (map[common.EntityId]map[common.EntityId]common.Collision, error) {
 	collisions := make(map[common.EntityId]map[common.EntityId]common.Collision)
-	tm := ecs.TransformManager{}
+	for e1, colEntities := range potentialCollisions {
+		eA := common.EntityId(-1)
+		eB := common.EntityId(-1)
 
-	for eA, colEntities := range potentialCollisions {
-		for _, eB := range colEntities {
-			if eA == eB {
+		if aColManager.HasCollider(e1, world) {
+			eA = e1
+		} else if bColManager.HasCollider(e1, world) {
+			eB = e1
+		}
+
+		for _, e2 := range colEntities {
+			if e1 == e2 {
+				continue
+			}
+
+			if bColManager.HasCollider(e2, world) {
+				eB = e2
+			} else if aColManager.HasCollider(e2, world) {
+				eA = e2
+			}
+
+			if eA == -1 || eB == -1 {
 				continue
 			}
 
@@ -44,8 +61,6 @@ func GetCollisions(
 
 			collisionFound := false
 			var collisionVector utils.Vec2
-			var aCollidedShapes collidershapes.Shape
-			var bCollidedShapes collidershapes.Shape
 			var aCollidedIdx int
 			var bCollidedIdx int
 
@@ -59,8 +74,6 @@ func GetCollisions(
 						break
 					}
 
-					aCollidedShapes = aColShape
-					bCollidedShapes = bColShape
 					aCollidedIdx = aColShapeIdx
 					bCollidedIdx = bColShapeIdx
 
@@ -114,23 +127,6 @@ func GetCollisions(
 				}
 			}
 
-			aWorldPrevPos, err := tm.GetWorldPrevPos(eA, world.Transforms, world.Parents)
-			if err != nil {
-				log.Printf("Error getting world previous position for entity %d: %v\n", eA, err)
-				continue
-			}
-
-			bWorldPrevPos, err := tm.GetWorldPrevPos(eB, world.Transforms, world.Parents)
-			if err != nil {
-				log.Printf("Error getting world previous position for entity %d: %v\n", eB, err)
-				continue
-			}
-
-			prevRelativePosVector := aWorldPrevPos.Add(aCollidedShapes.GetOffset()).Subtract(bWorldPrevPos.Add(bCollidedShapes.GetOffset()))
-			if prevRelativePosVector.Dot(collisionVector) < 0 {
-				collisionVector = collisionVector.Multiply(-1)
-			}
-
 			if !collisionVector.IsZero() {
 				if _, ok := collisions[eA]; !ok {
 					collisions[eA] = make(map[common.EntityId]common.Collision)
@@ -147,6 +143,41 @@ func GetCollisions(
 	return collisions, nil
 }
 
+func GetMirrorAABBCollisions(
+	aColManager ecs.IColliderManager,
+	bColManager ecs.IColliderManager,
+	proximateEntities map[common.EntityId][]common.EntityId,
+	world *ecs.World,
+) (map[common.EntityId][]common.EntityId, error) {
+	allCollisions := make(map[common.EntityId][]common.EntityId)
+
+	aCollisions, err := GetAABBCollisions(aColManager, bColManager, proximateEntities, world)
+	if err != nil {
+		return nil, err
+	}
+
+	bCollisions, err := GetAABBCollisions(bColManager, aColManager, proximateEntities, world)
+	if err != nil {
+		return nil, err
+	}
+
+	for eA, collidedEntities := range aCollisions {
+		if _, ok := allCollisions[eA]; !ok {
+			allCollisions[eA] = []common.EntityId{}
+		}
+		allCollisions[eA] = append(allCollisions[eA], collidedEntities...)
+	}
+
+	for eB, collidedEntities := range bCollisions {
+		if _, ok := allCollisions[eB]; !ok {
+			allCollisions[eB] = []common.EntityId{}
+		}
+		allCollisions[eB] = append(allCollisions[eB], collidedEntities...)
+	}
+
+	return allCollisions, nil
+}
+
 func GetAABBCollisions(
 	aColManager ecs.IColliderManager,
 	bColManager ecs.IColliderManager,
@@ -156,27 +187,46 @@ func GetAABBCollisions(
 	collisions := make(map[common.EntityId][]common.EntityId)
 	clm := ecs.CollisionLayersManager{}
 
-	for eA, colEntities := range proximateEntities {
-		aLayers, err := clm.GetLayers(eA, world.CollisionLayers)
-		if err != nil {
-			log.Printf("Error getting collider layers for entity %d: %v\n", eA, err)
-			continue
+	for e1, colEntities := range proximateEntities {
+		eA := common.EntityId(-1)
+		eB := common.EntityId(-1)
+
+		if aColManager.HasCollider(e1, world) {
+			eA = e1
+		} else if bColManager.HasCollider(e1, world) {
+			eB = e1
 		}
 
-		aMask, err := clm.GetMask(eA, world.CollisionLayers)
-		if err != nil {
-			log.Printf("Error getting collider mask for entity %d: %v\n", eA, err)
-			continue
-		}
+		for _, e2 := range colEntities {
+			if e1 == e2 {
+				continue
+			}
 
-		aAABB, err := aColManager.GetWorldPaddedAABB(eA, world)
-		if err != nil {
-			log.Printf("Error getting AABB for entity %d: %v\n", eA, err)
-			continue
-		}
+			if bColManager.HasCollider(e2, world) {
+				eB = e2
+			} else if aColManager.HasCollider(e2, world) {
+				eA = e2
+			}
 
-		for _, eB := range colEntities {
-			if eA == eB {
+			if eA == -1 || eB == -1 {
+				continue
+			}
+
+			aLayers, err := clm.GetLayers(eA, world.CollisionLayers)
+			if err != nil {
+				log.Printf("Error getting collider layers for entity %d: %v\n", eA, err)
+				continue
+			}
+
+			aMask, err := clm.GetMask(eA, world.CollisionLayers)
+			if err != nil {
+				log.Printf("Error getting collider mask for entity %d: %v\n", eA, err)
+				continue
+			}
+
+			aAABB, err := aColManager.GetWorldPaddedAABB(eA, world)
+			if err != nil {
+				log.Printf("Error getting AABB for entity %d: %v\n", eA, err)
 				continue
 			}
 

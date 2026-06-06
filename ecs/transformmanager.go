@@ -10,7 +10,7 @@ import (
 type TransformManager struct{}
 
 func NewTransformComponent(pos utils.Vec2, scale float64, rotation float64) *transform {
-	return &transform{pos: pos, prevPos: pos, scale: scale, rotation: rotation}
+	return &transform{pos: pos, scale: scale, rotation: rotation}
 }
 
 func (*TransformManager) GetLocalPos(
@@ -59,55 +59,6 @@ func (*TransformManager) GetWorldPos(
 	return utils.Vec2{
 		X: pWorldPos.X + (traComp.pos.X*cos - traComp.pos.Y*sin),
 		Y: pWorldPos.Y + (traComp.pos.X*sin + traComp.pos.Y*cos),
-	}, nil
-}
-
-func (*TransformManager) GetLocalPrevPos(
-	e common.EntityId,
-	transforms map[common.EntityId]*transform,
-) (utils.Vec2, error) {
-	traComp, ok := transforms[e]
-	if !ok {
-		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d", e)
-	}
-
-	return traComp.prevPos, nil
-}
-
-func (*TransformManager) GetWorldPrevPos(
-	e common.EntityId,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
-) (utils.Vec2, error) {
-	pm := ParentManager{}
-	tm := TransformManager{}
-
-	traComp, ok := transforms[e]
-	if !ok {
-		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d", e)
-	}
-
-	parEntity := pm.GetEntity(e, parents)
-	if parEntity == -1 {
-		return traComp.prevPos, nil
-	}
-
-	pWorldPos, err := tm.GetWorldPrevPos(parEntity, transforms, parents)
-	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, ok)
-	}
-
-	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
-	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
-	}
-
-	cos := math.Cos(pWorldRot)
-	sin := math.Sin(pWorldRot)
-
-	return utils.Vec2{
-		X: pWorldPos.X + (traComp.prevPos.X*cos - traComp.prevPos.Y*sin),
-		Y: pWorldPos.Y + (traComp.prevPos.X*sin + traComp.prevPos.Y*cos),
 	}, nil
 }
 
@@ -237,62 +188,6 @@ func (*TransformManager) SetWorldPos(
 	traComp.pos = utils.Vec2{
 		X: (traComp.pos.X*cos - traComp.pos.Y*sin) - pWorldPos.X,
 		Y: (traComp.pos.X*sin + traComp.pos.Y*cos) - pWorldPos.Y,
-	}
-
-	return nil
-}
-
-func (*TransformManager) SetLocalPrevPos(
-	e common.EntityId,
-	prevPos utils.Vec2,
-	transforms map[common.EntityId]*transform,
-) error {
-	traComp, ok := transforms[e]
-	if !ok {
-		return fmt.Errorf("could not get transform of entity %d", e)
-	}
-
-	traComp.prevPos = prevPos
-	return nil
-}
-
-func (*TransformManager) SetWorldPrevPos(
-	e common.EntityId,
-	pos utils.Vec2,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
-) error {
-	pm := ParentManager{}
-	tm := TransformManager{}
-
-	traComp, ok := transforms[e]
-	if !ok {
-		return fmt.Errorf("could not get transform of entity %d", e)
-	}
-
-	parEntity := pm.GetEntity(e, parents)
-	if parEntity == -1 {
-		traComp.prevPos = pos
-		return nil
-	}
-
-	pWorldPrevPos, err := tm.GetWorldPrevPos(parEntity, transforms, parents)
-	if err != nil {
-		return fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, err)
-	}
-
-	// TODO: Check if I might not need to add a PrevRotation to Transform
-	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
-	if err != nil {
-		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
-	}
-
-	cos := math.Cos(pWorldRot)
-	sin := math.Sin(pWorldRot)
-
-	traComp.pos = utils.Vec2{
-		X: (traComp.pos.X*cos - traComp.pos.Y*sin) - pWorldPrevPos.X,
-		Y: (traComp.pos.X*sin + traComp.pos.Y*cos) - pWorldPrevPos.Y,
 	}
 
 	return nil
