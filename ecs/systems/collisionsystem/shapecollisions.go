@@ -1,32 +1,30 @@
 package collisionsystem
 
 import (
-	"ebittest/ecs/components"
-	"ebittest/ecs/components/collidershapes"
-	"ebittest/ecs/ecscommon"
+	"ebittest/ecs"
+	"ebittest/ecs/collidershapes"
+	"ebittest/ecs/common"
 	"ebittest/utils"
 	"log"
 	"math"
 )
 
 func getRectangleCircleCollision(
-	rEnt ecscommon.EntityId,
-	cEnt ecscommon.EntityId,
+	rEnt common.EntityId,
+	cEnt common.EntityId,
 	rHit collidershapes.RectangleShape,
 	cHit collidershapes.CircleShape,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	velocities map[ecscommon.EntityId]*components.Velocity,
-	parents map[ecscommon.EntityId]*components.Parent,
+	world *ecs.World,
 ) utils.Vec2 {
-	tm := components.TransformManager{}
-	vm := components.VelocityManager{}
+	tm := ecs.TransformManager{}
+	vm := ecs.VelocityManager{}
 
-	cWorldPos, err := tm.GetWorldPos(cEnt, transforms, parents)
+	cWorldPos, err := tm.GetWorldPos(cEnt, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for circle entity %d: %v\n", cEnt, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	rWorldPos, err := tm.GetWorldPos(rEnt, transforms, parents)
+	rWorldPos, err := tm.GetWorldPos(rEnt, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for rectangle entity %d: %v\n", rEnt, err)
 		return utils.Vec2{X: 0, Y: 0}
@@ -36,12 +34,12 @@ func getRectangleCircleCollision(
 	rectMin := utils.Vec2{X: rWorldPos.X + rHit.GetAABB()[0].X, Y: rWorldPos.Y + rHit.GetAABB()[0].Y}
 	rectMax := utils.Vec2{X: rWorldPos.X + rHit.GetAABB()[1].X, Y: rWorldPos.Y + rHit.GetAABB()[1].Y}
 
-	cVel, err := vm.GetLocalVector(cEnt, velocities)
+	cVel, err := vm.GetLocalVector(cEnt, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for circle entity %d: %v\n", cEnt, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	rVel, err := vm.GetLocalVector(rEnt, velocities)
+	rVel, err := vm.GetLocalVector(rEnt, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for rectangle entity %d: %v\n", rEnt, err)
 		return utils.Vec2{X: 0, Y: 0}
@@ -134,23 +132,21 @@ func getRectangleCircleCollision(
 }
 
 func getRectangleRectangleCollision(
-	r1Ent ecscommon.EntityId,
-	r2Ent ecscommon.EntityId,
+	r1Ent common.EntityId,
+	r2Ent common.EntityId,
 	r1Hit collidershapes.RectangleShape,
 	r2Hit collidershapes.RectangleShape,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	velocities map[ecscommon.EntityId]*components.Velocity,
-	parents map[ecscommon.EntityId]*components.Parent,
+	world *ecs.World,
 ) utils.Vec2 {
-	tm := components.TransformManager{}
-	vm := components.VelocityManager{}
+	tm := ecs.TransformManager{}
+	vm := ecs.VelocityManager{}
 
-	r1WorldPos, err := tm.GetWorldPos(r1Ent, transforms, parents)
+	r1WorldPos, err := tm.GetWorldPos(r1Ent, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for rectangle entity %d: %v\n", r1Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	r2WorldPos, err := tm.GetWorldPos(r2Ent, transforms, parents)
+	r2WorldPos, err := tm.GetWorldPos(r2Ent, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for rectangle entity %d: %v\n", r2Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
@@ -161,12 +157,12 @@ func getRectangleRectangleCollision(
 	r2Min := utils.Vec2{X: r2WorldPos.X + r2Hit.GetAABB()[0].X, Y: r2WorldPos.Y + r2Hit.GetAABB()[0].Y}
 	r2Max := utils.Vec2{X: r2WorldPos.X + r2Hit.GetAABB()[1].X, Y: r2WorldPos.Y + r2Hit.GetAABB()[1].Y}
 
-	r1Vel, err := vm.GetLocalVector(r1Ent, velocities)
+	r1Vel, err := vm.GetLocalVector(r1Ent, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for rectangle entity %d: %v\n", r1Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	r2Vel, err := vm.GetLocalVector(r2Ent, velocities)
+	r2Vel, err := vm.GetLocalVector(r2Ent, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for rectangle entity %d: %v\n", r2Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
@@ -261,23 +257,21 @@ func getRectangleRectangleCollision(
 }
 
 func getCircleCircleCollision(
-	c1Ent ecscommon.EntityId,
-	c2Ent ecscommon.EntityId,
+	c1Ent common.EntityId,
+	c2Ent common.EntityId,
 	c1Hit collidershapes.CircleShape,
 	c2Hit collidershapes.CircleShape,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	velocities map[ecscommon.EntityId]*components.Velocity,
-	parents map[ecscommon.EntityId]*components.Parent,
+	world *ecs.World,
 ) utils.Vec2 {
-	tm := components.TransformManager{}
-	vm := components.VelocityManager{}
+	tm := ecs.TransformManager{}
+	vm := ecs.VelocityManager{}
 
-	c1WorldPos, err := tm.GetWorldPos(c1Ent, transforms, parents)
+	c1WorldPos, err := tm.GetWorldPos(c1Ent, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for circle entity %d: %v\n", c1Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	c2WorldPos, err := tm.GetWorldPos(c2Ent, transforms, parents)
+	c2WorldPos, err := tm.GetWorldPos(c2Ent, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for circle entity %d: %v\n", c2Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
@@ -286,12 +280,12 @@ func getCircleCircleCollision(
 	center1 := utils.Vec2{X: c1WorldPos.X + c1Hit.GetOffset().X, Y: c1WorldPos.Y + c1Hit.GetOffset().Y}
 	center2 := utils.Vec2{X: c2WorldPos.X + c2Hit.GetOffset().X, Y: c2WorldPos.Y + c2Hit.GetOffset().Y}
 
-	c1Vel, err := vm.GetLocalVector(c1Ent, velocities)
+	c1Vel, err := vm.GetLocalVector(c1Ent, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for circle entity %d: %v\n", c1Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	c2Vel, err := vm.GetLocalVector(c2Ent, velocities)
+	c2Vel, err := vm.GetLocalVector(c2Ent, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for circle entity %d: %v\n", c2Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
@@ -351,13 +345,11 @@ func getCircleCircleCollision(
 }
 
 func getRectanglePolygonCollision(
-	rEnt ecscommon.EntityId,
-	pEnt ecscommon.EntityId,
+	rEnt common.EntityId,
+	pEnt common.EntityId,
 	rHit collidershapes.RectangleShape,
 	pHit collidershapes.PolygonShape,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	velocities map[ecscommon.EntityId]*components.Velocity,
-	parents map[ecscommon.EntityId]*components.Parent,
+	world *ecs.World,
 ) utils.Vec2 {
 	rectAsPolygon, err := collidershapes.NewPolygonShape(
 		[]utils.Vec2{
@@ -374,27 +366,25 @@ func getRectanglePolygonCollision(
 		return utils.Vec2{X: 0, Y: 0}
 	}
 
-	return getPolygonPolygonCollision(rEnt, pEnt, *rectAsPolygon, pHit, transforms, velocities, parents)
+	return getPolygonPolygonCollision(rEnt, pEnt, *rectAsPolygon, pHit, world)
 }
 
 func getCirclePolygonCollision(
-	cEnt ecscommon.EntityId,
-	pEnt ecscommon.EntityId,
+	cEnt common.EntityId,
+	pEnt common.EntityId,
 	cHit collidershapes.CircleShape,
 	pHit collidershapes.PolygonShape,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	velocities map[ecscommon.EntityId]*components.Velocity,
-	parents map[ecscommon.EntityId]*components.Parent,
+	world *ecs.World,
 ) utils.Vec2 {
-	tm := components.TransformManager{}
-	vm := components.VelocityManager{}
+	tm := ecs.TransformManager{}
+	vm := ecs.VelocityManager{}
 
-	cWorldPos, err := tm.GetWorldPos(cEnt, transforms, parents)
+	cWorldPos, err := tm.GetWorldPos(cEnt, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for circle entity %d: %v\n", cEnt, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	pWorldPos, err := tm.GetWorldPos(pEnt, transforms, parents)
+	pWorldPos, err := tm.GetWorldPos(pEnt, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for polygon entity %d: %v\n", pEnt, err)
 		return utils.Vec2{X: 0, Y: 0}
@@ -403,12 +393,12 @@ func getCirclePolygonCollision(
 	circleStart := utils.Vec2{X: cWorldPos.X + cHit.GetOffset().X, Y: cWorldPos.Y + cHit.GetOffset().Y}
 	polyVerts := GetWorldPolygonVertices(pHit, pWorldPos)
 
-	cVel, err := vm.GetLocalVector(cEnt, velocities)
+	cVel, err := vm.GetLocalVector(cEnt, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for circle entity %d: %v\n", cEnt, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	pVel, err := vm.GetLocalVector(pEnt, velocities)
+	pVel, err := vm.GetLocalVector(pEnt, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for polygon entity %d: %v\n", pEnt, err)
 		return utils.Vec2{X: 0, Y: 0}
@@ -460,24 +450,22 @@ func getCirclePolygonCollision(
 }
 
 func getPolygonPolygonCollision(
-	p1Ent ecscommon.EntityId,
-	p2Ent ecscommon.EntityId,
+	p1Ent common.EntityId,
+	p2Ent common.EntityId,
 	p1Hit collidershapes.PolygonShape,
 	p2Hit collidershapes.PolygonShape,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	velocities map[ecscommon.EntityId]*components.Velocity,
-	parents map[ecscommon.EntityId]*components.Parent,
+	world *ecs.World,
 ) utils.Vec2 {
-	tm := components.TransformManager{}
-	vm := components.VelocityManager{}
+	tm := ecs.TransformManager{}
+	vm := ecs.VelocityManager{}
 
 	// Get world positions and transformed vertices
-	p1WorldPos, err := tm.GetWorldPos(p1Ent, transforms, parents)
+	p1WorldPos, err := tm.GetWorldPos(p1Ent, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for polygon entity %d: %v\n", p1Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	p2WorldPos, err := tm.GetWorldPos(p2Ent, transforms, parents)
+	p2WorldPos, err := tm.GetWorldPos(p2Ent, world.Transforms, world.Parents)
 	if err != nil {
 		log.Printf("Error getting world position for polygon entity %d: %v\n", p2Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
@@ -486,12 +474,12 @@ func getPolygonPolygonCollision(
 	p2Verts := GetWorldPolygonVertices(p2Hit, p2WorldPos)
 
 	// Get velocities
-	p1Vel, err := vm.GetLocalVector(p1Ent, velocities)
+	p1Vel, err := vm.GetLocalVector(p1Ent, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for polygon entity %d: %v\n", p1Ent, err)
 		return utils.Vec2{X: 0, Y: 0}
 	}
-	p2Vel, err := vm.GetLocalVector(p2Ent, velocities)
+	p2Vel, err := vm.GetLocalVector(p2Ent, world.Velocities)
 	if err != nil {
 		log.Printf("Error getting velocity for polygon entity %d: %v\n", p2Ent, err)
 		return utils.Vec2{X: 0, Y: 0}

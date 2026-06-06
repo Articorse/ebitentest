@@ -2,8 +2,7 @@ package inputsystem
 
 import (
 	"ebittest/ecs"
-	"ebittest/ecs/components"
-	"ebittest/ecs/ecscommon"
+	"ebittest/ecs/common"
 	"ebittest/ecs/systems/spawnersystem"
 	"ebittest/utils"
 	"log"
@@ -11,13 +10,13 @@ import (
 )
 
 func GetTickInputs(
-	inputs map[ecscommon.EntityId]*components.Input,
+	world *ecs.World,
 	tick uint64,
-	inputSource components.InputSourceFunc,
-) map[ecscommon.EntityId]components.InputState {
-	tickInputs := make(map[ecscommon.EntityId]components.InputState)
-	for e := range inputs {
-		input := inputSource(e, tick, inputs)
+	inputSource ecs.InputSourceFunc,
+) map[common.EntityId]ecs.InputState {
+	tickInputs := make(map[common.EntityId]ecs.InputState)
+	for e := range world.Inputs {
+		input := inputSource(e, tick, world)
 		tickInputs[e] = input
 	}
 	return tickInputs
@@ -26,10 +25,10 @@ func GetTickInputs(
 func HandleInputs(
 	camera utils.Vec2,
 	world *ecs.World,
-	allInputs map[ecscommon.EntityId]components.InputState,
+	allInputs map[common.EntityId]ecs.InputState,
 ) error {
-	tm := components.TransformManager{}
-	vm := components.VelocityManager{}
+	tm := ecs.TransformManager{}
+	vm := ecs.VelocityManager{}
 
 	for e, input := range allInputs {
 		_, hasTra := world.Transforms[e]

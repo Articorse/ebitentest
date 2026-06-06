@@ -2,23 +2,22 @@ package damagesystem
 
 import (
 	"ebittest/ecs"
-	"ebittest/ecs/components"
-	"ebittest/ecs/ecscommon"
+	"ebittest/ecs/common"
 	"log"
 )
 
 func DealContactDamage(
-	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]ecscommon.Collision,
+	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	world *ecs.World,
 ) (entitiesKilled uint64, err error) {
-	vm := components.VelocityManager{}
-	cdm := components.ContactDamageManager{}
-	hpm := components.HitpointsManager{}
+	vm := ecs.VelocityManager{}
+	cdm := ecs.ContactDamageManager{}
+	hpm := ecs.HitpointsManager{}
 
 	for eA, cols := range collisions {
 		for eB, c := range cols {
-			var hitE ecscommon.EntityId
-			var dmgE ecscommon.EntityId
+			var hitE common.EntityId
+			var dmgE common.EntityId
 
 			hitE = eA
 			_, err := hpm.GetCurrent(eA, world.Hitpoints)

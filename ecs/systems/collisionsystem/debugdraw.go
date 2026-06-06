@@ -2,9 +2,9 @@ package collisionsystem
 
 import (
 	"ebittest/data"
-	"ebittest/ecs/components"
-	"ebittest/ecs/components/collidershapes"
-	"ebittest/ecs/ecscommon"
+	"ebittest/ecs"
+	"ebittest/ecs/collidershapes"
+	"ebittest/ecs/common"
 	"ebittest/utils"
 	"log"
 	"slices"
@@ -16,14 +16,13 @@ import (
 func DrawCollisions(
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]ecscommon.Collision,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	parents map[ecscommon.EntityId]*components.Parent,
+	collisions map[common.EntityId]map[common.EntityId]common.Collision,
+	world *ecs.World,
 ) error {
 	for eA, cols := range collisions {
-		tm := components.TransformManager{}
+		tm := ecs.TransformManager{}
 
-		aWorldPos, err := tm.GetWorldPos(eA, transforms, parents)
+		aWorldPos, err := tm.GetWorldPos(eA, world.Transforms, world.Parents)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", eA, err)
 			continue
@@ -46,19 +45,17 @@ func DrawCollisions(
 	return nil
 }
 
-func DrawColliders[T components.BaseColliderGetter](
+func DrawColliders(
+	colManager ecs.IColliderManager,
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	colliders map[ecscommon.EntityId]T,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]ecscommon.Collision,
-	parents map[ecscommon.EntityId]*components.Parent,
+	collisions map[common.EntityId]map[common.EntityId]common.Collision,
+	world *ecs.World,
 ) error {
-	for e, _ := range colliders {
-		tm := components.TransformManager{}
-		cm := components.BaseColliderManager[T]{}
+	for _, e := range colManager.EntityIds(world) {
+		tm := ecs.TransformManager{}
 
-		worldPos, err := tm.GetWorldPos(e, transforms, parents)
+		worldPos, err := tm.GetWorldPos(e, world.Transforms, world.Parents)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", e, err)
 			continue
@@ -89,7 +86,7 @@ func DrawColliders[T components.BaseColliderGetter](
 			}
 		}
 
-		colShapes, err := cm.GetShapes(e, colliders)
+		colShapes, err := colManager.GetShapes(e, world)
 		if err != nil {
 			log.Printf("Error getting collider shapes for entity %d: %v\n", e, err)
 			continue
@@ -151,19 +148,17 @@ func DrawColliders[T components.BaseColliderGetter](
 	return nil
 }
 
-func DrawAABBs[T components.BaseColliderGetter](
+func DrawAABBs(
+	colManager ecs.IColliderManager,
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	colliders map[ecscommon.EntityId]T,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	parents map[ecscommon.EntityId]*components.Parent,
-	aabbcollisions map[ecscommon.EntityId][]ecscommon.EntityId,
+	aabbcollisions map[common.EntityId][]common.EntityId,
+	world *ecs.World,
 ) error {
-	for e, _ := range colliders {
-		cm := components.BaseColliderManager[T]{}
-		tm := components.TransformManager{}
+	for _, e := range colManager.EntityIds(world) {
+		tm := ecs.TransformManager{}
 
-		worldPos, err := tm.GetWorldPos(e, transforms, parents)
+		worldPos, err := tm.GetWorldPos(e, world.Transforms, world.Parents)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", e, err)
 			continue
@@ -199,7 +194,7 @@ func DrawAABBs[T components.BaseColliderGetter](
 			lineColor = data.Debug_AABBColliderCollidedColor
 		}
 
-		aabb, err := cm.GetWorldPaddedAABB(e, colliders, transforms, parents)
+		aabb, err := colManager.GetWorldPaddedAABB(e, world)
 		if err != nil {
 			log.Printf("Error getting AABB for entity %d: %v\n", e, err)
 			continue

@@ -2,12 +2,11 @@ package timersystem
 
 import (
 	"ebittest/ecs"
-	"ebittest/ecs/components"
 	"fmt"
 )
 
 func Tick(world *ecs.World) error {
-	tlm := components.TimedLifeManager{}
+	tlm := ecs.TimedLifeManager{}
 	for e, _ := range world.TimedLives {
 		timerOver, err := tlm.TickDown(e, world.TimedLives)
 		if err != nil {

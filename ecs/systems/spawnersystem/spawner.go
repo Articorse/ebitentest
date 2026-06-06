@@ -2,19 +2,18 @@ package spawnersystem
 
 import (
 	"ebittest/ecs"
-	"ebittest/ecs/components"
-	"ebittest/ecs/ecscommon"
+	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
 	"math"
 )
 
 func Spawn(
-	spawnerEntity ecscommon.EntityId,
+	spawnerEntity common.EntityId,
 	world *ecs.World,
 ) error {
-	sm := components.SpawnerManager{}
-	tm := components.TransformManager{}
+	sm := ecs.SpawnerManager{}
+	tm := ecs.TransformManager{}
 
 	comps, err := sm.GetComponents(spawnerEntity, world.Spawners)
 	if err != nil {

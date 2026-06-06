@@ -2,21 +2,20 @@ package commonsystems
 
 import (
 	"ebittest/data"
-	"ebittest/ecs/components"
-	"ebittest/ecs/ecscommon"
+	"ebittest/ecs"
+	"ebittest/ecs/common"
 	"log"
 	"slices"
 )
 
 func PopulateSpatialHashGrid(
-	transforms map[ecscommon.EntityId]*components.Transform,
-	parents map[ecscommon.EntityId]*components.Parent,
-) (map[ecscommon.CellKey][]ecscommon.EntityId, error) {
-	grid := make(map[ecscommon.CellKey][]ecscommon.EntityId)
-	tm := components.TransformManager{}
+	world *ecs.World,
+) (map[common.CellKey][]common.EntityId, error) {
+	grid := make(map[common.CellKey][]common.EntityId)
+	tm := ecs.TransformManager{}
 
-	for e, _ := range transforms {
-		worldPos, err := tm.GetWorldPos(e, transforms, parents)
+	for e, _ := range world.Transforms {
+		worldPos, err := tm.GetWorldPos(e, world.Transforms, world.Parents)
 		if err != nil {
 			log.Printf("error getting world position of entity %d: %v", e, err)
 			continue
@@ -24,23 +23,21 @@ func PopulateSpatialHashGrid(
 
 		x := int(worldPos.X / data.SpatialHashGridCellSize)
 		y := int(worldPos.Y / data.SpatialHashGridCellSize)
-		grid[ecscommon.CellKey{X: x, Y: y}] = append(grid[ecscommon.CellKey{X: x, Y: y}], e)
+		grid[common.CellKey{X: x, Y: y}] = append(grid[common.CellKey{X: x, Y: y}], e)
 	}
 
 	return grid, nil
 }
 
-func GetSHGProximities[T components.Component](
-	shg map[ecscommon.CellKey][]ecscommon.EntityId,
-	requiredComponentMap map[ecscommon.EntityId]*T,
-	transforms map[ecscommon.EntityId]*components.Transform,
-	parents map[ecscommon.EntityId]*components.Parent,
-) (map[ecscommon.EntityId][]ecscommon.EntityId, error) {
-	proximateEntities := make(map[ecscommon.EntityId][]ecscommon.EntityId)
+func GetSHGProximities(
+	shg map[common.CellKey][]common.EntityId,
+	world *ecs.World,
+) (map[common.EntityId][]common.EntityId, error) {
+	proximateEntities := make(map[common.EntityId][]common.EntityId)
 
-	for eA, _ := range requiredComponentMap {
-		tm := components.TransformManager{}
-		worldPosA, err := tm.GetWorldPos(eA, transforms, parents)
+	for eA, _ := range world.Transforms {
+		tm := ecs.TransformManager{}
+		worldPosA, err := tm.GetWorldPos(eA, world.Transforms, world.Parents)
 		if err != nil {
 			log.Printf("error getting world position of entity %d: %v", eA, err)
 			continue
@@ -50,19 +47,14 @@ func GetSHGProximities[T components.Component](
 		cellY := int(worldPosA.Y / data.SpatialHashGridCellSize)
 		for dx := -1; dx <= 1; dx++ {
 			for dy := -1; dy <= 1; dy++ {
-				for _, eB := range shg[ecscommon.CellKey{X: cellX + dx, Y: cellY + dy}] {
+				for _, eB := range shg[common.CellKey{X: cellX + dx, Y: cellY + dy}] {
 					if eA == eB {
 						continue
 					}
 
-					_, ok := requiredComponentMap[eB]
+					_, ok := world.Transforms[eB]
 					if !ok {
-						continue
-					}
-
-					_, ok = transforms[eB]
-					if !ok {
-						return nil, &ecscommon.ErrorMissingComponentDependency{
+						return nil, &common.ErrorMissingComponentDependency{
 							Entity:           eB,
 							PresentComponent: "Collider",
 							MissingComponent: "Transform",
