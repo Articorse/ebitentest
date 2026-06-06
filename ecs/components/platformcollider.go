@@ -1,9 +1,9 @@
 package components
 
 type PlatformCollider struct {
-	BaseColliderComponent
+	BaseCollider
 }
 
-func (x *PlatformCollider) getBaseCollider() *BaseColliderComponent { return &x.BaseColliderComponent }
+func (x *PlatformCollider) getBaseCollider() *BaseCollider { return &x.BaseCollider }
 
 func (PlatformCollider) isComponent() {}

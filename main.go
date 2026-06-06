@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"image/color"
 	"log"
-	"maps"
 	"math/rand"
 	"os"
 
@@ -177,11 +176,6 @@ func (g *game) Update() error {
 		max_pos_diff = 0
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyF3) {
-		maps.DeleteFunc(g.world.Transforms,
-			func(k ecscommon.EntityId, _ *components.Transform) bool { return k == g.playerEntity })
-	}
-
 	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
 		parEnt := pm.GetEntity(ecscommon.EntityId(1), g.world.Parents)
 
@@ -261,7 +255,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	resolvedCollisions, err = collisionsystem.ResolveCollisions(collisions, g.world.PhysicsColliders, g.world.Transforms, g.world.Velocities)
+	resolvedCollisions, err = collisionsystem.ResolvePhysicsCollisions(collisions, g.world.PhysicsColliders, g.world.Transforms, g.world.Velocities)
 	if err != nil {
 		log.Println("error during collision resolution: ", err)
 	}

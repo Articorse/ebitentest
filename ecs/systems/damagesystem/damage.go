@@ -47,6 +47,7 @@ func DealContactDamage(
 				continue
 			}
 
+			// TODO: Implement source
 			// source, err := cdm.GetSource(dmgE, world.ContactDamages)
 			// if err != nil {
 			// 	log.Printf("Error getting source for entity %d: %v\n", dmgE, err)

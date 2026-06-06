@@ -13,7 +13,7 @@ const (
 )
 
 type PhysicsCollider struct {
-	BaseColliderComponent
+	BaseCollider
 
 	colliderType PhysicsColliderType
 }
@@ -26,7 +26,7 @@ func (x PhysicsCollider) Copy() PhysicsCollider {
 
 	return PhysicsCollider{
 		colliderType: x.colliderType,
-		BaseColliderComponent: BaseColliderComponent{
+		BaseCollider: BaseCollider{
 			shapes:     colShapesCopy,
 			center:     x.center,
 			aabb:       x.aabb,
@@ -35,4 +35,4 @@ func (x PhysicsCollider) Copy() PhysicsCollider {
 	}
 }
 
-func (x *PhysicsCollider) getBaseCollider() *BaseColliderComponent { return &x.BaseColliderComponent }
+func (x *PhysicsCollider) getBaseCollider() *BaseCollider { return &x.BaseCollider }

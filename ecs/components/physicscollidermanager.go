@@ -15,8 +15,8 @@ func NewPhysicsColliderComponent(
 	shapes []collidershapes.Shape,
 ) *PhysicsCollider {
 	return &PhysicsCollider{
-		colliderType:          cType,
-		BaseColliderComponent: newBaseCollider(shapes),
+		colliderType: cType,
+		BaseCollider: newBaseCollider(shapes),
 	}
 }
 

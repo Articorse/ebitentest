@@ -9,7 +9,7 @@ type PlatformColliderManager struct {
 func NewPlatformColliderComponent(
 	shapes []collidershapes.Shape,
 ) *PlatformCollider {
-	return &PlatformCollider{BaseColliderComponent: newBaseCollider(shapes)}
+	return &PlatformCollider{BaseCollider: newBaseCollider(shapes)}
 }
 
 func (x PlatformCollider) Copy() PlatformCollider {
@@ -17,7 +17,7 @@ func (x PlatformCollider) Copy() PlatformCollider {
 	copy(colShapesCopy, x.shapes)
 
 	return PlatformCollider{
-		BaseColliderComponent: BaseColliderComponent{
+		BaseCollider: BaseCollider{
 			shapes:     colShapesCopy,
 			center:     x.center,
 			aabb:       x.aabb,

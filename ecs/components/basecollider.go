@@ -5,7 +5,7 @@ import (
 	"ebittest/utils"
 )
 
-type BaseColliderComponent struct {
+type BaseCollider struct {
 	shapes     []collidershapes.Shape
 	center     utils.Vec2
 	aabb       [2]utils.Vec2

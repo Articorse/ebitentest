@@ -5,7 +5,7 @@ import (
 )
 
 type HurtboxCollider struct {
-	BaseColliderComponent
+	BaseCollider
 }
 
 func (HurtboxCollider) isComponent() {}
@@ -15,7 +15,7 @@ func (x HurtboxCollider) Copy() HurtboxCollider {
 	copy(colShapesCopy, x.shapes)
 
 	return HurtboxCollider{
-		BaseColliderComponent: BaseColliderComponent{
+		BaseCollider: BaseCollider{
 			shapes:     colShapesCopy,
 			center:     x.center,
 			aabb:       x.aabb,
@@ -24,4 +24,4 @@ func (x HurtboxCollider) Copy() HurtboxCollider {
 	}
 }
 
-func (x *HurtboxCollider) getBaseCollider() *BaseColliderComponent { return &x.BaseColliderComponent }
+func (x *HurtboxCollider) getBaseCollider() *BaseCollider { return &x.BaseCollider }

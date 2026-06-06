@@ -8,12 +8,12 @@ import (
 	"fmt"
 )
 
-type baseColliderGetter interface {
-	getBaseCollider() *BaseColliderComponent
+type BaseColliderGetter interface {
+	getBaseCollider() *BaseCollider
 }
 
-func newBaseCollider(shapes []collidershapes.Shape) BaseColliderComponent {
-	c := BaseColliderComponent{shapes: shapes}
+func newBaseCollider(shapes []collidershapes.Shape) BaseCollider {
+	c := BaseCollider{shapes: shapes}
 
 	c.center = collidershapes.CalculateCenter(shapes)
 
@@ -57,7 +57,7 @@ func newBaseCollider(shapes []collidershapes.Shape) BaseColliderComponent {
 	return c
 }
 
-type BaseColliderManager[T baseColliderGetter] struct{}
+type BaseColliderManager[T BaseColliderGetter] struct{}
 
 func (BaseColliderManager[T]) GetShapes(
 	e ecscommon.EntityId,

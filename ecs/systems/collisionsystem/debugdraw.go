@@ -46,17 +46,17 @@ func DrawCollisions(
 	return nil
 }
 
-func DrawColliders(
+func DrawColliders[T components.BaseColliderGetter](
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	colliders map[ecscommon.EntityId]*components.PhysicsCollider,
+	colliders map[ecscommon.EntityId]T,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	collisions map[ecscommon.EntityId]map[ecscommon.EntityId]ecscommon.Collision,
 	parents map[ecscommon.EntityId]*components.Parent,
 ) error {
 	for e, _ := range colliders {
 		tm := components.TransformManager{}
-		cm := components.PhysicsColliderManager{}
+		cm := components.BaseColliderManager[T]{}
 
 		worldPos, err := tm.GetWorldPos(e, transforms, parents)
 		if err != nil {
@@ -151,16 +151,16 @@ func DrawColliders(
 	return nil
 }
 
-func DrawAABBs(
+func DrawAABBs[T components.BaseColliderGetter](
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	colliders map[ecscommon.EntityId]*components.PhysicsCollider,
+	colliders map[ecscommon.EntityId]T,
 	transforms map[ecscommon.EntityId]*components.Transform,
 	parents map[ecscommon.EntityId]*components.Parent,
 	aabbcollisions map[ecscommon.EntityId][]ecscommon.EntityId,
 ) error {
 	for e, _ := range colliders {
-		cm := components.PhysicsColliderManager{}
+		cm := components.BaseColliderManager[T]{}
 		tm := components.TransformManager{}
 
 		worldPos, err := tm.GetWorldPos(e, transforms, parents)
