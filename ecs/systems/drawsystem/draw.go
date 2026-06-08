@@ -161,9 +161,16 @@ func DrawFrame(
 					return fmt.Errorf("error getting world offset position of batchEntity %d: %v", batchEntity, err)
 				}
 
-				r, err := sm.GetWorldOffsetRotation(batchEntity, world.Sprites, world.Transforms, world.Parents)
+				r := 0.0
+				allowRot, err := sm.GetAllowRotation(batchEntity, world.Sprites)
 				if err != nil {
-					return fmt.Errorf("error getting world offset rotation of batchEntity %d: %v", batchEntity, err)
+					return fmt.Errorf("error getting allow rotation of batchEntity %d: %v", batchEntity, err)
+				}
+				if allowRot {
+					r, err = sm.GetWorldOffsetRotation(batchEntity, world.Sprites, world.Transforms, world.Parents)
+					if err != nil {
+						return fmt.Errorf("error getting world offset rotation of batchEntity %d: %v", batchEntity, err)
+					}
 				}
 
 				s, err := sm.GetWorldOffsetScale(batchEntity, world.Sprites, world.Transforms, world.Parents)
@@ -182,6 +189,19 @@ func DrawFrame(
 				opts.GeoM.Translate(-float64(w)*s/2, -float64(h)*s/2)
 				opts.GeoM.Rotate(r)
 				opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
+
+				color, ok, err := sm.GetCurrentColor(batchEntity, world.Sprites)
+				if err != nil {
+					return fmt.Errorf("error getting current color of batchEntity %d: %v", batchEntity, err)
+				}
+				if ok {
+					opts.ColorScale.Scale(
+						color.R,
+						color.G,
+						color.B,
+						color.A,
+					)
+				}
 
 				screen.DrawImage(img, &opts)
 			}

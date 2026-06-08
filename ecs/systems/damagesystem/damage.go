@@ -74,7 +74,7 @@ func DealContactDamage(
 			colForceNorm := c.Vector.Normalized()
 			finalForceNorm := dmgEForceNorm.Multiply(0.5).Add(colForceNorm.Multiply(0.5))
 
-			err = vm.SetWorldVector(hitE, finalForceNorm.Multiply(knockback), world.Velocities, world.Transforms, world.Parents)
+			err = vm.AddForce(hitE, finalForceNorm.Multiply(knockback), world.Velocities)
 			if err != nil {
 				log.Printf("Error applying knockback to entity %d: %v\n", hitE, err)
 				continue
@@ -94,7 +94,7 @@ func DealContactDamage(
 				continue
 			}
 
-			dead, err := hpm.TakeDamage(hitE, damageTiers[shapeIdx], world.Hitpoints)
+			dead, err := hpm.TakeDamage(hitE, damageTiers[shapeIdx], world.Hitpoints, world.Sprites)
 			if err != nil {
 				log.Printf("Error applying damage to entity %d: %v\n", hitE, err)
 				continue

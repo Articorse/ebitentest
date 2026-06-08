@@ -27,12 +27,12 @@ func HandleInputs(
 	world *ecs.World,
 	allInputs map[common.EntityId]ecs.InputState,
 ) error {
-	tm := ecs.TransformManager{}
-	vm := ecs.VelocityManager{}
 
 	for e, input := range allInputs {
 		_, hasTra := world.Transforms[e]
 		if hasTra {
+			tm := ecs.TransformManager{}
+
 			eWorldPos, err := tm.GetWorldPos(e, world.Transforms, world.Parents)
 			if err != nil {
 				log.Printf("Error getting world position for entity %d: %v\n", e, err)
@@ -58,6 +58,8 @@ func HandleInputs(
 
 		_, hasVel := world.Velocities[e]
 		if hasVel {
+			vm := ecs.VelocityManager{}
+
 			v := utils.Vec2{X: 0, Y: 0}
 
 			if input.Left {
@@ -94,6 +96,26 @@ func HandleInputs(
 		if hasSpawner {
 			if input.Use {
 				spawnersystem.Spawn(e, world)
+			}
+		}
+
+		_, hasAnim := world.Animations[e]
+		if hasAnim {
+			am := ecs.AnimationManager{}
+			if input.Use {
+				nextState, err := am.GetState(e, world.Animations)
+				if err != nil {
+					log.Printf("Error getting animation state for entity %d: %v\n", e, err)
+					continue
+				}
+				err = am.SetQueuedStateIfNone(e, nextState, world.Animations)
+				if err != nil {
+					log.Printf("Error setting queued animation state for entity %d: %v\n", e, err)
+				}
+				err = am.SetState(e, ecs.Anim_Use, world.Animations)
+				if err != nil {
+					log.Printf("Error setting animation state for entity %d: %v\n", e, err)
+				}
 			}
 		}
 	}

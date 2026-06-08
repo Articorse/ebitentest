@@ -20,11 +20,9 @@ func Spawn(
 		return fmt.Errorf("error getting components to spawn for spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	newEntity := world.AddEntity()
-
-	for _, comp := range comps {
-		world.AddComponent(newEntity, comp)
-	}
+	newEntity := world.AddEntity(
+		comps...,
+	)
 
 	worldPos, err := tm.GetWorldPos(spawnerEntity, world.Transforms, world.Parents)
 	if err != nil {

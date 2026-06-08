@@ -3,6 +3,7 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 )
 
@@ -103,7 +104,10 @@ func (HitpointsManager) TakeDamage(
 	e common.EntityId,
 	damage int64,
 	hitpoints map[common.EntityId]*hitpoints,
+	sprites map[common.EntityId]*sprite,
 ) (dead bool, err error) {
+	sm := SpriteManager{}
+
 	hpComp, ok := hitpoints[e]
 	if !ok {
 		return false, fmt.Errorf("could not get hitpoints component of entity %d", e)
@@ -115,6 +119,17 @@ func (HitpointsManager) TakeDamage(
 	if hpComp.current <= 0 {
 		return true, nil
 	}
+
+	sm.SetSpriteFlash(
+		e,
+		sprites,
+		[]utils.RelativeColor{
+			{R: 100, G: 100, B: 100, A: 1},
+			{R: 1, G: 1, B: 1, A: 1},
+		},
+		[]uint64{100, 100},
+		uint64(hpComp.invulMaxMs),
+	)
 
 	return false, nil
 }
@@ -131,8 +146,8 @@ func (HitpointsManager) Heal(
 
 	hpComp.current += heal
 
-	if hpComp.current > hpComp.max {
-		hpComp.current = hpComp.max
+	if hpComp.current > int64(hpComp.max) {
+		hpComp.current = int64(hpComp.max)
 	}
 
 	return nil

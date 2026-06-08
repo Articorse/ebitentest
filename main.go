@@ -6,6 +6,7 @@ import (
 	"ebittest/ecs/collidershapes"
 	"ebittest/ecs/common"
 	"ebittest/ecs/inputsources"
+	"ebittest/ecs/systems/animationsystem"
 	"ebittest/ecs/systems/collisionsystem"
 	"ebittest/ecs/systems/commonsystems"
 	"ebittest/ecs/systems/damagesystem"
@@ -201,6 +202,15 @@ func (g *game) Update() error {
 	}
 
 	// END DEBUG
+
+	err = animationsystem.Tick(g.world)
+	if err != nil {
+		log.Println("animation system tick error: ", err, "removing entity")
+		var invalidComponentsErr *common.ErrorMissingComponentDependency
+		if errors.As(err, &invalidComponentsErr) {
+			g.world.RemoveEntity(invalidComponentsErr.Entity)
+		}
+	}
 
 	err = timersystem.Tick(g.world)
 	if err != nil {
@@ -420,8 +430,6 @@ func main() {
 	g.world.TickState = *common.NewTickState()
 
 	// Player
-	g.playerEntity = g.world.AddEntity()
-
 	pInputConfig := ecs.InputConfig{
 		Up:    ebiten.KeyW,
 		Down:  ebiten.KeyS,
@@ -434,10 +442,18 @@ func main() {
 	pParComp := ecs.NewParentComponent()
 	pTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := ecs.NewVelocityComponent()
-	pSprComp, err := ecs.NewSpriteComponent("assets/sprites/slime.png", 20)
+	pSprComp, err := ecs.NewSpriteComponent("assets/sprites/slime.png", 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
+	pAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	pAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+		{FrameIdx: 0, DurationMs: 100},
+		{FrameIdx: 1, DurationMs: 100},
+		{FrameIdx: 2, DurationMs: 100},
+		{FrameIdx: 1, DurationMs: 100},
+	}
+	pAniComp, err := ecs.NewAnimationComponent("assets/sprites/slime_ss.png", utils.Vec2{X: 32, Y: 32}, pAniStateFrames)
 	pColShape, err := collidershapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
@@ -460,37 +476,53 @@ func main() {
 	}
 	pHitboxComp := ecs.NewHitboxColliderComponent(pHitboxShape)
 
-	g.world.Inputs[g.playerEntity] = pInpComp
-	g.world.Parents[g.playerEntity] = pParComp
-	g.world.Transforms[g.playerEntity] = pTraComp
-	g.world.Velocities[g.playerEntity] = pVelComp
-	g.world.Sprites[g.playerEntity] = pSprComp
-	g.world.PhysicsColliders[g.playerEntity] = pColComp
-	g.world.CollisionLayers[g.playerEntity] = pColLayerComp
-	g.world.Hitpoints[g.playerEntity] = pHpComp
-	g.world.HitboxColliders[g.playerEntity] = pHitboxComp
+	g.playerEntity = g.world.AddEntity(
+		pInpComp,
+		pParComp,
+		pTraComp,
+		pVelComp,
+		pSprComp,
+		pAniComp,
+		pColComp,
+		pColLayerComp,
+		pHpComp,
+		pHitboxComp,
+	)
 
-	gun := g.world.AddEntity()
 	gunParComp := ecs.NewParentComponent()
 	gunTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	gunVelComp := ecs.NewVelocityComponent()
-
-	gunSprComp, err := ecs.NewSpriteComponent("assets/sprites/gun.png", 20)
+	gunSprComp, err := ecs.NewSpriteComponent("assets/sprites/gun.png", 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	gunAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	gunAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+		{FrameIdx: 0, DurationMs: 1000},
+	}
+	gunAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
+		{FrameIdx: 1, DurationMs: 100},
+	}
+	gunAniComp, err := ecs.NewAnimationComponent("assets/sprites/gun_ss.png", utils.Vec2{X: 32, Y: 32}, gunAniStateFrames)
 	gunInpComp := ecs.NewInputComponent(ecs.InputConfig{}, inputsources.MouseInputSource)
 
 	bulletTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
 	bulletVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
 	bulletTLComp := ecs.NewTimedLifeComponent(500)
 	bulletDmgComp := ecs.NewContactDamageComponent(g.playerEntity, 10, true, 5)
-	bulletSprComp, err := ecs.NewSpriteComponent("assets/sprites/bullet.png", 20)
+	bulletSprComp, err := ecs.NewSpriteComponent("assets/sprites/bullet.png", 20, false)
 	if err != nil {
 		log.Fatal(err)
 	}
-	bulletHurtboxShape, err := collidershapes.NewCircleShape(2, utils.Vec2{X: 0, Y: 0})
+	bulletAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	bulletAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+		{FrameIdx: 0, DurationMs: 50},
+		{FrameIdx: 1, DurationMs: 50},
+		{FrameIdx: 2, DurationMs: 50},
+		{FrameIdx: 1, DurationMs: 50},
+	}
+	bulletAniComp, err := ecs.NewAnimationComponent("assets/sprites/bullet_ss.png", utils.Vec2{X: 32, Y: 32}, bulletAniStateFrames)
+	bulletHurtboxShape, err := collidershapes.NewCircleShape(3, utils.Vec2{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -503,15 +535,18 @@ func main() {
 
 	gunSpaComp := ecs.NewSpawnerComponent(
 		utils.Vec2{X: 13, Y: 0},
-		bulletTraComp, bulletSprComp, bulletVelComp, bulletTLComp, bulletDmgComp, bulletHurtboxComp, bulletColLayerComp,
+		bulletTraComp, bulletSprComp, bulletVelComp, bulletTLComp, bulletDmgComp, bulletHurtboxComp, bulletColLayerComp, bulletAniComp,
 	)
 
-	g.world.Inputs[gun] = gunInpComp
-	g.world.Parents[gun] = gunParComp
-	g.world.Transforms[gun] = gunTraComp
-	g.world.Velocities[gun] = gunVelComp
-	g.world.Sprites[gun] = gunSprComp
-	g.world.Spawners[gun] = gunSpaComp
+	gun := g.world.AddEntity(
+		gunInpComp,
+		gunParComp,
+		gunTraComp,
+		gunVelComp,
+		gunSprComp,
+		gunAniComp,
+		gunSpaComp,
+	)
 
 	err = pm.Attach(gun, g.playerEntity, g.world.Transforms, g.world.Parents)
 	if err != nil {
@@ -529,16 +564,11 @@ func main() {
 
 	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
 
-	tree := g.world.AddEntity()
-	g.replayEntity = tree
-
 	treeInpComp := ecs.NewInputComponent(ecs.InputConfig{}, inputsources.DummyInputSource)
-	g.world.Inputs[tree] = treeInpComp
-
 	treeParComp := ecs.NewParentComponent()
 	treeTraComp := ecs.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
 	treeVelComp := ecs.NewVelocityComponent()
-	treeSprComp, err := ecs.NewSpriteComponent("assets/sprites/tree.png", 20)
+	treeSprComp, err := ecs.NewSpriteComponent("assets/sprites/tree.png", 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -559,23 +589,38 @@ func main() {
 			ecs.Layer_Platform,
 	)
 
-	g.world.Parents[tree] = treeParComp
-	g.world.Transforms[tree] = treeTraComp
-	g.world.Velocities[tree] = treeVelComp
-	g.world.Sprites[tree] = treeSprComp
-	g.world.PhysicsColliders[tree] = treeColComp
-	g.world.CollisionLayers[tree] = treeColLayerComp
+	tree := g.world.AddEntity(
+		treeInpComp,
+		treeParComp,
+		treeTraComp,
+		treeVelComp,
+		treeSprComp,
+		treeColComp,
+		treeColLayerComp,
+	)
 
-	enemy := g.world.AddEntity()
+	g.replayEntity = tree
 
 	enemyTraComp := ecs.NewTransformComponent(utils.Vec2{X: 300, Y: 150}, 1, 0)
 	enemyVelComp := ecs.NewVelocityComponent()
 	enemyParComp := ecs.NewParentComponent()
-	enemySprComp, err := ecs.NewSpriteComponent("assets/sprites/evilslime.png", 20)
+	enemySprComp, err := ecs.NewSpriteComponent("assets/sprites/evilslime.png", 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	enemyHpComp := ecs.NewHitpointsComponent(100, 5000)
+	enemyAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	enemyAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+		{FrameIdx: 0, DurationMs: 2000},
+		{FrameIdx: 1, DurationMs: 100},
+		{FrameIdx: 2, DurationMs: 100},
+		{FrameIdx: 3, DurationMs: 100},
+		{FrameIdx: 4, DurationMs: 100},
+		{FrameIdx: 3, DurationMs: 100},
+		{FrameIdx: 2, DurationMs: 100},
+		{FrameIdx: 1, DurationMs: 100},
+	}
+	enemyAniComp, err := ecs.NewAnimationComponent("assets/sprites/evilslime_ss.png", utils.Vec2{X: 32, Y: 32}, enemyAniStateFrames)
+	enemyHpComp := ecs.NewHitpointsComponent(100, 100)
 	enemyColShape, err := collidershapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
 	enemyColComp := ecs.NewPhysicsColliderComponent(
 		ecs.Collider_Mob,
@@ -591,7 +636,7 @@ func main() {
 		log.Fatal(err)
 	}
 	enemyHurtboxComp := ecs.NewHurtboxColliderComponent(enemyHurtboxColShape)
-	enemyCDmgComp := ecs.NewContactDamageComponent(enemy, 10, false, 5)
+	enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, 1)
 
 	enemyColLayerComp := ecs.NewCollisionLayersComponent(
 		ecs.Layer_Enemy,
@@ -603,29 +648,29 @@ func main() {
 	)
 
 	enemyInput := ecs.NewInputComponent(ecs.InputConfig{}, inputsources.DummyInputSource)
-	g.world.Inputs[enemy] = enemyInput
 
-	g.world.Parents[enemy] = enemyParComp
-	g.world.Transforms[enemy] = enemyTraComp
-	g.world.Velocities[enemy] = enemyVelComp
-	g.world.Sprites[enemy] = enemySprComp
-	g.world.Hitpoints[enemy] = enemyHpComp
-	g.world.PhysicsColliders[enemy] = enemyColComp
-	g.world.CollisionLayers[enemy] = enemyColLayerComp
-	g.world.HitboxColliders[enemy] = enemyHitboxComp
-	g.world.HurtboxColliders[enemy] = enemyHurtboxComp
-	g.world.ContactDamages[enemy] = enemyCDmgComp
-
-	plat := g.world.AddEntity()
+	_ = g.world.AddEntity(
+		enemyInput,
+		enemyParComp,
+		enemyTraComp,
+		enemyVelComp,
+		enemySprComp,
+		enemyAniComp,
+		enemyHpComp,
+		enemyColComp,
+		enemyHitboxComp,
+		enemyHurtboxComp,
+		enemyCDmgComp,
+		enemyColLayerComp,
+	)
 
 	platInput := ecs.NewInputComponent(ecs.InputConfig{}, loopSource)
-	g.world.Inputs[plat] = platInput
 
 	platParComp := ecs.NewParentComponent()
 	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
 	platVelComp := ecs.NewVelocityComponent()
 
-	platSprComp, err := ecs.NewSpriteComponent("assets/sprites/platform.png", 10)
+	platSprComp, err := ecs.NewSpriteComponent("assets/sprites/platform.png", 10, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -644,12 +689,15 @@ func main() {
 			ecs.Layer_Terrain,
 	)
 
-	g.world.Parents[plat] = platParComp
-	g.world.Transforms[plat] = platTraComp
-	g.world.Velocities[plat] = platVelComp
-	g.world.Sprites[plat] = platSprComp
-	g.world.PlatformColliders[plat] = platColComp
-	g.world.CollisionLayers[plat] = platColLayerComp
+	plat := g.world.AddEntity(
+		platInput,
+		platParComp,
+		platTraComp,
+		platVelComp,
+		platSprComp,
+		platColComp,
+		platColLayerComp,
+	)
 
 	err = vm.SetAcceleration(plat, 0.3, g.world.Velocities)
 	if err != nil {
@@ -674,13 +722,11 @@ func main() {
 }
 
 func (g *game) AddRandomEntity() {
-	e := g.world.AddEntity()
-
 	x := rand.Intn(10000)
 	y := rand.Intn(10000)
 
 	traComp := ecs.NewTransformComponent(utils.Vec2{X: float64(x), Y: float64(y)}, 1, 0)
-	sprComp, err := ecs.NewSpriteComponent("assets/sprites/tree.png", 20)
+	sprComp, err := ecs.NewSpriteComponent("assets/sprites/tree.png", 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -701,9 +747,11 @@ func (g *game) AddRandomEntity() {
 			ecs.Layer_Platform,
 	)
 
-	g.world.Transforms[e] = traComp
-	g.world.Sprites[e] = sprComp
-	g.world.Velocities[e] = velComp
-	g.world.PhysicsColliders[e] = colComp
-	g.world.CollisionLayers[e] = colLayerComp
+	_ = g.world.AddEntity(
+		traComp,
+		velComp,
+		sprComp,
+		colComp,
+		colLayerComp,
+	)
 }

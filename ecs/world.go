@@ -17,6 +17,7 @@ type World struct {
 	Transforms        map[common.EntityId]*transform
 	Velocities        map[common.EntityId]*velocity
 	Sprites           map[common.EntityId]*sprite
+	Animations        map[common.EntityId]*animation
 	CollisionLayers   map[common.EntityId]*collisionLayer
 	PhysicsColliders  map[common.EntityId]*physicsCollider
 	PlatformColliders map[common.EntityId]*platformCollider
@@ -40,6 +41,7 @@ func NewWorld() *World {
 		Transforms:        make(map[common.EntityId]*transform),
 		Velocities:        make(map[common.EntityId]*velocity),
 		Sprites:           make(map[common.EntityId]*sprite),
+		Animations:        make(map[common.EntityId]*animation),
 		CollisionLayers:   make(map[common.EntityId]*collisionLayer),
 		PhysicsColliders:  make(map[common.EntityId]*physicsCollider),
 		PlatformColliders: make(map[common.EntityId]*platformCollider),
@@ -52,9 +54,19 @@ func NewWorld() *World {
 	}
 }
 
-func (x *World) AddEntity() common.EntityId {
+func (x *World) AddEmptyEntity() common.EntityId {
 	x.nextEntity++
 	return x.nextEntity - 1
+}
+
+func (x *World) AddEntity(comps ...component) common.EntityId {
+	e := x.AddEmptyEntity()
+
+	for _, comp := range comps {
+		x.AddComponent(e, comp)
+	}
+
+	return e
 }
 
 func (x *World) RemoveEntity(e common.EntityId) error {
@@ -62,6 +74,7 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	delete(x.Transforms, e)
 	delete(x.Velocities, e)
 	delete(x.Sprites, e)
+	delete(x.Animations, e)
 	delete(x.CollisionLayers, e)
 	delete(x.PhysicsColliders, e)
 	delete(x.PlatformColliders, e)
@@ -149,6 +162,9 @@ func (x *World) AddComponent(e common.EntityId, comp component) {
 	case *sprite:
 		spr := c.Copy()
 		x.Sprites[e] = &spr
+	case *animation:
+		anim := c.Copy()
+		x.Animations[e] = &anim
 	case *transform:
 		tra := c.Copy()
 		x.Transforms[e] = &tra

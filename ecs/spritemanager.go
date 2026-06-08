@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
@@ -12,8 +13,8 @@ import (
 
 type SpriteManager struct{}
 
-func NewSpriteComponent(imageUri string, layer uint8) (*sprite, error) {
-	s := &sprite{offsetScale: 1, layer: layer}
+func NewSpriteComponent(imageUri string, layer uint8, allowRotation bool) (*sprite, error) {
+	s := &sprite{offsetScale: 1, layer: layer, allowRotation: allowRotation}
 	spr, img, err := ebitenutil.NewImageFromFile(imageUri)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load sprite image: %w", err)
@@ -22,6 +23,40 @@ func NewSpriteComponent(imageUri string, layer uint8) (*sprite, error) {
 	s.image = spr
 	s.layerYOffset = utils.GetFirstOpaquePixelY(img)
 	return s, nil
+}
+
+func (*SpriteManager) SetSpriteFlash(
+	e common.EntityId,
+	sprites map[common.EntityId]*sprite,
+	colors []utils.RelativeColor,
+	colorDurationsMs []uint64,
+	TotalDurationMs uint64,
+) error {
+	if len(colors) != len(colorDurationsMs) {
+		return fmt.Errorf("colors and colorDurationsMs must have the same length")
+	}
+
+	sprite, ok := sprites[e]
+	if !ok {
+		return fmt.Errorf("could not get sprite of entity %d", e)
+	}
+
+	var loopDurationMs uint64
+
+	for _, d := range colorDurationsMs {
+		loopDurationMs += d
+	}
+
+	f := SpriteFlash{
+		colors:           colors,
+		colorDurationsMs: colorDurationsMs,
+		totalDurationMs:  TotalDurationMs,
+		loopDurationMs:   loopDurationMs,
+	}
+
+	sprite.flash = &f
+
+	return nil
 }
 
 func (*SpriteManager) GetImage(
@@ -292,6 +327,82 @@ func (*SpriteManager) SetLayer(
 	}
 
 	sprite.layer = layer
+
+	return nil
+}
+
+func (*SpriteManager) GetAllowRotation(
+	e common.EntityId,
+	sprites map[common.EntityId]*sprite,
+) (bool, error) {
+	sprite, ok := sprites[e]
+	if !ok {
+		return false, fmt.Errorf("could not get sprite of entity %d", e)
+	}
+
+	return sprite.allowRotation, nil
+}
+
+func (*SpriteManager) SetAllowRotation(
+	e common.EntityId,
+	allow bool,
+	sprites map[common.EntityId]*sprite,
+) error {
+	sprite, ok := sprites[e]
+	if !ok {
+		return fmt.Errorf("could not get sprite of entity %d", e)
+	}
+
+	sprite.allowRotation = allow
+
+	return nil
+}
+
+func (*SpriteManager) GetCurrentColor(
+	e common.EntityId,
+	sprites map[common.EntityId]*sprite,
+) (color utils.RelativeColor, ok bool, err error) {
+	sprite, ok := sprites[e]
+	if !ok {
+		return color, false, fmt.Errorf("could not get sprite of entity %d", e)
+	}
+
+	if sprite.flash == nil {
+		return color, false, nil
+	}
+
+	return sprite.flash.colors[sprite.flash.colorIdx], true, nil
+}
+
+func (*SpriteManager) TickFlash(
+	e common.EntityId,
+	sprites map[common.EntityId]*sprite,
+) error {
+	sprite, ok := sprites[e]
+	if !ok {
+		return fmt.Errorf("could not get sprite of entity %d", e)
+	}
+
+	if sprite.flash == nil {
+		return nil
+	}
+
+	f := sprite.flash
+	f.counterMs += 1000 / data.TPS
+
+	if f.counterMs >= f.totalDurationMs {
+		sprite.flash = nil
+	}
+
+	colorCounterMs := f.counterMs % f.loopDurationMs
+
+	for i, c := range f.colorDurationsMs {
+		if colorCounterMs < c {
+			f.colorIdx = i
+			break
+		}
+		colorCounterMs -= c
+	}
 
 	return nil
 }
