@@ -62,18 +62,8 @@ func HandleInputs(
 
 			v := utils.Vec2{X: 0, Y: 0}
 
-			if input.Left {
-				v.X -= 1
-			}
-			if input.Right {
-				v.X += 1
-			}
-			if input.Up {
-				v.Y -= 1
-			}
-			if input.Down {
-				v.Y += 1
-			}
+			v.X = input.Analog1X
+			v.Y = input.Analog1Y
 
 			v = v.Normalized()
 

@@ -9,9 +9,9 @@ import (
 type InputManager struct{}
 
 type InputState struct {
-	Up, Down, Left, Right bool
-	MouseScreenPos        utils.Vec2
-	Use                   bool
+	Analog1X, Analog1Y float64
+	MouseScreenPos     utils.Vec2
+	Use                bool
 }
 
 type InputSourceFunc func(

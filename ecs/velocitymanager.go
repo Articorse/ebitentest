@@ -10,8 +10,16 @@ import (
 
 type VelocityManager struct{}
 
-func NewVelocityComponent() *velocity {
+func NewDefaultVelocityComponent() *velocity {
 	return &velocity{drag: data.DefaultDrag, acceleration: data.DefaultAcceleration}
+}
+
+func NewVelocityComponent(
+	vector utils.Vec2,
+	drag float64,
+	acceleration float64,
+) *velocity {
+	return &velocity{vector: vector, drag: drag, acceleration: acceleration}
 }
 
 func NewVelocityComponentWithParams(

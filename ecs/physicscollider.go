@@ -1,7 +1,7 @@
 package ecs
 
 import (
-	"ebittest/ecs/collidershapes"
+	"ebittest/ecs/shapes"
 )
 
 type PhysicsColliderType uint8
@@ -21,7 +21,7 @@ type physicsCollider struct {
 func (physicsCollider) isComponent() {}
 
 func (x physicsCollider) Copy() physicsCollider {
-	colShapesCopy := make([]collidershapes.Shape, len(x.shapes))
+	colShapesCopy := make([]shapes.Shape, len(x.shapes))
 	copy(colShapesCopy, x.shapes)
 
 	return physicsCollider{

@@ -24,30 +24,43 @@ func Spawn(
 		comps...,
 	)
 
-	worldPos, err := tm.GetWorldPos(spawnerEntity, world.Transforms, world.Parents)
-	if err != nil {
-		return fmt.Errorf("error getting world position of spawner entity %d: %v", spawnerEntity, err)
-	}
-
-	worldRot, err := tm.GetWorldRotation(spawnerEntity, world.Transforms, world.Parents)
-	if err != nil {
-		return fmt.Errorf("error getting world rotation of spawner entity %d: %v", spawnerEntity, err)
-	}
+	worldPos, _ := tm.GetWorldPos(spawnerEntity, world.Transforms, world.Parents)
+	worldRot, _ := tm.GetWorldRotation(spawnerEntity, world.Transforms, world.Parents)
 
 	spawnerOffset, err := sm.GetOffset(spawnerEntity, world.Spawners)
 	if err != nil {
 		return fmt.Errorf("error getting offset of spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	cos := math.Cos(worldRot)
-	sin := math.Sin(worldRot)
-
-	rotatedOffset := utils.Vec2{
-		X: (spawnerOffset.X*cos - spawnerOffset.Y*sin),
-		Y: (spawnerOffset.X*sin + spawnerOffset.Y*cos),
+	sType, err := sm.GetSpawnerType(spawnerEntity, world.Spawners)
+	if err != nil {
+		return fmt.Errorf("error getting spawner type of spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	err = tm.SetWorldPos(newEntity, worldPos.Add(rotatedOffset), world.Transforms, world.Parents)
+	shape, err := sm.GetShape(spawnerEntity, world.Spawners)
+	if err != nil {
+		return fmt.Errorf("error getting shape of spawner entity %d: %v", spawnerEntity, err)
+	}
+
+	var finalOffset utils.Vec2
+	switch sType {
+	case ecs.SpawnerType_Point:
+		cos := math.Cos(worldRot)
+		sin := math.Sin(worldRot)
+
+		rotatedOffset := utils.Vec2{
+			X: (spawnerOffset.X*cos - spawnerOffset.Y*sin),
+			Y: (spawnerOffset.X*sin + spawnerOffset.Y*cos),
+		}
+
+		finalOffset = rotatedOffset
+	case ecs.SpawnerType_Inside:
+		finalOffset = shape.GetRandomPoint(world.Rng).Add(worldPos).Add(spawnerOffset)
+	case ecs.SpawnerType_Perimeter:
+		finalOffset = shape.GetRandomPointAroundShape(world.Rng).Add(worldPos).Add(spawnerOffset)
+	}
+
+	err = tm.SetWorldPos(newEntity, worldPos.Add(finalOffset), world.Transforms, world.Parents)
 	if err != nil {
 		return fmt.Errorf("error setting world position of new entity %d: %v", newEntity, err)
 	}

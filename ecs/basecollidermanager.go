@@ -2,7 +2,7 @@ package ecs
 
 import (
 	"ebittest/data"
-	"ebittest/ecs/collidershapes"
+	"ebittest/ecs/shapes"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
@@ -16,28 +16,28 @@ type IColliderManager interface {
 	EntityIds(w *World) []common.EntityId
 	HasCollider(e common.EntityId, w *World) bool
 	GetWorldPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error)
-	GetShapes(e common.EntityId, w *World) ([]collidershapes.Shape, error)
+	GetShapes(e common.EntityId, w *World) ([]shapes.Shape, error)
 	GetLocalAABB(e common.EntityId, w *World) ([2]utils.Vec2, error)
 	GetLocalPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error)
 	GetCenter(e common.EntityId, w *World) (utils.Vec2, error)
 }
 
-func newBaseCollider(shapes []collidershapes.Shape) baseCollider {
-	c := baseCollider{shapes: shapes}
+func newBaseCollider(colShapes []shapes.Shape) baseCollider {
+	c := baseCollider{shapes: colShapes}
 
-	c.center = collidershapes.CalculateCenter(shapes)
+	c.center = shapes.CalculateCenter(colShapes)
 
-	if len(shapes) == 0 {
+	if len(colShapes) == 0 {
 		c.aabb = [2]utils.Vec2{
 			utils.Vec2{X: 0, Y: 0},
 			utils.Vec2{X: 0, Y: 0},
 		}
 	} else {
-		firstAABB := shapes[0].GetAABB()
+		firstAABB := colShapes[0].GetAABB()
 		minX, minY := firstAABB[0].X, firstAABB[0].Y
 		maxX, maxY := firstAABB[1].X, firstAABB[1].Y
 
-		for _, shape := range shapes {
+		for _, shape := range colShapes {
 			aabb := shape.GetAABB()
 			if aabb[0].X < minX {
 				minX = aabb[0].X
@@ -72,7 +72,7 @@ type BaseColliderManager[T BaseColliderGetter] struct{}
 func (BaseColliderManager[T]) GetShapes(
 	e common.EntityId,
 	colliders map[common.EntityId]T,
-) ([]collidershapes.Shape, error) {
+) ([]shapes.Shape, error) {
 	collider, ok := colliders[e]
 	if !ok {
 		return nil, fmt.Errorf("could not get collider of entity %d", e)

@@ -2,7 +2,7 @@ package collisionsystem
 
 import (
 	"ebittest/ecs"
-	"ebittest/ecs/collidershapes"
+	"ebittest/ecs/shapes"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"log"
@@ -78,46 +78,46 @@ func GetCollisions(
 					bCollidedIdx = bColShapeIdx
 
 					switch aS := aColShape.(type) {
-					case *collidershapes.RectangleShape:
+					case *shapes.RectangleShape:
 						switch bS := bColShape.(type) {
-						case *collidershapes.RectangleShape:
+						case *shapes.RectangleShape:
 							collisionVector = getRectangleRectangleCollision(eA, eB, *aS, *bS, world)
 							collisionFound = true
-						case *collidershapes.CircleShape:
+						case *shapes.CircleShape:
 							collisionVector = getRectangleCircleCollision(eA, eB, *aS, *bS, world)
 							collisionFound = true
-						case *collidershapes.PolygonShape:
+						case *shapes.PolygonShape:
 							collisionVector = getRectanglePolygonCollision(eA, eB, *aS, *bS, world)
 							collisionFound = true
 						default:
 							log.Printf("unsupported collider shape type for collision detection: %T", bS)
 						}
-					case *collidershapes.CircleShape:
+					case *shapes.CircleShape:
 						switch bS := bColShape.(type) {
-						case *collidershapes.RectangleShape:
+						case *shapes.RectangleShape:
 							collisionVector = getRectangleCircleCollision(eB, eA, *bS, *aS, world)
 							collisionVector = collisionVector.Multiply(-1)
 							collisionFound = true
-						case *collidershapes.CircleShape:
+						case *shapes.CircleShape:
 							collisionVector = getCircleCircleCollision(eA, eB, *aS, *bS, world)
 							collisionFound = true
-						case *collidershapes.PolygonShape:
+						case *shapes.PolygonShape:
 							collisionVector = getCirclePolygonCollision(eA, eB, *aS, *bS, world)
 							collisionFound = true
 						default:
 							log.Printf("unsupported collider shape type for collision detection: %T", bS)
 						}
-					case *collidershapes.PolygonShape:
+					case *shapes.PolygonShape:
 						switch bS := bColShape.(type) {
-						case *collidershapes.RectangleShape:
+						case *shapes.RectangleShape:
 							collisionVector = getRectanglePolygonCollision(eB, eA, *bS, *aS, world)
 							collisionVector = collisionVector.Multiply(-1)
 							collisionFound = true
-						case *collidershapes.CircleShape:
+						case *shapes.CircleShape:
 							collisionVector = getCirclePolygonCollision(eB, eA, *bS, *aS, world)
 							collisionVector = collisionVector.Multiply(-1)
 							collisionFound = true
-						case *collidershapes.PolygonShape:
+						case *shapes.PolygonShape:
 							collisionVector = getPolygonPolygonCollision(eA, eB, *aS, *bS, world)
 							collisionFound = true
 						default:

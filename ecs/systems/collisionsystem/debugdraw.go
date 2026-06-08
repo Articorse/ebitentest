@@ -3,7 +3,7 @@ package collisionsystem
 import (
 	"ebittest/data"
 	"ebittest/ecs"
-	"ebittest/ecs/collidershapes"
+	"ebittest/ecs/shapes"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"image/color"
@@ -98,7 +98,7 @@ func DrawColliders(
 
 		for _, shape := range colShapes {
 			switch h := shape.(type) {
-			case *collidershapes.RectangleShape:
+			case *shapes.RectangleShape:
 				verts := []utils.Vec2{
 					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
 					utils.Vec2{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[0].Y},
@@ -118,7 +118,7 @@ func DrawColliders(
 						false,
 					)
 				}
-			case *collidershapes.CircleShape:
+			case *shapes.CircleShape:
 				center := utils.Vec2{X: worldPos.X + h.GetOffset().X, Y: worldPos.Y + h.GetOffset().Y}
 				vector.StrokeCircle(
 					screen,
@@ -129,7 +129,7 @@ func DrawColliders(
 					lineColor,
 					false,
 				)
-			case *collidershapes.PolygonShape:
+			case *shapes.PolygonShape:
 				var verts []utils.Vec2
 				for _, v := range h.GetVertices() {
 					verts = append(verts, utils.Vec2{X: worldPos.X + v.X, Y: worldPos.Y + v.Y})

@@ -1,19 +1,19 @@
 package ecs
 
-import "ebittest/ecs/collidershapes"
+import "ebittest/ecs/shapes"
 
 type PlatformColliderManager struct {
 	BaseColliderManager[*platformCollider]
 }
 
 func NewPlatformColliderComponent(
-	shapes []collidershapes.Shape,
+	shapes []shapes.Shape,
 ) *platformCollider {
 	return &platformCollider{baseCollider: newBaseCollider(shapes)}
 }
 
 func (x platformCollider) Copy() platformCollider {
-	colShapesCopy := make([]collidershapes.Shape, len(x.shapes))
+	colShapesCopy := make([]shapes.Shape, len(x.shapes))
 	copy(colShapesCopy, x.shapes)
 
 	return platformCollider{

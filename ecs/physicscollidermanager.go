@@ -1,8 +1,8 @@
 package ecs
 
 import (
-	"ebittest/ecs/collidershapes"
 	"ebittest/ecs/common"
+	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"fmt"
 )
@@ -13,7 +13,7 @@ type PhysicsColliderManager struct {
 
 func NewPhysicsColliderComponent(
 	cType PhysicsColliderType,
-	shapes []collidershapes.Shape,
+	shapes ...shapes.Shape,
 ) *physicsCollider {
 	return &physicsCollider{
 		colliderType: cType,
@@ -50,7 +50,7 @@ func (PhysicsColliderManager) GetWorldPaddedAABB(e common.EntityId, w *World) ([
 	return PhysicsColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, w.PhysicsColliders, w.Transforms, w.Parents)
 }
 
-func (PhysicsColliderManager) GetShapes(e common.EntityId, w *World) ([]collidershapes.Shape, error) {
+func (PhysicsColliderManager) GetShapes(e common.EntityId, w *World) ([]shapes.Shape, error) {
 	return PhysicsColliderManager{}.BaseColliderManager.GetShapes(e, w.PhysicsColliders)
 }
 

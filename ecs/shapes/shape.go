@@ -1,11 +1,16 @@
-package collidershapes
+package shapes
 
-import "ebittest/utils"
+import (
+	"ebittest/utils"
+	"math/rand/v2"
+)
 
 type Shape interface {
 	GetAABB() [2]utils.Vec2
 	GetOffset() utils.Vec2
-	isShape()
+	Copy() Shape
+	GetRandomPoint(r rand.Rand) utils.Vec2
+	GetRandomPointAroundShape(r rand.Rand) utils.Vec2
 }
 
 func CalculateCenter(colShapes []Shape) utils.Vec2 {

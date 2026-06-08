@@ -124,7 +124,7 @@ func (HitpointsManager) TakeDamage(
 		e,
 		sprites,
 		[]utils.RelativeColor{
-			{R: 100, G: 100, B: 100, A: 1},
+			{R: 0.5, G: 0.5, B: 0.5, A: 1},
 			{R: 1, G: 1, B: 1, A: 1},
 		},
 		[]uint64{100, 100},

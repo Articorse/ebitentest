@@ -1,7 +1,7 @@
 package ecs
 
 import (
-	"ebittest/ecs/collidershapes"
+	"ebittest/ecs/shapes"
 )
 
 type hurtboxCollider struct {
@@ -11,7 +11,7 @@ type hurtboxCollider struct {
 func (hurtboxCollider) isComponent() {}
 
 func (x hurtboxCollider) Copy() hurtboxCollider {
-	colShapesCopy := make([]collidershapes.Shape, len(x.shapes))
+	colShapesCopy := make([]shapes.Shape, len(x.shapes))
 	copy(colShapesCopy, x.shapes)
 
 	return hurtboxCollider{

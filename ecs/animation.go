@@ -9,7 +9,7 @@ import (
 type AnimationState uint16
 
 const (
-	Anim_Idle = iota
+	Anim_Idle AnimationState = iota
 	Anim_Use
 )
 

@@ -2,7 +2,7 @@ package collisionsystem
 
 import (
 	"ebittest/ecs"
-	"ebittest/ecs/collidershapes"
+	"ebittest/ecs/shapes"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"log"
@@ -12,8 +12,8 @@ import (
 func getRectangleCircleCollision(
 	rEnt common.EntityId,
 	cEnt common.EntityId,
-	rHit collidershapes.RectangleShape,
-	cHit collidershapes.CircleShape,
+	rHit shapes.RectangleShape,
+	cHit shapes.CircleShape,
 	world *ecs.World,
 ) utils.Vec2 {
 	tm := ecs.TransformManager{}
@@ -134,8 +134,8 @@ func getRectangleCircleCollision(
 func getRectangleRectangleCollision(
 	r1Ent common.EntityId,
 	r2Ent common.EntityId,
-	r1Hit collidershapes.RectangleShape,
-	r2Hit collidershapes.RectangleShape,
+	r1Hit shapes.RectangleShape,
+	r2Hit shapes.RectangleShape,
 	world *ecs.World,
 ) utils.Vec2 {
 	tm := ecs.TransformManager{}
@@ -259,8 +259,8 @@ func getRectangleRectangleCollision(
 func getCircleCircleCollision(
 	c1Ent common.EntityId,
 	c2Ent common.EntityId,
-	c1Hit collidershapes.CircleShape,
-	c2Hit collidershapes.CircleShape,
+	c1Hit shapes.CircleShape,
+	c2Hit shapes.CircleShape,
 	world *ecs.World,
 ) utils.Vec2 {
 	tm := ecs.TransformManager{}
@@ -351,11 +351,11 @@ func getCircleCircleCollision(
 func getRectanglePolygonCollision(
 	rEnt common.EntityId,
 	pEnt common.EntityId,
-	rHit collidershapes.RectangleShape,
-	pHit collidershapes.PolygonShape,
+	rHit shapes.RectangleShape,
+	pHit shapes.PolygonShape,
 	world *ecs.World,
 ) utils.Vec2 {
-	rectAsPolygon, err := collidershapes.NewPolygonShape(
+	rectAsPolygon, err := shapes.NewPolygonShape(
 		[]utils.Vec2{
 			utils.Vec2{X: rHit.GetAABB()[0].X, Y: rHit.GetAABB()[0].Y},
 			utils.Vec2{X: rHit.GetAABB()[1].X, Y: rHit.GetAABB()[0].Y},
@@ -376,8 +376,8 @@ func getRectanglePolygonCollision(
 func getCirclePolygonCollision(
 	cEnt common.EntityId,
 	pEnt common.EntityId,
-	cHit collidershapes.CircleShape,
-	pHit collidershapes.PolygonShape,
+	cHit shapes.CircleShape,
+	pHit shapes.PolygonShape,
 	world *ecs.World,
 ) utils.Vec2 {
 	tm := ecs.TransformManager{}
@@ -456,8 +456,8 @@ func getCirclePolygonCollision(
 func getPolygonPolygonCollision(
 	p1Ent common.EntityId,
 	p2Ent common.EntityId,
-	p1Hit collidershapes.PolygonShape,
-	p2Hit collidershapes.PolygonShape,
+	p1Hit shapes.PolygonShape,
+	p2Hit shapes.PolygonShape,
 	world *ecs.World,
 ) utils.Vec2 {
 	tm := ecs.TransformManager{}
@@ -528,7 +528,7 @@ func getPolygonPolygonCollision(
 	return utils.Vec2{X: 0, Y: 0}
 }
 
-func GetWorldPolygonVertices(p collidershapes.PolygonShape, worldPos utils.Vec2) []utils.Vec2 {
+func GetWorldPolygonVertices(p shapes.PolygonShape, worldPos utils.Vec2) []utils.Vec2 {
 	verts := p.GetVertices()
 	worldVerts := make([]utils.Vec2, len(verts))
 	for i, v := range verts {

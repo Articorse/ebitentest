@@ -23,16 +23,16 @@ func KeyboardInputSource(
 	}
 
 	if ebiten.IsKeyPressed(config.Left) {
-		is.Left = true
+		is.Analog1X = -1.0
 	}
 	if ebiten.IsKeyPressed(config.Right) {
-		is.Right = true
+		is.Analog1X = 1.0
 	}
 	if ebiten.IsKeyPressed(config.Up) {
-		is.Up = true
+		is.Analog1Y = -1.0
 	}
 	if ebiten.IsKeyPressed(config.Down) {
-		is.Down = true
+		is.Analog1Y = 1.0
 	}
 
 	return is

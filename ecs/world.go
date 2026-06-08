@@ -4,10 +4,13 @@ import (
 	"ebittest/ecs/common"
 	"fmt"
 	"maps"
+	"math/rand/v2"
 )
 
+// TODO: Figure out how to make map iteration order consistent
 type World struct {
 	nextEntity common.EntityId
+	Rng        rand.Rand
 
 	TickIdx   uint64
 	TickState common.TickState
@@ -84,6 +87,7 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	delete(x.TimedLives, e)
 	delete(x.Hitpoints, e)
 	delete(x.ContactDamages, e)
+	delete(x.Inputs, e)
 
 	pm := ParentManager{}
 	err := pm.RemoveParentFromAllEntities(e, x.Parents, x.Transforms)

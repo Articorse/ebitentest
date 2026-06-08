@@ -1,7 +1,7 @@
 package ecs
 
 import (
-	"ebittest/ecs/collidershapes"
+	"ebittest/ecs/shapes"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 )
@@ -11,7 +11,7 @@ type HurtboxColliderManager struct {
 }
 
 func NewHurtboxColliderComponent(
-	shapes ...collidershapes.Shape,
+	shapes ...shapes.Shape,
 ) *hurtboxCollider {
 	return &hurtboxCollider{baseCollider: newBaseCollider(shapes)}
 }
@@ -33,7 +33,7 @@ func (HurtboxColliderManager) GetWorldPaddedAABB(e common.EntityId, w *World) ([
 	return HurtboxColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, w.HurtboxColliders, w.Transforms, w.Parents)
 }
 
-func (HurtboxColliderManager) GetShapes(e common.EntityId, w *World) ([]collidershapes.Shape, error) {
+func (HurtboxColliderManager) GetShapes(e common.EntityId, w *World) ([]shapes.Shape, error) {
 	return HurtboxColliderManager{}.BaseColliderManager.GetShapes(e, w.HurtboxColliders)
 }
 

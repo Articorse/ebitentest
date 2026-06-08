@@ -3,6 +3,7 @@ package animationsystem
 import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"log"
 )
 
@@ -35,6 +36,14 @@ func Tick(world *ecs.World) error {
 		err = sm.SetImage(e, currentFrame, world.Sprites)
 		if err != nil {
 			log.Printf("Error setting sprite image for entity %d: %v\n", e, err)
+			continue
+		}
+
+		layerYOffset := utils.GetFirstOpaquePixelY(currentFrame)
+
+		err = sm.SetLocalLayerYOffset(e, layerYOffset, world.Sprites)
+		if err != nil {
+			log.Printf("Error setting local layer Y offset for entity %d: %v\n", e, err)
 			continue
 		}
 	}

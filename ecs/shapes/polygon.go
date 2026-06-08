@@ -1,8 +1,9 @@
-package collidershapes
+package shapes
 
 import (
 	"ebittest/utils"
 	"fmt"
+	"math/rand/v2"
 )
 
 type PolygonShape struct {
@@ -11,18 +12,15 @@ type PolygonShape struct {
 	aabb     [2]utils.Vec2
 }
 
-func (PolygonShape) isShape() {}
+func (x *PolygonShape) Copy() Shape {
+	verticesCopy := make([]utils.Vec2, len(x.vertices))
+	copy(verticesCopy, x.vertices)
 
-func (x *PolygonShape) GetVertices() []utils.Vec2 {
-	return x.vertices
-}
-
-func (x *PolygonShape) GetOffset() utils.Vec2 {
-	return x.offset
-}
-
-func (x *PolygonShape) GetAABB() [2]utils.Vec2 {
-	return x.aabb
+	return &PolygonShape{
+		vertices: verticesCopy,
+		offset:   x.offset,
+		aabb:     x.aabb,
+	}
 }
 
 func NewPolygonShape(v []utils.Vec2, o utils.Vec2) (*PolygonShape, error) {
@@ -57,4 +55,26 @@ func NewPolygonShape(v []utils.Vec2, o utils.Vec2) (*PolygonShape, error) {
 			{X: maxX + o.X, Y: maxY + o.Y},
 		},
 	}, nil
+}
+
+func (x *PolygonShape) GetVertices() []utils.Vec2 {
+	return x.vertices
+}
+
+func (x *PolygonShape) GetOffset() utils.Vec2 {
+	return x.offset
+}
+
+func (x *PolygonShape) GetAABB() [2]utils.Vec2 {
+	return x.aabb
+}
+
+// TODO: Implement
+func (x *PolygonShape) GetRandomPoint(r rand.Rand) utils.Vec2 {
+	return utils.Vec2{}
+}
+
+// TODO: Implement
+func (x *PolygonShape) GetRandomPointAroundShape(r rand.Rand) utils.Vec2 {
+	return utils.Vec2{}
 }
