@@ -37,7 +37,12 @@ func DealContactDamage(
 	hpm := ecs.HitpointsManager{}
 
 	for dmgE, cols := range collisions {
+		dmgESelfDestructed := false
 		for hitE, c := range cols {
+			if dmgESelfDestructed {
+				break
+			}
+
 			isInvul, err := hpm.IsInvul(hitE, world)
 			if err != nil {
 				log.Printf("Error checking invulnerability for entity %d: %v\n", hitE, err)
@@ -108,6 +113,7 @@ func DealContactDamage(
 
 			if dieOnContact {
 				err = world.RemoveEntity(dmgE)
+				dmgESelfDestructed = true
 				if err != nil {
 					log.Printf("Error removing entity %d: %v\n", dmgE, err)
 				}
