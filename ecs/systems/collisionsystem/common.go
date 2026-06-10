@@ -2,8 +2,8 @@ package collisionsystem
 
 import (
 	"ebittest/ecs"
-	"ebittest/ecs/shapes"
 	"ebittest/ecs/common"
+	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"log"
 	"slices"
@@ -17,24 +17,25 @@ func GetCollisions(
 ) (map[common.EntityId]map[common.EntityId]common.Collision, error) {
 	collisions := make(map[common.EntityId]map[common.EntityId]common.Collision)
 	for e1, colEntities := range potentialCollisions {
-		eA := common.EntityId(-1)
-		eB := common.EntityId(-1)
-
-		if aColManager.HasCollider(e1, world) {
-			eA = e1
-		} else if bColManager.HasCollider(e1, world) {
-			eB = e1
-		}
-
 		for _, e2 := range colEntities {
 			if e1 == e2 {
 				continue
 			}
 
-			if bColManager.HasCollider(e2, world) {
+			e1HasA := aColManager.HasCollider(e1, world)
+			e1HasB := bColManager.HasCollider(e1, world)
+			e2HasA := aColManager.HasCollider(e2, world)
+			e2HasB := bColManager.HasCollider(e2, world)
+
+			eA := common.EntityId(-1)
+			eB := common.EntityId(-1)
+
+			if e1HasA && e2HasB {
+				eA = e1
 				eB = e2
-			} else if aColManager.HasCollider(e2, world) {
+			} else if e1HasB && e2HasA {
 				eA = e2
+				eB = e1
 			}
 
 			if eA == -1 || eB == -1 {
@@ -212,13 +213,13 @@ func GetAABBCollisions(
 				continue
 			}
 
-			aLayers, err := clm.GetLayers(eA, world.CollisionLayers)
+			aLayers, err := clm.GetLayers(eA, world)
 			if err != nil {
 				log.Printf("Error getting collider layers for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			aMask, err := clm.GetMask(eA, world.CollisionLayers)
+			aMask, err := clm.GetMask(eA, world)
 			if err != nil {
 				log.Printf("Error getting collider mask for entity %d: %v\n", eA, err)
 				continue
@@ -230,13 +231,13 @@ func GetAABBCollisions(
 				continue
 			}
 
-			bLayers, err := clm.GetLayers(eB, world.CollisionLayers)
+			bLayers, err := clm.GetLayers(eB, world)
 			if err != nil {
 				log.Printf("Error getting collider layers for entity %d: %v\n", eB, err)
 				continue
 			}
 
-			bMask, err := clm.GetMask(eB, world.CollisionLayers)
+			bMask, err := clm.GetMask(eB, world)
 			if err != nil {
 				log.Printf("Error getting collider mask for entity %d: %v\n", eB, err)
 				continue

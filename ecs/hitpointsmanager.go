@@ -20,11 +20,11 @@ func NewHitpointsComponent(max int64, invul int64) *hitpoints {
 
 func (HitpointsManager) GetMax(
 	e common.EntityId,
-	hitpoints map[common.EntityId]*hitpoints,
+	world *World,
 ) (int64, error) {
-	hpComp, ok := hitpoints[e]
-	if !ok {
-		return -1, fmt.Errorf("could not get hitpoints component of entity %d", e)
+	hpComp, err := world.Hitpoints.getComponent(e)
+	if err != nil {
+		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
 
 	return hpComp.max, nil
@@ -33,11 +33,11 @@ func (HitpointsManager) GetMax(
 // Returns -1 if component not found
 func (HitpointsManager) GetCurrent(
 	e common.EntityId,
-	hitpoints map[common.EntityId]*hitpoints,
+	world *World,
 ) (int64, error) {
-	hpComp, ok := hitpoints[e]
-	if !ok {
-		return -1, fmt.Errorf("could not get hitpoints component of entity %d", e)
+	hpComp, err := world.Hitpoints.getComponent(e)
+	if err != nil {
+		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
 
 	return hpComp.current, nil
@@ -45,11 +45,11 @@ func (HitpointsManager) GetCurrent(
 
 func (HitpointsManager) GetInvulMax(
 	e common.EntityId,
-	hitpoints map[common.EntityId]*hitpoints,
+	world *World,
 ) (int64, error) {
-	hpComp, ok := hitpoints[e]
-	if !ok {
-		return -1, fmt.Errorf("could not get hitpoints component of entity %d", e)
+	hpComp, err := world.Hitpoints.getComponent(e)
+	if err != nil {
+		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
 
 	return hpComp.invulMaxMs, nil
@@ -57,11 +57,11 @@ func (HitpointsManager) GetInvulMax(
 
 func (HitpointsManager) GetInvulCurrent(
 	e common.EntityId,
-	hitpoints map[common.EntityId]*hitpoints,
+	world *World,
 ) (int64, error) {
-	hpComp, ok := hitpoints[e]
-	if !ok {
-		return -1, fmt.Errorf("could not get hitpoints component of entity %d", e)
+	hpComp, err := world.Hitpoints.getComponent(e)
+	if err != nil {
+		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
 
 	return hpComp.invulCurMs, nil
@@ -69,11 +69,11 @@ func (HitpointsManager) GetInvulCurrent(
 
 func (HitpointsManager) IsInvul(
 	e common.EntityId,
-	hitpoints map[common.EntityId]*hitpoints,
+	world *World,
 ) (bool, error) {
-	hpComp, ok := hitpoints[e]
-	if !ok {
-		return false, fmt.Errorf("could not get hitpoints component of entity %d", e)
+	hpComp, err := world.Hitpoints.getComponent(e)
+	if err != nil {
+		return false, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
 
 	return hpComp.invulCurMs > 0, nil
@@ -81,11 +81,11 @@ func (HitpointsManager) IsInvul(
 
 func (HitpointsManager) TickInvul(
 	e common.EntityId,
-	hitpoints map[common.EntityId]*hitpoints,
+	world *World,
 ) error {
-	hpComp, ok := hitpoints[e]
-	if !ok {
-		return fmt.Errorf("could not get hitpoints component of entity %d", e)
+	hpComp, err := world.Hitpoints.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
 
 	if hpComp.invulCurMs > 0 {
@@ -103,14 +103,13 @@ func (HitpointsManager) TickInvul(
 func (HitpointsManager) TakeDamage(
 	e common.EntityId,
 	damage int64,
-	hitpoints map[common.EntityId]*hitpoints,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) (dead bool, err error) {
 	sm := SpriteManager{}
 
-	hpComp, ok := hitpoints[e]
-	if !ok {
-		return false, fmt.Errorf("could not get hitpoints component of entity %d", e)
+	hpComp, err := world.Hitpoints.getComponent(e)
+	if err != nil {
+		return false, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
 
 	hpComp.current -= damage
@@ -122,13 +121,13 @@ func (HitpointsManager) TakeDamage(
 
 	sm.SetSpriteFlash(
 		e,
-		sprites,
 		[]utils.RelativeColor{
 			{R: 0.5, G: 0.5, B: 0.5, A: 1},
 			{R: 1, G: 1, B: 1, A: 1},
 		},
 		[]uint64{100, 100},
 		uint64(hpComp.invulMaxMs),
+		world,
 	)
 
 	return false, nil
@@ -137,11 +136,11 @@ func (HitpointsManager) TakeDamage(
 func (HitpointsManager) Heal(
 	e common.EntityId,
 	heal int64,
-	hitpoints map[common.EntityId]*hitpoints,
+	world *World,
 ) error {
-	hpComp, ok := hitpoints[e]
-	if !ok {
-		return fmt.Errorf("could not get hitpoints component of entity %d", e)
+	hpComp, err := world.Hitpoints.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
 
 	hpComp.current += heal

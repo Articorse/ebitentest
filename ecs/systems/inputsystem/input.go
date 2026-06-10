@@ -14,7 +14,7 @@ func GetTickInputs(
 	inputSource ecs.InputSourceFunc,
 ) map[common.EntityId]ecs.InputState {
 	tickInputs := make(map[common.EntityId]ecs.InputState)
-	for e := range world.Inputs {
+	for _, e := range world.Inputs.GetOrderedEntities() {
 		input := inputSource(e, tick, world)
 		tickInputs[e] = input
 	}
@@ -28,11 +28,10 @@ func HandleInputs(
 ) error {
 
 	for e, input := range allInputs {
-		_, hasTra := world.Transforms[e]
-		if hasTra {
+		if world.Transforms.HasComponent(e) {
 			tm := ecs.TransformManager{}
 
-			eWorldPos, err := tm.GetWorldPos(e, world.Transforms, world.Parents)
+			eWorldPos, err := tm.GetWorldPos(e, world)
 			if err != nil {
 				log.Printf("Error getting world position for entity %d: %v\n", e, err)
 				continue
@@ -48,15 +47,14 @@ func HandleInputs(
 				dY := mWorldY - eWorldPos.Y
 				r := math.Atan2(dY, dX)
 
-				err = tm.SetLocalRotation(e, r, world.Transforms)
+				err = tm.SetLocalRotation(e, r, world)
 				if err != nil {
 					log.Printf("Error setting world rotation for entity %d: %v\n", e, err)
 				}
 			}
 		}
 
-		_, hasVel := world.Velocities[e]
-		if hasVel {
+		if world.Velocities.HasComponent(e) {
 			vm := ecs.VelocityManager{}
 
 			v := utils.Vec2{X: 0, Y: 0}
@@ -66,43 +64,41 @@ func HandleInputs(
 
 			v = v.Normalized()
 
-			pLocalVelVec, err := vm.GetLocalVector(e, world.Velocities)
+			pLocalVelVec, err := vm.GetLocalVector(e, world)
 			if err != nil {
 				log.Printf("Error getting local velocity vector for entity %d: %v\n", e, err)
 				continue
 			}
 
-			pAccel, err := vm.GetAcceleration(e, world.Velocities)
+			pAccel, err := vm.GetAcceleration(e, world)
 			if err != nil {
 				log.Printf("Error getting acceleration for entity %d: %v\n", e, err)
 				continue
 			}
 
-			vm.SetLocalVector(e, pLocalVelVec.Add(v.Multiply(pAccel)), world.Velocities)
+			vm.SetLocalVector(e, pLocalVelVec.Add(v.Multiply(pAccel)), world)
 		}
 
-		_, hasSpawner := world.Spawners[e]
-		if hasSpawner {
+		if world.Spawners.HasComponent(e) {
 			if input.Use {
 				sm := ecs.SpawnerManager{}
 				sm.Spawn(e, world)
 			}
 		}
 
-		_, hasAnim := world.Animations[e]
-		if hasAnim {
+		if world.Animations.HasComponent(e) {
 			am := ecs.AnimationManager{}
 			if input.Use {
-				nextState, err := am.GetState(e, world.Animations)
+				nextState, err := am.GetState(e, world)
 				if err != nil {
 					log.Printf("Error getting animation state for entity %d: %v\n", e, err)
 					continue
 				}
-				err = am.SetQueuedStateIfNone(e, nextState, world.Animations)
+				err = am.SetQueuedStateIfNone(e, nextState, world)
 				if err != nil {
 					log.Printf("Error setting queued animation state for entity %d: %v\n", e, err)
 				}
-				err = am.SetState(e, ecs.Anim_Use, world.Animations)
+				err = am.SetState(e, ecs.Anim_Use, world)
 				if err != nil {
 					log.Printf("Error setting animation state for entity %d: %v\n", e, err)
 				}

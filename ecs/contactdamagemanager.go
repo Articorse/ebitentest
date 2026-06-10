@@ -23,11 +23,11 @@ func NewContactDamageComponent(
 
 func (*ContactDamageManager) GetSource(
 	e common.EntityId,
-	contactDamages map[common.EntityId]*contactDamage,
+	world *World,
 ) (common.EntityId, error) {
-	cdComp, ok := contactDamages[e]
-	if !ok {
-		return -1, fmt.Errorf("could not get contact damage component of entity %d", e)
+	cdComp, err := world.ContactDamages.getComponent(e)
+	if err != nil {
+		return -1, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
 
 	return cdComp.source, nil
@@ -35,11 +35,11 @@ func (*ContactDamageManager) GetSource(
 
 func (*ContactDamageManager) GetDamageTiers(
 	e common.EntityId,
-	contactDamages map[common.EntityId]*contactDamage,
+	world *World,
 ) ([]int64, error) {
-	cdComp, ok := contactDamages[e]
-	if !ok {
-		return nil, fmt.Errorf("could not get contact damage component of entity %d", e)
+	cdComp, err := world.ContactDamages.getComponent(e)
+	if err != nil {
+		return nil, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
 
 	return cdComp.damageTiers, nil
@@ -47,11 +47,11 @@ func (*ContactDamageManager) GetDamageTiers(
 
 func (*ContactDamageManager) GetKnockback(
 	e common.EntityId,
-	contactDamages map[common.EntityId]*contactDamage,
+	world *World,
 ) (float64, error) {
-	cdComp, ok := contactDamages[e]
-	if !ok {
-		return -1, fmt.Errorf("could not get contact damage component of entity %d", e)
+	cdComp, err := world.ContactDamages.getComponent(e)
+	if err != nil {
+		return -1, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
 
 	return cdComp.knockback, nil
@@ -59,11 +59,11 @@ func (*ContactDamageManager) GetKnockback(
 
 func (*ContactDamageManager) GetDieOnContact(
 	e common.EntityId,
-	contactDamages map[common.EntityId]*contactDamage,
+	world *World,
 ) (bool, error) {
-	cdComp, ok := contactDamages[e]
-	if !ok {
-		return false, fmt.Errorf("could not get contact damage component of entity %d", e)
+	cdComp, err := world.ContactDamages.getComponent(e)
+	if err != nil {
+		return false, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
 
 	return cdComp.dieOnContact, nil

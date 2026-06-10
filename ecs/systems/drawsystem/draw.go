@@ -31,8 +31,8 @@ func DrawFrame(
 		utils.Vec2{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
 	}
 
-	for e, _ := range world.Sprites {
-		eWorldPos, err := tm.GetWorldPos(e, world.Transforms, world.Parents)
+	for _, e := range world.Sprites.GetOrderedEntities() {
+		eWorldPos, err := tm.GetWorldPos(e, world)
 		if err != nil {
 			return fmt.Errorf("error getting world position of entity %d: %v", e, err)
 		}
@@ -49,7 +49,7 @@ func DrawFrame(
 		}
 		visitedSprites[e] = struct{}{}
 
-		sprImg, err := sm.GetImage(e, world.Sprites)
+		sprImg, err := sm.GetImage(e, world)
 		if err != nil {
 			return fmt.Errorf("Error getting sprite image for entity %d: %v\n", e, err)
 		}
@@ -58,7 +58,7 @@ func DrawFrame(
 			continue
 		}
 
-		layer, err := sm.GetLayer(e, world.Sprites)
+		layer, err := sm.GetLayer(e, world)
 		if err != nil {
 			return fmt.Errorf("Error getting sprite layer for entity %d: %v\n", e, err)
 		}
@@ -83,7 +83,7 @@ func DrawFrame(
 		for j, n := range neighbors {
 			visitedSprites[neighbors[j]] = struct{}{}
 
-			nSprImg, err := sm.GetImage(n, world.Sprites)
+			nSprImg, err := sm.GetImage(n, world)
 			if err != nil {
 				return fmt.Errorf("Error getting sprite image for entity %d: %v\n", n, err)
 			}
@@ -98,7 +98,7 @@ func DrawFrame(
 		if len(batches[layer][i]) > 1 {
 			var err error
 
-			hierarchies, err := pm.GetOrderedHierarchies(batches[layer][i], world.Parents)
+			hierarchies, err := pm.GetOrderedHierarchies(batches[layer][i], world)
 			if err != nil {
 				return fmt.Errorf("error getting ordered hierarchies for batch in layer %d: %v", layer, err)
 			}
@@ -107,12 +107,12 @@ func DrawFrame(
 				a := aRoot[0][0]
 				b := bRoot[0][0]
 
-				aTotalY, err := sm.GetWorldLayerYOffset(a, world.Sprites, world.Transforms, world.Parents)
+				aTotalY, err := sm.GetWorldLayerYOffset(a, world)
 				if err != nil {
 					return -1
 				}
 
-				bTotalY, err := sm.GetWorldLayerYOffset(b, world.Sprites, world.Transforms, world.Parents)
+				bTotalY, err := sm.GetWorldLayerYOffset(b, world)
 				if err != nil {
 					return -1
 				}
@@ -156,29 +156,29 @@ func DrawFrame(
 	for _, layer := range orderedKeys {
 		for _, batch := range batches[layer] {
 			for _, batchEntity := range batch {
-				v, err := sm.GetWorldOffsetPos(batchEntity, world.Sprites, world.Transforms, world.Parents)
+				v, err := sm.GetWorldOffsetPos(batchEntity, world)
 				if err != nil {
 					return fmt.Errorf("error getting world offset position of batchEntity %d: %v", batchEntity, err)
 				}
 
 				r := 0.0
-				allowRot, err := sm.GetAllowRotation(batchEntity, world.Sprites)
+				allowRot, err := sm.GetAllowRotation(batchEntity, world)
 				if err != nil {
 					return fmt.Errorf("error getting allow rotation of batchEntity %d: %v", batchEntity, err)
 				}
 				if allowRot {
-					r, err = sm.GetWorldOffsetRotation(batchEntity, world.Sprites, world.Transforms, world.Parents)
+					r, err = sm.GetWorldOffsetRotation(batchEntity, world)
 					if err != nil {
 						return fmt.Errorf("error getting world offset rotation of batchEntity %d: %v", batchEntity, err)
 					}
 				}
 
-				s, err := sm.GetWorldOffsetScale(batchEntity, world.Sprites, world.Transforms, world.Parents)
+				s, err := sm.GetWorldOffsetScale(batchEntity, world)
 				if err != nil {
 					return fmt.Errorf("error getting world offset scale of batchEntity %d: %v", batchEntity, err)
 				}
 
-				img, err := sm.GetImage(batchEntity, world.Sprites)
+				img, err := sm.GetImage(batchEntity, world)
 				if err != nil {
 					return fmt.Errorf("Error getting sprite image for batchEntity %d: %v\n", batchEntity, err)
 				}
@@ -190,7 +190,7 @@ func DrawFrame(
 				opts.GeoM.Rotate(r)
 				opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
 
-				color, ok, err := sm.GetCurrentColor(batchEntity, world.Sprites)
+				color, ok, err := sm.GetCurrentColor(batchEntity, world)
 				if err != nil {
 					return fmt.Errorf("error getting current color of batchEntity %d: %v", batchEntity, err)
 				}
@@ -236,12 +236,12 @@ func getNeighborsRecursive(
 
 	visitedEntities[eA] = struct{}{}
 
-	aWorldPos, err := tm.GetWorldPos(eA, world.Transforms, world.Parents)
+	aWorldPos, err := tm.GetWorldPos(eA, world)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting world position of entity %d: %v", eA, err)
 	}
 
-	aLayer, err := sm.GetLayer(eA, world.Sprites)
+	aLayer, err := sm.GetLayer(eA, world)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting sprite layer for entity %d: %v", eA, err)
 	}
@@ -265,7 +265,7 @@ func getNeighborsRecursive(
 				}
 				visitedEntities[eB] = struct{}{}
 
-				bLayer, err := sm.GetLayer(eB, world.Sprites)
+				bLayer, err := sm.GetLayer(eB, world)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error getting sprite layer for entity %d: %v", eB, err)
 				}

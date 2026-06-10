@@ -68,8 +68,8 @@ func (g *game) Update() error {
 	pm := ecs.ParentManager{}
 
 	tickInputs := make(map[common.EntityId]ecs.InputState)
-	for eid, _ := range g.world.Inputs {
-		inputSourceFunc, err := im.GetInputSourceFunc(eid, g.world.Inputs)
+	for _, eid := range g.world.Inputs.GetOrderedEntities() {
+		inputSourceFunc, err := im.GetInputSourceFunc(eid, g.world)
 		if err != nil {
 			log.Printf("error getting input source func for entity %d: %v\n", eid, err)
 			continue
@@ -123,7 +123,7 @@ func (g *game) Update() error {
 		g.cameraFollow = !g.cameraFollow
 	}
 	if g.cameraFollow {
-		pWorldPos, err := tm.GetWorldPos(g.playerEntity, g.world.Transforms, g.world.Parents)
+		pWorldPos, err := tm.GetWorldPos(g.playerEntity, g.world)
 		if err != nil {
 			log.Println("error getting player world position for camera follow: ", err)
 		}
@@ -155,7 +155,7 @@ func (g *game) Update() error {
 
 		replaySource := inputsources.NewReplayInputSource(g.replayStartTick, g.replayInputs)
 
-		err := im.SetInputSourceFunc(g.replayEntity, replaySource, g.world.Inputs)
+		err := im.SetInputSourceFunc(g.replayEntity, replaySource, g.world)
 		if err != nil {
 			log.Println("error setting replay input source func: ", err)
 		}
@@ -175,22 +175,22 @@ func (g *game) Update() error {
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
-		parEnt := pm.GetEntity(common.EntityId(1), g.world.Parents)
+		parEnt := pm.GetEntity(common.EntityId(1), g.world)
 
 		if parEnt > -1 {
-			err = pm.Detach(common.EntityId(1), g.world.Transforms, g.world.Parents)
+			err = pm.Detach(common.EntityId(1), g.world)
 			if err != nil {
 				log.Println("error detaching gun: ", err)
 			}
 		} else {
-			err = pm.Attach(common.EntityId(1), g.playerEntity, g.world.Transforms, g.world.Parents)
+			err = pm.Attach(common.EntityId(1), g.playerEntity, g.world)
 			if err != nil {
 				log.Println("error attaching gun to player: ", err)
 			}
 		}
 	}
 
-	pWorldPos, err := tm.GetWorldPos(g.playerEntity, g.world.Transforms, g.world.Parents)
+	pWorldPos, err := tm.GetWorldPos(g.playerEntity, g.world)
 	if err != nil {
 		log.Println("error getting player world position for debug: ", err)
 	} else {
@@ -407,7 +407,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			}
 		}
 
-		pLocalVelVec, err := vm.GetLocalVector(g.playerEntity, g.world.Velocities)
+		pLocalVelVec, err := vm.GetLocalVector(g.playerEntity, g.world)
 		if err != nil {
 			log.Fatalf("error getting player local velocity for debug: %v", err)
 		}
@@ -547,7 +547,7 @@ func main() {
 	}
 
 	enemyTraComp := ecs.NewTransformComponent(utils.Vec2{X: 300, Y: 150}, 1, 0)
-	enemyVelComp := ecs.NewVelocityComponent(utils.Vec2{}, data.DefaultDrag, data.DefaultAcceleration*0.25)
+	enemyVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, data.DefaultAcceleration*0.25, data.DefaultDrag)
 	enemyParComp := ecs.NewParentComponent()
 	enemySprComp, err := ecs.NewSpriteComponent("assets/sprites/evilslime.png", 20, true)
 	if err != nil {
@@ -644,7 +644,7 @@ func main() {
 		gunSpaComp,
 	)
 
-	err = pm.Attach(gun, g.playerEntity, g.world.Transforms, g.world.Parents)
+	err = pm.Attach(gun, g.playerEntity, g.world)
 	if err != nil {
 		log.Fatal("error attaching gun to player: ", err)
 	}
@@ -701,7 +701,7 @@ func main() {
 
 	platParComp := ecs.NewParentComponent()
 	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
-	platVelComp := ecs.NewVelocityComponent(utils.Vec2{}, data.DefaultDrag, 0.3)
+	platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, 0.3, data.DefaultDrag)
 
 	platSprComp, err := ecs.NewSpriteComponent("assets/sprites/platform.png", 10, true)
 	if err != nil {

@@ -27,18 +27,18 @@ func NewSpriteComponent(imageUri string, layer uint8, allowRotation bool) (*spri
 
 func (*SpriteManager) SetSpriteFlash(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
 	colors []utils.RelativeColor,
 	colorDurationsMs []uint64,
 	TotalDurationMs uint64,
+	world *World,
 ) error {
 	if len(colors) != len(colorDurationsMs) {
 		return fmt.Errorf("colors and colorDurationsMs must have the same length")
 	}
 
-	sprite, ok := sprites[e]
-	if !ok {
-		return fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	var loopDurationMs uint64
@@ -61,11 +61,11 @@ func (*SpriteManager) SetSpriteFlash(
 
 func (*SpriteManager) GetImage(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) (*ebiten.Image, error) {
-	sprite, ok := sprites[e]
-	if !ok {
-		return nil, fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return nil, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	return sprite.image, nil
@@ -74,11 +74,11 @@ func (*SpriteManager) GetImage(
 func (*SpriteManager) SetImage(
 	e common.EntityId,
 	image *ebiten.Image,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) error {
-	sprite, ok := sprites[e]
-	if !ok {
-		return fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	sprite.image = image
@@ -88,11 +88,11 @@ func (*SpriteManager) SetImage(
 
 func (*SpriteManager) GetLocalOffsetPos(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) (utils.Vec2, error) {
-	sprite, ok := sprites[e]
-	if !ok {
-		return utils.Vec2{}, fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return utils.Vec2{}, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	return sprite.offsetPos, nil
@@ -100,23 +100,21 @@ func (*SpriteManager) GetLocalOffsetPos(
 
 func (*SpriteManager) GetWorldOffsetPos(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) (utils.Vec2, error) {
-	sprComp, ok := sprites[e]
-	if !ok {
-		return utils.Vec2{}, fmt.Errorf("could not get sprite of entity %d", e)
+	sprComp, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return utils.Vec2{}, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	tm := TransformManager{}
 
-	pWorldPos, err := tm.GetWorldPos(e, transforms, parents)
+	pWorldPos, err := tm.GetWorldPos(e, world)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world position of entity %d: %v", e, ok)
+		return utils.Vec2{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(e, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(e, world)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
 	}
@@ -132,11 +130,11 @@ func (*SpriteManager) GetWorldOffsetPos(
 
 func (*SpriteManager) GetLocalOffsetRotation(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) (float64, error) {
-	sprite, ok := sprites[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	return sprite.offsetRotation, nil
@@ -144,18 +142,16 @@ func (*SpriteManager) GetLocalOffsetRotation(
 
 func (*SpriteManager) GetWorldOffsetRotation(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) (float64, error) {
-	sprComp, ok := sprites[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get sprite of entity %d", e)
+	sprComp, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	tm := TransformManager{}
 
-	WorldRot, err := tm.GetWorldRotation(e, transforms, parents)
+	WorldRot, err := tm.GetWorldRotation(e, world)
 	if err != nil {
 		return 0, fmt.Errorf("error getting world rotation of parent entity %d: %v", e, err)
 	}
@@ -165,11 +161,11 @@ func (*SpriteManager) GetWorldOffsetRotation(
 
 func (*SpriteManager) GetLocalOffsetScale(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) (float64, error) {
-	sprite, ok := sprites[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	return sprite.offsetScale, nil
@@ -177,25 +173,23 @@ func (*SpriteManager) GetLocalOffsetScale(
 
 func (*SpriteManager) GetWorldOffsetScale(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) (float64, error) {
 	pm := ParentManager{}
 
-	sprComp, ok := sprites[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get sprite of entity %d", e)
+	sprComp, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, parents)
+	parEntity := pm.GetEntity(e, world)
 	if parEntity == -1 {
 		return sprComp.offsetScale, nil
 	}
 
 	tm := TransformManager{}
 
-	pWorldSca, err := tm.GetWorldScale(parEntity, transforms, parents)
+	pWorldSca, err := tm.GetWorldScale(parEntity, world)
 	if err != nil {
 		return 0, fmt.Errorf("error getting world scale of parent entity %d: %v", parEntity, err)
 	}
@@ -205,11 +199,11 @@ func (*SpriteManager) GetWorldOffsetScale(
 
 func (*SpriteManager) GetLocalLayerYOffset(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) (uint16, error) {
-	sprite, ok := sprites[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	return sprite.layerYOffset, nil
@@ -217,23 +211,21 @@ func (*SpriteManager) GetLocalLayerYOffset(
 
 func (*SpriteManager) GetWorldLayerYOffset(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) (uint16, error) {
-	sprComp, ok := sprites[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get sprite of entity %d", e)
+	sprComp, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	tm := TransformManager{}
 
-	pWorldPos, err := tm.GetWorldPos(e, transforms, parents)
+	pWorldPos, err := tm.GetWorldPos(e, world)
 	if err != nil {
-		return 0, fmt.Errorf("error getting world position of entity %d: %v", e, ok)
+		return 0, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(e, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(e, world)
 	if err != nil {
 		return 0, fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
 	}
@@ -246,11 +238,11 @@ func (*SpriteManager) GetWorldLayerYOffset(
 
 func (*SpriteManager) GetLayer(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) (uint8, error) {
-	sprite, ok := sprites[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	return sprite.layer, nil
@@ -259,11 +251,11 @@ func (*SpriteManager) GetLayer(
 func (*SpriteManager) SetLocalOffsetPos(
 	e common.EntityId,
 	offset utils.Vec2,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) error {
-	sprite, ok := sprites[e]
-	if !ok {
-		return fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	sprite.offsetPos = offset
@@ -274,11 +266,11 @@ func (*SpriteManager) SetLocalOffsetPos(
 func (*SpriteManager) SetLocalOffsetRotation(
 	e common.EntityId,
 	rotation float64,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) error {
-	sprite, ok := sprites[e]
-	if !ok {
-		return fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	sprite.offsetRotation = rotation
@@ -289,11 +281,11 @@ func (*SpriteManager) SetLocalOffsetRotation(
 func (*SpriteManager) SetLocalOffsetScale(
 	e common.EntityId,
 	scale float64,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) error {
-	sprite, ok := sprites[e]
-	if !ok {
-		return fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	sprite.offsetScale = scale
@@ -304,11 +296,11 @@ func (*SpriteManager) SetLocalOffsetScale(
 func (*SpriteManager) SetLocalLayerYOffset(
 	e common.EntityId,
 	offset uint16,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) error {
-	sprite, ok := sprites[e]
-	if !ok {
-		return fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	sprite.layerYOffset = offset
@@ -319,11 +311,11 @@ func (*SpriteManager) SetLocalLayerYOffset(
 func (*SpriteManager) SetLayer(
 	e common.EntityId,
 	layer uint8,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) error {
-	sprite, ok := sprites[e]
-	if !ok {
-		return fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	sprite.layer = layer
@@ -333,11 +325,11 @@ func (*SpriteManager) SetLayer(
 
 func (*SpriteManager) GetAllowRotation(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) (bool, error) {
-	sprite, ok := sprites[e]
-	if !ok {
-		return false, fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return false, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	return sprite.allowRotation, nil
@@ -346,11 +338,11 @@ func (*SpriteManager) GetAllowRotation(
 func (*SpriteManager) SetAllowRotation(
 	e common.EntityId,
 	allow bool,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) error {
-	sprite, ok := sprites[e]
-	if !ok {
-		return fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	sprite.allowRotation = allow
@@ -360,11 +352,11 @@ func (*SpriteManager) SetAllowRotation(
 
 func (*SpriteManager) GetCurrentColor(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) (color utils.RelativeColor, ok bool, err error) {
-	sprite, ok := sprites[e]
-	if !ok {
-		return color, false, fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return color, false, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	if sprite.flash == nil {
@@ -376,11 +368,11 @@ func (*SpriteManager) GetCurrentColor(
 
 func (*SpriteManager) TickFlash(
 	e common.EntityId,
-	sprites map[common.EntityId]*sprite,
+	world *World,
 ) error {
-	sprite, ok := sprites[e]
-	if !ok {
-		return fmt.Errorf("could not get sprite of entity %d", e)
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	if sprite.flash == nil {

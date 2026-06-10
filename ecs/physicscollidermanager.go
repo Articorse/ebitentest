@@ -23,45 +23,40 @@ func NewPhysicsColliderComponent(
 
 func (*PhysicsColliderManager) GetColliderType(
 	e common.EntityId,
-	colliders map[common.EntityId]*physicsCollider,
+	world *World,
 ) (PhysicsColliderType, error) {
-	collider, ok := colliders[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get collider of entity %d", e)
+	collider, err := world.PhysicsColliders.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
 
 	return collider.colliderType, nil
 }
 
 func (PhysicsColliderManager) EntityIds(w *World) []common.EntityId {
-	ids := make([]common.EntityId, 0, len(w.PhysicsColliders))
-	for e := range w.PhysicsColliders {
-		ids = append(ids, e)
-	}
-	return ids
+	return w.PhysicsColliders.GetOrderedEntities()
 }
 
 func (PhysicsColliderManager) HasCollider(e common.EntityId, w *World) bool {
-	_, ok := w.PhysicsColliders[e]
-	return ok
+	return w.PhysicsColliders.HasComponent(e)
 }
 
 func (PhysicsColliderManager) GetWorldPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, w.PhysicsColliders, w.Transforms, w.Parents)
+	return PhysicsColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, w)
 }
 
 func (PhysicsColliderManager) GetShapes(e common.EntityId, w *World) ([]shapes.Shape, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetShapes(e, w.PhysicsColliders)
+	return PhysicsColliderManager{}.BaseColliderManager.GetShapes(e, w)
 }
 
 func (PhysicsColliderManager) GetLocalAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetLocalAABB(e, w.PhysicsColliders)
+	return PhysicsColliderManager{}.BaseColliderManager.GetLocalAABB(e, w)
 }
 
 func (PhysicsColliderManager) GetLocalPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, w.PhysicsColliders)
+	return PhysicsColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, w)
 }
 
 func (PhysicsColliderManager) GetCenter(e common.EntityId, w *World) (utils.Vec2, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetCenter(e, w.PhysicsColliders)
+	return PhysicsColliderManager{}.BaseColliderManager.GetCenter(e, w)
 }

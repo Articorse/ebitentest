@@ -9,8 +9,8 @@ import (
 func Tick(world *ecs.World) {
 	hpm := ecs.HitpointsManager{}
 
-	for e, _ := range world.Hitpoints {
-		invulCur, err := hpm.GetInvulCurrent(e, world.Hitpoints)
+	for _, e := range world.Hitpoints.GetOrderedEntities() {
+		invulCur, err := hpm.GetInvulCurrent(e, world)
 		if err != nil {
 			log.Printf("Error getting invulnerability current for entity %d: %v\n", e, err)
 			continue
@@ -20,7 +20,7 @@ func Tick(world *ecs.World) {
 			continue
 		}
 
-		err = hpm.TickInvul(e, world.Hitpoints)
+		err = hpm.TickInvul(e, world)
 		if err != nil {
 			log.Printf("Error ticking invulnerability for entity %d: %v\n", e, err)
 			continue
@@ -38,7 +38,7 @@ func DealContactDamage(
 
 	for dmgE, cols := range collisions {
 		for hitE, c := range cols {
-			isInvul, err := hpm.IsInvul(hitE, world.Hitpoints)
+			isInvul, err := hpm.IsInvul(hitE, world)
 			if err != nil {
 				log.Printf("Error checking invulnerability for entity %d: %v\n", hitE, err)
 				continue
@@ -48,7 +48,7 @@ func DealContactDamage(
 				continue
 			}
 
-			damageTiers, err := cdm.GetDamageTiers(dmgE, world.ContactDamages)
+			damageTiers, err := cdm.GetDamageTiers(dmgE, world)
 			if err != nil {
 				log.Printf("Error getting damage tiers for entity %d: %v\n", dmgE, err)
 				continue
@@ -58,13 +58,13 @@ func DealContactDamage(
 				continue
 			}
 
-			knockback, err := cdm.GetKnockback(dmgE, world.ContactDamages)
+			knockback, err := cdm.GetKnockback(dmgE, world)
 			if err != nil {
 				log.Printf("Error getting knockback for entity %d: %v\n", dmgE, err)
 				continue
 			}
 
-			dmgVelVector, err := vm.GetWorldVector(dmgE, world.Velocities, world.Transforms, world.Parents)
+			dmgVelVector, err := vm.GetWorldVector(dmgE, world)
 			if err != nil {
 				log.Printf("Error getting world velocity vector for entity %d: %v\n", dmgE, err)
 				continue
@@ -74,7 +74,7 @@ func DealContactDamage(
 			colForceNorm := c.Vector.Normalized()
 			finalForceNorm := dmgEForceNorm.Multiply(0.5).Add(colForceNorm.Multiply(0.5))
 
-			err = vm.AddForce(hitE, finalForceNorm.Multiply(knockback), world.Velocities)
+			err = vm.AddForce(hitE, finalForceNorm.Multiply(knockback), world)
 			if err != nil {
 				log.Printf("Error applying knockback to entity %d: %v\n", hitE, err)
 				continue
@@ -94,13 +94,13 @@ func DealContactDamage(
 				continue
 			}
 
-			dead, err := hpm.TakeDamage(hitE, damageTiers[shapeIdx], world.Hitpoints, world.Sprites)
+			dead, err := hpm.TakeDamage(hitE, damageTiers[shapeIdx], world)
 			if err != nil {
 				log.Printf("Error applying damage to entity %d: %v\n", hitE, err)
 				continue
 			}
 
-			dieOnContact, err := cdm.GetDieOnContact(dmgE, world.ContactDamages)
+			dieOnContact, err := cdm.GetDieOnContact(dmgE, world)
 			if err != nil {
 				log.Printf("Error getting die on contact for entity %d: %v\n", dmgE, err)
 				continue

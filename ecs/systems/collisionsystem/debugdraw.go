@@ -3,8 +3,8 @@ package collisionsystem
 import (
 	"ebittest/data"
 	"ebittest/ecs"
-	"ebittest/ecs/shapes"
 	"ebittest/ecs/common"
+	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"image/color"
 	"log"
@@ -24,7 +24,7 @@ func DrawCollisions(
 	for eA, cols := range collisions {
 		tm := ecs.TransformManager{}
 
-		aWorldPos, err := tm.GetWorldPos(eA, world.Transforms, world.Parents)
+		aWorldPos, err := tm.GetWorldPos(eA, world)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", eA, err)
 			continue
@@ -59,7 +59,7 @@ func DrawColliders(
 	for _, e := range colManager.EntityIds(world) {
 		tm := ecs.TransformManager{}
 
-		worldPos, err := tm.GetWorldPos(e, world.Transforms, world.Parents)
+		worldPos, err := tm.GetWorldPos(e, world)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", e, err)
 			continue
@@ -164,7 +164,7 @@ func DrawAABBs(
 	for _, e := range colManager.EntityIds(world) {
 		tm := ecs.TransformManager{}
 
-		worldPos, err := tm.GetWorldPos(e, world.Transforms, world.Parents)
+		worldPos, err := tm.GetWorldPos(e, world)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", e, err)
 			continue

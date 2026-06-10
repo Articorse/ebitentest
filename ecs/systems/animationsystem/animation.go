@@ -11,15 +11,14 @@ func Tick(world *ecs.World) error {
 	am := ecs.AnimationManager{}
 	sm := ecs.SpriteManager{}
 
-	for e, _ := range world.Animations {
-		err := am.Tick(e, world.Animations)
+	for _, e := range world.Animations.GetOrderedEntities() {
+		err := am.Tick(e, world)
 		if err != nil {
 			log.Printf("Error ticking animation for entity %d: %v\n", e, err)
 			continue
 		}
 
-		_, ok := world.Sprites[e]
-		if !ok {
+		if !world.Sprites.HasComponent(e) {
 			return &common.ErrorMissingComponentDependency{
 				Entity:           e,
 				PresentComponent: "Animation",
@@ -27,13 +26,13 @@ func Tick(world *ecs.World) error {
 			}
 		}
 
-		currentFrame, err := am.GetCurrentFrame(e, world.Animations)
+		currentFrame, err := am.GetCurrentFrame(e, world)
 		if err != nil {
 			log.Printf("Error getting current frame for entity %d: %v\n", e, err)
 			continue
 		}
 
-		err = sm.SetImage(e, currentFrame, world.Sprites)
+		err = sm.SetImage(e, currentFrame, world)
 		if err != nil {
 			log.Printf("Error setting sprite image for entity %d: %v\n", e, err)
 			continue
@@ -41,15 +40,15 @@ func Tick(world *ecs.World) error {
 
 		layerYOffset := utils.GetFirstOpaquePixelY(currentFrame)
 
-		err = sm.SetLocalLayerYOffset(e, layerYOffset, world.Sprites)
+		err = sm.SetLocalLayerYOffset(e, layerYOffset, world)
 		if err != nil {
 			log.Printf("Error setting local layer Y offset for entity %d: %v\n", e, err)
 			continue
 		}
 	}
 
-	for e, _ := range world.Sprites {
-		err := sm.TickFlash(e, world.Sprites)
+	for _, e := range world.Sprites.GetOrderedEntities() {
+		err := sm.TickFlash(e, world)
 		if err != nil {
 			log.Printf("Error ticking flash for entity %d: %v\n", e, err)
 			continue

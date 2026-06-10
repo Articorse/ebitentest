@@ -18,13 +18,13 @@ func ResolvePhysicsCollisions(
 
 	for eA, cols := range collisions {
 		for eB, c := range cols {
-			aColType, err := cm.GetColliderType(eA, world.PhysicsColliders)
+			aColType, err := cm.GetColliderType(eA, world)
 			if err != nil {
 				log.Printf("Error getting collider type for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			bColType, err := cm.GetColliderType(eB, world.PhysicsColliders)
+			bColType, err := cm.GetColliderType(eB, world)
 			if err != nil {
 				log.Printf("Error getting collider type for entity %d: %v\n", eB, err)
 				continue
@@ -38,34 +38,34 @@ func ResolvePhysicsCollisions(
 			if aColType == ecs.Collider_Mob && bColType == ecs.Collider_Static {
 				c.Vector = c.Vector.Multiply(-1)
 				mobEnt = eA
-				mobLocalPos, err = tm.GetLocalPos(eA, world.Transforms)
+				mobLocalPos, err = tm.GetLocalPos(eA, world)
 				if err != nil {
 					log.Printf("Error getting local position for entity %d: %v\n", eA, err)
 					continue
 				}
-				mobLocalVelVec, err = vm.GetLocalVector(eA, world.Velocities)
+				mobLocalVelVec, err = vm.GetLocalVector(eA, world)
 				if err != nil {
 					log.Printf("Error getting local velocity vector for entity %d: %v\n", eA, err)
 					continue
 				}
-				staticLocalVelVec, err = vm.GetLocalVector(eB, world.Velocities)
+				staticLocalVelVec, err = vm.GetLocalVector(eB, world)
 				if err != nil {
 					log.Printf("Error getting local velocity vector for entity %d: %v\n", eB, err)
 					continue
 				}
 			} else if bColType == ecs.Collider_Mob && aColType == ecs.Collider_Static {
 				mobEnt = eB
-				mobLocalPos, err = tm.GetLocalPos(eB, world.Transforms)
+				mobLocalPos, err = tm.GetLocalPos(eB, world)
 				if err != nil {
 					log.Printf("Error getting local position for entity %d: %v\n", eB, err)
 					continue
 				}
-				mobLocalVelVec, err = vm.GetLocalVector(eB, world.Velocities)
+				mobLocalVelVec, err = vm.GetLocalVector(eB, world)
 				if err != nil {
 					log.Printf("Error getting local velocity vector for entity %d: %v\n", eB, err)
 					continue
 				}
-				staticLocalVelVec, err = vm.GetLocalVector(eA, world.Velocities)
+				staticLocalVelVec, err = vm.GetLocalVector(eA, world)
 				if err != nil {
 					log.Printf("Error getting local velocity vector for entity %d: %v\n", eA, err)
 					continue
@@ -74,7 +74,7 @@ func ResolvePhysicsCollisions(
 				continue
 			}
 
-			tm.SetLocalPos(mobEnt, mobLocalPos.Add(c.Vector), world.Transforms)
+			tm.SetLocalPos(mobEnt, mobLocalPos.Add(c.Vector), world)
 
 			normal := c.Vector.Normalized()
 			relativeVelocity := mobLocalVelVec.Subtract(staticLocalVelVec)
@@ -84,7 +84,7 @@ func ResolvePhysicsCollisions(
 				restitution := data.Bounciness
 				impulseMagnitude := -(1 + restitution) * velocityAlongNormal
 				impulse := normal.Multiply(impulseMagnitude)
-				vm.SetLocalVector(mobEnt, mobLocalVelVec.Add(impulse), world.Velocities)
+				vm.SetLocalVector(mobEnt, mobLocalVelVec.Add(impulse), world)
 			}
 
 			collisionsResolved++

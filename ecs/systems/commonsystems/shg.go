@@ -14,8 +14,8 @@ func PopulateSpatialHashGrid(
 	grid := make(map[common.CellKey][]common.EntityId)
 	tm := ecs.TransformManager{}
 
-	for e, _ := range world.Transforms {
-		worldPos, err := tm.GetWorldPos(e, world.Transforms, world.Parents)
+	for _, e := range world.Transforms.GetOrderedEntities() {
+		worldPos, err := tm.GetWorldPos(e, world)
 		if err != nil {
 			log.Printf("error getting world position of entity %d: %v", e, err)
 			continue
@@ -35,9 +35,9 @@ func GetSHGProximities(
 ) (map[common.EntityId][]common.EntityId, error) {
 	proximateEntities := make(map[common.EntityId][]common.EntityId)
 
-	for eA, _ := range world.Transforms {
+	for _, eA := range world.Transforms.GetOrderedEntities() {
 		tm := ecs.TransformManager{}
-		worldPosA, err := tm.GetWorldPos(eA, world.Transforms, world.Parents)
+		worldPosA, err := tm.GetWorldPos(eA, world)
 		if err != nil {
 			log.Printf("error getting world position of entity %d: %v", eA, err)
 			continue
@@ -52,8 +52,7 @@ func GetSHGProximities(
 						continue
 					}
 
-					_, ok := world.Transforms[eB]
-					if !ok {
+					if !world.Transforms.HasComponent(eB) {
 						return nil, &common.ErrorMissingComponentDependency{
 							Entity:           eB,
 							PresentComponent: "Collider",

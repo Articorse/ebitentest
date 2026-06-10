@@ -39,7 +39,7 @@ func (*SpawnerManager) Spawn(
 	sm := SpawnerManager{}
 	tm := TransformManager{}
 
-	comps, err := sm.GetComponents(spawnerEntity, world.Spawners)
+	comps, err := sm.GetComponents(spawnerEntity, world)
 	if err != nil {
 		return fmt.Errorf("error getting components to spawn for spawner entity %d: %v", spawnerEntity, err)
 	}
@@ -48,20 +48,20 @@ func (*SpawnerManager) Spawn(
 		comps...,
 	)
 
-	worldPos, _ := tm.GetWorldPos(spawnerEntity, world.Transforms, world.Parents)
-	worldRot, _ := tm.GetWorldRotation(spawnerEntity, world.Transforms, world.Parents)
+	worldPos, _ := tm.GetWorldPos(spawnerEntity, world)
+	worldRot, _ := tm.GetWorldRotation(spawnerEntity, world)
 
-	spawnerOffset, err := sm.GetOffset(spawnerEntity, world.Spawners)
+	spawnerOffset, err := sm.GetOffset(spawnerEntity, world)
 	if err != nil {
 		return fmt.Errorf("error getting offset of spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	sType, err := sm.GetSpawnerType(spawnerEntity, world.Spawners)
+	sType, err := sm.GetSpawnerType(spawnerEntity, world)
 	if err != nil {
 		return fmt.Errorf("error getting spawner type of spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	shape, err := sm.GetShape(spawnerEntity, world.Spawners)
+	shape, err := sm.GetShape(spawnerEntity, world)
 	if err != nil {
 		return fmt.Errorf("error getting shape of spawner entity %d: %v", spawnerEntity, err)
 	}
@@ -84,12 +84,12 @@ func (*SpawnerManager) Spawn(
 		finalOffset = shape.GetRandomPointAroundShape(world.Rng).Add(worldPos).Add(spawnerOffset)
 	}
 
-	err = tm.SetWorldPos(newEntity, worldPos.Add(finalOffset), world.Transforms, world.Parents)
+	err = tm.SetWorldPos(newEntity, worldPos.Add(finalOffset), world)
 	if err != nil {
 		return fmt.Errorf("error setting world position of new entity %d: %v", newEntity, err)
 	}
 
-	err = tm.SetWorldRotation(newEntity, worldRot, world.Transforms, world.Parents)
+	err = tm.SetWorldRotation(newEntity, worldRot, world)
 	if err != nil {
 		return fmt.Errorf("error setting world rotation of new entity %d: %v", newEntity, err)
 	}
@@ -99,11 +99,11 @@ func (*SpawnerManager) Spawn(
 
 func (*SpawnerManager) GetOffset(
 	e common.EntityId,
-	spawners map[common.EntityId]*spawner,
+	world *World,
 ) (utils.Vec2, error) {
-	spawnerComp, ok := spawners[e]
-	if !ok {
-		return utils.Vec2{}, fmt.Errorf("could not get spawner of entity %d", e)
+	spawnerComp, err := world.Spawners.getComponent(e)
+	if err != nil {
+		return utils.Vec2{}, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
 	}
 
 	return spawnerComp.offset, nil
@@ -111,11 +111,11 @@ func (*SpawnerManager) GetOffset(
 
 func (*SpawnerManager) GetSpawnerType(
 	e common.EntityId,
-	spawners map[common.EntityId]*spawner,
+	world *World,
 ) (SpawnerType, error) {
-	spawnerComp, ok := spawners[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get spawner of entity %d", e)
+	spawnerComp, err := world.Spawners.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
 	}
 
 	return spawnerComp.spawnerType, nil
@@ -123,11 +123,11 @@ func (*SpawnerManager) GetSpawnerType(
 
 func (*SpawnerManager) GetShape(
 	e common.EntityId,
-	spawners map[common.EntityId]*spawner,
+	world *World,
 ) (shapes.Shape, error) {
-	spawnerComp, ok := spawners[e]
-	if !ok {
-		return nil, fmt.Errorf("could not get spawner of entity %d", e)
+	spawnerComp, err := world.Spawners.getComponent(e)
+	if err != nil {
+		return nil, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
 	}
 
 	return spawnerComp.shape, nil
@@ -135,11 +135,11 @@ func (*SpawnerManager) GetShape(
 
 func (*SpawnerManager) GetComponents(
 	e common.EntityId,
-	spawners map[common.EntityId]*spawner,
+	world *World,
 ) ([]component, error) {
-	spawnerComp, ok := spawners[e]
-	if !ok {
-		return nil, fmt.Errorf("could not get spawner of entity %d", e)
+	spawnerComp, err := world.Spawners.getComponent(e)
+	if err != nil {
+		return nil, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
 	}
 
 	return spawnerComp.components, nil

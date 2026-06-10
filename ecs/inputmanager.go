@@ -26,11 +26,11 @@ func NewInputComponent(config InputConfig, inputSourceFunc InputSourceFunc) *inp
 
 func (*InputManager) GetInputConfig(
 	e common.EntityId,
-	inputs map[common.EntityId]*input,
+	world *World,
 ) (InputConfig, error) {
-	isf, ok := inputs[e]
-	if !ok {
-		return InputConfig{}, fmt.Errorf("could not get input of entity %d", e)
+	isf, err := world.Inputs.getComponent(e)
+	if err != nil {
+		return InputConfig{}, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
 
 	return isf.config, nil
@@ -39,11 +39,11 @@ func (*InputManager) GetInputConfig(
 func (*InputManager) SetInputConfig(
 	e common.EntityId,
 	config InputConfig,
-	inputs map[common.EntityId]*input,
+	world *World,
 ) error {
-	isf, ok := inputs[e]
-	if !ok {
-		return fmt.Errorf("could not get input of entity %d", e)
+	isf, err := world.Inputs.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
 
 	isf.config = config
@@ -53,11 +53,11 @@ func (*InputManager) SetInputConfig(
 
 func (*InputManager) GetInputSourceFunc(
 	e common.EntityId,
-	inputs map[common.EntityId]*input,
+	world *World,
 ) (InputSourceFunc, error) {
-	isf, ok := inputs[e]
-	if !ok {
-		return nil, fmt.Errorf("could not get input of entity %d", e)
+	isf, err := world.Inputs.getComponent(e)
+	if err != nil {
+		return nil, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
 
 	return isf.inputSourceFunc, nil
@@ -66,11 +66,11 @@ func (*InputManager) GetInputSourceFunc(
 func (*InputManager) SetInputSourceFunc(
 	e common.EntityId,
 	inputSourceFunc InputSourceFunc,
-	inputs map[common.EntityId]*input,
+	world *World,
 ) error {
-	isf, ok := inputs[e]
-	if !ok {
-		return fmt.Errorf("could not get input of entity %d", e)
+	isf, err := world.Inputs.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
 
 	isf.inputSourceFunc = inputSourceFunc

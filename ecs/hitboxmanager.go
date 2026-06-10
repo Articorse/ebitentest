@@ -1,8 +1,8 @@
 package ecs
 
 import (
-	"ebittest/ecs/shapes"
 	"ebittest/ecs/common"
+	"ebittest/ecs/shapes"
 	"ebittest/utils"
 )
 
@@ -16,35 +16,30 @@ func NewHitboxColliderComponent(
 	return &hitboxCollider{baseCollider: newBaseCollider(shapes)}
 }
 
-func (HitboxColliderManager) EntityIds(w *World) []common.EntityId {
-	ids := make([]common.EntityId, 0, len(w.HitboxColliders))
-	for e := range w.HitboxColliders {
-		ids = append(ids, e)
-	}
-	return ids
+func (HitboxColliderManager) EntityIds(world *World) []common.EntityId {
+	return world.HitboxColliders.GetOrderedEntities()
 }
 
-func (HitboxColliderManager) HasCollider(e common.EntityId, w *World) bool {
-	_, ok := w.HitboxColliders[e]
-	return ok
+func (HitboxColliderManager) HasCollider(e common.EntityId, world *World) bool {
+	return world.HitboxColliders.HasComponent(e)
 }
 
-func (HitboxColliderManager) GetWorldPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
-	return HitboxColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, w.HitboxColliders, w.Transforms, w.Parents)
+func (HitboxColliderManager) GetWorldPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
+	return HitboxColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, world)
 }
 
-func (HitboxColliderManager) GetShapes(e common.EntityId, w *World) ([]shapes.Shape, error) {
-	return HitboxColliderManager{}.BaseColliderManager.GetShapes(e, w.HitboxColliders)
+func (HitboxColliderManager) GetShapes(e common.EntityId, world *World) ([]shapes.Shape, error) {
+	return HitboxColliderManager{}.BaseColliderManager.GetShapes(e, world)
 }
 
-func (HitboxColliderManager) GetLocalAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
-	return HitboxColliderManager{}.BaseColliderManager.GetLocalAABB(e, w.HitboxColliders)
+func (HitboxColliderManager) GetLocalAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
+	return HitboxColliderManager{}.BaseColliderManager.GetLocalAABB(e, world)
 }
 
-func (HitboxColliderManager) GetLocalPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
-	return HitboxColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, w.HitboxColliders)
+func (HitboxColliderManager) GetLocalPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
+	return HitboxColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, world)
 }
 
-func (HitboxColliderManager) GetCenter(e common.EntityId, w *World) (utils.Vec2, error) {
-	return HitboxColliderManager{}.BaseColliderManager.GetCenter(e, w.HitboxColliders)
+func (HitboxColliderManager) GetCenter(e common.EntityId, world *World) (utils.Vec2, error) {
+	return HitboxColliderManager{}.BaseColliderManager.GetCenter(e, world)
 }

@@ -6,9 +6,48 @@ import (
 	"log"
 	"maps"
 	"math/rand/v2"
+	"slices"
 )
 
-// TODO: Figure out how to make map iteration order consistent
+type Storage[T component] struct {
+	order []common.EntityId
+	data  map[common.EntityId]*T
+}
+
+func (x *Storage[T]) GetOrderedEntities() []common.EntityId {
+	return x.order
+}
+
+func (x *Storage[T]) HasComponent(e common.EntityId) bool {
+	_, ok := x.data[e]
+	return ok
+}
+
+func (x *Storage[T]) getData() map[common.EntityId]*T {
+	return x.data
+}
+
+func (x *Storage[T]) getComponent(e common.EntityId) (*T, error) {
+	c, ok := x.data[e]
+	if !ok {
+		return nil, fmt.Errorf("could not get %T component of entity %d", *new(T), e)
+	}
+
+	return c, nil
+}
+
+func (x *Storage[T]) deleteEntity(e common.EntityId) {
+	x.order = slices.DeleteFunc(x.order, func(id common.EntityId) bool {
+		return id == e
+	})
+	delete(x.getData(), e)
+}
+
+func (x *Storage[T]) addComponent(e common.EntityId, c T) {
+	x.order = append(x.order, e)
+	x.data[e] = &c
+}
+
 type World struct {
 	nextEntity common.EntityId
 
@@ -16,21 +55,21 @@ type World struct {
 	TickIdx   uint64
 	TickState common.TickState
 
-	Inputs            map[common.EntityId]*input
-	Parents           map[common.EntityId]*parent
-	Transforms        map[common.EntityId]*transform
-	Velocities        map[common.EntityId]*velocity
-	Sprites           map[common.EntityId]*sprite
-	Animations        map[common.EntityId]*animation
-	CollisionLayers   map[common.EntityId]*collisionLayer
-	PhysicsColliders  map[common.EntityId]*physicsCollider
-	PlatformColliders map[common.EntityId]*platformCollider
-	HitboxColliders   map[common.EntityId]*hitboxCollider
-	HurtboxColliders  map[common.EntityId]*hurtboxCollider
-	Spawners          map[common.EntityId]*spawner
-	Timers            map[common.EntityId]*timer
-	Hitpoints         map[common.EntityId]*hitpoints
-	ContactDamages    map[common.EntityId]*contactDamage
+	Inputs            Storage[input]
+	Parents           Storage[parent]
+	Transforms        Storage[transform]
+	Velocities        Storage[velocity]
+	Sprites           Storage[sprite]
+	Animations        Storage[animation]
+	CollisionLayers   Storage[collisionLayer]
+	PhysicsColliders  Storage[physicsCollider]
+	PlatformColliders Storage[platformCollider]
+	HitboxColliders   Storage[hitboxCollider]
+	HurtboxColliders  Storage[hurtboxCollider]
+	Spawners          Storage[spawner]
+	Timers            Storage[timer]
+	Hitpoints         Storage[hitpoints]
+	ContactDamages    Storage[contactDamage]
 }
 
 func NewWorld() *World {
@@ -40,34 +79,26 @@ func NewWorld() *World {
 		Rng: rand.New(rand.NewChaCha8([32]byte{
 			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
 		})),
+
 		TickIdx:   0,
 		TickState: common.TickState{},
 
-		Inputs:            make(map[common.EntityId]*input),
-		Parents:           make(map[common.EntityId]*parent),
-		Transforms:        make(map[common.EntityId]*transform),
-		Velocities:        make(map[common.EntityId]*velocity),
-		Sprites:           make(map[common.EntityId]*sprite),
-		Animations:        make(map[common.EntityId]*animation),
-		CollisionLayers:   make(map[common.EntityId]*collisionLayer),
-		PhysicsColliders:  make(map[common.EntityId]*physicsCollider),
-		PlatformColliders: make(map[common.EntityId]*platformCollider),
-		HitboxColliders:   make(map[common.EntityId]*hitboxCollider),
-		HurtboxColliders:  make(map[common.EntityId]*hurtboxCollider),
-		Spawners:          make(map[common.EntityId]*spawner),
-		Timers:            make(map[common.EntityId]*timer),
-		Hitpoints:         make(map[common.EntityId]*hitpoints),
-		ContactDamages:    make(map[common.EntityId]*contactDamage),
+		Inputs:            Storage[input]{order: []common.EntityId{}, data: make(map[common.EntityId]*input)},
+		Parents:           Storage[parent]{order: []common.EntityId{}, data: make(map[common.EntityId]*parent)},
+		Transforms:        Storage[transform]{order: []common.EntityId{}, data: make(map[common.EntityId]*transform)},
+		Velocities:        Storage[velocity]{order: []common.EntityId{}, data: make(map[common.EntityId]*velocity)},
+		Sprites:           Storage[sprite]{order: []common.EntityId{}, data: make(map[common.EntityId]*sprite)},
+		Animations:        Storage[animation]{order: []common.EntityId{}, data: make(map[common.EntityId]*animation)},
+		CollisionLayers:   Storage[collisionLayer]{order: []common.EntityId{}, data: make(map[common.EntityId]*collisionLayer)},
+		PhysicsColliders:  Storage[physicsCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*physicsCollider)},
+		PlatformColliders: Storage[platformCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*platformCollider)},
+		HitboxColliders:   Storage[hitboxCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*hitboxCollider)},
+		HurtboxColliders:  Storage[hurtboxCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*hurtboxCollider)},
+		Spawners:          Storage[spawner]{order: []common.EntityId{}, data: make(map[common.EntityId]*spawner)},
+		Timers:            Storage[timer]{order: []common.EntityId{}, data: make(map[common.EntityId]*timer)},
+		Hitpoints:         Storage[hitpoints]{order: []common.EntityId{}, data: make(map[common.EntityId]*hitpoints)},
+		ContactDamages:    Storage[contactDamage]{order: []common.EntityId{}, data: make(map[common.EntityId]*contactDamage)},
 	}
-}
-
-type Storage[T component] struct {
-	order []common.EntityId
-	data  map[common.EntityId]*T
-}
-
-func (x Storage[T]) GetOrderedEntities() []common.EntityId {
-	return x.order
 }
 
 func (x *World) AddEmptyEntity() common.EntityId {
@@ -86,24 +117,24 @@ func (x *World) AddEntity(comps ...component) common.EntityId {
 }
 
 func (x *World) RemoveEntity(e common.EntityId) error {
-	delete(x.Parents, e)
-	delete(x.Transforms, e)
-	delete(x.Velocities, e)
-	delete(x.Sprites, e)
-	delete(x.Animations, e)
-	delete(x.CollisionLayers, e)
-	delete(x.PhysicsColliders, e)
-	delete(x.PlatformColliders, e)
-	delete(x.HitboxColliders, e)
-	delete(x.HurtboxColliders, e)
-	delete(x.Spawners, e)
-	delete(x.Timers, e)
-	delete(x.Hitpoints, e)
-	delete(x.ContactDamages, e)
-	delete(x.Inputs, e)
+	x.Parents.deleteEntity(e)
+	x.Transforms.deleteEntity(e)
+	x.Velocities.deleteEntity(e)
+	x.Sprites.deleteEntity(e)
+	x.Animations.deleteEntity(e)
+	x.CollisionLayers.deleteEntity(e)
+	x.PhysicsColliders.deleteEntity(e)
+	x.PlatformColliders.deleteEntity(e)
+	x.HitboxColliders.deleteEntity(e)
+	x.HurtboxColliders.deleteEntity(e)
+	x.Spawners.deleteEntity(e)
+	x.Timers.deleteEntity(e)
+	x.Hitpoints.deleteEntity(e)
+	x.ContactDamages.deleteEntity(e)
+	x.Inputs.deleteEntity(e)
 
 	pm := ParentManager{}
-	err := pm.RemoveParentFromAllEntities(e, x.Parents, x.Transforms)
+	err := pm.RemoveParentFromAllEntities(e, x)
 	if err != nil {
 		return fmt.Errorf("error removing entity %d from parent component of all entities: %v", e, err)
 	}
@@ -152,52 +183,37 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 
 func (x *World) AddComponent(e common.EntityId, comp component) {
 	switch c := comp.(type) {
-	case *physicsCollider:
-		col := c.Copy()
-		x.PhysicsColliders[e] = &col
-	case *collisionLayer:
-		cl := c.Copy()
-		x.CollisionLayers[e] = &cl
-	case *hitboxCollider:
-		hb := c.Copy()
-		x.HitboxColliders[e] = &hb
-	case *hurtboxCollider:
-		hb := c.Copy()
-		x.HurtboxColliders[e] = &hb
-	case *platformCollider:
-		pc := c.Copy()
-		x.PlatformColliders[e] = &pc
-	case *input:
-		inp := c.Copy()
-		x.Inputs[e] = &inp
 	case *parent:
-		par := c.Copy()
-		x.Parents[e] = &par
-	case *spawner:
-		sp := c.Copy()
-		x.Spawners[e] = &sp
-	case *sprite:
-		spr := c.Copy()
-		x.Sprites[e] = &spr
-	case *animation:
-		anim := c.Copy()
-		x.Animations[e] = &anim
+		x.Parents.addComponent(e, c.Copy())
 	case *transform:
-		tra := c.Copy()
-		x.Transforms[e] = &tra
+		x.Transforms.addComponent(e, c.Copy())
 	case *velocity:
-		vel := c.Copy()
-		x.Velocities[e] = &vel
+		x.Velocities.addComponent(e, c.Copy())
+	case *sprite:
+		x.Sprites.addComponent(e, c.Copy())
+	case *animation:
+		x.Animations.addComponent(e, c.Copy())
+	case *collisionLayer:
+		x.CollisionLayers.addComponent(e, c.Copy())
+	case *physicsCollider:
+		x.PhysicsColliders.addComponent(e, c.Copy())
+	case *platformCollider:
+		x.PlatformColliders.addComponent(e, c.Copy())
+	case *hitboxCollider:
+		x.HitboxColliders.addComponent(e, c.Copy())
+	case *hurtboxCollider:
+		x.HurtboxColliders.addComponent(e, c.Copy())
+	case *spawner:
+		x.Spawners.addComponent(e, c.Copy())
 	case *timer:
-		tm := c.Copy()
-		x.Timers[e] = &tm
+		x.Timers.addComponent(e, c.Copy())
 	case *hitpoints:
-		hp := c.Copy()
-		x.Hitpoints[e] = &hp
+		x.Hitpoints.addComponent(e, c.Copy())
 	case *contactDamage:
-		cd := c.Copy()
-		x.ContactDamages[e] = &cd
+		x.ContactDamages.addComponent(e, c.Copy())
+	case *input:
+		x.Inputs.addComponent(e, c.Copy())
 	default:
-		log.Printf("warning: attempted to add component of unknown type to entity %d, ignoring\n", e)
+		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in World.AddComponent\n", comp, e)
 	}
 }

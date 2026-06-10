@@ -29,9 +29,9 @@ func (TimerManager) TickDown(
 	e common.EntityId,
 	world *World,
 ) (timerOver bool, err error) {
-	timer, ok := world.Timers[e]
+	timer, ok := world.Timers.getData()[e]
 	if !ok {
-		return false, fmt.Errorf("could not get timed life component of entity %d", e)
+		return false, fmt.Errorf("could not get timer component of entity %d", e)
 	}
 
 	if timer.remainingRepeats == 0 {

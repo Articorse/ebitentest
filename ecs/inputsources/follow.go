@@ -15,13 +15,13 @@ func NewFollowInputSource(followEntity common.EntityId) ecs.InputSourceFunc {
 		tm := ecs.TransformManager{}
 		is := ecs.InputState{}
 
-		selfWorldPos, err := tm.GetWorldPos(entityId, world.Transforms, world.Parents)
+		selfWorldPos, err := tm.GetWorldPos(entityId, world)
 		if err != nil {
 			log.Printf("error getting world position for self entity %d: %v\n", entityId, err)
 			return is
 		}
 
-		targetWorldPos, err := tm.GetWorldPos(followEntity, world.Transforms, world.Parents)
+		targetWorldPos, err := tm.GetWorldPos(followEntity, world)
 		if err != nil {
 			log.Printf("error getting world position for follow entity %d: %v\n", followEntity, err)
 			return is

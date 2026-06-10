@@ -18,7 +18,7 @@ func MouseInputSource(
 	im := ecs.InputManager{}
 	is := ecs.InputState{}
 
-	config, err := im.GetInputConfig(e, world.Inputs)
+	config, err := im.GetInputConfig(e, world)
 	if err != nil {
 		log.Printf("error getting input config for entity %d: %v\n", e, err)
 		return is

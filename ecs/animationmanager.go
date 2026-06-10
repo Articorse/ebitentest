@@ -32,11 +32,11 @@ func NewAnimationComponent(
 
 func (AnimationManager) GetState(
 	e common.EntityId,
-	animations map[common.EntityId]*animation,
+	world *World,
 ) (AnimationState, error) {
-	animComp, ok := animations[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get animation component of entity %d", e)
+	animComp, err := world.Animations.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}
 
 	return animComp.frameState.AnimationState, nil
@@ -44,11 +44,11 @@ func (AnimationManager) GetState(
 
 func (AnimationManager) GetCurrentFrame(
 	e common.EntityId,
-	animations map[common.EntityId]*animation,
+	world *World,
 ) (*ebiten.Image, error) {
-	animComp, ok := animations[e]
-	if !ok {
-		return nil, fmt.Errorf("could not get animation component of entity %d", e)
+	animComp, err := world.Animations.getComponent(e)
+	if err != nil {
+		return nil, fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}
 
 	currentState := animComp.frameState.AnimationState
@@ -76,11 +76,11 @@ func (AnimationManager) GetCurrentFrame(
 func (AnimationManager) SetState(
 	e common.EntityId,
 	newState AnimationState,
-	animations map[common.EntityId]*animation,
+	world *World,
 ) error {
-	animComp, ok := animations[e]
-	if !ok {
-		return fmt.Errorf("could not get animation component of entity %d", e)
+	animComp, err := world.Animations.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}
 
 	if _, ok := animComp.stateFrames[newState]; !ok {
@@ -97,11 +97,11 @@ func (AnimationManager) SetState(
 func (AnimationManager) SetQueuedStateIfNone(
 	e common.EntityId,
 	newState AnimationState,
-	animations map[common.EntityId]*animation,
+	world *World,
 ) error {
-	animComp, ok := animations[e]
-	if !ok {
-		return fmt.Errorf("could not get animation component of entity %d", e)
+	animComp, err := world.Animations.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}
 
 	if _, ok := animComp.stateFrames[newState]; !ok {
@@ -117,11 +117,11 @@ func (AnimationManager) SetQueuedStateIfNone(
 
 func (AnimationManager) Tick(
 	e common.EntityId,
-	animations map[common.EntityId]*animation,
+	world *World,
 ) error {
-	animComp, ok := animations[e]
-	if !ok {
-		return fmt.Errorf("could not get animation component of entity %d", e)
+	animComp, err := world.Animations.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}
 
 	currentState := animComp.frameState.AnimationState
@@ -152,4 +152,3 @@ func (AnimationManager) Tick(
 
 	return nil
 }
-

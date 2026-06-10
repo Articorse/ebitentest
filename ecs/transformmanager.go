@@ -15,11 +15,11 @@ func NewTransformComponent(pos utils.Vec2, scale float64, rotation float64) *tra
 
 func (*TransformManager) GetLocalPos(
 	e common.EntityId,
-	transforms map[common.EntityId]*transform,
+	world *World,
 ) (utils.Vec2, error) {
-	traComp, ok := transforms[e]
-	if !ok {
-		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
 	return traComp.pos, nil
@@ -27,28 +27,27 @@ func (*TransformManager) GetLocalPos(
 
 func (*TransformManager) GetWorldPos(
 	e common.EntityId,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) (utils.Vec2, error) {
 	pm := ParentManager{}
 	tm := TransformManager{}
 
-	traComp, ok := transforms[e]
-	if !ok {
-		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, parents)
+	parEntity := pm.GetEntity(e, world)
 	if parEntity == -1 {
 		return traComp.pos, nil
 	}
 
-	pWorldPos, err := tm.GetWorldPos(parEntity, transforms, parents)
+	pWorldPos, err := tm.GetWorldPos(parEntity, world)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, ok)
+		return utils.Vec2{}, fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, world)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
@@ -64,11 +63,11 @@ func (*TransformManager) GetWorldPos(
 
 func (*TransformManager) GetLocalRotation(
 	e common.EntityId,
-	transforms map[common.EntityId]*transform,
+	world *World,
 ) (float64, error) {
-	traComp, ok := transforms[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
 	return traComp.rotation, nil
@@ -76,23 +75,22 @@ func (*TransformManager) GetLocalRotation(
 
 func (*TransformManager) GetWorldRotation(
 	e common.EntityId,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) (float64, error) {
 	pm := ParentManager{}
 	tm := TransformManager{}
 
-	traComp, ok := transforms[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, parents)
+	parEntity := pm.GetEntity(e, world)
 	if parEntity == -1 {
 		return traComp.rotation, nil
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, world)
 	if err != nil {
 		return 0, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
@@ -102,10 +100,10 @@ func (*TransformManager) GetWorldRotation(
 
 func (*TransformManager) GetLocalScale(
 	e common.EntityId,
-	transforms map[common.EntityId]*transform,
+	world *World,
 ) float64 {
-	traComp, ok := transforms[e]
-	if !ok {
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
 		return 0
 	}
 
@@ -114,23 +112,22 @@ func (*TransformManager) GetLocalScale(
 
 func (*TransformManager) GetWorldScale(
 	e common.EntityId,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) (float64, error) {
 	pm := ParentManager{}
 	tm := TransformManager{}
 
-	traComp, ok := transforms[e]
-	if !ok {
-		return 0, fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, parents)
+	parEntity := pm.GetEntity(e, world)
 	if parEntity == -1 {
 		return traComp.scale, nil
 	}
 
-	pWorldSca, err := tm.GetWorldScale(parEntity, transforms, parents)
+	pWorldSca, err := tm.GetWorldScale(parEntity, world)
 	if err != nil {
 		return 0, fmt.Errorf("error getting world scale of parent entity %d: %v", parEntity, err)
 	}
@@ -141,11 +138,11 @@ func (*TransformManager) GetWorldScale(
 func (*TransformManager) SetLocalPos(
 	e common.EntityId,
 	pos utils.Vec2,
-	transforms map[common.EntityId]*transform,
+	world *World,
 ) error {
-	traComp, ok := transforms[e]
-	if !ok {
-		return fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
 	traComp.pos = pos
@@ -155,29 +152,28 @@ func (*TransformManager) SetLocalPos(
 func (*TransformManager) SetWorldPos(
 	e common.EntityId,
 	pos utils.Vec2,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) error {
 	pm := ParentManager{}
 	tm := TransformManager{}
 
-	traComp, ok := transforms[e]
-	if !ok {
-		return fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, parents)
+	parEntity := pm.GetEntity(e, world)
 	if parEntity == -1 {
 		traComp.pos = pos
 		return nil
 	}
 
-	pWorldPos, err := tm.GetWorldPos(parEntity, transforms, parents)
+	pWorldPos, err := tm.GetWorldPos(parEntity, world)
 	if err != nil {
 		return fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, world)
 	if err != nil {
 		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
@@ -196,11 +192,11 @@ func (*TransformManager) SetWorldPos(
 func (*TransformManager) SetLocalRotation(
 	e common.EntityId,
 	rot float64,
-	transforms map[common.EntityId]*transform,
+	world *World,
 ) error {
-	traComp, ok := transforms[e]
-	if !ok {
-		return fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
 	traComp.rotation = rot
@@ -210,24 +206,23 @@ func (*TransformManager) SetLocalRotation(
 func (*TransformManager) SetWorldRotation(
 	e common.EntityId,
 	rot float64,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) error {
 	pm := ParentManager{}
 	tm := TransformManager{}
 
-	traComp, ok := transforms[e]
-	if !ok {
-		return fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, parents)
+	parEntity := pm.GetEntity(e, world)
 	if parEntity == -1 {
 		traComp.rotation = rot
 		return nil
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parEntity, transforms, parents)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, world)
 	if err != nil {
 		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
@@ -240,11 +235,11 @@ func (*TransformManager) SetWorldRotation(
 func (*TransformManager) SetLocalScale(
 	e common.EntityId,
 	scale float64,
-	transforms map[common.EntityId]*transform,
+	world *World,
 ) error {
-	traComp, ok := transforms[e]
-	if !ok {
-		return fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
 	traComp.scale = scale
@@ -254,24 +249,23 @@ func (*TransformManager) SetLocalScale(
 func (*TransformManager) SetWorldScale(
 	e common.EntityId,
 	scale float64,
-	transforms map[common.EntityId]*transform,
-	parents map[common.EntityId]*parent,
+	world *World,
 ) error {
 	pm := ParentManager{}
 	tm := TransformManager{}
 
-	traComp, ok := transforms[e]
-	if !ok {
-		return fmt.Errorf("could not get transform of entity %d", e)
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, parents)
+	parEntity := pm.GetEntity(e, world)
 	if parEntity == -1 {
 		traComp.scale = scale
 		return nil
 	}
 
-	pWorldScale, err := tm.GetWorldScale(parEntity, transforms, parents)
+	pWorldScale, err := tm.GetWorldScale(parEntity, world)
 	if err != nil {
 		return fmt.Errorf("error getting world scale of parent entity %d: %v", parEntity, err)
 	}

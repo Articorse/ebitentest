@@ -17,26 +17,26 @@ func Tick(
 	clm := ecs.CollisionLayersManager{}
 	pm := ecs.ParentManager{}
 
-	for eA, _ := range world.PlatformColliders {
-		aAABB, err := pcm.GetWorldAABB(eA, world.PlatformColliders, world.Transforms, world.Parents)
+	for _, eA := range world.PlatformColliders.GetOrderedEntities() {
+		aAABB, err := pcm.GetWorldAABB(eA, world)
 		if err != nil {
 			log.Printf("error getting AABB of entity %d: %v", eA, err)
 			continue
 		}
 
-		aWorldPos, err := tm.GetWorldPos(eA, world.Transforms, world.Parents)
+		aWorldPos, err := tm.GetWorldPos(eA, world)
 		if err != nil {
 			log.Printf("error getting world position of entity %d: %v", eA, err)
 			continue
 		}
 
-		aLayers, err := clm.GetLayers(eA, world.CollisionLayers)
+		aLayers, err := clm.GetLayers(eA, world)
 		if err != nil {
 			log.Printf("error getting layers of entity %d: %v", eA, err)
 			continue
 		}
 
-		aMask, err := clm.GetMask(eA, world.CollisionLayers)
+		aMask, err := clm.GetMask(eA, world)
 		if err != nil {
 			log.Printf("error getting mask of entity %d: %v", eA, err)
 			continue
@@ -52,18 +52,17 @@ func Tick(
 						continue
 					}
 
-					_, ok := world.CollisionLayers[eB]
-					if !ok {
+					if !world.CollisionLayers.HasComponent(eB) {
 						continue
 					}
 
-					bLayers, err := clm.GetLayers(eB, world.CollisionLayers)
+					bLayers, err := clm.GetLayers(eB, world)
 					if err != nil {
 						log.Printf("error getting layers of entity %d: %v", eB, err)
 						continue
 					}
 
-					bMask, err := clm.GetMask(eB, world.CollisionLayers)
+					bMask, err := clm.GetMask(eB, world)
 					if err != nil {
 						log.Printf("error getting mask of entity %d: %v", eB, err)
 						continue
@@ -73,24 +72,24 @@ func Tick(
 						continue
 					}
 
-					bWorldPos, err := tm.GetWorldPos(eB, world.Transforms, world.Parents)
+					bWorldPos, err := tm.GetWorldPos(eB, world)
 					if err != nil {
 						log.Printf("error getting world position of entity %d: %v", eB, err)
 						continue
 					}
 
 					if utils.PointInAABB(bWorldPos, aAABB) {
-						err := pm.Attach(eB, eA, world.Transforms, world.Parents)
+						err := pm.Attach(eB, eA, world)
 						if err != nil {
 							log.Printf("error attaching entity %d to platform entity %d: %v", eB, eA, err)
 						}
 						continue
 					}
 
-					pEnt := pm.GetEntity(eB, world.Parents)
+					pEnt := pm.GetEntity(eB, world)
 
 					if pEnt == eA {
-						err := pm.Detach(eB, world.Transforms, world.Parents)
+						err := pm.Detach(eB, world)
 						if err != nil {
 							log.Printf("error detaching entity %d to platform entity %d: %v", eB, eA, err)
 						}
