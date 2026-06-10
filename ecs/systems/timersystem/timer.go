@@ -6,15 +6,11 @@ import (
 )
 
 func Tick(world *ecs.World) error {
-	tlm := ecs.TimedLifeManager{}
-	for e, _ := range world.TimedLives {
-		timerOver, err := tlm.TickDown(e, world.TimedLives)
+	tm := ecs.TimerManager{}
+	for e, _ := range world.Timers {
+		_, err := tm.TickDown(e, world)
 		if err != nil {
 			return fmt.Errorf("error ticking down timed life component of entity %d: %v", e, err)
-		}
-
-		if timerOver {
-			world.RemoveEntity(e)
 		}
 	}
 

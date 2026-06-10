@@ -9,8 +9,8 @@ type Shape interface {
 	GetAABB() [2]utils.Vec2
 	GetOffset() utils.Vec2
 	Copy() Shape
-	GetRandomPoint(r rand.Rand) utils.Vec2
-	GetRandomPointAroundShape(r rand.Rand) utils.Vec2
+	GetRandomPoint(r *rand.Rand) utils.Vec2
+	GetRandomPointAroundShape(r *rand.Rand) utils.Vec2
 }
 
 func CalculateCenter(colShapes []Shape) utils.Vec2 {

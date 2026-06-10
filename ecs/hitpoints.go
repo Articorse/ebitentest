@@ -7,7 +7,7 @@ type hitpoints struct {
 	invulCurMs int64
 }
 
-func (*hitpoints) isComponent() {}
+func (hitpoints) isComponent() {}
 
 func (x hitpoints) Copy() hitpoints {
 	return hitpoints{

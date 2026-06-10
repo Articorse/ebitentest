@@ -9,7 +9,7 @@ type contactDamage struct {
 	damageTiers  []int64
 }
 
-func (*contactDamage) isComponent() {}
+func (contactDamage) isComponent() {}
 
 func (x contactDamage) Copy() contactDamage {
 	return contactDamage{

@@ -3,7 +3,6 @@ package inputsystem
 import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
-	"ebittest/ecs/systems/spawnersystem"
 	"ebittest/utils"
 	"log"
 	"math"
@@ -85,7 +84,8 @@ func HandleInputs(
 		_, hasSpawner := world.Spawners[e]
 		if hasSpawner {
 			if input.Use {
-				spawnersystem.Spawn(e, world)
+				sm := ecs.SpawnerManager{}
+				sm.Spawn(e, world)
 			}
 		}
 

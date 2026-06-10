@@ -15,13 +15,13 @@ import (
 	"ebittest/ecs/systems/movementsystem"
 	"ebittest/ecs/systems/platformsystem"
 	"ebittest/ecs/systems/timersystem"
+	"ebittest/ecs/timerfuncs"
 	"ebittest/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"image/color"
 	"log"
-	"math/rand/v2"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -425,9 +425,6 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetTPS(data.TPS)
-	g.world.Rng = *rand.New(rand.NewChaCha8([32]byte{
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-	}))
 
 	g.inputLog = make(map[uint64]map[common.EntityId]ecs.InputState)
 	g.world.TickState = *common.NewTickState()
@@ -511,7 +508,10 @@ func main() {
 
 	bulletTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
 	bulletVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
-	bulletTLComp := ecs.NewTimedLifeComponent(500)
+	bulletTimerComp, err := ecs.NewTimerComponent(500, 1, timerfuncs.Selfdestruct)
+	if err != nil {
+		log.Fatal("error creating bullet timer component: ", err)
+	}
 	bulletDmgComp := ecs.NewContactDamageComponent(g.playerEntity, 10, true, 5)
 	bulletSprComp, err := ecs.NewSpriteComponent("assets/sprites/bullet.png", 20, false)
 	if err != nil {
@@ -540,7 +540,7 @@ func main() {
 		utils.Vec2{X: 13, Y: 0},
 		ecs.SpawnerType_Point,
 		nil,
-		bulletTraComp, bulletSprComp, bulletVelComp, bulletTLComp, bulletDmgComp, bulletHurtboxComp, bulletColLayerComp, bulletAniComp,
+		bulletTraComp, bulletSprComp, bulletVelComp, bulletDmgComp, bulletHurtboxComp, bulletColLayerComp, bulletAniComp, bulletTimerComp,
 	)
 	if err != nil {
 		log.Fatal("error creating gun spawner component: ", err)
@@ -565,7 +565,7 @@ func main() {
 		{FrameIdx: 1, DurationMs: 100},
 	}
 	enemyAniComp, err := ecs.NewAnimationComponent("assets/sprites/evilslime_ss.png", utils.Vec2{X: 32, Y: 32}, enemyAniStateFrames)
-	enemyHpComp := ecs.NewHitpointsComponent(100, 100)
+	enemyHpComp := ecs.NewHitpointsComponent(20, 100)
 	enemyPhyColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
 	enemyPhyColComp := ecs.NewPhysicsColliderComponent(
 		ecs.Collider_Mob,
@@ -607,8 +607,7 @@ func main() {
 		enemyColLayerComp,
 		enemyInputComp,
 	)
-
-	// TODO: Add timer system that generically does something after X ms(including re-create itself for loops)
+	enemySpawnerTimerComp, err := ecs.NewTimerComponent(1000, -1, timerfuncs.Spawn)
 	enemySpawnerShape, err := shapes.NewRectangleShape(data.CameraWidth+100, data.CameraHeight+100, utils.Vec2{})
 	if err != nil {
 		log.Fatal(err)
@@ -634,7 +633,7 @@ func main() {
 		enemyInputComp,
 	)
 
-	g.world.AddEntity(enemySpawnerComp)
+	g.world.AddEntity(enemySpawnerTimerComp, enemySpawnerComp)
 	gun := g.world.AddEntity(
 		gunInpComp,
 		gunParComp,

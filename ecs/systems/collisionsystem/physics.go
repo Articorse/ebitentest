@@ -8,7 +8,6 @@ import (
 	"log"
 )
 
-// TODO: Add collision masks and check for valid collisions only in GetCollisions()
 func ResolvePhysicsCollisions(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	world *ecs.World,

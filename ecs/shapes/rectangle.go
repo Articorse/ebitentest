@@ -40,7 +40,7 @@ func (x *RectangleShape) GetOffset() utils.Vec2 {
 	return x.offset
 }
 
-func (x *RectangleShape) GetRandomPoint(r rand.Rand) utils.Vec2 {
+func (x *RectangleShape) GetRandomPoint(r *rand.Rand) utils.Vec2 {
 	xDiff := x.bottomRight.X - x.topLeft.X
 	yDiff := x.bottomRight.Y - x.topLeft.Y
 
@@ -50,7 +50,7 @@ func (x *RectangleShape) GetRandomPoint(r rand.Rand) utils.Vec2 {
 	return utils.Vec2{X: x.topLeft.X + xRand, Y: x.topLeft.Y + yRand}
 }
 
-func (x *RectangleShape) GetRandomPointAroundShape(r rand.Rand) utils.Vec2 {
+func (x *RectangleShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
 	sideLengths := []float64{
 		x.bottomRight.X - x.topLeft.X,
 		x.bottomRight.Y - x.topLeft.Y,
@@ -73,8 +73,8 @@ func (x *RectangleShape) GetRandomPointAroundShape(r rand.Rand) utils.Vec2 {
 	sideCenters := []utils.Vec2{
 		{X: 0, Y: 0},
 		{X: sideLengths[0], Y: 0},
+		{X: sideLengths[0], Y: sideLengths[1]},
 		{X: 0, Y: sideLengths[1]},
-		{X: 0, Y: 0},
 	}
 
 	randLength := r.Float64() * totalLength
@@ -84,7 +84,7 @@ func (x *RectangleShape) GetRandomPointAroundShape(r rand.Rand) utils.Vec2 {
 			randLength -= s
 			continue
 		}
-		return dirs[i].Add(sideCenters[i]).Multiply(randLength)
+		return x.topLeft.Add(sideCenters[i].Add(dirs[i].Multiply(randLength)))
 	}
 
 	return utils.Vec2{X: 0, Y: 0}

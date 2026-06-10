@@ -3,6 +3,7 @@ package ecs
 import (
 	"ebittest/ecs/common"
 	"fmt"
+	"log"
 	"maps"
 	"math/rand/v2"
 )
@@ -10,8 +11,8 @@ import (
 // TODO: Figure out how to make map iteration order consistent
 type World struct {
 	nextEntity common.EntityId
-	Rng        rand.Rand
 
+	Rng       *rand.Rand
 	TickIdx   uint64
 	TickState common.TickState
 
@@ -27,7 +28,7 @@ type World struct {
 	HitboxColliders   map[common.EntityId]*hitboxCollider
 	HurtboxColliders  map[common.EntityId]*hurtboxCollider
 	Spawners          map[common.EntityId]*spawner
-	TimedLives        map[common.EntityId]*timedLife
+	Timers            map[common.EntityId]*timer
 	Hitpoints         map[common.EntityId]*hitpoints
 	ContactDamages    map[common.EntityId]*contactDamage
 }
@@ -36,6 +37,9 @@ func NewWorld() *World {
 	return &World{
 		nextEntity: 0,
 
+		Rng: rand.New(rand.NewChaCha8([32]byte{
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+		})),
 		TickIdx:   0,
 		TickState: common.TickState{},
 
@@ -51,10 +55,19 @@ func NewWorld() *World {
 		HitboxColliders:   make(map[common.EntityId]*hitboxCollider),
 		HurtboxColliders:  make(map[common.EntityId]*hurtboxCollider),
 		Spawners:          make(map[common.EntityId]*spawner),
-		TimedLives:        make(map[common.EntityId]*timedLife),
+		Timers:            make(map[common.EntityId]*timer),
 		Hitpoints:         make(map[common.EntityId]*hitpoints),
 		ContactDamages:    make(map[common.EntityId]*contactDamage),
 	}
+}
+
+type Storage[T component] struct {
+	order []common.EntityId
+	data  map[common.EntityId]*T
+}
+
+func (x Storage[T]) GetOrderedEntities() []common.EntityId {
+	return x.order
 }
 
 func (x *World) AddEmptyEntity() common.EntityId {
@@ -84,7 +97,7 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	delete(x.HitboxColliders, e)
 	delete(x.HurtboxColliders, e)
 	delete(x.Spawners, e)
-	delete(x.TimedLives, e)
+	delete(x.Timers, e)
 	delete(x.Hitpoints, e)
 	delete(x.ContactDamages, e)
 	delete(x.Inputs, e)
@@ -175,14 +188,16 @@ func (x *World) AddComponent(e common.EntityId, comp component) {
 	case *velocity:
 		vel := c.Copy()
 		x.Velocities[e] = &vel
-	case *timedLife:
-		tl := c.Copy()
-		x.TimedLives[e] = &tl
+	case *timer:
+		tm := c.Copy()
+		x.Timers[e] = &tm
 	case *hitpoints:
 		hp := c.Copy()
 		x.Hitpoints[e] = &hp
 	case *contactDamage:
 		cd := c.Copy()
 		x.ContactDamages[e] = &cd
+	default:
+		log.Printf("warning: attempted to add component of unknown type to entity %d, ignoring\n", e)
 	}
 }

@@ -70,11 +70,11 @@ func (x *PolygonShape) GetAABB() [2]utils.Vec2 {
 }
 
 // TODO: Implement
-func (x *PolygonShape) GetRandomPoint(r rand.Rand) utils.Vec2 {
+func (x *PolygonShape) GetRandomPoint(r *rand.Rand) utils.Vec2 {
 	return utils.Vec2{}
 }
 
 // TODO: Implement
-func (x *PolygonShape) GetRandomPointAroundShape(r rand.Rand) utils.Vec2 {
+func (x *PolygonShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
 	return utils.Vec2{}
 }
