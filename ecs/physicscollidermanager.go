@@ -12,12 +12,14 @@ type PhysicsColliderManager struct {
 }
 
 func NewPhysicsColliderComponent(
+	collisionLayer LayerMask,
+	collisionMask LayerMask,
 	cType PhysicsColliderType,
 	shapes ...shapes.Shape,
 ) *physicsCollider {
 	return &physicsCollider{
 		colliderType: cType,
-		baseCollider: newBaseCollider(shapes),
+		baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask),
 	}
 }
 
@@ -59,4 +61,12 @@ func (PhysicsColliderManager) GetLocalPaddedAABB(e common.EntityId, w *World) ([
 
 func (PhysicsColliderManager) GetCenter(e common.EntityId, w *World) (utils.Vec2, error) {
 	return PhysicsColliderManager{}.BaseColliderManager.GetCenter(e, w)
+}
+
+func (PhysicsColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
+	return PhysicsColliderManager{}.BaseColliderManager.GetLayer(e, world)
+}
+
+func (PhysicsColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
+	return PhysicsColliderManager{}.BaseColliderManager.GetMask(e, world)
 }

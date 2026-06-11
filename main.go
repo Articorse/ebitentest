@@ -459,22 +459,27 @@ func main() {
 		log.Fatal(err)
 	}
 	pPhyColComp := ecs.NewPhysicsColliderComponent(
-		ecs.Collider_Mob,
-		pPhyColShape,
-	)
-	pColLayerComp := ecs.NewCollisionLayersComponent(
 		ecs.Layer_Player,
 		ecs.Layer_Enemy|
 			ecs.Layer_EnemyProjectile|
 			ecs.Layer_Terrain|
 			ecs.Layer_Platform,
+		ecs.Collider_Mob,
+		pPhyColShape,
 	)
-	pHpComp := ecs.NewHitpointsComponent(20, 5000)
+	pHpComp := ecs.NewHitpointsComponent(20, 1000)
 	pHitboxShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
 	}
-	pHitboxComp := ecs.NewHitboxColliderComponent(pHitboxShape)
+	pHitboxComp := ecs.NewHitboxColliderComponent(
+		ecs.Layer_Player,
+		ecs.Layer_Enemy|
+			ecs.Layer_EnemyProjectile|
+			ecs.Layer_Terrain|
+			ecs.Layer_Platform,
+		pHitboxShape,
+	)
 
 	g.playerEntity = g.world.AddEntity(
 		pInpComp,
@@ -484,7 +489,6 @@ func main() {
 		pSprComp,
 		pAniComp,
 		pPhyColComp,
-		pColLayerComp,
 		pHpComp,
 		pHitboxComp,
 	)
@@ -529,18 +533,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	bulletHurtboxComp := ecs.NewHurtboxColliderComponent(bulletHurtboxShape)
-	bulletColLayerComp := ecs.NewCollisionLayersComponent(
+	bulletHurtboxComp := ecs.NewHurtboxColliderComponent(
 		ecs.Layer_FriendlyProjectile,
 		ecs.Layer_Enemy|
 			ecs.Layer_Terrain,
+		bulletHurtboxShape,
 	)
 
 	gunSpaComp, err := ecs.NewSpawnerComponent(
 		utils.Vec2{X: 13, Y: 0},
 		ecs.SpawnerType_Point,
 		nil,
-		bulletTraComp, bulletSprComp, bulletVelComp, bulletDmgComp, bulletHurtboxComp, bulletColLayerComp, bulletAniComp, bulletTimerComp,
+		bulletTraComp, bulletSprComp, bulletVelComp, bulletDmgComp, bulletHurtboxComp, bulletAniComp, bulletTimerComp,
 	)
 	if err != nil {
 		log.Fatal("error creating gun spawner component: ", err)
@@ -566,8 +570,14 @@ func main() {
 	}
 	enemyAniComp, err := ecs.NewAnimationComponent("assets/sprites/evilslime_ss.png", utils.Vec2{X: 32, Y: 32}, enemyAniStateFrames)
 	enemyHpComp := ecs.NewHitpointsComponent(20, 100)
-	enemyPhyColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
+	enemyPhyColShape, err := shapes.NewCircleShape(7, utils.Vec2{X: 0, Y: 0})
 	enemyPhyColComp := ecs.NewPhysicsColliderComponent(
+		ecs.Layer_Enemy,
+		ecs.Layer_Player|
+			ecs.Layer_FriendlyProjectile|
+			ecs.Layer_Platform|
+			ecs.Layer_Enemy|
+			ecs.Layer_Terrain,
 		ecs.Collider_Mob,
 		enemyPhyColShape,
 	)
@@ -575,21 +585,27 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	enemyHitboxComp := ecs.NewHitboxColliderComponent(enemyHitboxColShape)
-	enemyHurtboxColShape, err := shapes.NewCircleShape(7, utils.Vec2{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-	enemyHurtboxComp := ecs.NewHurtboxColliderComponent(enemyHurtboxColShape)
-	enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, 1)
-
-	enemyColLayerComp := ecs.NewCollisionLayersComponent(
+	enemyHitboxComp := ecs.NewHitboxColliderComponent(
 		ecs.Layer_Enemy,
 		ecs.Layer_Player|
 			ecs.Layer_FriendlyProjectile|
 			ecs.Layer_Platform|
 			ecs.Layer_Terrain,
+		enemyHitboxColShape,
 	)
+	enemyHurtboxColShape, err := shapes.NewCircleShape(7, utils.Vec2{X: 0, Y: 0})
+	if err != nil {
+		log.Fatal(err)
+	}
+	enemyHurtboxComp := ecs.NewHurtboxColliderComponent(
+		ecs.Layer_Enemy,
+		ecs.Layer_Player|
+			ecs.Layer_FriendlyProjectile|
+			ecs.Layer_Platform|
+			ecs.Layer_Terrain,
+		enemyHurtboxColShape,
+	)
+	enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, 1)
 	enemyFollowInput := inputsources.NewFollowInputSource(g.playerEntity)
 	enemyInputComp := ecs.NewInputComponent(ecs.InputConfig{}, enemyFollowInput)
 
@@ -604,7 +620,6 @@ func main() {
 		enemyHitboxComp,
 		enemyHurtboxComp,
 		enemyCDmgComp,
-		enemyColLayerComp,
 		enemyInputComp,
 	)
 	enemySpawnerTimerComp, err := ecs.NewTimerComponent(1000, -1, timerfuncs.Spawn)
@@ -629,7 +644,6 @@ func main() {
 		enemyHitboxComp,
 		enemyHurtboxComp,
 		enemyCDmgComp,
-		enemyColLayerComp,
 		enemyInputComp,
 	)
 
@@ -672,17 +686,14 @@ func main() {
 	treeColShape, err := shapes.NewRectangleShape(10, 5, utils.Vec2{X: -1, Y: 9})
 	// treeColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: -1, Y: 9})
 	treeColComp := ecs.NewPhysicsColliderComponent(
-		ecs.Collider_Static,
-		treeColShape,
-	)
-
-	treeColLayerComp := ecs.NewCollisionLayersComponent(
 		ecs.Layer_Terrain,
 		ecs.Layer_Player|
 			ecs.Layer_Enemy|
 			ecs.Layer_EnemyProjectile|
 			ecs.Layer_FriendlyProjectile|
 			ecs.Layer_Platform,
+		ecs.Collider_Static,
+		treeColShape,
 	)
 
 	tree := g.world.AddEntity(
@@ -692,7 +703,6 @@ func main() {
 		treeVelComp,
 		treeSprComp,
 		treeColComp,
-		treeColLayerComp,
 	)
 
 	g.replayEntity = tree
@@ -710,16 +720,13 @@ func main() {
 
 	platColShape, err := shapes.NewRectangleShape(28, 28, utils.Vec2{X: 0, Y: 0})
 	platColComp := ecs.NewPlatformColliderComponent(
-		[]shapes.Shape{platColShape},
-	)
-
-	platColLayerComp := ecs.NewCollisionLayersComponent(
 		ecs.Layer_Platform,
 		ecs.Layer_Player|
 			ecs.Layer_Enemy|
 			ecs.Layer_EnemyProjectile|
 			ecs.Layer_FriendlyProjectile|
 			ecs.Layer_Terrain,
+		[]shapes.Shape{platColShape},
 	)
 
 	_ = g.world.AddEntity(
@@ -729,7 +736,6 @@ func main() {
 		platVelComp,
 		platSprComp,
 		platColComp,
-		platColLayerComp,
 	)
 
 	// for _ = range 500 {
@@ -757,17 +763,14 @@ func (g *game) AddRandomEntity() {
 	velComp := ecs.NewDefaultVelocityComponent()
 	shape, err := shapes.NewRectangleShape(10, 5, utils.Vec2{X: -1, Y: 9})
 	colComp := ecs.NewPhysicsColliderComponent(
-		ecs.Collider_Static,
-		shape,
-	)
-
-	colLayerComp := ecs.NewCollisionLayersComponent(
 		ecs.Layer_Terrain,
 		ecs.Layer_Player|
 			ecs.Layer_Enemy|
 			ecs.Layer_EnemyProjectile|
 			ecs.Layer_FriendlyProjectile|
 			ecs.Layer_Platform,
+		ecs.Collider_Static,
+		shape,
 	)
 
 	_ = g.world.AddEntity(
@@ -775,6 +778,5 @@ func (g *game) AddRandomEntity() {
 		velComp,
 		sprComp,
 		colComp,
-		colLayerComp,
 	)
 }

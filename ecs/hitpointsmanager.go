@@ -67,6 +67,20 @@ func (HitpointsManager) GetInvulCurrent(
 	return hpComp.invulCurMs, nil
 }
 
+func (HitpointsManager) SetInvul(
+	e common.EntityId,
+	time int64,
+	world *World,
+) error {
+	hpComp, err := world.Hitpoints.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
+	}
+
+	hpComp.invulCurMs = time
+	return nil
+}
+
 func (HitpointsManager) IsInvul(
 	e common.EntityId,
 	world *World,
@@ -122,7 +136,7 @@ func (HitpointsManager) TakeDamage(
 	sm.SetSpriteFlash(
 		e,
 		[]utils.RelativeColor{
-			{R: 0.5, G: 0.5, B: 0.5, A: 1},
+			{R: 0.3, G: 0.3, B: 0.3, A: 1},
 			{R: 1, G: 1, B: 1, A: 1},
 		},
 		[]uint64{100, 100},

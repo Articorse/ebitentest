@@ -11,9 +11,11 @@ type HitboxColliderManager struct {
 }
 
 func NewHitboxColliderComponent(
+	collisionLayer LayerMask,
+	collisionMask LayerMask,
 	shapes ...shapes.Shape,
 ) *hitboxCollider {
-	return &hitboxCollider{baseCollider: newBaseCollider(shapes)}
+	return &hitboxCollider{baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask)}
 }
 
 func (HitboxColliderManager) EntityIds(world *World) []common.EntityId {
@@ -42,4 +44,12 @@ func (HitboxColliderManager) GetLocalPaddedAABB(e common.EntityId, world *World)
 
 func (HitboxColliderManager) GetCenter(e common.EntityId, world *World) (utils.Vec2, error) {
 	return HitboxColliderManager{}.BaseColliderManager.GetCenter(e, world)
+}
+
+func (HitboxColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
+	return HitboxColliderManager{}.BaseColliderManager.GetLayer(e, world)
+}
+
+func (HitboxColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
+	return HitboxColliderManager{}.BaseColliderManager.GetMask(e, world)
 }

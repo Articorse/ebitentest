@@ -61,7 +61,6 @@ type World struct {
 	Velocities        Storage[velocity]
 	Sprites           Storage[sprite]
 	Animations        Storage[animation]
-	CollisionLayers   Storage[collisionLayer]
 	PhysicsColliders  Storage[physicsCollider]
 	PlatformColliders Storage[platformCollider]
 	HitboxColliders   Storage[hitboxCollider]
@@ -89,7 +88,6 @@ func NewWorld() *World {
 		Velocities:        Storage[velocity]{order: []common.EntityId{}, data: make(map[common.EntityId]*velocity)},
 		Sprites:           Storage[sprite]{order: []common.EntityId{}, data: make(map[common.EntityId]*sprite)},
 		Animations:        Storage[animation]{order: []common.EntityId{}, data: make(map[common.EntityId]*animation)},
-		CollisionLayers:   Storage[collisionLayer]{order: []common.EntityId{}, data: make(map[common.EntityId]*collisionLayer)},
 		PhysicsColliders:  Storage[physicsCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*physicsCollider)},
 		PlatformColliders: Storage[platformCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*platformCollider)},
 		HitboxColliders:   Storage[hitboxCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*hitboxCollider)},
@@ -122,7 +120,6 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	x.Velocities.deleteEntity(e)
 	x.Sprites.deleteEntity(e)
 	x.Animations.deleteEntity(e)
-	x.CollisionLayers.deleteEntity(e)
 	x.PhysicsColliders.deleteEntity(e)
 	x.PlatformColliders.deleteEntity(e)
 	x.HitboxColliders.deleteEntity(e)
@@ -193,8 +190,6 @@ func (x *World) AddComponent(e common.EntityId, comp component) {
 		x.Sprites.addComponent(e, c.Copy())
 	case *animation:
 		x.Animations.addComponent(e, c.Copy())
-	case *collisionLayer:
-		x.CollisionLayers.addComponent(e, c.Copy())
 	case *physicsCollider:
 		x.PhysicsColliders.addComponent(e, c.Copy())
 	case *platformCollider:

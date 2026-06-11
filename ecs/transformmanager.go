@@ -149,6 +149,20 @@ func (*TransformManager) SetLocalPos(
 	return nil
 }
 
+func (*TransformManager) AddLocalPos(
+	e common.EntityId,
+	pos utils.Vec2,
+	world *World,
+) error {
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
+	}
+
+	traComp.pos = traComp.pos.Add(pos)
+	return nil
+}
+
 func (*TransformManager) SetWorldPos(
 	e common.EntityId,
 	pos utils.Vec2,
@@ -200,6 +214,20 @@ func (*TransformManager) SetLocalRotation(
 	}
 
 	traComp.rotation = rot
+	return nil
+}
+
+func (*TransformManager) AddLocalRotation(
+	e common.EntityId,
+	rot float64,
+	world *World,
+) error {
+	traComp, err := world.Transforms.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
+	}
+
+	traComp.rotation += rot
 	return nil
 }
 

@@ -14,8 +14,8 @@ func Tick(
 ) error {
 	tm := ecs.TransformManager{}
 	pcm := ecs.PlatformColliderManager{}
-	clm := ecs.CollisionLayersManager{}
 	pm := ecs.ParentManager{}
+	phcm := ecs.PhysicsColliderManager{}
 
 	for _, eA := range world.PlatformColliders.GetOrderedEntities() {
 		aAABB, err := pcm.GetWorldAABB(eA, world)
@@ -30,13 +30,13 @@ func Tick(
 			continue
 		}
 
-		aLayers, err := clm.GetLayers(eA, world)
+		aLayer, err := pcm.GetLayer(eA, world)
 		if err != nil {
-			log.Printf("error getting layers of entity %d: %v", eA, err)
+			log.Printf("error getting layer of entity %d: %v", eA, err)
 			continue
 		}
 
-		aMask, err := clm.GetMask(eA, world)
+		aMask, err := pcm.GetMask(eA, world)
 		if err != nil {
 			log.Printf("error getting mask of entity %d: %v", eA, err)
 			continue
@@ -52,23 +52,23 @@ func Tick(
 						continue
 					}
 
-					if !world.CollisionLayers.HasComponent(eB) {
+					if !world.PhysicsColliders.HasComponent(eB) {
 						continue
 					}
 
-					bLayers, err := clm.GetLayers(eB, world)
+					bLayer, err := phcm.GetLayer(eB, world)
 					if err != nil {
-						log.Printf("error getting layers of entity %d: %v", eB, err)
+						log.Printf("error getting layer of entity %d: %v", eB, err)
 						continue
 					}
 
-					bMask, err := clm.GetMask(eB, world)
+					bMask, err := phcm.GetMask(eB, world)
 					if err != nil {
 						log.Printf("error getting mask of entity %d: %v", eB, err)
 						continue
 					}
 
-					if (aLayers&bMask) == 0 || (bLayers&aMask) == 0 {
+					if (aLayer&bMask) == 0 || (bLayer&aMask) == 0 {
 						continue
 					}
 

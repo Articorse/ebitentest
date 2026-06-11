@@ -16,10 +16,12 @@ func (x hitboxCollider) Copy() hitboxCollider {
 
 	return hitboxCollider{
 		baseCollider: baseCollider{
-			shapes:     colShapesCopy,
-			center:     x.center,
-			aabb:       x.aabb,
-			paddedAabb: x.paddedAabb,
+			shapes:         colShapesCopy,
+			center:         x.center,
+			aabb:           x.aabb,
+			paddedAabb:     x.paddedAabb,
+			collisionLayer: x.collisionLayer,
+			collisionMask:  x.collisionMask,
 		},
 	}
 }

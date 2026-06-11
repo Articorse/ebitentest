@@ -186,40 +186,41 @@ func GetAABBCollisions(
 	world *ecs.World,
 ) (map[common.EntityId][]common.EntityId, error) {
 	collisions := make(map[common.EntityId][]common.EntityId)
-	clm := ecs.CollisionLayersManager{}
 
 	for e1, colEntities := range proximateEntities {
-		eA := common.EntityId(-1)
-		eB := common.EntityId(-1)
-
-		if aColManager.HasCollider(e1, world) {
-			eA = e1
-		} else if bColManager.HasCollider(e1, world) {
-			eB = e1
-		}
-
 		for _, e2 := range colEntities {
+			// TODO: Extract common code with GetCollisions()
 			if e1 == e2 {
 				continue
 			}
 
-			if bColManager.HasCollider(e2, world) {
+			e1HasA := aColManager.HasCollider(e1, world)
+			e1HasB := bColManager.HasCollider(e1, world)
+			e2HasA := aColManager.HasCollider(e2, world)
+			e2HasB := bColManager.HasCollider(e2, world)
+
+			eA := common.EntityId(-1)
+			eB := common.EntityId(-1)
+
+			if e1HasA && e2HasB {
+				eA = e1
 				eB = e2
-			} else if aColManager.HasCollider(e2, world) {
+			} else if e1HasB && e2HasA {
 				eA = e2
+				eB = e1
 			}
 
 			if eA == -1 || eB == -1 {
 				continue
 			}
 
-			aLayers, err := clm.GetLayers(eA, world)
+			aLayer, err := aColManager.GetLayer(eA, world)
 			if err != nil {
-				log.Printf("Error getting collider layers for entity %d: %v\n", eA, err)
+				log.Printf("Error getting collider layer for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			aMask, err := clm.GetMask(eA, world)
+			aMask, err := aColManager.GetMask(eA, world)
 			if err != nil {
 				log.Printf("Error getting collider mask for entity %d: %v\n", eA, err)
 				continue
@@ -231,19 +232,19 @@ func GetAABBCollisions(
 				continue
 			}
 
-			bLayers, err := clm.GetLayers(eB, world)
+			bLayer, err := bColManager.GetLayer(eB, world)
 			if err != nil {
-				log.Printf("Error getting collider layers for entity %d: %v\n", eB, err)
+				log.Printf("Error getting collider layer for entity %d: %v\n", eB, err)
 				continue
 			}
 
-			bMask, err := clm.GetMask(eB, world)
+			bMask, err := bColManager.GetMask(eB, world)
 			if err != nil {
 				log.Printf("Error getting collider mask for entity %d: %v\n", eB, err)
 				continue
 			}
 
-			if aLayers&bMask == 0 || bLayers&aMask == 0 {
+			if aLayer&bMask == 0 || bLayer&aMask == 0 {
 				continue
 			}
 

@@ -20,10 +20,16 @@ type IColliderManager interface {
 	GetLocalAABB(e common.EntityId, w *World) ([2]utils.Vec2, error)
 	GetLocalPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error)
 	GetCenter(e common.EntityId, w *World) (utils.Vec2, error)
+	GetLayer(e common.EntityId, w *World) (LayerMask, error)
+	GetMask(e common.EntityId, w *World) (LayerMask, error)
 }
 
-func newBaseCollider(colShapes []shapes.Shape) baseCollider {
-	c := baseCollider{shapes: colShapes}
+func newBaseCollider(
+	colShapes []shapes.Shape,
+	collisionLayer LayerMask,
+	collisionMask LayerMask,
+) baseCollider {
+	c := baseCollider{shapes: colShapes, collisionLayer: collisionLayer, collisionMask: collisionMask}
 
 	c.center = shapes.CalculateCenter(colShapes)
 
@@ -196,4 +202,28 @@ func (BaseColliderManager[T]) GetWorldPaddedAABB(
 		utils.Vec2{X: colComp.getBaseCollider().paddedAabb[0].X + worldPos.X, Y: colComp.getBaseCollider().paddedAabb[0].Y + worldPos.Y},
 		utils.Vec2{X: colComp.getBaseCollider().paddedAabb[1].X + worldPos.X, Y: colComp.getBaseCollider().paddedAabb[1].Y + worldPos.Y},
 	}, nil
+}
+
+func (BaseColliderManager[T]) GetLayer(
+	e common.EntityId,
+	world *World,
+) (LayerMask, error) {
+	colComp, err := getCollider[T](e, world)
+	if err != nil {
+		return 0, fmt.Errorf("could not get collider of entity %d: %v", e, err)
+	}
+
+	return colComp.getBaseCollider().collisionLayer, nil
+}
+
+func (BaseColliderManager[T]) GetMask(
+	e common.EntityId,
+	world *World,
+) (LayerMask, error) {
+	colComp, err := getCollider[T](e, world)
+	if err != nil {
+		return 0, fmt.Errorf("could not get collider of entity %d: %v", e, err)
+	}
+
+	return colComp.getBaseCollider().collisionMask, nil
 }
