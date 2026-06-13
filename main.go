@@ -480,20 +480,18 @@ func main() {
 	g.world.TickState = *common.NewTickState()
 
 	// Player
-	pInputConfig := ecs.InputConfig{
-		Up:       ebiten.KeyW,
-		Down:     ebiten.KeyS,
-		Left:     ebiten.KeyA,
-		Right:    ebiten.KeyD,
-		Ability1: ebiten.MouseButtonLeft,
-		Dodge:    ebiten.KeySpace,
-	}
-
-	pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.KeyboardInputSource)
+	pInputConfig := make(map[ecs.InputType]ecs.InputKey)
+	// pInputConfig[ecs.Input_Analog1Y] = ecs.NewGamepadAxisInputKey(0, ebiten.GamepadAxisType(0))
+	// pInputConfig[ecs.Input_Analog1X] = ecs.NewGamepadAxisInputKey(0, ebiten.GamepadAxisType(1))
+	// pInputConfig[ecs.Input_Ability1] = ecs.NewGamepadButtonInputKey(0, new(ebiten.GamepadButton(0)), nil)
+	pInputConfig[ecs.Input_Analog1Y] = ecs.NewKeyboardInputKey(new(ebiten.KeyS), new(ebiten.KeyW))
+	pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(new(ebiten.KeyD), new(ebiten.KeyA))
+	pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(new(ebiten.KeySpace), nil)
+	pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource)
 	pParComp := ecs.NewParentComponent()
 	pTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := ecs.NewDefaultVelocityComponent()
-	pSprComp, err := ecs.NewSpriteComponent("assets/sprites/slime.png", 20, true)
+	pSprComp, err := ecs.NewSpriteComponent("assets/sprites/slime.png", 20, false)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -581,7 +579,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	gunInpComp := ecs.NewInputComponent(ecs.InputConfig{}, inputsources.MouseInputSource)
+	gunInputConfig := make(map[ecs.InputType]ecs.InputKey)
+	gunInputConfig[ecs.Input_Ability1] = ecs.NewMouseInputKey(new(ebiten.MouseButtonLeft), nil)
+	gunInpComp := ecs.NewInputComponent(gunInputConfig, inputsources.HumanInputSource)
 
 	spawnName, spawnDef := abilitydefs.SpawnAbility(200)
 	gunAbis := [16]ecs.EntityAbility{}
@@ -702,7 +702,7 @@ func main() {
 	)
 	enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, 1)
 	enemyFollowInput := inputsources.NewFollowInputSource(g.playerEntity)
-	enemyInputComp := ecs.NewInputComponent(ecs.InputConfig{}, enemyFollowInput)
+	enemyInputComp := ecs.NewInputComponent(nil, enemyFollowInput)
 
 	_ = g.world.AddEntity(
 		enemyParComp,
@@ -776,7 +776,7 @@ func main() {
 
 	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
 
-	treeInpComp := ecs.NewInputComponent(ecs.InputConfig{}, inputsources.DummyInputSource)
+	treeInpComp := ecs.NewInputComponent(nil, inputsources.DummyInputSource)
 	treeParComp := ecs.NewParentComponent()
 	treeTraComp := ecs.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
 	treeVelComp := ecs.NewDefaultVelocityComponent()
@@ -809,7 +809,7 @@ func main() {
 
 	g.replayEntity = tree
 
-	platInput := ecs.NewInputComponent(ecs.InputConfig{}, loopSource)
+	platInput := ecs.NewInputComponent(nil, loopSource)
 
 	platParComp := ecs.NewParentComponent()
 	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
@@ -821,6 +821,9 @@ func main() {
 	}
 
 	platColShape, err := shapes.NewRectangleShape(28, 28, utils.Vec2{X: 0, Y: 0})
+	if err != nil {
+		log.Fatal(err)
+	}
 	platColComp := ecs.NewPlatformColliderComponent(
 		ecs.Layer_Platform,
 		ecs.Layer_Player|

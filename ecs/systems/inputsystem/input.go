@@ -26,10 +26,10 @@ func HandleInputs(
 	world *ecs.World,
 	allInputs map[common.EntityId]ecs.InputState,
 ) error {
-
 	for e, input := range allInputs {
 		if world.Transforms.HasComponent(e) {
 			tm := ecs.TransformManager{}
+			sm := ecs.SpriteManager{} // FIXME: Replace with FacePosition component
 
 			eWorldPos, err := tm.GetWorldPos(e, world)
 			if err != nil {
@@ -37,19 +37,28 @@ func HandleInputs(
 				continue
 			}
 
-			mX := input.MouseScreenPos.X
-			mY := input.MouseScreenPos.Y
+			allowRot, err := sm.GetAllowRotation(e, world)
+			if err != nil {
+				log.Printf("Error getting allow rotation for entity %d: %v\n", e, err)
+				continue
+			}
 
-			if mX != 0 || mY != 0 {
-				mWorldX := mX + camera.X
-				mWorldY := mY + camera.Y
-				dX := mWorldX - eWorldPos.X
-				dY := mWorldY - eWorldPos.Y
-				r := math.Atan2(dY, dX)
+			if allowRot {
 
-				err = tm.SetLocalRotation(e, r, world)
-				if err != nil {
-					log.Printf("Error setting world rotation for entity %d: %v\n", e, err)
+				mX := input.MouseScreenPos.X
+				mY := input.MouseScreenPos.Y
+
+				if mX != 0 || mY != 0 {
+					mWorldX := mX + camera.X
+					mWorldY := mY + camera.Y
+					dX := mWorldX - eWorldPos.X
+					dY := mWorldY - eWorldPos.Y
+					r := math.Atan2(dY, dX)
+
+					err = tm.SetLocalRotation(e, r, world)
+					if err != nil {
+						log.Printf("Error setting world rotation for entity %d: %v\n", e, err)
+					}
 				}
 			}
 		}
@@ -83,7 +92,7 @@ func HandleInputs(
 			}
 		}
 
-		if input.Ability1 {
+		if input.Ability1 > 0 {
 			if world.Abilities.HasComponent(e) {
 				am := ecs.AbilitiesManager{}
 				_, err := am.ActivateAbility(e, []common.EntityId{}, 0, world)
@@ -93,7 +102,7 @@ func HandleInputs(
 			}
 		}
 
-		if input.Ability2 {
+		if input.Ability2 > 0 {
 			if world.Abilities.HasComponent(e) {
 				am := ecs.AbilitiesManager{}
 				_, err := am.ActivateAbility(e, []common.EntityId{}, 0, world)

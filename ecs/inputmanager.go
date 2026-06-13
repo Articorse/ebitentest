@@ -10,9 +10,10 @@ type InputManager struct{}
 
 type InputState struct {
 	Analog1X, Analog1Y float64
+	Analog2X, Analog2Y float64
+	Ability1           float64
+	Ability2           float64
 	MouseScreenPos     utils.Vec2
-	Ability1           bool
-	Ability2           bool
 }
 
 type InputSourceFunc func(
@@ -21,35 +22,22 @@ type InputSourceFunc func(
 	world *World,
 ) InputState
 
-func NewInputComponent(config InputConfig, inputSourceFunc InputSourceFunc) *input {
+func NewInputComponent(config map[InputType]InputKey, inputSourceFunc InputSourceFunc) *input {
 	return &input{config: config, inputSourceFunc: inputSourceFunc}
 }
 
-func (*InputManager) GetInputConfig(
-	e common.EntityId,
-	world *World,
-) (InputConfig, error) {
-	isf, err := world.Inputs.getComponent(e)
+func (*InputManager) GetInput(e common.EntityId, inputType InputType, world *World) (float64, error) {
+	inComp, err := world.Inputs.getComponent(e)
 	if err != nil {
-		return InputConfig{}, fmt.Errorf("could not get input of entity %d: %v", e, err)
+		return 0, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
 
-	return isf.config, nil
-}
-
-func (*InputManager) SetInputConfig(
-	e common.EntityId,
-	config InputConfig,
-	world *World,
-) error {
-	isf, err := world.Inputs.getComponent(e)
-	if err != nil {
-		return fmt.Errorf("could not get input of entity %d: %v", e, err)
+	inKey, ok := inComp.config[inputType]
+	if !ok {
+		return 0, nil
 	}
 
-	isf.config = config
-
-	return nil
+	return inKey.GetInput(), nil
 }
 
 func (*InputManager) GetInputSourceFunc(
