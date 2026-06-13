@@ -19,7 +19,7 @@ func NewPlatformColliderComponent(
 }
 
 func (PlatformColliderManager) EntityIds(world *World) []common.EntityId {
-	return world.PlatformColliders.GetOrderedEntities()
+	return world.PlatformColliders.GetEntities()
 }
 
 func (PlatformColliderManager) HasCollider(e common.EntityId, world *World) bool {

@@ -7,8 +7,8 @@ import (
 type RotationInput uint8
 
 type InputConfig struct {
-	Up, Down, Left, Right ebiten.Key
-	Use                   ebiten.MouseButton
+	Up, Down, Left, Right, Dodge ebiten.Key
+	Use                          ebiten.MouseButton
 }
 
 type input struct {

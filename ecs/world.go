@@ -14,7 +14,7 @@ type Storage[T component] struct {
 	data  map[common.EntityId]*T
 }
 
-func (x *Storage[T]) GetOrderedEntities() []common.EntityId {
+func (x *Storage[T]) GetEntities() []common.EntityId {
 	return x.order
 }
 
@@ -50,6 +50,7 @@ func (x *Storage[T]) addComponent(e common.EntityId, c T) {
 
 type World struct {
 	nextEntity common.EntityId
+	InputLog   map[uint64]map[common.EntityId]InputState
 
 	Rng       *rand.Rand
 	TickIdx   uint64
@@ -69,11 +70,13 @@ type World struct {
 	Timers            Storage[timer]
 	Hitpoints         Storage[hitpoints]
 	ContactDamages    Storage[contactDamage]
+	Abilities         Storage[abilities]
 }
 
 func NewWorld() *World {
 	return &World{
 		nextEntity: 0,
+		InputLog:   make(map[uint64]map[common.EntityId]InputState),
 
 		Rng: rand.New(rand.NewChaCha8([32]byte{
 			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
@@ -96,7 +99,29 @@ func NewWorld() *World {
 		Timers:            Storage[timer]{order: []common.EntityId{}, data: make(map[common.EntityId]*timer)},
 		Hitpoints:         Storage[hitpoints]{order: []common.EntityId{}, data: make(map[common.EntityId]*hitpoints)},
 		ContactDamages:    Storage[contactDamage]{order: []common.EntityId{}, data: make(map[common.EntityId]*contactDamage)},
+		Abilities:         Storage[abilities]{order: []common.EntityId{}, data: make(map[common.EntityId]*abilities)},
 	}
+}
+
+func (x *World) GetCurrentTickInputs() (map[common.EntityId]InputState, error) {
+	if tickInputs, ok := x.InputLog[x.TickIdx]; ok {
+		return tickInputs, nil
+	}
+	return nil, fmt.Errorf("no inputs found for tick %d", x.TickIdx)
+}
+
+func (x *World) GetCurrentTickInputsForEntity(e common.EntityId) (InputState, error) {
+	if tickInputs, ok := x.InputLog[x.TickIdx]; ok {
+		if input, ok := tickInputs[e]; ok {
+			return input, nil
+		}
+		return InputState{}, fmt.Errorf("no input found for entity %d in tick %d", e, x.TickIdx)
+	}
+	return InputState{}, fmt.Errorf("no inputs found for tick %d", x.TickIdx)
+}
+
+func (x *World) SetTickInputs(tick uint64, inputs map[common.EntityId]InputState) {
+	x.InputLog[tick] = inputs
 }
 
 func (x *World) AddEmptyEntity() common.EntityId {
@@ -129,6 +154,7 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	x.Hitpoints.deleteEntity(e)
 	x.ContactDamages.deleteEntity(e)
 	x.Inputs.deleteEntity(e)
+	x.Abilities.deleteEntity(e)
 
 	pm := ParentManager{}
 	err := pm.RemoveParentFromAllEntities(e, x)
@@ -158,7 +184,7 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	})
 
 	maps.DeleteFunc(x.TickState.Collisions, func(k common.EntityId, v map[common.EntityId]common.Collision) bool {
-		for vE, _ := range v {
+		for vE := range v {
 			if vE == e {
 				return true
 			}
@@ -208,6 +234,8 @@ func (x *World) AddComponent(e common.EntityId, comp component) {
 		x.ContactDamages.addComponent(e, c.Copy())
 	case *input:
 		x.Inputs.addComponent(e, c.Copy())
+	case *abilities:
+		x.Abilities.addComponent(e, c.Copy())
 	default:
 		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in World.AddComponent\n", comp, e)
 	}

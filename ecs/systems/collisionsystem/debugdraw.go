@@ -106,7 +106,7 @@ func DrawColliders(
 					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[1].Y},
 					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
 				}
-				for i, _ := range verts[:len(verts)-1] {
+				for i := range verts[:len(verts)-1] {
 					vector.StrokeLine(
 						screen,
 						float32(verts[i].X-camera.X),

@@ -46,8 +46,16 @@ func ResolvePhysicsCollisions(
 					continue
 				}
 
-				tm.AddLocalPos(eA, c.Vector.Multiply(-0.5), world)
-				tm.AddLocalPos(eB, c.Vector.Multiply(0.5), world)
+				err = tm.AddLocalPos(eA, c.Vector.Multiply(-0.5), world)
+				if err != nil {
+					log.Printf("Error adding local position for entity %d: %v\n", eA, err)
+					continue
+				}
+				err = tm.AddLocalPos(eB, c.Vector.Multiply(0.5), world)
+				if err != nil {
+					log.Printf("Error adding local position for entity %d: %v\n", eB, err)
+					continue
+				}
 
 				normal := c.Vector.Normalized()
 				relativeVelocity := aLocalVelVec.Subtract(bLocalVelVec)
@@ -57,8 +65,16 @@ func ResolvePhysicsCollisions(
 					restitution := data.Bounciness
 					impulseMagnitude := -(1 + restitution) * velocityAlongNormal
 					impulse := normal.Multiply(impulseMagnitude)
-					vm.AddForce(eA, impulse.Multiply(-0.5), world)
-					vm.AddForce(eB, impulse.Multiply(0.5), world)
+					err = vm.AddForce(eA, impulse.Multiply(-0.5), world)
+					if err != nil {
+						log.Printf("Error adding force to entity %d: %v\n", eA, err)
+						continue
+					}
+					err = vm.AddForce(eB, impulse.Multiply(0.5), world)
+					if err != nil {
+						log.Printf("Error adding force to entity %d: %v\n", eB, err)
+						continue
+					}
 				}
 
 				collisionsResolved++
@@ -98,7 +114,11 @@ func ResolvePhysicsCollisions(
 					continue
 				}
 
-				tm.SetLocalPos(mobE, mobLocalPos.Add(c.Vector), world)
+				err = tm.SetLocalPos(mobE, mobLocalPos.Add(c.Vector), world)
+				if err != nil {
+					log.Printf("Error setting local position for entity %d: %v\n", mobE, err)
+					continue
+				}
 
 				normal := c.Vector.Normalized()
 				relativeVelocity := mobLocalVelVec.Subtract(staLocalVelVec)
@@ -108,7 +128,11 @@ func ResolvePhysicsCollisions(
 					restitution := data.Bounciness
 					impulseMagnitude := -(1 + restitution) * velocityAlongNormal
 					impulse := normal.Multiply(impulseMagnitude)
-					vm.SetLocalVector(mobE, mobLocalVelVec.Add(impulse), world)
+					err = vm.SetLocalVector(mobE, mobLocalVelVec.Add(impulse), world)
+					if err != nil {
+						log.Printf("Error setting local velocity vector for entity %d: %v\n", mobE, err)
+						continue
+					}
 				}
 
 				collisionsResolved++

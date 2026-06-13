@@ -133,7 +133,7 @@ func (HitpointsManager) TakeDamage(
 		return true, nil
 	}
 
-	sm.SetSpriteFlash(
+	err = sm.SetSpriteFlash(
 		e,
 		[]utils.RelativeColor{
 			{R: 0.3, G: 0.3, B: 0.3, A: 1},
@@ -143,6 +143,9 @@ func (HitpointsManager) TakeDamage(
 		uint64(hpComp.invulMaxMs),
 		world,
 	)
+	if err != nil {
+		return false, fmt.Errorf("could not set sprite flash of entity %d: %v", e, err)
+	}
 
 	return false, nil
 }

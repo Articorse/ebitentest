@@ -36,7 +36,7 @@ func (*PhysicsColliderManager) GetColliderType(
 }
 
 func (PhysicsColliderManager) EntityIds(w *World) []common.EntityId {
-	return w.PhysicsColliders.GetOrderedEntities()
+	return w.PhysicsColliders.GetEntities()
 }
 
 func (PhysicsColliderManager) HasCollider(e common.EntityId, w *World) bool {

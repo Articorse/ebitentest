@@ -35,5 +35,9 @@ func KeyboardInputSource(
 		is.Analog1Y = 1.0
 	}
 
+	if ebiten.IsKeyPressed(config.Dodge) {
+		is.Dodge = true
+	}
+
 	return is
 }

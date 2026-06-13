@@ -2,6 +2,7 @@ package inputsystem
 
 import (
 	"ebittest/ecs"
+	"ebittest/ecs/abilitydefs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"log"
@@ -14,7 +15,7 @@ func GetTickInputs(
 	inputSource ecs.InputSourceFunc,
 ) map[common.EntityId]ecs.InputState {
 	tickInputs := make(map[common.EntityId]ecs.InputState)
-	for _, e := range world.Inputs.GetOrderedEntities() {
+	for _, e := range world.Inputs.GetEntities() {
 		input := inputSource(e, tick, world)
 		tickInputs[e] = input
 	}
@@ -76,13 +77,20 @@ func HandleInputs(
 				continue
 			}
 
-			vm.SetLocalVector(e, pLocalVelVec.Add(v.Multiply(pAccel)), world)
+			err = vm.SetLocalVector(e, pLocalVelVec.Add(v.Multiply(pAccel)), world)
+			if err != nil {
+				log.Printf("Error setting local velocity vector for entity %d: %v\n", e, err)
+				continue
+			}
 		}
 
 		if world.Spawners.HasComponent(e) {
 			if input.Use {
 				sm := ecs.SpawnerManager{}
-				sm.Spawn(e, world)
+				err := sm.Spawn(e, world)
+				if err != nil {
+					log.Printf("Error spawning entity from spawner %d: %v\n", e, err)
+				}
 			}
 		}
 
@@ -101,6 +109,18 @@ func HandleInputs(
 				err = am.SetState(e, ecs.Anim_Use, world)
 				if err != nil {
 					log.Printf("Error setting animation state for entity %d: %v\n", e, err)
+				}
+			}
+		}
+
+		if input.Dodge {
+			if world.Abilities.HasComponent(e) {
+				am := ecs.AbilitiesManager{}
+				if am.HasAbility(e, abilitydefs.Ability_Dodge, world) {
+					_, err := am.ActivateAbility(e, []common.EntityId{}, abilitydefs.Ability_Dodge, world)
+					if err != nil {
+						log.Printf("Error activating dodge ability for entity %d: %v\n", e, err)
+					}
 				}
 			}
 		}

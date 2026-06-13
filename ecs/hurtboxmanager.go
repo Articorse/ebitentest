@@ -19,7 +19,7 @@ func NewHurtboxColliderComponent(
 }
 
 func (HurtboxColliderManager) EntityIds(world *World) []common.EntityId {
-	return world.HurtboxColliders.GetOrderedEntities()
+	return world.HurtboxColliders.GetEntities()
 }
 
 func (HurtboxColliderManager) HasCollider(e common.EntityId, world *World) bool {

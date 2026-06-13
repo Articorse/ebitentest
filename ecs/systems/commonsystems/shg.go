@@ -14,7 +14,7 @@ func PopulateSpatialHashGrid(
 	grid := make(map[common.CellKey][]common.EntityId)
 	tm := ecs.TransformManager{}
 
-	for _, e := range world.Transforms.GetOrderedEntities() {
+	for _, e := range world.Transforms.GetEntities() {
 		worldPos, err := tm.GetWorldPos(e, world)
 		if err != nil {
 			log.Printf("error getting world position of entity %d: %v", e, err)
@@ -35,7 +35,7 @@ func GetSHGProximities(
 ) (map[common.EntityId][]common.EntityId, error) {
 	proximateEntities := make(map[common.EntityId][]common.EntityId)
 
-	for _, eA := range world.Transforms.GetOrderedEntities() {
+	for _, eA := range world.Transforms.GetEntities() {
 		tm := ecs.TransformManager{}
 		worldPosA, err := tm.GetWorldPos(eA, world)
 		if err != nil {

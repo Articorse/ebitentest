@@ -11,6 +11,7 @@ type AnimationState uint16
 const (
 	Anim_Idle AnimationState = iota
 	Anim_Use
+	Anim_Jump
 )
 
 type AnimationFrame struct {

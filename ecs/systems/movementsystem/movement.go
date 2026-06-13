@@ -13,7 +13,7 @@ func Tick(world *ecs.World) error {
 	tm := ecs.TransformManager{}
 	vm := ecs.VelocityManager{}
 
-	for _, e := range world.Velocities.GetOrderedEntities() {
+	for _, e := range world.Velocities.GetEntities() {
 		localPos, err := tm.GetLocalPos(e, world)
 		if err != nil {
 			return fmt.Errorf("error getting local position of entity %d: %v", e, err)
@@ -42,11 +42,20 @@ func Tick(world *ecs.World) error {
 			Y: (localVelVec.X*sin + localVelVec.Y*cos),
 		}
 
-		tm.SetLocalPos(e, localPos.Add(movementVector), world)
-		vm.SetLocalVector(e, localVelVec.Multiply(drag), world)
+		err = tm.SetLocalPos(e, localPos.Add(movementVector), world)
+		if err != nil {
+			return fmt.Errorf("error setting local position of entity %d: %v", e, err)
+		}
+		err = vm.SetLocalVector(e, localVelVec.Multiply(drag), world)
+		if err != nil {
+			return fmt.Errorf("error setting local velocity vector of entity %d: %v", e, err)
+		}
 
 		if localVelVec.Length() < data.VelocityThreshold {
-			vm.SetLocalVector(e, utils.Vec2{X: 0, Y: 0}, world)
+			err = vm.SetLocalVector(e, utils.Vec2{X: 0, Y: 0}, world)
+			if err != nil {
+				return fmt.Errorf("error setting local velocity vector of entity %d: %v", e, err)
+			}
 		}
 	}
 

@@ -172,7 +172,7 @@ func (*ParentManager) GetOrderedHierarchies(
 	world *World,
 ) ([][][]common.EntityId, error) {
 	if len(entities) == 0 {
-		return [][][]common.EntityId{}, fmt.Errorf("Entities slice empty")
+		return [][][]common.EntityId{}, fmt.Errorf("entities slice empty")
 	}
 
 	pm := ParentManager{}

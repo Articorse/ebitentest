@@ -17,7 +17,7 @@ func Tick(
 	pm := ecs.ParentManager{}
 	phcm := ecs.PhysicsColliderManager{}
 
-	for _, eA := range world.PlatformColliders.GetOrderedEntities() {
+	for _, eA := range world.PlatformColliders.GetEntities() {
 		aAABB, err := pcm.GetWorldAABB(eA, world)
 		if err != nil {
 			log.Printf("error getting AABB of entity %d: %v", eA, err)

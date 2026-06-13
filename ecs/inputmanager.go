@@ -12,6 +12,7 @@ type InputState struct {
 	Analog1X, Analog1Y float64
 	MouseScreenPos     utils.Vec2
 	Use                bool
+	Dodge              bool
 }
 
 type InputSourceFunc func(

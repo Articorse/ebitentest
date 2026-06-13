@@ -31,7 +31,7 @@ func DrawFrame(
 		utils.Vec2{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
 	}
 
-	for _, e := range world.Sprites.GetOrderedEntities() {
+	for _, e := range world.Sprites.GetEntities() {
 		eWorldPos, err := tm.GetWorldPos(e, world)
 		if err != nil {
 			return fmt.Errorf("error getting world position of entity %d: %v", e, err)
@@ -51,7 +51,7 @@ func DrawFrame(
 
 		sprImg, err := sm.GetImage(e, world)
 		if err != nil {
-			return fmt.Errorf("Error getting sprite image for entity %d: %v\n", e, err)
+			return fmt.Errorf("error getting sprite image for entity %d: %v", e, err)
 		}
 
 		if sprImg == nil {
@@ -60,7 +60,7 @@ func DrawFrame(
 
 		layer, err := sm.GetLayer(e, world)
 		if err != nil {
-			return fmt.Errorf("Error getting sprite layer for entity %d: %v\n", e, err)
+			return fmt.Errorf("error getting sprite layer for entity %d: %v", e, err)
 		}
 
 		i, ok := layerIdxMap[layer]
@@ -85,7 +85,7 @@ func DrawFrame(
 
 			nSprImg, err := sm.GetImage(n, world)
 			if err != nil {
-				return fmt.Errorf("Error getting sprite image for entity %d: %v\n", n, err)
+				return fmt.Errorf("error getting sprite image for entity %d: %v", n, err)
 			}
 
 			if nSprImg == nil {
@@ -180,7 +180,7 @@ func DrawFrame(
 
 				img, err := sm.GetImage(batchEntity, world)
 				if err != nil {
-					return fmt.Errorf("Error getting sprite image for batchEntity %d: %v\n", batchEntity, err)
+					return fmt.Errorf("error getting sprite image for batchEntity %d: %v", batchEntity, err)
 				}
 
 				opts := ebiten.DrawImageOptions{}

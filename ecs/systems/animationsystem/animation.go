@@ -11,7 +11,7 @@ func Tick(world *ecs.World) error {
 	am := ecs.AnimationManager{}
 	sm := ecs.SpriteManager{}
 
-	for _, e := range world.Animations.GetOrderedEntities() {
+	for _, e := range world.Animations.GetEntities() {
 		err := am.Tick(e, world)
 		if err != nil {
 			log.Printf("Error ticking animation for entity %d: %v\n", e, err)
@@ -47,7 +47,7 @@ func Tick(world *ecs.World) error {
 		}
 	}
 
-	for _, e := range world.Sprites.GetOrderedEntities() {
+	for _, e := range world.Sprites.GetEntities() {
 		err := sm.TickFlash(e, world)
 		if err != nil {
 			log.Printf("Error ticking flash for entity %d: %v\n", e, err)

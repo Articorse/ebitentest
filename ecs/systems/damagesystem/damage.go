@@ -9,7 +9,7 @@ import (
 func Tick(world *ecs.World) {
 	hpm := ecs.HitpointsManager{}
 
-	for _, e := range world.Hitpoints.GetOrderedEntities() {
+	for _, e := range world.Hitpoints.GetEntities() {
 		invulCur, err := hpm.GetInvulCurrent(e, world)
 		if err != nil {
 			log.Printf("Error getting invulnerability current for entity %d: %v\n", e, err)
