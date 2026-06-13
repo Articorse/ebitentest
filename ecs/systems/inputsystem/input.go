@@ -2,7 +2,6 @@ package inputsystem
 
 import (
 	"ebittest/ecs"
-	"ebittest/ecs/abilitydefs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"log"
@@ -84,43 +83,22 @@ func HandleInputs(
 			}
 		}
 
-		if world.Spawners.HasComponent(e) {
-			if input.Use {
-				sm := ecs.SpawnerManager{}
-				err := sm.Spawn(e, world)
-				if err != nil {
-					log.Printf("Error spawning entity from spawner %d: %v\n", e, err)
-				}
-			}
-		}
-
-		if world.Animations.HasComponent(e) {
-			am := ecs.AnimationManager{}
-			if input.Use {
-				nextState, err := am.GetState(e, world)
-				if err != nil {
-					log.Printf("Error getting animation state for entity %d: %v\n", e, err)
-					continue
-				}
-				err = am.SetQueuedStateIfNone(e, nextState, world)
-				if err != nil {
-					log.Printf("Error setting queued animation state for entity %d: %v\n", e, err)
-				}
-				err = am.SetState(e, ecs.Anim_Use, world)
-				if err != nil {
-					log.Printf("Error setting animation state for entity %d: %v\n", e, err)
-				}
-			}
-		}
-
-		if input.Dodge {
+		if input.Ability1 {
 			if world.Abilities.HasComponent(e) {
 				am := ecs.AbilitiesManager{}
-				if am.HasAbility(e, abilitydefs.Ability_Dodge, world) {
-					_, err := am.ActivateAbility(e, []common.EntityId{}, abilitydefs.Ability_Dodge, world)
-					if err != nil {
-						log.Printf("Error activating dodge ability for entity %d: %v\n", e, err)
-					}
+				_, err := am.ActivateAbility(e, []common.EntityId{}, 0, world)
+				if err != nil {
+					log.Printf("Error activating dodge ability for entity %d: %v\n", e, err)
+				}
+			}
+		}
+
+		if input.Ability2 {
+			if world.Abilities.HasComponent(e) {
+				am := ecs.AbilitiesManager{}
+				_, err := am.ActivateAbility(e, []common.EntityId{}, 0, world)
+				if err != nil {
+					log.Printf("Error activating dodge ability for entity %d: %v\n", e, err)
 				}
 			}
 		}

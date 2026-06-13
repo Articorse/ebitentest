@@ -17,18 +17,20 @@ func NewAbilityDef(effect AbilityFunc, cd int, duration int, postEffect AbilityF
 	}
 }
 
-func NewAbilitiesComponent(defs map[AbilityEnum]AbilityDef) *abilities {
-	abiMap := make(map[AbilityEnum]EntityAbility, len(defs))
-	for k, v := range defs {
-		abiMap[k] = EntityAbility{
-			Def: v,
-			Status: AbilityStatus{
-				State: AbiAct_Ready,
-			},
+func NewAbilitiesComponent(defs [data.MaxAbilitySlots]EntityAbility) *abilities {
+	abis := [data.MaxAbilitySlots]EntityAbility{}
+
+	for i, abi := range defs {
+		abis[i] = EntityAbility{
+			Name:   abi.Name,
+			Def:    abi.Def,
+			Status: AbilityStatus{State: AbiAct_Ready},
 		}
 	}
 
-	return &abilities{abilities: abiMap}
+	return &abilities{
+		abilities: abis,
+	}
 }
 
 func (AbilitiesManager) TickAbilities(e common.EntityId, world *World) error {
@@ -37,10 +39,10 @@ func (AbilitiesManager) TickAbilities(e common.EntityId, world *World) error {
 		return fmt.Errorf("could not get abilities component of entity %d: %v", e, err)
 	}
 
-	for _, a := range abiComp.abilities {
+	for i, a := range abiComp.abilities {
 		switch a.Status.State {
 		case AbiAct_Active:
-			a.Status.DurationCounterMs -= 1000 / data.TPS
+			a.Status.DurationCounterMs -= data.TickMs
 
 			if a.Status.DurationCounterMs <= 0 {
 				a.Status.State = AbiAct_OnCooldown
@@ -53,14 +55,14 @@ func (AbilitiesManager) TickAbilities(e common.EntityId, world *World) error {
 				}
 			}
 		case AbiAct_OnCooldown:
-			a.Status.CooldownCounterMs -= 1000 / data.TPS
+			a.Status.CooldownCounterMs -= data.TickMs
 
 			if a.Status.CooldownCounterMs <= 0 {
 				a.Status.State = AbiAct_Ready
 			}
 		}
 
-		abiComp.abilities[a.Name] = a
+		abiComp.abilities[i] = a
 	}
 
 	return nil
@@ -72,9 +74,13 @@ func (AbilitiesManager) HasAbility(e common.EntityId, name AbilityEnum, world *W
 		return false
 	}
 
-	_, ok := abiComp.abilities[name]
+	for _, a := range abiComp.abilities {
+		if a.Name == name {
+			return true
+		}
+	}
 
-	return ok
+	return false
 }
 
 func (AbilitiesManager) DisableAbility(e common.EntityId, name AbilityEnum, world *World) error {
@@ -83,13 +89,23 @@ func (AbilitiesManager) DisableAbility(e common.EntityId, name AbilityEnum, worl
 		return fmt.Errorf("could not get abilities component of entity %d: %v", e, err)
 	}
 
-	a, ok := abiComp.abilities[name]
-	if !ok {
+	var abi EntityAbility
+	idx := -1
+
+	for i, a := range abiComp.abilities {
+		if a.Name == name {
+			abi = a
+			idx = i
+			break
+		}
+	}
+
+	if idx == -1 {
 		return fmt.Errorf("entity %d does not have ability %v", e, name)
 	}
 
-	a.Status.State = AbiAct_Disabled
-	abiComp.abilities[name] = a
+	abi.Status.State = AbiAct_Disabled
+	abiComp.abilities[idx] = abi
 
 	return nil
 }
@@ -100,13 +116,23 @@ func (AbilitiesManager) EnableAbility(e common.EntityId, name AbilityEnum, world
 		return fmt.Errorf("could not get abilities component of entity %d: %v", e, err)
 	}
 
-	a, ok := abiComp.abilities[name]
-	if !ok {
+	var abi EntityAbility
+	idx := -1
+
+	for i, a := range abiComp.abilities {
+		if a.Name == name {
+			abi = a
+			idx = i
+			break
+		}
+	}
+
+	if idx == -1 {
 		return fmt.Errorf("entity %d does not have ability %v", e, name)
 	}
 
-	a.Status.State = AbiAct_Ready
-	abiComp.abilities[name] = a
+	abi.Status.State = AbiAct_Ready
+	abiComp.abilities[idx] = abi
 
 	return nil
 }
@@ -114,17 +140,22 @@ func (AbilitiesManager) EnableAbility(e common.EntityId, name AbilityEnum, world
 func (AbilitiesManager) ActivateAbility(
 	e common.EntityId,
 	targets []common.EntityId,
-	name AbilityEnum,
+	abiIdx int,
 	world *World,
-) (activated bool, err error) {
+) (hasAbility bool, err error) {
+	if abiIdx > data.MaxAbilitySlots-1 {
+		return false, fmt.Errorf("ability index %d is out of bounds", abiIdx)
+	}
+
 	abiComp, err := world.Abilities.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get abilities component of entity %d: %v", e, err)
 	}
 
-	abi, ok := abiComp.abilities[name]
-	if !ok {
-		return false, fmt.Errorf("entity %d does not have ability %v", e, name)
+	abi := abiComp.abilities[abiIdx]
+
+	if abi.Name == Ability_None {
+		return false, nil
 	}
 
 	if abi.Status.State != AbiAct_Ready {
@@ -135,11 +166,11 @@ func (AbilitiesManager) ActivateAbility(
 	abi.Status.CooldownCounterMs = abi.Def.CooldownMs
 	abi.Status.State = AbiAct_Active
 
-	abiComp.abilities[name] = abi
+	abiComp.abilities[abiIdx] = abi
 
 	err = abi.Def.Effect(e, targets, world)
 	if err != nil {
-		return false, fmt.Errorf("error executing effect of ability %v of entity %d: %v", name, e, err)
+		return false, fmt.Errorf("error executing effect of ability %v of entity %d: %v", abi.Name, e, err)
 	}
 
 	return true, nil

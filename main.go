@@ -481,12 +481,12 @@ func main() {
 
 	// Player
 	pInputConfig := ecs.InputConfig{
-		Up:    ebiten.KeyW,
-		Down:  ebiten.KeyS,
-		Left:  ebiten.KeyA,
-		Right: ebiten.KeyD,
-		Use:   ebiten.MouseButtonLeft,
-		Dodge: ebiten.KeySpace,
+		Up:       ebiten.KeyW,
+		Down:     ebiten.KeyS,
+		Left:     ebiten.KeyA,
+		Right:    ebiten.KeyD,
+		Ability1: ebiten.MouseButtonLeft,
+		Dodge:    ebiten.KeySpace,
 	}
 
 	pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.KeyboardInputSource)
@@ -540,9 +540,14 @@ func main() {
 			ecs.Layer_Platform,
 		pHitboxShape,
 	)
-	pAbis := make(map[ecs.AbilityEnum]ecs.AbilityDef)
+
 	dodgeName, dodgeDef := abilitydefs.DodgeAbility()
-	pAbis[dodgeName] = dodgeDef
+	pAbis := [16]ecs.EntityAbility{}
+	pAbis[0] = ecs.EntityAbility{
+		Name:   dodgeName,
+		Def:    dodgeDef,
+		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+	}
 	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
 
 	g.playerEntity = g.world.AddEntity(
@@ -577,6 +582,15 @@ func main() {
 		log.Fatal(err)
 	}
 	gunInpComp := ecs.NewInputComponent(ecs.InputConfig{}, inputsources.MouseInputSource)
+
+	spawnName, spawnDef := abilitydefs.SpawnAbility(200)
+	gunAbis := [16]ecs.EntityAbility{}
+	gunAbis[0] = ecs.EntityAbility{
+		Name:   spawnName,
+		Def:    spawnDef,
+		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+	}
+	gunAbiComp := ecs.NewAbilitiesComponent(gunAbis)
 
 	bulletTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
 	bulletVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
@@ -639,7 +653,11 @@ func main() {
 		{FrameIdx: 2, DurationMs: 100},
 		{FrameIdx: 1, DurationMs: 100},
 	}
-	enemyAniComp, err := ecs.NewAnimationComponent("assets/sprites/evilslime_ss.png", utils.Vec2{X: 32, Y: 32}, enemyAniStateFrames)
+	enemyAniComp, err := ecs.NewAnimationComponent(
+		"assets/sprites/evilslime_ss.png",
+		utils.Vec2{X: 32, Y: 32},
+		enemyAniStateFrames,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -739,6 +757,7 @@ func main() {
 		gunSprComp,
 		gunAniComp,
 		gunSpaComp,
+		gunAbiComp,
 	)
 
 	err = pm.Attach(gun, g.playerEntity, g.world)

@@ -11,7 +11,7 @@ func NewContactDamageComponent(
 	source common.EntityId,
 	knockback float64,
 	dieOnContact bool,
-	damageTiers ...int64,
+	damageTiers ...int,
 ) *contactDamage {
 	return &contactDamage{
 		source:       source,
@@ -36,7 +36,7 @@ func (*ContactDamageManager) GetSource(
 func (*ContactDamageManager) GetDamageTiers(
 	e common.EntityId,
 	world *World,
-) ([]int64, error) {
+) ([]int, error) {
 	cdComp, err := world.ContactDamages.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)

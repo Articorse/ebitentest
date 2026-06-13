@@ -1,10 +1,10 @@
 package ecs
 
 type hitpoints struct {
-	max        int64
-	current    int64
-	invulMaxMs int64
-	invulCurMs int64
+	max        int
+	current    int
+	invulMaxMs int
+	invulCurMs int
 }
 
 func (hitpoints) isComponent() {}

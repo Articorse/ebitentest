@@ -6,7 +6,7 @@ type contactDamage struct {
 	source       common.EntityId
 	knockback    float64
 	dieOnContact bool
-	damageTiers  []int64
+	damageTiers  []int
 }
 
 func (contactDamage) isComponent() {}

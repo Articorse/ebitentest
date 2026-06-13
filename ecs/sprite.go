@@ -8,12 +8,12 @@ import (
 
 type SpriteFlash struct {
 	colors           []utils.RelativeColor
-	colorDurationsMs []uint64
-	totalDurationMs  uint64
+	colorDurationsMs []int
+	totalDurationMs  int
 
 	colorIdx       int
-	counterMs      uint64
-	loopDurationMs uint64
+	counterMs      int
+	loopDurationMs int
 }
 
 type sprite struct {

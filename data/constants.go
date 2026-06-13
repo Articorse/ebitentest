@@ -14,6 +14,8 @@ const (
 	SpatialHashGridCellSize = 200
 	Bounciness              = 0.0
 	AABBPadding             = 20
+	TickMs                  = 1000 / TPS
+	MaxAbilitySlots         = 16
 )
 
 var (

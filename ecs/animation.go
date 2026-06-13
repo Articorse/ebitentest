@@ -36,11 +36,23 @@ type animation struct {
 func (animation) isComponent() {}
 
 func (x animation) Copy() animation {
+	sFrames := make(map[AnimationState][]AnimationFrame)
+	for k, v := range x.stateFrames {
+		sFrames[k] = make([]AnimationFrame, len(v))
+		copy(sFrames[k], v)
+	}
+
+	var queuedState *AnimationState
+	if x.queuedState != nil {
+		qs := *x.queuedState
+		queuedState = &qs
+	}
+
 	return animation{
 		sheet:       x.sheet,
 		frameSize:   x.frameSize,
-		stateFrames: x.stateFrames,
+		stateFrames: sFrames,
 		frameState:  x.frameState,
-		queuedState: x.queuedState,
+		queuedState: queuedState,
 	}
 }

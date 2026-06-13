@@ -28,8 +28,8 @@ func NewSpriteComponent(imageUri string, layer uint8, allowRotation bool) (*spri
 func (*SpriteManager) SetSpriteFlash(
 	e common.EntityId,
 	colors []utils.RelativeColor,
-	colorDurationsMs []uint64,
-	TotalDurationMs uint64,
+	colorDurationsMs []int,
+	TotalDurationMs int,
 	world *World,
 ) error {
 	if len(colors) != len(colorDurationsMs) {
@@ -41,7 +41,7 @@ func (*SpriteManager) SetSpriteFlash(
 		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	var loopDurationMs uint64
+	var loopDurationMs int
 
 	for _, d := range colorDurationsMs {
 		loopDurationMs += d
@@ -55,6 +55,17 @@ func (*SpriteManager) SetSpriteFlash(
 	}
 
 	sprite.flash = &f
+
+	return nil
+}
+
+func (*SpriteManager) StopFlash(e common.EntityId, world *World) error {
+	sprite, err := world.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
+	}
+
+	sprite.flash = nil
 
 	return nil
 }
@@ -380,7 +391,7 @@ func (*SpriteManager) TickFlash(
 	}
 
 	f := sprite.flash
-	f.counterMs += 1000 / data.TPS
+	f.counterMs += data.TickMs
 
 	if f.counterMs >= f.totalDurationMs {
 		sprite.flash = nil

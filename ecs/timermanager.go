@@ -38,7 +38,7 @@ func (TimerManager) TickDown(
 		return true, nil
 	}
 
-	timer.counterMs -= 1000 / data.TPS
+	timer.counterMs -= data.TickMs
 
 	if timer.counterMs <= 0 {
 		err := timer.timerFunc(e, world)

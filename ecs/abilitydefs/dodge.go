@@ -5,13 +5,13 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
+	"math"
 )
 
 const (
-	Cooldown     = 1000
-	Duration     = 0
-	DodgeForce   = 10
-	DodgeInvulMs = 200
+	Dodge_Cooldown = 1000
+	Dodge_Duration = 200
+	Dodge_Force    = 10
 )
 
 func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
@@ -31,7 +31,7 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 			return fmt.Errorf("error setting queued animation state of entity %d to idle: %v", self, err)
 		}
 
-		err = hpm.SetInvul(self, DodgeInvulMs, world)
+		err = hpm.SetInvul(self, math.MaxInt, world)
 		if err != nil {
 			return fmt.Errorf("error setting invulnerability of entity %d: %v", self, err)
 		}
@@ -41,8 +41,8 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 			[]utils.RelativeColor{
 				{R: 10, G: 10, B: 10, A: 1},
 			},
-			[]uint64{1000},
-			uint64(DodgeInvulMs),
+			[]int{1000},
+			math.MaxInt,
 			world,
 		)
 		if err != nil {
@@ -70,7 +70,7 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 
 		dir = dir.Normalized()
 
-		err = vm.AddForce(self, dir.Multiply(DodgeForce), world)
+		err = vm.AddForce(self, dir.Multiply(Dodge_Force), world)
 		if err != nil {
 			return fmt.Errorf("error adding force to entity %d: %v", self, err)
 		}
@@ -78,10 +78,27 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 		return nil
 	}
 
-	return Ability_Dodge, ecs.NewAbilityDef(
+	abiPostFunc := func(self common.EntityId, targets []common.EntityId, world *ecs.World) error {
+		hpm := ecs.HitpointsManager{}
+		sm := ecs.SpriteManager{}
+
+		err := hpm.SetInvul(self, 0, world)
+		if err != nil {
+			return fmt.Errorf("error setting invulnerability of entity %d to 0: %v", self, err)
+		}
+
+		err = sm.StopFlash(self, world)
+		if err != nil {
+			return fmt.Errorf("error clearing sprite flash of entity %d: %v", self, err)
+		}
+
+		return nil
+	}
+
+	return ecs.Ability_Dodge, ecs.NewAbilityDef(
 		abiFunc,
-		Cooldown,
-		Duration,
-		nil,
+		Dodge_Cooldown,
+		Dodge_Duration,
+		abiPostFunc,
 	)
 }

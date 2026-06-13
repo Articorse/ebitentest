@@ -9,7 +9,7 @@ import (
 
 type HitpointsManager struct{}
 
-func NewHitpointsComponent(max int64, invul int64) *hitpoints {
+func NewHitpointsComponent(max int, invul int) *hitpoints {
 	return &hitpoints{
 		max:        max,
 		current:    max,
@@ -21,7 +21,7 @@ func NewHitpointsComponent(max int64, invul int64) *hitpoints {
 func (HitpointsManager) GetMax(
 	e common.EntityId,
 	world *World,
-) (int64, error) {
+) (int, error) {
 	hpComp, err := world.Hitpoints.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
@@ -34,7 +34,7 @@ func (HitpointsManager) GetMax(
 func (HitpointsManager) GetCurrent(
 	e common.EntityId,
 	world *World,
-) (int64, error) {
+) (int, error) {
 	hpComp, err := world.Hitpoints.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
@@ -46,7 +46,7 @@ func (HitpointsManager) GetCurrent(
 func (HitpointsManager) GetInvulMax(
 	e common.EntityId,
 	world *World,
-) (int64, error) {
+) (int, error) {
 	hpComp, err := world.Hitpoints.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
@@ -58,7 +58,7 @@ func (HitpointsManager) GetInvulMax(
 func (HitpointsManager) GetInvulCurrent(
 	e common.EntityId,
 	world *World,
-) (int64, error) {
+) (int, error) {
 	hpComp, err := world.Hitpoints.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
@@ -69,7 +69,7 @@ func (HitpointsManager) GetInvulCurrent(
 
 func (HitpointsManager) SetInvul(
 	e common.EntityId,
-	time int64,
+	time int,
 	world *World,
 ) error {
 	hpComp, err := world.Hitpoints.getComponent(e)
@@ -103,7 +103,7 @@ func (HitpointsManager) TickInvul(
 	}
 
 	if hpComp.invulCurMs > 0 {
-		hpComp.invulCurMs -= 1000 / data.TPS
+		hpComp.invulCurMs -= data.TickMs
 	}
 
 	if hpComp.invulCurMs < 0 {
@@ -116,7 +116,7 @@ func (HitpointsManager) TickInvul(
 // TODO: Add immobility time similar to invulnerability time
 func (HitpointsManager) TakeDamage(
 	e common.EntityId,
-	damage int64,
+	damage int,
 	world *World,
 ) (dead bool, err error) {
 	sm := SpriteManager{}
@@ -139,8 +139,8 @@ func (HitpointsManager) TakeDamage(
 			{R: 0.3, G: 0.3, B: 0.3, A: 1},
 			{R: 1, G: 1, B: 1, A: 1},
 		},
-		[]uint64{100, 100},
-		uint64(hpComp.invulMaxMs),
+		[]int{100, 100},
+		hpComp.invulMaxMs,
 		world,
 	)
 	if err != nil {
@@ -152,7 +152,7 @@ func (HitpointsManager) TakeDamage(
 
 func (HitpointsManager) Heal(
 	e common.EntityId,
-	heal int64,
+	heal int,
 	world *World,
 ) error {
 	hpComp, err := world.Hitpoints.getComponent(e)
@@ -162,8 +162,8 @@ func (HitpointsManager) Heal(
 
 	hpComp.current += heal
 
-	if hpComp.current > int64(hpComp.max) {
-		hpComp.current = int64(hpComp.max)
+	if hpComp.current > hpComp.max {
+		hpComp.current = hpComp.max
 	}
 
 	return nil

@@ -138,7 +138,7 @@ func (AnimationManager) Tick(
 
 	frame := frames[currentIdx]
 
-	animComp.frameState.CounterMs += 1000 / data.TPS
+	animComp.frameState.CounterMs += data.TickMs
 
 	if animComp.frameState.CounterMs >= frame.DurationMs {
 		if animComp.queuedState != nil {

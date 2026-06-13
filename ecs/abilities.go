@@ -1,8 +1,17 @@
 package ecs
 
-import "ebittest/ecs/common"
+import (
+	"ebittest/data"
+	"ebittest/ecs/common"
+)
 
 type AbilityEnum uint64
+
+const (
+	Ability_None AbilityEnum = iota
+	Ability_Spawn
+	Ability_Dodge
+)
 
 type AbilityActivityEnum uint8
 
@@ -39,16 +48,21 @@ type EntityAbility struct {
 }
 
 type abilities struct {
-	abilities map[AbilityEnum]EntityAbility
+	abilities [data.MaxAbilitySlots]EntityAbility
 }
 
 func (abilities) isComponent() {}
 
 func (x abilities) Copy() abilities {
-	abilitiesCopy := make(map[AbilityEnum]EntityAbility, len(x.abilities))
-	for k, v := range x.abilities {
-		abilitiesCopy[k] = v
+	abisCopy := abilities{}
+
+	for i, abi := range x.abilities {
+		abisCopy.abilities[i] = EntityAbility{
+			Name:   abi.Name,
+			Def:    abi.Def,
+			Status: abi.Status,
+		}
 	}
 
-	return abilities{abilities: abilitiesCopy}
+	return abisCopy
 }

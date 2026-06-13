@@ -36,7 +36,7 @@ func KeyboardInputSource(
 	}
 
 	if ebiten.IsKeyPressed(config.Dodge) {
-		is.Dodge = true
+		is.Ability2 = true
 	}
 
 	return is

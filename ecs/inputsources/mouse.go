@@ -7,7 +7,6 @@ import (
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 func MouseInputSource(
@@ -27,8 +26,8 @@ func MouseInputSource(
 	mX, mY := ebiten.CursorPosition()
 	is.MouseScreenPos = utils.Vec2{X: float64(mX), Y: float64(mY)}
 
-	if inpututil.IsMouseButtonJustPressed(config.Use) {
-		is.Use = true
+	if ebiten.IsMouseButtonPressed(config.Ability1) {
+		is.Ability1 = true
 	}
 
 	return is
