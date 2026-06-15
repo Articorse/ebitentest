@@ -2,6 +2,7 @@ package ecs
 
 import (
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 	"log"
 	"maps"
@@ -49,8 +50,10 @@ func (x *Storage[T]) addComponent(e common.EntityId, c T) {
 }
 
 type World struct {
-	nextEntity common.EntityId
-	InputLog   map[uint64]map[common.EntityId]InputState
+	nextEntity   common.EntityId
+	InputLog     map[uint64]map[common.EntityId]InputState
+	Camera       utils.Vec2
+	CameraFollow bool
 
 	Rng       *rand.Rand
 	TickIdx   uint64
@@ -71,6 +74,7 @@ type World struct {
 	Hitpoints         Storage[hitpoints]
 	ContactDamages    Storage[contactDamage]
 	Abilities         Storage[abilities]
+	FacePositions     Storage[facePosition]
 }
 
 func NewWorld() *World {
@@ -100,6 +104,7 @@ func NewWorld() *World {
 		Hitpoints:         Storage[hitpoints]{order: []common.EntityId{}, data: make(map[common.EntityId]*hitpoints)},
 		ContactDamages:    Storage[contactDamage]{order: []common.EntityId{}, data: make(map[common.EntityId]*contactDamage)},
 		Abilities:         Storage[abilities]{order: []common.EntityId{}, data: make(map[common.EntityId]*abilities)},
+		FacePositions:     Storage[facePosition]{order: []common.EntityId{}, data: make(map[common.EntityId]*facePosition)},
 	}
 }
 
@@ -155,6 +160,7 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	x.ContactDamages.deleteEntity(e)
 	x.Inputs.deleteEntity(e)
 	x.Abilities.deleteEntity(e)
+	x.FacePositions.deleteEntity(e)
 
 	pm := ParentManager{}
 	err := pm.RemoveParentFromAllEntities(e, x)
@@ -236,6 +242,8 @@ func (x *World) AddComponent(e common.EntityId, comp component) {
 		x.Inputs.addComponent(e, c.Copy())
 	case *abilities:
 		x.Abilities.addComponent(e, c.Copy())
+	case *facePosition:
+		x.FacePositions.addComponent(e, c.Copy())
 	default:
 		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in World.AddComponent\n", comp, e)
 	}

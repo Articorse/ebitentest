@@ -16,6 +16,7 @@ const (
 	AABBPadding             = 20
 	TickMs                  = 1000 / TPS
 	MaxAbilitySlots         = 16
+	GamepadDeadzone         = 0.15
 )
 
 var (

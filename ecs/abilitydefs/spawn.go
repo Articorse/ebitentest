@@ -38,7 +38,7 @@ func SpawnAbility(cooldown int) (ecs.AbilityEnum, ecs.AbilityDef) {
 		return nil
 	}
 
-	return ecs.Ability_Dodge, ecs.NewAbilityDef(
+	return ecs.Ability_Spawn, ecs.NewAbilityDef(
 		abiFunc,
 		cooldown,
 		0,

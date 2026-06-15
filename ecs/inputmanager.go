@@ -8,12 +8,20 @@ import (
 
 type InputManager struct{}
 
+type FacingInputEnum uint8
+
+const (
+	Facing_None FacingInputEnum = iota
+	Facing_Mouse
+	Facing_Analog
+)
+
 type InputState struct {
 	Analog1X, Analog1Y float64
 	Analog2X, Analog2Y float64
 	Ability1           float64
 	Ability2           float64
-	MouseScreenPos     utils.Vec2
+	FacingDir          utils.Vec2
 }
 
 type InputSourceFunc func(
@@ -22,8 +30,8 @@ type InputSourceFunc func(
 	world *World,
 ) InputState
 
-func NewInputComponent(config map[InputType]InputKey, inputSourceFunc InputSourceFunc) *input {
-	return &input{config: config, inputSourceFunc: inputSourceFunc}
+func NewInputComponent(config map[InputType]InputKey, inputSourceFunc InputSourceFunc, facingInput FacingInputEnum) *input {
+	return &input{config: config, inputSourceFunc: inputSourceFunc, facingInput: facingInput}
 }
 
 func (*InputManager) GetInput(e common.EntityId, inputType InputType, world *World) (float64, error) {
@@ -65,4 +73,13 @@ func (*InputManager) SetInputSourceFunc(
 	isf.inputSourceFunc = inputSourceFunc
 
 	return nil
+}
+
+func (*InputManager) GetFacingInput(e common.EntityId, world *World) (FacingInputEnum, error) {
+	inComp, err := world.Inputs.getComponent(e)
+	if err != nil {
+		return Facing_None, fmt.Errorf("could not get input of entity %d: %v", e, err)
+	}
+
+	return inComp.facingInput, nil
 }

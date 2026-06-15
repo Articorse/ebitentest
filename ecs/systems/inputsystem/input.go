@@ -29,7 +29,7 @@ func HandleInputs(
 	for e, input := range allInputs {
 		if world.Transforms.HasComponent(e) {
 			tm := ecs.TransformManager{}
-			sm := ecs.SpriteManager{} // FIXME: Replace with FacePosition component
+			fpm := ecs.FacePositionManager{}
 
 			eWorldPos, err := tm.GetWorldPos(e, world)
 			if err != nil {
@@ -37,27 +37,28 @@ func HandleInputs(
 				continue
 			}
 
-			allowRot, err := sm.GetAllowRotation(e, world)
-			if err != nil {
-				log.Printf("Error getting allow rotation for entity %d: %v\n", e, err)
-				continue
-			}
+			hasFPComp := world.FacePositions.HasComponent(e)
 
-			if allowRot {
+			if hasFPComp {
+				hpEnabled, err := fpm.GetEnabled(e, world)
+				if err != nil {
+					log.Printf("Error getting face position enabled for entity %d: %v\n", e, err)
+					continue
+				}
 
-				mX := input.MouseScreenPos.X
-				mY := input.MouseScreenPos.Y
+				if hpEnabled {
+					mX := input.FacingDir.X
+					mY := input.FacingDir.Y
 
-				if mX != 0 || mY != 0 {
-					mWorldX := mX + camera.X
-					mWorldY := mY + camera.Y
-					dX := mWorldX - eWorldPos.X
-					dY := mWorldY - eWorldPos.Y
-					r := math.Atan2(dY, dX)
+					if mX != 0 || mY != 0 {
+						dX := mX - eWorldPos.X
+						dY := mY - eWorldPos.Y
+						r := math.Atan2(dY, dX)
 
-					err = tm.SetLocalRotation(e, r, world)
-					if err != nil {
-						log.Printf("Error setting world rotation for entity %d: %v\n", e, err)
+						err = tm.SetLocalRotation(e, r, world)
+						if err != nil {
+							log.Printf("Error setting world rotation for entity %d: %v\n", e, err)
+						}
 					}
 				}
 			}
@@ -97,7 +98,7 @@ func HandleInputs(
 				am := ecs.AbilitiesManager{}
 				_, err := am.ActivateAbility(e, []common.EntityId{}, 0, world)
 				if err != nil {
-					log.Printf("Error activating dodge ability for entity %d: %v\n", e, err)
+					log.Printf("Error activating ability 1 for entity %d: %v\n", e, err)
 				}
 			}
 		}
@@ -105,9 +106,9 @@ func HandleInputs(
 		if input.Ability2 > 0 {
 			if world.Abilities.HasComponent(e) {
 				am := ecs.AbilitiesManager{}
-				_, err := am.ActivateAbility(e, []common.EntityId{}, 0, world)
+				_, err := am.ActivateAbility(e, []common.EntityId{}, 1, world)
 				if err != nil {
-					log.Printf("Error activating dodge ability for entity %d: %v\n", e, err)
+					log.Printf("Error activating ability 2 for entity %d: %v\n", e, err)
 				}
 			}
 		}

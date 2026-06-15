@@ -1,6 +1,9 @@
 package ecs
 
 import (
+	"ebittest/data"
+	"math"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -20,8 +23,8 @@ type InputKey struct {
 	gamepadId   *ebiten.GamepadID
 	keyboardKey [2]*ebiten.Key
 	mouseKey    [2]*ebiten.MouseButton
-	gamepadKey  [2]*ebiten.GamepadButton
-	gamepadAxis *ebiten.GamepadAxisType
+	gamepadKey  [2]*ebiten.StandardGamepadButton
+	gamepadAxis *ebiten.StandardGamepadAxis
 }
 
 func NewKeyboardInputKey(valueUp, valueDown *ebiten.Key) InputKey {
@@ -36,14 +39,14 @@ func NewMouseInputKey(valueUp, valueDown *ebiten.MouseButton) InputKey {
 	}
 }
 
-func NewGamepadButtonInputKey(gamepadId ebiten.GamepadID, valueUp, valueDown *ebiten.GamepadButton) InputKey {
+func NewGamepadButtonInputKey(gamepadId ebiten.GamepadID, valueUp, valueDown *ebiten.StandardGamepadButton) InputKey {
 	return InputKey{
 		gamepadId:  &gamepadId,
-		gamepadKey: [2]*ebiten.GamepadButton{valueUp, valueDown},
+		gamepadKey: [2]*ebiten.StandardGamepadButton{valueUp, valueDown},
 	}
 }
 
-func NewGamepadAxisInputKey(gamepadId ebiten.GamepadID, axis ebiten.GamepadAxisType) InputKey {
+func NewGamepadAxisInputKey(gamepadId ebiten.GamepadID, axis ebiten.StandardGamepadAxis) InputKey {
 	return InputKey{
 		gamepadId:   &gamepadId,
 		gamepadAxis: &axis,
@@ -72,17 +75,22 @@ func (x InputKey) GetInput() float64 {
 		}
 	}
 	if x.gamepadKey[0] != nil {
-		if ebiten.IsGamepadButtonPressed(*x.gamepadId, *x.gamepadKey[0]) {
+		if ebiten.IsStandardGamepadButtonPressed(*x.gamepadId, *x.gamepadKey[0]) {
 			return 1
 		}
 	}
 	if x.gamepadKey[1] != nil {
-		if ebiten.IsGamepadButtonPressed(*x.gamepadId, *x.gamepadKey[1]) {
+		if ebiten.IsStandardGamepadButtonPressed(*x.gamepadId, *x.gamepadKey[1]) {
 			return -1
 		}
 	}
 	if x.gamepadAxis != nil {
-		return ebiten.GamepadAxisValue(*x.gamepadId, *x.gamepadAxis)
+		axisVal := ebiten.StandardGamepadAxisValue(*x.gamepadId, *x.gamepadAxis)
+		if math.Abs(axisVal) > data.GamepadDeadzone {
+			return axisVal
+		} else {
+			return 0
+		}
 	}
 
 	return 0
@@ -91,6 +99,7 @@ func (x InputKey) GetInput() float64 {
 type input struct {
 	config          map[InputType]InputKey
 	inputSourceFunc InputSourceFunc
+	facingInput     FacingInputEnum
 }
 
 func (input) isComponent() {}
@@ -99,5 +108,6 @@ func (x input) Copy() input {
 	return input{
 		config:          x.config,
 		inputSourceFunc: x.inputSourceFunc,
+		facingInput:     x.facingInput,
 	}
 }

@@ -43,14 +43,13 @@ var (
 	tm = ecs.TransformManager{}
 	pm = ecs.ParentManager{}
 	vm = ecs.VelocityManager{}
+
+	gamepadFound = false
 )
 
 type game struct {
 	world        *ecs.World
 	playerEntity common.EntityId
-
-	camera       utils.Vec2
-	cameraFollow bool
 
 	recording          bool
 	recordingStartTick uint64
@@ -66,6 +65,42 @@ func (g *game) Update() error {
 	var err error
 	im := ecs.InputManager{}
 	pm := ecs.ParentManager{}
+
+	// HACK: Add gamepad here because ebiten.AppendGamepadIDs needs to be called after ebiten.RunGame
+	if !gamepadFound {
+		ids := ebiten.AppendGamepadIDs(nil)
+		id := ids[0]
+		for _, sId := range ids {
+			if ebiten.IsStandardGamepadLayoutAvailable(sId) {
+				id = sId
+				gamepadFound = true
+				break
+			}
+		}
+		if gamepadFound {
+			pInputConfig := make(map[ecs.InputType]ecs.InputKey)
+			pInputConfig[ecs.Input_Analog1Y] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisLeftStickVertical)
+			pInputConfig[ecs.Input_Analog1X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisLeftStickHorizontal)
+			pInputConfig[ecs.Input_Analog2Y] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickVertical)
+			pInputConfig[ecs.Input_Analog2X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickHorizontal)
+			pInputConfig[ecs.Input_Ability1] = ecs.NewGamepadButtonInputKey(id, new(ebiten.StandardGamepadButtonRightBottom), nil)
+			pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_None)
+			g.world.AddComponent(g.playerEntity, pInpComp)
+		} else {
+			log.Fatal("no gamepad found")
+		}
+	}
+
+	// if !gamepadFound {
+	// 	pInputConfig := make(map[ecs.InputType]ecs.InputKey)
+	// 	pInputConfig[ecs.Input_Analog1Y] = ecs.NewKeyboardInputKey(new(ebiten.KeyS), new(ebiten.KeyW))
+	// 	pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(new(ebiten.KeyD), new(ebiten.KeyA))
+	// 	pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(new(ebiten.KeySpace), nil)
+	// 	pInputConfig[ecs.Input_Ability2] = ecs.NewMouseInputKey(new(ebiten.MouseButtonLeft), nil)
+	// 	pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_None)
+	// 	g.world.AddComponent(g.playerEntity, pInpComp)
+	// 	gamepadFound = true
+	// }
 
 	tickInputs := make(map[common.EntityId]ecs.InputState)
 	for _, eid := range g.world.Inputs.GetEntities() {
@@ -84,7 +119,7 @@ func (g *game) Update() error {
 		log.Printf("error getting current tick inputs: %v\n", err)
 	}
 	err = inputsystem.HandleInputs(
-		g.camera,
+		g.world.Camera,
 		g.world,
 		currentTickInputs,
 	)
@@ -111,28 +146,28 @@ func (g *game) Update() error {
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-		g.camera.X -= 10
+		g.world.Camera.X -= 10
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyUp) {
-		g.camera.Y -= 10
+		g.world.Camera.Y -= 10
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyRight) {
-		g.camera.X += 10
+		g.world.Camera.X += 10
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyDown) {
-		g.camera.Y += 10
+		g.world.Camera.Y += 10
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
-		g.cameraFollow = !g.cameraFollow
+		g.world.CameraFollow = !g.world.CameraFollow
 	}
-	if g.cameraFollow {
+	if g.world.CameraFollow {
 		pWorldPos, err := tm.GetWorldPos(g.playerEntity, g.world)
 		if err != nil {
 			log.Println("error getting player world position for camera follow: ", err)
 		}
 
-		g.camera = pWorldPos.Subtract(utils.Vec2{X: float64(data.CameraWidth) / 2, Y: float64(data.CameraHeight) / 2})
+		g.world.Camera = pWorldPos.Subtract(utils.Vec2{X: float64(data.CameraWidth) / 2, Y: float64(data.CameraHeight) / 2})
 	}
 
 	// Replay
@@ -349,7 +384,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	if err := drawsystem.DrawFrame(
 		screen,
-		g.camera,
+		g.world.Camera,
 		g.world.TickState.CollisionGrid,
 		g.world,
 	); err != nil {
@@ -387,7 +422,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 		hurtcm := ecs.HurtboxColliderManager{}
 		hitcm := ecs.HitboxColliderManager{}
 
-		// if err := collisionsystem.DrawColliders(pcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.camera, g.world.TickState.Collisions, g.world); err != nil {
+		// if err := collisionsystem.DrawColliders(pcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.world.Camera, g.world.TickState.Collisions, g.world); err != nil {
 		// 	log.Println("error while drawing physics colliders: ", err, "removing entity")
 		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
 		// 	if errors.As(err, &invalidComponentsErr) {
@@ -395,7 +430,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 		// 	}
 		// }
 
-		if err := collisionsystem.DrawColliders(hurtcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.camera, g.world.TickState.Collisions, g.world); err != nil {
+		if err := collisionsystem.DrawColliders(hurtcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.world.Camera, g.world.TickState.Collisions, g.world); err != nil {
 			log.Println("error while drawing physics colliders: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
@@ -406,7 +441,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			}
 		}
 
-		if err := collisionsystem.DrawColliders(hitcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.camera, g.world.TickState.Collisions, g.world); err != nil {
+		if err := collisionsystem.DrawColliders(hitcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.world.Camera, g.world.TickState.Collisions, g.world); err != nil {
 			log.Println("error while drawing physics colliders: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
@@ -417,7 +452,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			}
 		}
 
-		// if err := collisionsystem.DrawAABBs(pcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.camera, g.world.TickState.AABBCollisions, g.world); err != nil {
+		// if err := collisionsystem.DrawAABBs(pcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.world.Camera, g.world.TickState.AABBCollisions, g.world); err != nil {
 		// 	log.Println("error while drawing AABBs: ", err, "removing entity")
 		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
 		// 	if errors.As(err, &invalidComponentsErr) {
@@ -425,7 +460,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 		// 	}
 		// }
 
-		if err := collisionsystem.DrawAABBs(hurtcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.camera, g.world.TickState.AABBCollisions, g.world); err != nil {
+		if err := collisionsystem.DrawAABBs(hurtcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.world.Camera, g.world.TickState.AABBCollisions, g.world); err != nil {
 			log.Println("error while drawing AABBs: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
@@ -436,7 +471,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			}
 		}
 
-		if err := collisionsystem.DrawAABBs(hitcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.camera, g.world.TickState.AABBCollisions, g.world); err != nil {
+		if err := collisionsystem.DrawAABBs(hitcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.world.Camera, g.world.TickState.AABBCollisions, g.world); err != nil {
 			log.Println("error while drawing AABBs: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
@@ -447,7 +482,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			}
 		}
 
-		if err := collisionsystem.DrawCollisions(screen, data.Debug_CollisionVectorColor, g.camera, g.world.TickState.Collisions, g.world); err != nil {
+		if err := collisionsystem.DrawCollisions(screen, data.Debug_CollisionVectorColor, g.world.Camera, g.world.TickState.Collisions, g.world); err != nil {
 			log.Println("error while drawing collisions: ", err)
 		}
 
@@ -480,14 +515,6 @@ func main() {
 	g.world.TickState = *common.NewTickState()
 
 	// Player
-	pInputConfig := make(map[ecs.InputType]ecs.InputKey)
-	// pInputConfig[ecs.Input_Analog1Y] = ecs.NewGamepadAxisInputKey(0, ebiten.GamepadAxisType(0))
-	// pInputConfig[ecs.Input_Analog1X] = ecs.NewGamepadAxisInputKey(0, ebiten.GamepadAxisType(1))
-	// pInputConfig[ecs.Input_Ability1] = ecs.NewGamepadButtonInputKey(0, new(ebiten.GamepadButton(0)), nil)
-	pInputConfig[ecs.Input_Analog1Y] = ecs.NewKeyboardInputKey(new(ebiten.KeyS), new(ebiten.KeyW))
-	pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(new(ebiten.KeyD), new(ebiten.KeyA))
-	pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(new(ebiten.KeySpace), nil)
-	pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource)
 	pParComp := ecs.NewParentComponent()
 	pTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := ecs.NewDefaultVelocityComponent()
@@ -539,17 +566,7 @@ func main() {
 		pHitboxShape,
 	)
 
-	dodgeName, dodgeDef := abilitydefs.DodgeAbility()
-	pAbis := [16]ecs.EntityAbility{}
-	pAbis[0] = ecs.EntityAbility{
-		Name:   dodgeName,
-		Def:    dodgeDef,
-		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
-	}
-	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
-
 	g.playerEntity = g.world.AddEntity(
-		pInpComp,
 		pParComp,
 		pTraComp,
 		pVelComp,
@@ -558,7 +575,6 @@ func main() {
 		pPhyColComp,
 		pHpComp,
 		pHitboxComp,
-		pAbiComp,
 	)
 
 	gunParComp := ecs.NewParentComponent()
@@ -581,16 +597,8 @@ func main() {
 	}
 	gunInputConfig := make(map[ecs.InputType]ecs.InputKey)
 	gunInputConfig[ecs.Input_Ability1] = ecs.NewMouseInputKey(new(ebiten.MouseButtonLeft), nil)
-	gunInpComp := ecs.NewInputComponent(gunInputConfig, inputsources.HumanInputSource)
-
-	spawnName, spawnDef := abilitydefs.SpawnAbility(200)
-	gunAbis := [16]ecs.EntityAbility{}
-	gunAbis[0] = ecs.EntityAbility{
-		Name:   spawnName,
-		Def:    spawnDef,
-		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
-	}
-	gunAbiComp := ecs.NewAbilitiesComponent(gunAbis)
+	gunFPComp := ecs.NewFacePositionComponent(utils.Vec2{}, true)
+	gunInpComp := ecs.NewInputComponent(gunInputConfig, inputsources.HumanInputSource, ecs.Facing_Mouse)
 
 	bulletTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
 	bulletVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
@@ -634,6 +642,15 @@ func main() {
 	if err != nil {
 		log.Fatal("error creating gun spawner component: ", err)
 	}
+
+	spawnName, spawnDef := abilitydefs.SpawnAbility(200)
+	gunAbis := [16]ecs.EntityAbility{}
+	gunAbis[0] = ecs.EntityAbility{
+		Name:     spawnName,
+		Def:      spawnDef,
+		Status:   ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+	}
+	gunAbiComp := ecs.NewAbilitiesComponent(gunAbis)
 
 	enemyTraComp := ecs.NewTransformComponent(utils.Vec2{X: 300, Y: 150}, 1, 0)
 	enemyVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, data.DefaultAcceleration*0.25, data.DefaultDrag)
@@ -702,7 +719,7 @@ func main() {
 	)
 	enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, 1)
 	enemyFollowInput := inputsources.NewFollowInputSource(g.playerEntity)
-	enemyInputComp := ecs.NewInputComponent(nil, enemyFollowInput)
+	enemyInputComp := ecs.NewInputComponent(nil, enemyFollowInput, ecs.Facing_None)
 
 	_ = g.world.AddEntity(
 		enemyParComp,
@@ -727,8 +744,8 @@ func main() {
 	}
 	enemySpawnerComp, err := ecs.NewSpawnerComponent(
 		utils.Vec2{
-			X: g.camera.X + (data.CameraWidth / 2),
-			Y: g.camera.Y + (data.CameraHeight / 2),
+			X: g.world.Camera.X + (data.CameraWidth / 2),
+			Y: g.world.Camera.Y + (data.CameraHeight / 2),
 		},
 		ecs.SpawnerType_Perimeter,
 		enemySpawnerShape,
@@ -758,7 +775,18 @@ func main() {
 		gunAniComp,
 		gunSpaComp,
 		gunAbiComp,
+		gunFPComp,
 	)
+
+	dodgeName, dodgeDef := abilitydefs.DodgeAbility()
+	pAbis := [16]ecs.EntityAbility{}
+	pAbis[0] = ecs.EntityAbility{
+		Name:     dodgeName,
+		Def:      dodgeDef,
+		Status:   ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+	}
+	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
+	g.world.AddComponent(g.playerEntity, pAbiComp)
 
 	err = pm.Attach(gun, g.playerEntity, g.world)
 	if err != nil {
@@ -776,7 +804,7 @@ func main() {
 
 	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
 
-	treeInpComp := ecs.NewInputComponent(nil, inputsources.DummyInputSource)
+	treeInpComp := ecs.NewInputComponent(nil, inputsources.DummyInputSource, ecs.Facing_None)
 	treeParComp := ecs.NewParentComponent()
 	treeTraComp := ecs.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
 	treeVelComp := ecs.NewDefaultVelocityComponent()
@@ -787,6 +815,9 @@ func main() {
 
 	treeColShape, err := shapes.NewRectangleShape(10, 5, utils.Vec2{X: -1, Y: 9})
 	// treeColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: -1, Y: 9})
+	if err != nil {
+		log.Fatal(err)
+	}
 	treeColComp := ecs.NewPhysicsColliderComponent(
 		ecs.Layer_Terrain,
 		ecs.Layer_Player|
@@ -809,7 +840,7 @@ func main() {
 
 	g.replayEntity = tree
 
-	platInput := ecs.NewInputComponent(nil, loopSource)
+	platInput := ecs.NewInputComponent(nil, loopSource, ecs.Facing_None)
 
 	platParComp := ecs.NewParentComponent()
 	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)

@@ -49,8 +49,33 @@ func HumanInputSource(
 		log.Printf("Error getting ability 2 input for entity %d: %v\n", e, err)
 	}
 
-	mX, mY := ebiten.CursorPosition()
-	is.MouseScreenPos = utils.Vec2{X: float64(mX), Y: float64(mY)}
+	facingInput, err := im.GetFacingInput(e, world)
+	if err != nil {
+		log.Printf("Error getting facing input for entity %d: %v\n", e, err)
+	}
+
+	tm := ecs.TransformManager{}
+	worldPos, err := tm.GetWorldPos(e, world)
+
+	var mX, mY int
+	switch facingInput {
+	case ecs.Facing_None:
+	case ecs.Facing_Mouse:
+		mX, mY = ebiten.CursorPosition()
+		mX += int(world.Camera.X)
+		mY += int(world.Camera.Y)
+	case ecs.Facing_Analog:
+		if err != nil {
+			log.Printf("Error getting world position for entity %d: %v\n", e, err)
+			break
+		}
+		mX = int(is.Analog2X + worldPos.X)
+		mY = int(is.Analog2Y + worldPos.Y)
+	default:
+		log.Printf("Unknown facing input %d for entity %d\n", facingInput, e)
+	}
+
+	is.FacingDir = utils.Vec2{X: float64(mX), Y: float64(mY)}
 
 	return is
 }
