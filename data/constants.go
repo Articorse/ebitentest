@@ -5,18 +5,20 @@ import (
 )
 
 const (
-	TPS                     = 60
-	CameraWidth             = 640
-	CameraHeight            = 360
-	VelocityThreshold       = 0.01
-	DefaultDrag             = 0.8
-	DefaultAcceleration     = 1
-	SpatialHashGridCellSize = 200
-	Bounciness              = 0.0
-	AABBPadding             = 20
-	TickMs                  = 1000 / TPS
-	MaxAbilitySlots         = 16
-	GamepadDeadzone         = 0.15
+	TPS                      = 60
+	CameraWidth              = 640
+	CameraHeight             = 360
+	VelocityThreshold        = 0.01
+	DefaultDrag              = 0.8
+	DefaultAcceleration      = 1
+	SpatialHashGridCellSize  = 200
+	Bounciness               = 0.0
+	AABBPadding              = 20
+	TickMs                   = 1000 / TPS
+	MaxAbilitySlots          = 16
+	MaxEquipmentAbilitySlots = 2
+	GamepadDeadzone          = 0.15
+	GamepadAimDeadzone       = 0.5
 )
 
 var (

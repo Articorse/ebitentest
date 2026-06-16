@@ -8,6 +8,19 @@ import (
 	"math"
 )
 
+type equipTrigger struct {
+	value  float64
+	slot   ecs.EquipSlotEnum
+	abiIdx int
+	label  string
+}
+
+type selfTrigger struct {
+	value  float64
+	abiIdx int
+	label  string
+}
+
 func GetTickInputs(
 	world *ecs.World,
 	tick uint64,
@@ -62,6 +75,44 @@ func HandleInputs(
 					}
 				}
 			}
+
+			if world.Equippers.HasComponent(e) {
+				eqm := ecs.EquipManager{}
+
+				eqEntities, err := eqm.GetEquipmentEntities(e, world)
+				if err != nil {
+					log.Printf("Error getting equipment entities for entity %d: %v\n", e, err)
+					continue
+				}
+
+				for _, eqE := range eqEntities {
+					hasFPComp := world.FacePositions.HasComponent(eqE)
+
+					if hasFPComp {
+						hpEnabled, err := fpm.GetEnabled(eqE, world)
+						if err != nil {
+							log.Printf("Error getting face position enabled for entity %d: %v\n", eqE, err)
+							continue
+						}
+
+						if hpEnabled {
+							mX := input.FacingDir.X
+							mY := input.FacingDir.Y
+
+							if mX != 0 || mY != 0 {
+								dX := mX - eWorldPos.X
+								dY := mY - eWorldPos.Y
+								r := math.Atan2(dY, dX)
+
+								err = tm.SetLocalRotation(eqE, r, world)
+								if err != nil {
+									log.Printf("Error setting world rotation for entity %d: %v\n", eqE, err)
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 
 		if world.Velocities.HasComponent(e) {
@@ -93,22 +144,38 @@ func HandleInputs(
 			}
 		}
 
-		if input.Ability1 > 0 {
-			if world.Abilities.HasComponent(e) {
-				am := ecs.AbilitiesManager{}
-				_, err := am.ActivateAbility(e, []common.EntityId{}, 0, world)
-				if err != nil {
-					log.Printf("Error activating ability 1 for entity %d: %v\n", e, err)
+		equipTriggers := []equipTrigger{
+			{input.MainHandEqAbility1, ecs.Equip_MainHand, 0, "main hand ability 1"},
+			{input.MainHandEqAbility2, ecs.Equip_MainHand, 1, "main hand ability 2"},
+			{input.OffHandEqAbility1, ecs.Equip_OffHand, 0, "off hand ability 1"},
+			{input.OffHandEqAbility2, ecs.Equip_OffHand, 1, "off hand ability 2"},
+		}
+
+		if world.Equippers.HasComponent(e) {
+			em := ecs.EquipManager{}
+			for _, t := range equipTriggers {
+				if math.Abs(t.value) <= 0 {
+					continue
+				}
+				if _, err := em.ActivateAbility(e, t.slot, nil, t.abiIdx, world); err != nil {
+					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}
 		}
 
-		if input.Ability2 > 0 {
-			if world.Abilities.HasComponent(e) {
-				am := ecs.AbilitiesManager{}
-				_, err := am.ActivateAbility(e, []common.EntityId{}, 1, world)
-				if err != nil {
-					log.Printf("Error activating ability 2 for entity %d: %v\n", e, err)
+		selfTriggers := []selfTrigger{
+			{input.Ability1, 0, "ability 1"},
+			{input.Ability2, 1, "ability 2"},
+		}
+
+		if world.Abilities.HasComponent(e) {
+			am := ecs.AbilitiesManager{}
+			for _, t := range selfTriggers {
+				if math.Abs(t.value) <= 0 {
+					continue
+				}
+				if _, err := am.ActivateAbility(e, nil, t.abiIdx, world); err != nil {
+					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}
 		}

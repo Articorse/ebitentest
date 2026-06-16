@@ -13,12 +13,16 @@ type FacingInputEnum uint8
 const (
 	Facing_None FacingInputEnum = iota
 	Facing_Mouse
-	Facing_Analog
+	Facing_Analog2
 )
 
 type InputState struct {
 	Analog1X, Analog1Y float64
 	Analog2X, Analog2Y float64
+	MainHandEqAbility1 float64
+	MainHandEqAbility2 float64
+	OffHandEqAbility1  float64
+	OffHandEqAbility2  float64
 	Ability1           float64
 	Ability2           float64
 	FacingDir          utils.Vec2

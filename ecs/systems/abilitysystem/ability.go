@@ -15,5 +15,13 @@ func Tick(world *ecs.World) error {
 		}
 	}
 
+	eqm := ecs.EquipManager{}
+	for _, eqE := range slices.Clone(world.Equipments.GetEntities()) {
+		err := eqm.TickAbilities(eqE, world)
+		if err != nil {
+			return fmt.Errorf("error ticking equipment ability of entity %d: %v", eqE, err)
+		}
+	}
+
 	return nil
 }

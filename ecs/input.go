@@ -14,7 +14,10 @@ const (
 	Input_Analog1X
 	Input_Analog2Y
 	Input_Analog2X
-	Input_Dodge
+	Input_MainHandAbility1
+	Input_MainHandAbility2
+	Input_OffHandAbility1
+	Input_OffHandAbility2
 	Input_Ability1
 	Input_Ability2
 )

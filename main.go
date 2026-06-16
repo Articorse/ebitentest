@@ -83,8 +83,9 @@ func (g *game) Update() error {
 			pInputConfig[ecs.Input_Analog1X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisLeftStickHorizontal)
 			pInputConfig[ecs.Input_Analog2Y] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickVertical)
 			pInputConfig[ecs.Input_Analog2X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickHorizontal)
+			pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewGamepadButtonInputKey(id, new(ebiten.StandardGamepadButtonFrontBottomRight), nil)
 			pInputConfig[ecs.Input_Ability1] = ecs.NewGamepadButtonInputKey(id, new(ebiten.StandardGamepadButtonRightBottom), nil)
-			pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_None)
+			pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_Analog2)
 			g.world.AddComponent(g.playerEntity, pInpComp)
 		} else {
 			log.Fatal("no gamepad found")
@@ -565,7 +566,14 @@ func main() {
 			ecs.Layer_Platform,
 		pHitboxShape,
 	)
-
+	dodgeName, dodgeDef := abilitydefs.DodgeAbility()
+	pAbis := [16]ecs.EntityAbility{}
+	pAbis[0] = ecs.EntityAbility{
+		Name:   dodgeName,
+		Def:    dodgeDef,
+		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+	}
+	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
 	g.playerEntity = g.world.AddEntity(
 		pParComp,
 		pTraComp,
@@ -575,8 +583,10 @@ func main() {
 		pPhyColComp,
 		pHpComp,
 		pHitboxComp,
+		pAbiComp,
 	)
 
+	// Gun
 	gunParComp := ecs.NewParentComponent()
 	gunTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	gunVelComp := ecs.NewDefaultVelocityComponent()
@@ -595,10 +605,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	gunInputConfig := make(map[ecs.InputType]ecs.InputKey)
-	gunInputConfig[ecs.Input_Ability1] = ecs.NewMouseInputKey(new(ebiten.MouseButtonLeft), nil)
 	gunFPComp := ecs.NewFacePositionComponent(utils.Vec2{}, true)
-	gunInpComp := ecs.NewInputComponent(gunInputConfig, inputsources.HumanInputSource, ecs.Facing_Mouse)
 
 	bulletTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
 	bulletVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
@@ -644,14 +651,37 @@ func main() {
 	}
 
 	spawnName, spawnDef := abilitydefs.SpawnAbility(200)
-	gunAbis := [16]ecs.EntityAbility{}
+	gunAbis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
 	gunAbis[0] = ecs.EntityAbility{
-		Name:     spawnName,
-		Def:      spawnDef,
-		Status:   ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+		Name:   spawnName,
+		Def:    spawnDef,
+		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
 	}
-	gunAbiComp := ecs.NewAbilitiesComponent(gunAbis)
+	gunEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis)
 
+	gun := g.world.AddEntity(
+		gunParComp,
+		gunTraComp,
+		gunVelComp,
+		gunSprComp,
+		gunAniComp,
+		gunSpaComp,
+		gunFPComp,
+		gunEquipmentComp,
+	)
+
+	pEquipperComp := ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{
+		ecs.Equip_MainHand: gun,
+	})
+
+	g.world.AddComponent(g.playerEntity, pEquipperComp)
+
+	err = pm.Attach(gun, g.playerEntity, g.world)
+	if err != nil {
+		log.Fatal("error attaching gun to player: ", err)
+	}
+
+	// Enemy spawner
 	enemyTraComp := ecs.NewTransformComponent(utils.Vec2{X: 300, Y: 150}, 1, 0)
 	enemyVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, data.DefaultAcceleration*0.25, data.DefaultDrag)
 	enemyParComp := ecs.NewParentComponent()
@@ -721,19 +751,6 @@ func main() {
 	enemyFollowInput := inputsources.NewFollowInputSource(g.playerEntity)
 	enemyInputComp := ecs.NewInputComponent(nil, enemyFollowInput, ecs.Facing_None)
 
-	_ = g.world.AddEntity(
-		enemyParComp,
-		enemyTraComp,
-		enemyVelComp,
-		enemySprComp,
-		enemyAniComp,
-		enemyHpComp,
-		enemyPhyColComp,
-		enemyHitboxComp,
-		enemyHurtboxComp,
-		enemyCDmgComp,
-		enemyInputComp,
-	)
 	enemySpawnerTimerComp, err := ecs.NewTimerComponent(1000, -1, timerfuncs.Spawn)
 	if err != nil {
 		log.Fatal("error creating enemy spawner timer component: ", err)
@@ -764,46 +781,9 @@ func main() {
 	if err != nil {
 		log.Fatal("error creating enemy spawner component: ", err)
 	}
-
 	g.world.AddEntity(enemySpawnerTimerComp, enemySpawnerComp)
-	gun := g.world.AddEntity(
-		gunInpComp,
-		gunParComp,
-		gunTraComp,
-		gunVelComp,
-		gunSprComp,
-		gunAniComp,
-		gunSpaComp,
-		gunAbiComp,
-		gunFPComp,
-	)
 
-	dodgeName, dodgeDef := abilitydefs.DodgeAbility()
-	pAbis := [16]ecs.EntityAbility{}
-	pAbis[0] = ecs.EntityAbility{
-		Name:     dodgeName,
-		Def:      dodgeDef,
-		Status:   ecs.AbilityStatus{State: ecs.AbiAct_Ready},
-	}
-	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
-	g.world.AddComponent(g.playerEntity, pAbiComp)
-
-	err = pm.Attach(gun, g.playerEntity, g.world)
-	if err != nil {
-		log.Fatal("error attaching gun to player: ", err)
-	}
-
-	var inputLoop []ecs.InputState
-
-	for range 50 {
-		inputLoop = append(inputLoop, ecs.InputState{Analog1X: -1})
-	}
-	for range 50 {
-		inputLoop = append(inputLoop, ecs.InputState{Analog1X: 1})
-	}
-
-	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
-
+	// Tree
 	treeInpComp := ecs.NewInputComponent(nil, inputsources.DummyInputSource, ecs.Facing_None)
 	treeParComp := ecs.NewParentComponent()
 	treeTraComp := ecs.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
@@ -840,6 +820,15 @@ func main() {
 
 	g.replayEntity = tree
 
+	// Platform
+	var inputLoop []ecs.InputState
+	for range 50 {
+		inputLoop = append(inputLoop, ecs.InputState{Analog1X: -1})
+	}
+	for range 50 {
+		inputLoop = append(inputLoop, ecs.InputState{Analog1X: 1})
+	}
+	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
 	platInput := ecs.NewInputComponent(nil, loopSource, ecs.Facing_None)
 
 	platParComp := ecs.NewParentComponent()

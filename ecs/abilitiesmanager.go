@@ -40,26 +40,9 @@ func (AbilitiesManager) TickAbilities(e common.EntityId, world *World) error {
 	}
 
 	for i, a := range abiComp.abilities {
-		switch a.Status.State {
-		case AbiAct_Active:
-			a.Status.DurationCounterMs -= data.TickMs
-
-			if a.Status.DurationCounterMs <= 0 {
-				a.Status.State = AbiAct_OnCooldown
-
-				if a.Def.PostEffect != nil {
-					err := a.Def.PostEffect(e, nil, world)
-					if err != nil {
-						return fmt.Errorf("error executing post effect of ability %v of entity %d: %v", a.Name, e, err)
-					}
-				}
-			}
-		case AbiAct_OnCooldown:
-			a.Status.CooldownCounterMs -= data.TickMs
-
-			if a.Status.CooldownCounterMs <= 0 {
-				a.Status.State = AbiAct_Ready
-			}
+		err := tickAbilityState(e, &a, world)
+		if err != nil {
+			return fmt.Errorf("error ticking ability %v of entity %d: %v", a.Name, e, err)
 		}
 
 		abiComp.abilities[i] = a
@@ -142,7 +125,7 @@ func (AbilitiesManager) ActivateAbility(
 	targets []common.EntityId,
 	abiIdx int,
 	world *World,
-) (hasAbility bool, err error) {
+) (activated bool, err error) {
 	if abiIdx > data.MaxAbilitySlots-1 {
 		return false, fmt.Errorf("ability index %d is out of bounds", abiIdx)
 	}
@@ -162,16 +145,12 @@ func (AbilitiesManager) ActivateAbility(
 		return false, nil
 	}
 
-	abi.Status.DurationCounterMs = abi.Def.DurationMs
-	abi.Status.CooldownCounterMs = abi.Def.CooldownMs
-	abi.Status.State = AbiAct_Active
+	_, err = tryActivate(e, &abi, targets, world)
+	if err != nil {
+		return false, fmt.Errorf("error trying to activate ability %v of entity %d: %v", abi.Name, e, err)
+	}
 
 	abiComp.abilities[abiIdx] = abi
-
-	err = abi.Def.Effect(e, targets, world)
-	if err != nil {
-		return false, fmt.Errorf("error executing effect of ability %v of entity %d: %v", abi.Name, e, err)
-	}
 
 	return true, nil
 }

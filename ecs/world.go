@@ -75,6 +75,8 @@ type World struct {
 	ContactDamages    Storage[contactDamage]
 	Abilities         Storage[abilities]
 	FacePositions     Storage[facePosition]
+	Equipments        Storage[equipment]
+	Equippers         Storage[equipper]
 }
 
 func NewWorld() *World {
@@ -105,6 +107,8 @@ func NewWorld() *World {
 		ContactDamages:    Storage[contactDamage]{order: []common.EntityId{}, data: make(map[common.EntityId]*contactDamage)},
 		Abilities:         Storage[abilities]{order: []common.EntityId{}, data: make(map[common.EntityId]*abilities)},
 		FacePositions:     Storage[facePosition]{order: []common.EntityId{}, data: make(map[common.EntityId]*facePosition)},
+		Equipments:        Storage[equipment]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipment)},
+		Equippers:         Storage[equipper]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipper)},
 	}
 }
 
@@ -161,6 +165,8 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	x.Inputs.deleteEntity(e)
 	x.Abilities.deleteEntity(e)
 	x.FacePositions.deleteEntity(e)
+	x.Equipments.deleteEntity(e)
+	x.Equippers.deleteEntity(e)
 
 	pm := ParentManager{}
 	err := pm.RemoveParentFromAllEntities(e, x)
@@ -244,6 +250,10 @@ func (x *World) AddComponent(e common.EntityId, comp component) {
 		x.Abilities.addComponent(e, c.Copy())
 	case *facePosition:
 		x.FacePositions.addComponent(e, c.Copy())
+	case *equipment:
+		x.Equipments.addComponent(e, c.Copy())
+	case *equipper:
+		x.Equippers.addComponent(e, c.Copy())
 	default:
 		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in World.AddComponent\n", comp, e)
 	}
