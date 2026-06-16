@@ -109,6 +109,9 @@ func (*SpriteManager) GetLocalOffsetPos(
 	return sprite.offsetPos, nil
 }
 
+// TODO: Do these once for each entity in a transform system and cache them per tick.
+// Unsure of performance benefit, but worth a try.
+// Can use a 'dirty' flag and only recalculate entities that have moved
 func (*SpriteManager) GetWorldOffsetPos(
 	e common.EntityId,
 	world *World,

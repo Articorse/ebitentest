@@ -18,6 +18,7 @@ func Tick(world *ecs.World) error {
 			continue
 		}
 
+		// TODO: Don't halt all animation processing if one fails
 		if !world.Sprites.HasComponent(e) {
 			return &common.ErrorMissingComponentDependency{
 				Entity:           e,
@@ -38,6 +39,8 @@ func Tick(world *ecs.World) error {
 			continue
 		}
 
+		// TODO: Only do this if the image has changed.
+		// Maybe calculate these once for each frame and store them in the animation component.
 		layerYOffset := utils.GetFirstOpaquePixelY(currentFrame)
 
 		err = sm.SetLocalLayerYOffset(e, layerYOffset, world)

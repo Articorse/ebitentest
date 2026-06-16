@@ -10,8 +10,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-var LastFacingDir = utils.Vec2{}
-
 func HumanInputSource(
 	e common.EntityId,
 	tick uint64,
@@ -79,6 +77,12 @@ func HumanInputSource(
 		log.Printf("Error getting facing input for entity %d: %v\n", e, err)
 	}
 
+	lastFacingDir, err := im.GetLastFacingDir(e, world)
+	if err != nil {
+		log.Printf("Error getting last facing direction for entity %d: %v\n", e, err)
+		return is
+	}
+
 	worldPos, err := tm.GetWorldPos(e, world)
 
 	var mX, mY float64
@@ -91,17 +95,21 @@ func HumanInputSource(
 		mY = float64(mYint) + world.Camera.Y
 		is.FacingDir = utils.Vec2{X: float64(mX), Y: float64(mY)}
 
-	case ecs.Facing_Analog2: // TODO: Retain last mX, mY when player lets go of analog stick
+	case ecs.Facing_Analog2:
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", e, err)
 			break
 		}
 		mVec := utils.Vec2{X: is.Analog2X, Y: is.Analog2Y}
 		if mVec.Length() > data.GamepadAimDeadzone {
-			LastFacingDir = utils.Vec2{X: is.Analog2X, Y: is.Analog2Y}
+			err = im.SetLastFacingDir(e, utils.Vec2{X: is.Analog2X, Y: is.Analog2Y}, world)
+			if err != nil {
+				log.Printf("Error setting last facing direction for entity %d: %v\n", e, err)
+				return is
+			}
 		}
-		mX = LastFacingDir.X + worldPos.X
-		mY = LastFacingDir.Y + worldPos.Y
+		mX = lastFacingDir.X + worldPos.X
+		mY = lastFacingDir.Y + worldPos.Y
 		is.FacingDir = utils.Vec2{X: mX, Y: mY}
 
 	default:

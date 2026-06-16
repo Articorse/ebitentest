@@ -21,6 +21,7 @@ func SpawnAbility(cooldown int) (ecs.AbilityEnum, ecs.AbilityDef) {
 				return fmt.Errorf("error setting queued animation state for entity %d: %v", self, err)
 			}
 
+			// TODO: Maybe decouple the animation here by adding it as a parameter to SpawnAbility
 			err = am.SetState(self, ecs.Anim_Use, world)
 			if err != nil {
 				return fmt.Errorf("error setting animation state for entity %d: %v", self, err)
@@ -29,7 +30,7 @@ func SpawnAbility(cooldown int) (ecs.AbilityEnum, ecs.AbilityDef) {
 
 		if world.Spawners.HasComponent(self) {
 			sm := ecs.SpawnerManager{}
-			err := sm.Spawn(self, world)
+			_, err := sm.Spawn(self, world)
 			if err != nil {
 				return fmt.Errorf("error spawning entity from spawner %d: %v", self, err)
 			}

@@ -30,6 +30,20 @@ type sprite struct {
 func (sprite) isComponent() {}
 
 func (x sprite) Copy() sprite {
+	var flashCopy *SpriteFlash
+	if x.flash != nil {
+		flashCopy = &SpriteFlash{
+			colors:           make([]utils.RelativeColor, len(x.flash.colors)),
+			colorDurationsMs: make([]int, len(x.flash.colorDurationsMs)),
+			totalDurationMs:  x.flash.totalDurationMs,
+			colorIdx:         x.flash.colorIdx,
+			counterMs:        x.flash.counterMs,
+			loopDurationMs:   x.flash.loopDurationMs,
+		}
+		copy(flashCopy.colors, x.flash.colors)
+		copy(flashCopy.colorDurationsMs, x.flash.colorDurationsMs)
+	}
+
 	return sprite{
 		image:          x.image,
 		offsetPos:      x.offsetPos,
@@ -38,6 +52,6 @@ func (x sprite) Copy() sprite {
 		layerYOffset:   x.layerYOffset,
 		layer:          x.layer,
 		allowRotation:  x.allowRotation,
-		flash:          x.flash,
+		flash:          flashCopy,
 	}
 }

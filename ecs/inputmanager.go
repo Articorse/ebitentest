@@ -87,3 +87,23 @@ func (*InputManager) GetFacingInput(e common.EntityId, world *World) (FacingInpu
 
 	return inComp.facingInput, nil
 }
+
+func (*InputManager) GetLastFacingDir(e common.EntityId, world *World) (utils.Vec2, error) {
+	inComp, err := world.Inputs.getComponent(e)
+	if err != nil {
+		return utils.Vec2{}, fmt.Errorf("could not get input of entity %d: %v", e, err)
+	}
+
+	return inComp.lastFacingDir, nil
+}
+
+func (*InputManager) SetLastFacingDir(e common.EntityId, facingDir utils.Vec2, world *World) error {
+	inComp, err := world.Inputs.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get input of entity %d: %v", e, err)
+	}
+
+	inComp.lastFacingDir = facingDir
+
+	return nil
+}

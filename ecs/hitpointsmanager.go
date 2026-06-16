@@ -11,10 +11,10 @@ type HitpointsManager struct{}
 
 func NewHitpointsComponent(max int, invul int) *hitpoints {
 	return &hitpoints{
-		max:        max,
-		current:    max,
-		invulMaxMs: invul,
-		invulCurMs: 0,
+		max:            max,
+		current:        max,
+		postHitInvulMs: invul,
+		invulCurMs:     0,
 	}
 }
 
@@ -52,7 +52,7 @@ func (HitpointsManager) GetInvulMax(
 		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
 
-	return hpComp.invulMaxMs, nil
+	return hpComp.postHitInvulMs, nil
 }
 
 func (HitpointsManager) GetInvulCurrent(
@@ -127,7 +127,10 @@ func (HitpointsManager) TakeDamage(
 	}
 
 	hpComp.current -= damage
-	hpComp.invulCurMs = hpComp.invulMaxMs
+
+	if hpComp.invulCurMs < hpComp.postHitInvulMs {
+		hpComp.invulCurMs = hpComp.postHitInvulMs
+	}
 
 	if hpComp.current <= 0 {
 		return true, nil
@@ -140,7 +143,7 @@ func (HitpointsManager) TakeDamage(
 			{R: 1, G: 1, B: 1, A: 1},
 		},
 		[]int{100, 100},
-		hpComp.invulMaxMs,
+		hpComp.postHitInvulMs,
 		world,
 	)
 	if err != nil {

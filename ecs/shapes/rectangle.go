@@ -47,7 +47,7 @@ func (x *RectangleShape) GetRandomPoint(r *rand.Rand) utils.Vec2 {
 	xRand := r.Float64() * xDiff
 	yRand := r.Float64() * yDiff
 
-	return utils.Vec2{X: x.topLeft.X + xRand, Y: x.topLeft.Y + yRand}
+	return utils.Vec2{X: x.topLeft.X + xRand + x.offset.X, Y: x.topLeft.Y + yRand + x.offset.Y}
 }
 
 func (x *RectangleShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
@@ -84,7 +84,7 @@ func (x *RectangleShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
 			randLength -= s
 			continue
 		}
-		return x.topLeft.Add(sideCenters[i].Add(dirs[i].Multiply(randLength)))
+		return x.topLeft.Add(x.offset.Add(sideCenters[i].Add(dirs[i].Multiply(randLength))))
 	}
 
 	return utils.Vec2{X: 0, Y: 0}

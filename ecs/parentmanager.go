@@ -110,11 +110,6 @@ func (*ParentManager) Detach(
 		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.entity, err)
 	}
 
-	pWorldScale, err := tm.GetWorldScale(parComp.entity, world)
-	if err != nil {
-		return fmt.Errorf("error getting world scale of parent entity %d: %v", parComp.entity, err)
-	}
-
 	cos := math.Cos(pWorldRot)
 	sin := math.Sin(pWorldRot)
 
@@ -123,8 +118,18 @@ func (*ParentManager) Detach(
 		Y: pWorldPos.Y + (traComp.pos.X*sin + traComp.pos.Y*cos),
 	}
 
-	traComp.scale = pWorldScale
-	traComp.rotation = pWorldRot
+	eWorldScale, err := tm.GetWorldScale(e, world)
+	if err != nil {
+		return fmt.Errorf("error getting world scale of entity %d: %v", e, err)
+	}
+
+	eWorldRot, err := tm.GetWorldRotation(e, world)
+	if err != nil {
+		return fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
+	}
+
+	traComp.scale = eWorldScale
+	traComp.rotation = eWorldRot
 
 	parComp.entity = -1
 

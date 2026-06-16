@@ -87,19 +87,19 @@ func getCollider[T BaseColliderGetter](e common.EntityId, world *World) (T, erro
 	case *hurtboxCollider:
 		c, err := world.HurtboxColliders.getComponent(e)
 		if err != nil {
-			return *new(T), fmt.Errorf("could not get hitbox collider of entity %d: %v", e, err)
+			return *new(T), fmt.Errorf("could not get hurtbox collider of entity %d: %v", e, err)
 		}
 		return any(c).(T), nil
 	case *physicsCollider:
 		c, err := world.PhysicsColliders.getComponent(e)
 		if err != nil {
-			return *new(T), fmt.Errorf("could not get hitbox collider of entity %d: %v", e, err)
+			return *new(T), fmt.Errorf("could not get physics collider of entity %d: %v", e, err)
 		}
 		return any(c).(T), nil
 	case *platformCollider:
 		c, err := world.PlatformColliders.getComponent(e)
 		if err != nil {
-			return *new(T), fmt.Errorf("could not get hitbox collider of entity %d: %v", e, err)
+			return *new(T), fmt.Errorf("could not get platform collider of entity %d: %v", e, err)
 		}
 		return any(c).(T), nil
 	default:

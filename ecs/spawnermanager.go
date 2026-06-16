@@ -35,35 +35,39 @@ func NewSpawnerComponent(
 func (*SpawnerManager) Spawn(
 	spawnerEntity common.EntityId,
 	world *World,
-) error {
+) (common.EntityId, error) {
 	sm := SpawnerManager{}
 	tm := TransformManager{}
 
 	comps, err := sm.GetComponents(spawnerEntity, world)
 	if err != nil {
-		return fmt.Errorf("error getting components to spawn for spawner entity %d: %v", spawnerEntity, err)
+		return -1, fmt.Errorf("error getting components to spawn for spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	newEntity := world.AddEntity(
 		comps...,
 	)
 
+	// If there is no Transform, then both of these are zero, which is fine if spawning based on camera or other entity
 	worldPos, _ := tm.GetWorldPos(spawnerEntity, world)
 	worldRot, _ := tm.GetWorldRotation(spawnerEntity, world)
 
 	spawnerOffset, err := sm.GetOffset(spawnerEntity, world)
 	if err != nil {
-		return fmt.Errorf("error getting offset of spawner entity %d: %v", spawnerEntity, err)
+		_ = world.RemoveEntity(newEntity)
+		return -1, fmt.Errorf("error getting offset of spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	sType, err := sm.GetSpawnerType(spawnerEntity, world)
 	if err != nil {
-		return fmt.Errorf("error getting spawner type of spawner entity %d: %v", spawnerEntity, err)
+		_ = world.RemoveEntity(newEntity)
+		return -1, fmt.Errorf("error getting spawner type of spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	shape, err := sm.GetShape(spawnerEntity, world)
 	if err != nil {
-		return fmt.Errorf("error getting shape of spawner entity %d: %v", spawnerEntity, err)
+		_ = world.RemoveEntity(newEntity)
+		return -1, fmt.Errorf("error getting shape of spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	var finalOffset utils.Vec2
@@ -86,15 +90,17 @@ func (*SpawnerManager) Spawn(
 
 	err = tm.SetWorldPos(newEntity, worldPos.Add(finalOffset), world)
 	if err != nil {
-		return fmt.Errorf("error setting world position of new entity %d: %v", newEntity, err)
+		_ = world.RemoveEntity(newEntity)
+		return -1, fmt.Errorf("error setting world position of new entity %d: %v", newEntity, err)
 	}
 
 	err = tm.SetWorldRotation(newEntity, worldRot, world)
 	if err != nil {
-		return fmt.Errorf("error setting world rotation of new entity %d: %v", newEntity, err)
+		_ = world.RemoveEntity(newEntity)
+		return -1, fmt.Errorf("error setting world rotation of new entity %d: %v", newEntity, err)
 	}
 
-	return nil
+	return newEntity, nil
 }
 
 func (*SpawnerManager) GetOffset(

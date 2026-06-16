@@ -22,6 +22,7 @@ type spawner struct {
 
 func (spawner) isComponent() {}
 
+// TODO: Might require a deep copy
 func (x spawner) Copy() spawner {
 	componentsCopy := make([]component, len(x.components))
 	copy(componentsCopy, x.components)

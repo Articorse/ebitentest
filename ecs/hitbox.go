@@ -12,7 +12,9 @@ func (hitboxCollider) isComponent() {}
 
 func (x hitboxCollider) Copy() hitboxCollider {
 	colShapesCopy := make([]shapes.Shape, len(x.shapes))
-	copy(colShapesCopy, x.shapes)
+	for i, shape := range x.shapes {
+		colShapesCopy[i] = shape.Copy()
+	}
 
 	return hitboxCollider{
 		baseCollider: baseCollider{

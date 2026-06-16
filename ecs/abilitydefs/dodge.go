@@ -31,7 +31,7 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 			return fmt.Errorf("error setting queued animation state of entity %d to idle: %v", self, err)
 		}
 
-		err = hpm.SetInvul(self, math.MaxInt, world)
+		err = hpm.SetInvul(self, Dodge_Duration, world)
 		if err != nil {
 			return fmt.Errorf("error setting invulnerability of entity %d: %v", self, err)
 		}
@@ -54,21 +54,7 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 			return fmt.Errorf("error getting current tick inputs for entity %d: %v", self, err)
 		}
 
-		var dir utils.Vec2
-		if is.Analog1X > 0 {
-			dir.X = 1
-		}
-		if is.Analog1X < 0 {
-			dir.X = -1
-		}
-		if is.Analog1Y > 0 {
-			dir.Y = 1
-		}
-		if is.Analog1Y < 0 {
-			dir.Y = -1
-		}
-
-		dir = dir.Normalized()
+		dir := utils.Vec2{X: is.Analog1X, Y: is.Analog1Y}.Normalized()
 
 		err = vm.AddForce(self, dir.Multiply(Dodge_Force), world)
 		if err != nil {

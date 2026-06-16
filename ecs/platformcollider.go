@@ -12,7 +12,9 @@ func (platformCollider) isComponent() {}
 
 func (x platformCollider) Copy() platformCollider {
 	colShapesCopy := make([]shapes.Shape, len(x.shapes))
-	copy(colShapesCopy, x.shapes)
+	for i, shape := range x.shapes {
+		colShapesCopy[i] = shape.Copy()
+	}
 
 	return platformCollider{
 		baseCollider: baseCollider{

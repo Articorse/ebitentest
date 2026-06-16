@@ -255,7 +255,7 @@ func (*TransformManager) SetWorldRotation(
 		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
-	traComp.rotation = pWorldRot + rot
+	traComp.rotation = rot - pWorldRot
 
 	return nil
 }

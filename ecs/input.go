@@ -2,6 +2,7 @@ package ecs
 
 import (
 	"ebittest/data"
+	"ebittest/utils"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -103,6 +104,7 @@ type input struct {
 	config          map[InputType]InputKey
 	inputSourceFunc InputSourceFunc
 	facingInput     FacingInputEnum
+	lastFacingDir   utils.Vec2
 }
 
 func (input) isComponent() {}
@@ -112,5 +114,6 @@ func (x input) Copy() input {
 		config:          x.config,
 		inputSourceFunc: x.inputSourceFunc,
 		facingInput:     x.facingInput,
+		lastFacingDir:   utils.Vec2{},
 	}
 }

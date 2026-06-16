@@ -52,11 +52,11 @@ func (x *CircleShape) GetRandomPoint(r *rand.Rand) utils.Vec2 {
 	d := x.radius * r.Float64()
 	a := math.Pi * 2 * r.Float64()
 
-	return utils.Vec2{X: d * math.Cos(a), Y: d * math.Sin(a)}
+	return utils.Vec2{X: d*math.Cos(a) + x.offset.X, Y: d*math.Sin(a) + x.offset.Y}
 }
 
 func (x *CircleShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
 	a := math.Pi * 2 * r.Float64()
 
-	return utils.Vec2{X: x.radius * math.Cos(a), Y: x.radius * math.Sin(a)}
+	return utils.Vec2{X: x.radius*math.Cos(a) + x.offset.X, Y: x.radius*math.Sin(a) + x.offset.Y}
 }
