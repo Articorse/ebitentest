@@ -6,7 +6,7 @@ import (
 	"ebittest/utils"
 )
 
-type HurtboxColliderManager struct {
+type hurtboxColliderManager struct {
 	BaseColliderManager[*hurtboxCollider]
 }
 
@@ -18,38 +18,38 @@ func NewHurtboxColliderComponent(
 	return &hurtboxCollider{baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask)}
 }
 
-func (HurtboxColliderManager) EntityIds(world *World) []common.EntityId {
+func (hurtboxColliderManager) EntityIds(world *World) []common.EntityId {
 	return world.HurtboxColliders.GetEntities()
 }
 
-func (HurtboxColliderManager) HasCollider(e common.EntityId, world *World) bool {
+func (hurtboxColliderManager) HasCollider(e common.EntityId, world *World) bool {
 	return world.HurtboxColliders.HasComponent(e)
 }
 
-func (HurtboxColliderManager) GetWorldPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return HurtboxColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, world)
+func (hurtboxColliderManager) GetWorldPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
+	return hurtboxColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, world)
 }
 
-func (HurtboxColliderManager) GetShapes(e common.EntityId, world *World) ([]shapes.Shape, error) {
-	return HurtboxColliderManager{}.BaseColliderManager.GetShapes(e, world)
+func (hurtboxColliderManager) GetShapes(e common.EntityId, world *World) ([]shapes.Shape, error) {
+	return hurtboxColliderManager{}.BaseColliderManager.GetShapes(e, world)
 }
 
-func (HurtboxColliderManager) GetLocalAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return HurtboxColliderManager{}.BaseColliderManager.GetLocalAABB(e, world)
+func (hurtboxColliderManager) GetLocalAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
+	return hurtboxColliderManager{}.BaseColliderManager.GetLocalAABB(e, world)
 }
 
-func (HurtboxColliderManager) GetLocalPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return HurtboxColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, world)
+func (hurtboxColliderManager) GetLocalPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
+	return hurtboxColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, world)
 }
 
-func (HurtboxColliderManager) GetCenter(e common.EntityId, world *World) (utils.Vec2, error) {
-	return HurtboxColliderManager{}.BaseColliderManager.GetCenter(e, world)
+func (hurtboxColliderManager) GetCenter(e common.EntityId, world *World) (utils.Vec2, error) {
+	return hurtboxColliderManager{}.BaseColliderManager.GetCenter(e, world)
 }
 
-func (HurtboxColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
-	return HurtboxColliderManager{}.BaseColliderManager.GetLayer(e, world)
+func (hurtboxColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
+	return hurtboxColliderManager{}.BaseColliderManager.GetLayer(e, world)
 }
 
-func (HurtboxColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
-	return HurtboxColliderManager{}.BaseColliderManager.GetMask(e, world)
+func (hurtboxColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
+	return hurtboxColliderManager{}.BaseColliderManager.GetMask(e, world)
 }

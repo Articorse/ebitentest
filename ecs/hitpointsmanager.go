@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-type HitpointsManager struct{}
+type hitpointsManager struct{}
 
 func NewHitpointsComponent(max int, invul int) *hitpoints {
 	return &hitpoints{
@@ -18,7 +18,7 @@ func NewHitpointsComponent(max int, invul int) *hitpoints {
 	}
 }
 
-func (HitpointsManager) GetMax(
+func (hitpointsManager) GetMax(
 	e common.EntityId,
 	world *World,
 ) (int, error) {
@@ -31,7 +31,7 @@ func (HitpointsManager) GetMax(
 }
 
 // Returns -1 if component not found
-func (HitpointsManager) GetCurrent(
+func (hitpointsManager) GetCurrent(
 	e common.EntityId,
 	world *World,
 ) (int, error) {
@@ -43,7 +43,7 @@ func (HitpointsManager) GetCurrent(
 	return hpComp.current, nil
 }
 
-func (HitpointsManager) GetInvulMax(
+func (hitpointsManager) GetInvulMax(
 	e common.EntityId,
 	world *World,
 ) (int, error) {
@@ -55,7 +55,7 @@ func (HitpointsManager) GetInvulMax(
 	return hpComp.postHitInvulMs, nil
 }
 
-func (HitpointsManager) GetInvulCurrent(
+func (hitpointsManager) GetInvulCurrent(
 	e common.EntityId,
 	world *World,
 ) (int, error) {
@@ -67,7 +67,7 @@ func (HitpointsManager) GetInvulCurrent(
 	return hpComp.invulCurMs, nil
 }
 
-func (HitpointsManager) SetInvul(
+func (hitpointsManager) SetInvul(
 	e common.EntityId,
 	time int,
 	world *World,
@@ -81,7 +81,7 @@ func (HitpointsManager) SetInvul(
 	return nil
 }
 
-func (HitpointsManager) IsInvul(
+func (hitpointsManager) IsInvul(
 	e common.EntityId,
 	world *World,
 ) (bool, error) {
@@ -93,7 +93,7 @@ func (HitpointsManager) IsInvul(
 	return hpComp.invulCurMs > 0, nil
 }
 
-func (HitpointsManager) TickInvul(
+func (hitpointsManager) TickInvul(
 	e common.EntityId,
 	world *World,
 ) error {
@@ -114,12 +114,12 @@ func (HitpointsManager) TickInvul(
 }
 
 // TODO: Add immobility time similar to invulnerability time
-func (HitpointsManager) TakeDamage(
+func (hitpointsManager) TakeDamage(
 	e common.EntityId,
 	damage int,
 	world *World,
 ) (dead bool, err error) {
-	sm := SpriteManager{}
+	sm := spriteManager{}
 
 	hpComp, err := world.Hitpoints.getComponent(e)
 	if err != nil {
@@ -153,7 +153,7 @@ func (HitpointsManager) TakeDamage(
 	return false, nil
 }
 
-func (HitpointsManager) Heal(
+func (hitpointsManager) Heal(
 	e common.EntityId,
 	heal int,
 	world *World,

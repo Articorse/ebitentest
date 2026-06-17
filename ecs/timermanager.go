@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-type TimerManager struct{}
+type timerManager struct{}
 
 func NewTimerComponent(
 	counterMs int,
@@ -25,7 +25,7 @@ func NewTimerComponent(
 	}, nil
 }
 
-func (TimerManager) TickDown(
+func (timerManager) TickDown(
 	e common.EntityId,
 	world *World,
 ) (timerOver bool, err error) {

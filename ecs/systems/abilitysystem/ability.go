@@ -7,7 +7,7 @@ import (
 )
 
 func Tick(world *ecs.World) error {
-	am := ecs.AbilitiesManager{}
+	am := world.AbilitiesManager
 	for _, aE := range slices.Clone(world.Abilities.GetEntities()) {
 		err := am.TickAbilities(aE, world)
 		if err != nil {
@@ -15,7 +15,7 @@ func Tick(world *ecs.World) error {
 		}
 	}
 
-	eqm := ecs.EquipManager{}
+	eqm := world.EquipManager
 	for _, eqE := range slices.Clone(world.Equipments.GetEntities()) {
 		err := eqm.TickAbilities(eqE, world)
 		if err != nil {

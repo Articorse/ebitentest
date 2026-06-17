@@ -11,7 +11,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-type AnimationManager struct{}
+type animationManager struct{}
 
 func NewAnimationComponent(
 	sheetUri string,
@@ -30,7 +30,7 @@ func NewAnimationComponent(
 	}, nil
 }
 
-func (AnimationManager) GetState(
+func (animationManager) GetState(
 	e common.EntityId,
 	world *World,
 ) (AnimationState, error) {
@@ -42,7 +42,7 @@ func (AnimationManager) GetState(
 	return animComp.frameState.AnimationState, nil
 }
 
-func (AnimationManager) GetCurrentFrame(
+func (animationManager) GetCurrentFrame(
 	e common.EntityId,
 	world *World,
 ) (*ebiten.Image, error) {
@@ -73,7 +73,7 @@ func (AnimationManager) GetCurrentFrame(
 	return subImage, nil
 }
 
-func (AnimationManager) SetState(
+func (animationManager) SetState(
 	e common.EntityId,
 	newState AnimationState,
 	world *World,
@@ -94,7 +94,7 @@ func (AnimationManager) SetState(
 	return nil
 }
 
-func (AnimationManager) SetQueuedStateIfNone(
+func (animationManager) SetQueuedStateIfNone(
 	e common.EntityId,
 	newState AnimationState,
 	world *World,
@@ -115,7 +115,7 @@ func (AnimationManager) SetQueuedStateIfNone(
 	return nil
 }
 
-func (AnimationManager) Tick(
+func (animationManager) Tick(
 	e common.EntityId,
 	world *World,
 ) error {

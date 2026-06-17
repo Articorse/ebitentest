@@ -9,7 +9,7 @@ import (
 func SpawnAbility(cooldown int) (ecs.AbilityEnum, ecs.AbilityDef) {
 	abiFunc := func(self common.EntityId, targets []common.EntityId, world *ecs.World) error {
 		if world.Animations.HasComponent(self) {
-			am := ecs.AnimationManager{}
+			am := world.AnimationManager
 
 			nextState, err := am.GetState(self, world)
 			if err != nil {
@@ -29,7 +29,7 @@ func SpawnAbility(cooldown int) (ecs.AbilityEnum, ecs.AbilityDef) {
 		}
 
 		if world.Spawners.HasComponent(self) {
-			sm := ecs.SpawnerManager{}
+			sm := world.SpawnerManager
 			_, err := sm.Spawn(self, world)
 			if err != nil {
 				return fmt.Errorf("error spawning entity from spawner %d: %v", self, err)

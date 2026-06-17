@@ -7,7 +7,7 @@ import (
 )
 
 func Tick(world *ecs.World) {
-	hpm := ecs.HitpointsManager{}
+	hpm := world.HitpointsManager
 
 	for _, e := range world.Hitpoints.GetEntities() {
 		invulCur, err := hpm.GetInvulCurrent(e, world)
@@ -32,9 +32,9 @@ func DealContactDamage(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	world *ecs.World,
 ) (entitiesKilled uint64, err error) {
-	vm := ecs.VelocityManager{}
-	cdm := ecs.ContactDamageManager{}
-	hpm := ecs.HitpointsManager{}
+	vm := world.VelocityManager
+	cdm := world.ContactDamageManager
+	hpm := world.HitpointsManager
 
 	for dmgE, cols := range collisions {
 		dmgESelfDestructed := false

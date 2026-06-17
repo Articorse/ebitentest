@@ -40,9 +40,13 @@ var (
 	max_pos_diff                     = 0.0
 	resolvedPhysicsCollisions uint64 = 0
 
-	tm = ecs.TransformManager{}
-	pm = ecs.ParentManager{}
-	vm = ecs.VelocityManager{}
+	tm     = g.world.TransformManager
+	pm     = g.world.ParentManager
+	vm     = g.world.VelocityManager
+	im     = g.world.InputManager
+	pcm    = g.world.PhysicsColliderManager
+	hurtcm = g.world.HurtboxColliderManager
+	hitcm  = g.world.HitboxColliderManager
 
 	gamepadFound = false
 )
@@ -63,8 +67,6 @@ type game struct {
 
 func (g *game) Update() error {
 	var err error
-	im := ecs.InputManager{}
-	pm := ecs.ParentManager{}
 
 	// HACK: Add gamepad here because ebiten.AppendGamepadIDs needs to be called after ebiten.RunGame
 	if !gamepadFound {
@@ -296,8 +298,6 @@ func (g *game) Update() error {
 		}
 	}
 
-	pcm := ecs.PhysicsColliderManager{}
-
 	physicsAABBCollisions, err := collisionsystem.GetAABBCollisions(pcm, pcm, proximateEntities, g.world)
 	if err != nil {
 		log.Println("error during AABB collision checking: ", err, "removing entity")
@@ -331,9 +331,6 @@ func (g *game) Update() error {
 	if err != nil {
 		log.Println("ability system tick error: ", err)
 	}
-
-	hurtcm := ecs.HurtboxColliderManager{}
-	hitcm := ecs.HitboxColliderManager{}
 
 	damageAABBCollisions, err := collisionsystem.GetMirrorAABBCollisions(hurtcm, hitcm, proximateEntities, g.world)
 	if err != nil {
@@ -419,10 +416,6 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 	}
 
 	if DEBUG_LEVEL == 2 {
-		// pcm := ecs.PhysicsColliderManager{}
-		hurtcm := ecs.HurtboxColliderManager{}
-		hitcm := ecs.HitboxColliderManager{}
-
 		// if err := collisionsystem.DrawColliders(pcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.world.Camera, g.world.TickState.Collisions, g.world); err != nil {
 		// 	log.Println("error while drawing physics colliders: ", err, "removing entity")
 		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency

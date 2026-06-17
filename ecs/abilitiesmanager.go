@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-type AbilitiesManager struct{}
+type abilitiesManager struct{}
 
 func NewAbilityDef(effect AbilityFunc, cd int, duration int, postEffect AbilityFunc) AbilityDef {
 	return AbilityDef{
@@ -33,7 +33,7 @@ func NewAbilitiesComponent(defs [data.MaxAbilitySlots]EntityAbility) *abilities 
 	}
 }
 
-func (AbilitiesManager) TickAbilities(e common.EntityId, world *World) error {
+func (abilitiesManager) TickAbilities(e common.EntityId, world *World) error {
 	abiComp, err := world.Abilities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get abilities component of entity %d: %v", e, err)
@@ -51,7 +51,7 @@ func (AbilitiesManager) TickAbilities(e common.EntityId, world *World) error {
 	return nil
 }
 
-func (AbilitiesManager) HasAbility(e common.EntityId, name AbilityEnum, world *World) bool {
+func (abilitiesManager) HasAbility(e common.EntityId, name AbilityEnum, world *World) bool {
 	abiComp, err := world.Abilities.getComponent(e)
 	if err != nil {
 		return false
@@ -66,7 +66,7 @@ func (AbilitiesManager) HasAbility(e common.EntityId, name AbilityEnum, world *W
 	return false
 }
 
-func (AbilitiesManager) DisableAbility(e common.EntityId, name AbilityEnum, world *World) error {
+func (abilitiesManager) DisableAbility(e common.EntityId, name AbilityEnum, world *World) error {
 	abiComp, err := world.Abilities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get abilities component of entity %d: %v", e, err)
@@ -93,7 +93,7 @@ func (AbilitiesManager) DisableAbility(e common.EntityId, name AbilityEnum, worl
 	return nil
 }
 
-func (AbilitiesManager) EnableAbility(e common.EntityId, name AbilityEnum, world *World) error {
+func (abilitiesManager) EnableAbility(e common.EntityId, name AbilityEnum, world *World) error {
 	abiComp, err := world.Abilities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get abilities component of entity %d: %v", e, err)
@@ -120,7 +120,7 @@ func (AbilitiesManager) EnableAbility(e common.EntityId, name AbilityEnum, world
 	return nil
 }
 
-func (AbilitiesManager) ActivateAbility(
+func (abilitiesManager) ActivateAbility(
 	e common.EntityId,
 	targets []common.EntityId,
 	abiIdx int,

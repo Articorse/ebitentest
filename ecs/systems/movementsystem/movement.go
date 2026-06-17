@@ -10,8 +10,8 @@ import (
 
 // Should be called before other systems modify Transforms or Velocities
 func Tick(world *ecs.World) error {
-	tm := ecs.TransformManager{}
-	vm := ecs.VelocityManager{}
+	tm := world.TransformManager
+	vm := world.VelocityManager
 
 	for _, e := range world.Velocities.GetEntities() {
 		localPos, err := tm.GetLocalPos(e, world)

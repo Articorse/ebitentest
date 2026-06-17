@@ -149,7 +149,7 @@ func (BaseColliderManager[T]) GetWorldAABB(
 	e common.EntityId,
 	world *World,
 ) ([2]utils.Vec2, error) {
-	tm := TransformManager{}
+	tm := transformManager{}
 
 	colComp, err := getCollider[T](e, world)
 	if err != nil {
@@ -186,7 +186,7 @@ func (BaseColliderManager[T]) GetWorldPaddedAABB(
 	e common.EntityId,
 	world *World,
 ) ([2]utils.Vec2, error) {
-	tm := TransformManager{}
+	tm := transformManager{}
 
 	colComp, err := getCollider[T](e, world)
 	if err != nil {

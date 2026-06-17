@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-type InputManager struct{}
+type inputManager struct{}
 
 type FacingInputEnum uint8
 
@@ -38,7 +38,7 @@ func NewInputComponent(config map[InputType]InputKey, inputSourceFunc InputSourc
 	return &input{config: config, inputSourceFunc: inputSourceFunc, facingInput: facingInput}
 }
 
-func (*InputManager) GetInput(e common.EntityId, inputType InputType, world *World) (float64, error) {
+func (*inputManager) GetInput(e common.EntityId, inputType InputType, world *World) (float64, error) {
 	inComp, err := world.Inputs.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get input of entity %d: %v", e, err)
@@ -52,7 +52,7 @@ func (*InputManager) GetInput(e common.EntityId, inputType InputType, world *Wor
 	return inKey.GetInput(), nil
 }
 
-func (*InputManager) GetInputSourceFunc(
+func (*inputManager) GetInputSourceFunc(
 	e common.EntityId,
 	world *World,
 ) (InputSourceFunc, error) {
@@ -64,7 +64,7 @@ func (*InputManager) GetInputSourceFunc(
 	return isf.inputSourceFunc, nil
 }
 
-func (*InputManager) SetInputSourceFunc(
+func (*inputManager) SetInputSourceFunc(
 	e common.EntityId,
 	inputSourceFunc InputSourceFunc,
 	world *World,
@@ -79,7 +79,7 @@ func (*InputManager) SetInputSourceFunc(
 	return nil
 }
 
-func (*InputManager) GetFacingInput(e common.EntityId, world *World) (FacingInputEnum, error) {
+func (*inputManager) GetFacingInput(e common.EntityId, world *World) (FacingInputEnum, error) {
 	inComp, err := world.Inputs.getComponent(e)
 	if err != nil {
 		return Facing_None, fmt.Errorf("could not get input of entity %d: %v", e, err)
@@ -88,7 +88,7 @@ func (*InputManager) GetFacingInput(e common.EntityId, world *World) (FacingInpu
 	return inComp.facingInput, nil
 }
 
-func (*InputManager) GetLastFacingDir(e common.EntityId, world *World) (utils.Vec2, error) {
+func (*inputManager) GetLastFacingDir(e common.EntityId, world *World) (utils.Vec2, error) {
 	inComp, err := world.Inputs.getComponent(e)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("could not get input of entity %d: %v", e, err)
@@ -97,7 +97,7 @@ func (*InputManager) GetLastFacingDir(e common.EntityId, world *World) (utils.Ve
 	return inComp.lastFacingDir, nil
 }
 
-func (*InputManager) SetLastFacingDir(e common.EntityId, facingDir utils.Vec2, world *World) error {
+func (*inputManager) SetLastFacingDir(e common.EntityId, facingDir utils.Vec2, world *World) error {
 	inComp, err := world.Inputs.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get input of entity %d: %v", e, err)

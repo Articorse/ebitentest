@@ -22,7 +22,7 @@ func DrawCollisions(
 	world *ecs.World,
 ) error {
 	for eA, cols := range collisions {
-		tm := ecs.TransformManager{}
+		tm := world.TransformManager
 
 		aWorldPos, err := tm.GetWorldPos(eA, world)
 		if err != nil {
@@ -57,7 +57,7 @@ func DrawColliders(
 	world *ecs.World,
 ) error {
 	for _, e := range colManager.EntityIds(world) {
-		tm := ecs.TransformManager{}
+		tm := world.TransformManager
 
 		worldPos, err := tm.GetWorldPos(e, world)
 		if err != nil {
@@ -162,7 +162,7 @@ func DrawAABBs(
 	world *ecs.World,
 ) error {
 	for _, e := range colManager.EntityIds(world) {
-		tm := ecs.TransformManager{}
+		tm := world.TransformManager
 
 		worldPos, err := tm.GetWorldPos(e, world)
 		if err != nil {

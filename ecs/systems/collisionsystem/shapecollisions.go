@@ -16,8 +16,8 @@ func getRectangleCircleCollision(
 	cHit shapes.CircleShape,
 	world *ecs.World,
 ) utils.Vec2 {
-	tm := ecs.TransformManager{}
-	vm := ecs.VelocityManager{}
+	tm := world.TransformManager
+	vm := world.VelocityManager
 
 	cWorldPos, err := tm.GetWorldPos(cEnt, world)
 	if err != nil {
@@ -138,8 +138,8 @@ func getRectangleRectangleCollision(
 	r2Hit shapes.RectangleShape,
 	world *ecs.World,
 ) utils.Vec2 {
-	tm := ecs.TransformManager{}
-	vm := ecs.VelocityManager{}
+	tm := world.TransformManager
+	vm := world.VelocityManager
 
 	r1WorldPos, err := tm.GetWorldPos(r1Ent, world)
 	if err != nil {
@@ -263,8 +263,8 @@ func getCircleCircleCollision(
 	c2Hit shapes.CircleShape,
 	world *ecs.World,
 ) utils.Vec2 {
-	tm := ecs.TransformManager{}
-	vm := ecs.VelocityManager{}
+	tm := world.TransformManager
+	vm := world.VelocityManager
 
 	c1WorldPos, err := tm.GetWorldPos(c1Ent, world)
 	if err != nil {
@@ -380,8 +380,8 @@ func getCirclePolygonCollision(
 	pHit shapes.PolygonShape,
 	world *ecs.World,
 ) utils.Vec2 {
-	tm := ecs.TransformManager{}
-	vm := ecs.VelocityManager{}
+	tm := world.TransformManager
+	vm := world.VelocityManager
 
 	cWorldPos, err := tm.GetWorldPos(cEnt, world)
 	if err != nil {
@@ -460,8 +460,8 @@ func getPolygonPolygonCollision(
 	p2Hit shapes.PolygonShape,
 	world *ecs.World,
 ) utils.Vec2 {
-	tm := ecs.TransformManager{}
-	vm := ecs.VelocityManager{}
+	tm := world.TransformManager
+	vm := world.VelocityManager
 
 	// Get world positions and transformed vertices
 	p1WorldPos, err := tm.GetWorldPos(p1Ent, world)

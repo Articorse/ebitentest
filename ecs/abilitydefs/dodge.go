@@ -16,10 +16,10 @@ const (
 
 func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 	abiFunc := func(self common.EntityId, targets []common.EntityId, world *ecs.World) error {
-		am := ecs.AnimationManager{}
-		hpm := ecs.HitpointsManager{}
-		vm := ecs.VelocityManager{}
-		sm := ecs.SpriteManager{}
+		am := world.AnimationManager
+		hpm := world.HitpointsManager
+		vm := world.VelocityManager
+		sm := world.SpriteManager
 
 		err := am.SetState(self, ecs.Anim_Jump, world)
 		if err != nil {
@@ -65,8 +65,8 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 	}
 
 	abiPostFunc := func(self common.EntityId, targets []common.EntityId, world *ecs.World) error {
-		hpm := ecs.HitpointsManager{}
-		sm := ecs.SpriteManager{}
+		hpm := world.HitpointsManager
+		sm := world.SpriteManager
 
 		err := hpm.SetInvul(self, 0, world)
 		if err != nil {

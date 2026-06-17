@@ -11,7 +11,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-type SpriteManager struct{}
+type spriteManager struct{}
 
 func NewSpriteComponent(imageUri string, layer uint8, allowRotation bool) (*sprite, error) {
 	s := &sprite{offsetScale: 1, layer: layer, allowRotation: allowRotation}
@@ -25,7 +25,7 @@ func NewSpriteComponent(imageUri string, layer uint8, allowRotation bool) (*spri
 	return s, nil
 }
 
-func (*SpriteManager) SetSpriteFlash(
+func (*spriteManager) SetSpriteFlash(
 	e common.EntityId,
 	colors []utils.RelativeColor,
 	colorDurationsMs []int,
@@ -59,7 +59,7 @@ func (*SpriteManager) SetSpriteFlash(
 	return nil
 }
 
-func (*SpriteManager) StopFlash(e common.EntityId, world *World) error {
+func (*spriteManager) StopFlash(e common.EntityId, world *World) error {
 	sprite, err := world.Sprites.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
@@ -70,7 +70,7 @@ func (*SpriteManager) StopFlash(e common.EntityId, world *World) error {
 	return nil
 }
 
-func (*SpriteManager) GetImage(
+func (*spriteManager) GetImage(
 	e common.EntityId,
 	world *World,
 ) (*ebiten.Image, error) {
@@ -82,7 +82,7 @@ func (*SpriteManager) GetImage(
 	return sprite.image, nil
 }
 
-func (*SpriteManager) SetImage(
+func (*spriteManager) SetImage(
 	e common.EntityId,
 	image *ebiten.Image,
 	world *World,
@@ -97,7 +97,7 @@ func (*SpriteManager) SetImage(
 	return nil
 }
 
-func (*SpriteManager) GetLocalOffsetPos(
+func (*spriteManager) GetLocalOffsetPos(
 	e common.EntityId,
 	world *World,
 ) (utils.Vec2, error) {
@@ -112,7 +112,7 @@ func (*SpriteManager) GetLocalOffsetPos(
 // TODO: Do these once for each entity in a transform system and cache them per tick.
 // Unsure of performance benefit, but worth a try.
 // Can use a 'dirty' flag and only recalculate entities that have moved
-func (*SpriteManager) GetWorldOffsetPos(
+func (*spriteManager) GetWorldOffsetPos(
 	e common.EntityId,
 	world *World,
 ) (utils.Vec2, error) {
@@ -121,7 +121,7 @@ func (*SpriteManager) GetWorldOffsetPos(
 		return utils.Vec2{}, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	tm := TransformManager{}
+	tm := transformManager{}
 
 	pWorldPos, err := tm.GetWorldPos(e, world)
 	if err != nil {
@@ -142,7 +142,7 @@ func (*SpriteManager) GetWorldOffsetPos(
 	}, nil
 }
 
-func (*SpriteManager) GetLocalOffsetRotation(
+func (*spriteManager) GetLocalOffsetRotation(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
@@ -154,7 +154,7 @@ func (*SpriteManager) GetLocalOffsetRotation(
 	return sprite.offsetRotation, nil
 }
 
-func (*SpriteManager) GetWorldOffsetRotation(
+func (*spriteManager) GetWorldOffsetRotation(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
@@ -163,7 +163,7 @@ func (*SpriteManager) GetWorldOffsetRotation(
 		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	tm := TransformManager{}
+	tm := transformManager{}
 
 	WorldRot, err := tm.GetWorldRotation(e, world)
 	if err != nil {
@@ -173,7 +173,7 @@ func (*SpriteManager) GetWorldOffsetRotation(
 	return WorldRot + sprComp.offsetRotation, nil
 }
 
-func (*SpriteManager) GetLocalOffsetScale(
+func (*spriteManager) GetLocalOffsetScale(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
@@ -185,11 +185,11 @@ func (*SpriteManager) GetLocalOffsetScale(
 	return sprite.offsetScale, nil
 }
 
-func (*SpriteManager) GetWorldOffsetScale(
+func (*spriteManager) GetWorldOffsetScale(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
-	pm := ParentManager{}
+	pm := parentManager{}
 
 	sprComp, err := world.Sprites.getComponent(e)
 	if err != nil {
@@ -201,7 +201,7 @@ func (*SpriteManager) GetWorldOffsetScale(
 		return sprComp.offsetScale, nil
 	}
 
-	tm := TransformManager{}
+	tm := transformManager{}
 
 	pWorldSca, err := tm.GetWorldScale(parEntity, world)
 	if err != nil {
@@ -211,7 +211,7 @@ func (*SpriteManager) GetWorldOffsetScale(
 	return pWorldSca * sprComp.offsetScale, nil
 }
 
-func (*SpriteManager) GetLocalLayerYOffset(
+func (*spriteManager) GetLocalLayerYOffset(
 	e common.EntityId,
 	world *World,
 ) (uint16, error) {
@@ -223,7 +223,7 @@ func (*SpriteManager) GetLocalLayerYOffset(
 	return sprite.layerYOffset, nil
 }
 
-func (*SpriteManager) GetWorldLayerYOffset(
+func (*spriteManager) GetWorldLayerYOffset(
 	e common.EntityId,
 	world *World,
 ) (uint16, error) {
@@ -232,7 +232,7 @@ func (*SpriteManager) GetWorldLayerYOffset(
 		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	tm := TransformManager{}
+	tm := transformManager{}
 
 	pWorldPos, err := tm.GetWorldPos(e, world)
 	if err != nil {
@@ -250,7 +250,7 @@ func (*SpriteManager) GetWorldLayerYOffset(
 	return uint16(pWorldPos.Y + (float64(sprComp.layerYOffset)*sin + float64(sprComp.layerYOffset)*cos)), nil
 }
 
-func (*SpriteManager) GetLayer(
+func (*spriteManager) GetLayer(
 	e common.EntityId,
 	world *World,
 ) (uint8, error) {
@@ -262,7 +262,7 @@ func (*SpriteManager) GetLayer(
 	return sprite.layer, nil
 }
 
-func (*SpriteManager) SetLocalOffsetPos(
+func (*spriteManager) SetLocalOffsetPos(
 	e common.EntityId,
 	offset utils.Vec2,
 	world *World,
@@ -277,7 +277,7 @@ func (*SpriteManager) SetLocalOffsetPos(
 	return nil
 }
 
-func (*SpriteManager) SetLocalOffsetRotation(
+func (*spriteManager) SetLocalOffsetRotation(
 	e common.EntityId,
 	rotation float64,
 	world *World,
@@ -292,7 +292,7 @@ func (*SpriteManager) SetLocalOffsetRotation(
 	return nil
 }
 
-func (*SpriteManager) SetLocalOffsetScale(
+func (*spriteManager) SetLocalOffsetScale(
 	e common.EntityId,
 	scale float64,
 	world *World,
@@ -307,7 +307,7 @@ func (*SpriteManager) SetLocalOffsetScale(
 	return nil
 }
 
-func (*SpriteManager) SetLocalLayerYOffset(
+func (*spriteManager) SetLocalLayerYOffset(
 	e common.EntityId,
 	offset uint16,
 	world *World,
@@ -322,7 +322,7 @@ func (*SpriteManager) SetLocalLayerYOffset(
 	return nil
 }
 
-func (*SpriteManager) SetLayer(
+func (*spriteManager) SetLayer(
 	e common.EntityId,
 	layer uint8,
 	world *World,
@@ -337,7 +337,7 @@ func (*SpriteManager) SetLayer(
 	return nil
 }
 
-func (*SpriteManager) GetAllowRotation(
+func (*spriteManager) GetAllowRotation(
 	e common.EntityId,
 	world *World,
 ) (bool, error) {
@@ -349,7 +349,7 @@ func (*SpriteManager) GetAllowRotation(
 	return sprite.allowRotation, nil
 }
 
-func (*SpriteManager) SetAllowRotation(
+func (*spriteManager) SetAllowRotation(
 	e common.EntityId,
 	allow bool,
 	world *World,
@@ -364,7 +364,7 @@ func (*SpriteManager) SetAllowRotation(
 	return nil
 }
 
-func (*SpriteManager) GetCurrentColor(
+func (*spriteManager) GetCurrentColor(
 	e common.EntityId,
 	world *World,
 ) (color utils.RelativeColor, ok bool, err error) {
@@ -380,7 +380,7 @@ func (*SpriteManager) GetCurrentColor(
 	return sprite.flash.colors[sprite.flash.colorIdx], true, nil
 }
 
-func (*SpriteManager) TickFlash(
+func (*spriteManager) TickFlash(
 	e common.EntityId,
 	world *World,
 ) error {

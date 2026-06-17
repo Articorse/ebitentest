@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-type PhysicsColliderManager struct {
+type physicsColliderManager struct {
 	BaseColliderManager[*physicsCollider]
 }
 
@@ -23,7 +23,7 @@ func NewPhysicsColliderComponent(
 	}
 }
 
-func (*PhysicsColliderManager) GetColliderType(
+func (*physicsColliderManager) GetColliderType(
 	e common.EntityId,
 	world *World,
 ) (PhysicsColliderType, error) {
@@ -35,38 +35,38 @@ func (*PhysicsColliderManager) GetColliderType(
 	return collider.colliderType, nil
 }
 
-func (PhysicsColliderManager) EntityIds(w *World) []common.EntityId {
+func (physicsColliderManager) EntityIds(w *World) []common.EntityId {
 	return w.PhysicsColliders.GetEntities()
 }
 
-func (PhysicsColliderManager) HasCollider(e common.EntityId, w *World) bool {
+func (physicsColliderManager) HasCollider(e common.EntityId, w *World) bool {
 	return w.PhysicsColliders.HasComponent(e)
 }
 
-func (PhysicsColliderManager) GetWorldPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, w)
+func (physicsColliderManager) GetWorldPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
+	return physicsColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, w)
 }
 
-func (PhysicsColliderManager) GetShapes(e common.EntityId, w *World) ([]shapes.Shape, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetShapes(e, w)
+func (physicsColliderManager) GetShapes(e common.EntityId, w *World) ([]shapes.Shape, error) {
+	return physicsColliderManager{}.BaseColliderManager.GetShapes(e, w)
 }
 
-func (PhysicsColliderManager) GetLocalAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetLocalAABB(e, w)
+func (physicsColliderManager) GetLocalAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
+	return physicsColliderManager{}.BaseColliderManager.GetLocalAABB(e, w)
 }
 
-func (PhysicsColliderManager) GetLocalPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, w)
+func (physicsColliderManager) GetLocalPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error) {
+	return physicsColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, w)
 }
 
-func (PhysicsColliderManager) GetCenter(e common.EntityId, w *World) (utils.Vec2, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetCenter(e, w)
+func (physicsColliderManager) GetCenter(e common.EntityId, w *World) (utils.Vec2, error) {
+	return physicsColliderManager{}.BaseColliderManager.GetCenter(e, w)
 }
 
-func (PhysicsColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetLayer(e, world)
+func (physicsColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
+	return physicsColliderManager{}.BaseColliderManager.GetLayer(e, world)
 }
 
-func (PhysicsColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
-	return PhysicsColliderManager{}.BaseColliderManager.GetMask(e, world)
+func (physicsColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
+	return physicsColliderManager{}.BaseColliderManager.GetMask(e, world)
 }

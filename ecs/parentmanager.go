@@ -9,13 +9,13 @@ import (
 	"slices"
 )
 
-type ParentManager struct{}
+type parentManager struct{}
 
 func NewParentComponent() *parent {
 	return &parent{entity: -1}
 }
 
-func (*ParentManager) GetEntity(
+func (*parentManager) GetEntity(
 	e common.EntityId,
 	world *World,
 ) common.EntityId {
@@ -27,13 +27,13 @@ func (*ParentManager) GetEntity(
 	return parComp.entity
 }
 
-func (*ParentManager) Attach(
+func (*parentManager) Attach(
 	c common.EntityId,
 	p common.EntityId,
 	world *World,
 ) error {
-	tm := TransformManager{}
-	pm := ParentManager{}
+	tm := transformManager{}
+	pm := parentManager{}
 
 	parComp, err := world.Parents.getComponent(c)
 	if err == nil {
@@ -80,11 +80,11 @@ func (*ParentManager) Attach(
 }
 
 // If error handling is changed, check Attach()
-func (*ParentManager) Detach(
+func (*parentManager) Detach(
 	e common.EntityId,
 	world *World,
 ) error {
-	tm := TransformManager{}
+	tm := transformManager{}
 
 	parComp, err := world.Parents.getComponent(e)
 	if err != nil {
@@ -136,11 +136,11 @@ func (*ParentManager) Detach(
 	return nil
 }
 
-func (*ParentManager) RemoveParentFromAllEntities(
+func (*parentManager) RemoveParentFromAllEntities(
 	e common.EntityId,
 	world *World,
 ) error {
-	pm := ParentManager{}
+	pm := parentManager{}
 	parents := world.Parents.getData()
 
 	for pE, p := range parents {
@@ -156,7 +156,7 @@ func (*ParentManager) RemoveParentFromAllEntities(
 	return nil
 }
 
-func (*ParentManager) GetChildEntities(
+func (*parentManager) GetChildEntities(
 	p common.EntityId,
 	world *World,
 ) ([]common.EntityId, error) {
@@ -172,7 +172,7 @@ func (*ParentManager) GetChildEntities(
 	return children, nil
 }
 
-func (*ParentManager) GetOrderedHierarchies(
+func (*parentManager) GetOrderedHierarchies(
 	entities []common.EntityId,
 	world *World,
 ) ([][][]common.EntityId, error) {
@@ -180,7 +180,7 @@ func (*ParentManager) GetOrderedHierarchies(
 		return [][][]common.EntityId{}, fmt.Errorf("entities slice empty")
 	}
 
-	pm := ParentManager{}
+	pm := parentManager{}
 
 	checkedEntities := map[common.EntityId]struct{}{}
 	orderedHierarchies := [][][]common.EntityId{}
@@ -234,7 +234,7 @@ func getChildHierarchyRecursive(
 	entities []common.EntityId,
 	world *World,
 ) ([][]common.EntityId, error) {
-	pm := ParentManager{}
+	pm := parentManager{}
 
 	if len(hierarchy) <= level {
 		hierarchy = append(hierarchy, []common.EntityId{})

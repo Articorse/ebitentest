@@ -8,8 +8,8 @@ import (
 )
 
 func Tick(world *ecs.World) error {
-	am := ecs.AnimationManager{}
-	sm := ecs.SpriteManager{}
+	am := world.AnimationManager
+	sm := world.SpriteManager
 
 	for _, e := range world.Animations.GetEntities() {
 		err := am.Tick(e, world)

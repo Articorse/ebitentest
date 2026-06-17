@@ -79,6 +79,24 @@ type World struct {
 	FacePositions     Storage[facePosition]
 	Equipments        Storage[equipment]
 	Equippers         Storage[equipper]
+
+	InputManager            inputManager
+	ParentManager           parentManager
+	TransformManager        transformManager
+	VelocityManager         velocityManager
+	SpriteManager           spriteManager
+	AnimationManager        animationManager
+	PhysicsColliderManager  physicsColliderManager
+	PlatformColliderManager platformColliderManager
+	HitboxColliderManager   hitboxColliderManager
+	HurtboxColliderManager  hurtboxColliderManager
+	SpawnerManager          spawnerManager
+	TimerManager            timerManager
+	HitpointsManager        hitpointsManager
+	ContactDamageManager    contactDamageManager
+	AbilitiesManager        abilitiesManager
+	FacePositionManager     facePositionManager
+	EquipManager            equipManager
 }
 
 func NewWorld() *World {
@@ -111,6 +129,24 @@ func NewWorld() *World {
 		FacePositions:     Storage[facePosition]{order: []common.EntityId{}, data: make(map[common.EntityId]*facePosition)},
 		Equipments:        Storage[equipment]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipment)},
 		Equippers:         Storage[equipper]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipper)},
+
+		InputManager:            inputManager{},
+		ParentManager:           parentManager{},
+		TransformManager:        transformManager{},
+		VelocityManager:         velocityManager{},
+		SpriteManager:           spriteManager{},
+		AnimationManager:        animationManager{},
+		PhysicsColliderManager:  physicsColliderManager{},
+		PlatformColliderManager: platformColliderManager{},
+		HitboxColliderManager:   hitboxColliderManager{},
+		HurtboxColliderManager:  hurtboxColliderManager{},
+		SpawnerManager:          spawnerManager{},
+		TimerManager:            timerManager{},
+		HitpointsManager:        hitpointsManager{},
+		ContactDamageManager:    contactDamageManager{},
+		AbilitiesManager:        abilitiesManager{},
+		FacePositionManager:     facePositionManager{},
+		EquipManager:            equipManager{},
 	}
 }
 
@@ -170,7 +206,7 @@ func (x *World) RemoveEntity(e common.EntityId) error {
 	x.Equipments.deleteEntity(e)
 	x.Equippers.deleteEntity(e)
 
-	pm := ParentManager{}
+	pm := parentManager{}
 	err := pm.RemoveParentFromAllEntities(e, x)
 	if err != nil {
 		return fmt.Errorf("error removing entity %d from parent component of all entities: %v", e, err)

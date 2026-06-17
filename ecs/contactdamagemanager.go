@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-type ContactDamageManager struct{}
+type contactDamageManager struct{}
 
 func NewContactDamageComponent(
 	source common.EntityId,
@@ -21,7 +21,7 @@ func NewContactDamageComponent(
 	}
 }
 
-func (*ContactDamageManager) GetSource(
+func (*contactDamageManager) GetSource(
 	e common.EntityId,
 	world *World,
 ) (common.EntityId, error) {
@@ -33,7 +33,7 @@ func (*ContactDamageManager) GetSource(
 	return cdComp.source, nil
 }
 
-func (*ContactDamageManager) GetDamageTiers(
+func (*contactDamageManager) GetDamageTiers(
 	e common.EntityId,
 	world *World,
 ) ([]int, error) {
@@ -45,7 +45,7 @@ func (*ContactDamageManager) GetDamageTiers(
 	return cdComp.damageTiers, nil
 }
 
-func (*ContactDamageManager) GetKnockback(
+func (*contactDamageManager) GetKnockback(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
@@ -57,7 +57,7 @@ func (*ContactDamageManager) GetKnockback(
 	return cdComp.knockback, nil
 }
 
-func (*ContactDamageManager) GetDieOnContact(
+func (*contactDamageManager) GetDieOnContact(
 	e common.EntityId,
 	world *World,
 ) (bool, error) {

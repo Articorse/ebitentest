@@ -19,9 +19,9 @@ func DrawFrame(
 	shg map[common.CellKey][]common.EntityId,
 	world *ecs.World,
 ) error {
-	sm := ecs.SpriteManager{}
-	pm := ecs.ParentManager{}
-	tm := ecs.TransformManager{}
+	sm := world.SpriteManager
+	pm := world.ParentManager
+	tm := world.TransformManager
 
 	batches := make(map[uint8][][]common.EntityId)
 	visitedSprites := make(map[common.EntityId]struct{})
@@ -231,8 +231,8 @@ func getNeighborsRecursive(
 	visitedEntities map[common.EntityId]struct{},
 	world *ecs.World,
 ) (neighbors []common.EntityId, _visited map[common.EntityId]struct{}, err error) {
-	tm := ecs.TransformManager{}
-	sm := ecs.SpriteManager{}
+	tm := world.TransformManager
+	sm := world.SpriteManager
 
 	visitedEntities[eA] = struct{}{}
 

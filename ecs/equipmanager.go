@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-type EquipManager struct{}
+type equipManager struct{}
 
 func NewEquipmentComponent(slot EquipableSlotEnum, abilities [data.MaxEquipmentAbilitySlots]EntityAbility) *equipment {
 	abis := [data.MaxEquipmentAbilitySlots]EntityAbility{}
@@ -31,7 +31,7 @@ func NewEquipperComponent(equipment map[EquipSlotEnum]common.EntityId) *equipper
 	}
 }
 
-func (EquipManager) GetEquipmentEntities(
+func (equipManager) GetEquipmentEntities(
 	e common.EntityId,
 	world *World,
 ) ([]common.EntityId, error) {
@@ -48,7 +48,7 @@ func (EquipManager) GetEquipmentEntities(
 	return equipmentEntities, nil
 }
 
-func (EquipManager) GetEquipmentInSlot(
+func (equipManager) GetEquipmentInSlot(
 	e common.EntityId,
 	slot EquipSlotEnum,
 	world *World,
@@ -66,7 +66,7 @@ func (EquipManager) GetEquipmentInSlot(
 	return equipId, true, nil
 }
 
-func (EquipManager) ActivateAbility(
+func (equipManager) ActivateAbility(
 	e common.EntityId,
 	slot EquipSlotEnum,
 	targets []common.EntityId,
@@ -77,7 +77,7 @@ func (EquipManager) ActivateAbility(
 		return false, fmt.Errorf("ability index %d is out of bounds", abiIdx)
 	}
 
-	em := EquipManager{}
+	em := equipManager{}
 
 	eqE, hasEq, err := em.GetEquipmentInSlot(e, slot, world)
 	if err != nil {
@@ -105,7 +105,7 @@ func (EquipManager) ActivateAbility(
 	return true, nil
 }
 
-func (EquipManager) TickAbilities(e common.EntityId, world *World) error {
+func (equipManager) TickAbilities(e common.EntityId, world *World) error {
 	equipmentComp, err := world.Equipments.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get equipment component of entity %d: %v", e, err)

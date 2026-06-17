@@ -7,13 +7,13 @@ import (
 	"math"
 )
 
-type TransformManager struct{}
+type transformManager struct{}
 
 func NewTransformComponent(pos utils.Vec2, scale float64, rotation float64) *transform {
 	return &transform{pos: pos, scale: scale, rotation: rotation}
 }
 
-func (*TransformManager) GetLocalPos(
+func (*transformManager) GetLocalPos(
 	e common.EntityId,
 	world *World,
 ) (utils.Vec2, error) {
@@ -25,12 +25,12 @@ func (*TransformManager) GetLocalPos(
 	return traComp.pos, nil
 }
 
-func (*TransformManager) GetWorldPos(
+func (*transformManager) GetWorldPos(
 	e common.EntityId,
 	world *World,
 ) (utils.Vec2, error) {
-	pm := ParentManager{}
-	tm := TransformManager{}
+	pm := parentManager{}
+	tm := transformManager{}
 
 	traComp, err := world.Transforms.getComponent(e)
 	if err != nil {
@@ -61,7 +61,7 @@ func (*TransformManager) GetWorldPos(
 	}, nil
 }
 
-func (*TransformManager) GetLocalRotation(
+func (*transformManager) GetLocalRotation(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
@@ -73,12 +73,12 @@ func (*TransformManager) GetLocalRotation(
 	return traComp.rotation, nil
 }
 
-func (*TransformManager) GetWorldRotation(
+func (*transformManager) GetWorldRotation(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
-	pm := ParentManager{}
-	tm := TransformManager{}
+	pm := parentManager{}
+	tm := transformManager{}
 
 	traComp, err := world.Transforms.getComponent(e)
 	if err != nil {
@@ -98,7 +98,7 @@ func (*TransformManager) GetWorldRotation(
 	return pWorldRot + traComp.rotation, nil
 }
 
-func (*TransformManager) GetLocalScale(
+func (*transformManager) GetLocalScale(
 	e common.EntityId,
 	world *World,
 ) float64 {
@@ -110,12 +110,12 @@ func (*TransformManager) GetLocalScale(
 	return traComp.scale
 }
 
-func (*TransformManager) GetWorldScale(
+func (*transformManager) GetWorldScale(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
-	pm := ParentManager{}
-	tm := TransformManager{}
+	pm := parentManager{}
+	tm := transformManager{}
 
 	traComp, err := world.Transforms.getComponent(e)
 	if err != nil {
@@ -135,7 +135,7 @@ func (*TransformManager) GetWorldScale(
 	return pWorldSca * traComp.scale, nil
 }
 
-func (*TransformManager) SetLocalPos(
+func (*transformManager) SetLocalPos(
 	e common.EntityId,
 	pos utils.Vec2,
 	world *World,
@@ -149,7 +149,7 @@ func (*TransformManager) SetLocalPos(
 	return nil
 }
 
-func (*TransformManager) AddLocalPos(
+func (*transformManager) AddLocalPos(
 	e common.EntityId,
 	pos utils.Vec2,
 	world *World,
@@ -163,13 +163,13 @@ func (*TransformManager) AddLocalPos(
 	return nil
 }
 
-func (*TransformManager) SetWorldPos(
+func (*transformManager) SetWorldPos(
 	e common.EntityId,
 	pos utils.Vec2,
 	world *World,
 ) error {
-	pm := ParentManager{}
-	tm := TransformManager{}
+	pm := parentManager{}
+	tm := transformManager{}
 
 	traComp, err := world.Transforms.getComponent(e)
 	if err != nil {
@@ -203,7 +203,7 @@ func (*TransformManager) SetWorldPos(
 	return nil
 }
 
-func (*TransformManager) SetLocalRotation(
+func (*transformManager) SetLocalRotation(
 	e common.EntityId,
 	rot float64,
 	world *World,
@@ -217,7 +217,7 @@ func (*TransformManager) SetLocalRotation(
 	return nil
 }
 
-func (*TransformManager) AddLocalRotation(
+func (*transformManager) AddLocalRotation(
 	e common.EntityId,
 	rot float64,
 	world *World,
@@ -231,13 +231,13 @@ func (*TransformManager) AddLocalRotation(
 	return nil
 }
 
-func (*TransformManager) SetWorldRotation(
+func (*transformManager) SetWorldRotation(
 	e common.EntityId,
 	rot float64,
 	world *World,
 ) error {
-	pm := ParentManager{}
-	tm := TransformManager{}
+	pm := parentManager{}
+	tm := transformManager{}
 
 	traComp, err := world.Transforms.getComponent(e)
 	if err != nil {
@@ -260,7 +260,7 @@ func (*TransformManager) SetWorldRotation(
 	return nil
 }
 
-func (*TransformManager) SetLocalScale(
+func (*transformManager) SetLocalScale(
 	e common.EntityId,
 	scale float64,
 	world *World,
@@ -274,13 +274,13 @@ func (*TransformManager) SetLocalScale(
 	return nil
 }
 
-func (*TransformManager) SetWorldScale(
+func (*transformManager) SetWorldScale(
 	e common.EntityId,
 	scale float64,
 	world *World,
 ) error {
-	pm := ParentManager{}
-	tm := TransformManager{}
+	pm := parentManager{}
+	tm := transformManager{}
 
 	traComp, err := world.Transforms.getComponent(e)
 	if err != nil {

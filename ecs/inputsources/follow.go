@@ -12,7 +12,7 @@ func NewFollowInputSource(followEntity common.EntityId) ecs.InputSourceFunc {
 		tick uint64,
 		world *ecs.World,
 	) ecs.InputState {
-		tm := ecs.TransformManager{}
+		tm := world.TransformManager
 		is := ecs.InputState{}
 
 		selfWorldPos, err := tm.GetWorldPos(entityId, world)

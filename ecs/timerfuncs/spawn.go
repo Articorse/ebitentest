@@ -7,8 +7,7 @@ import (
 )
 
 func Spawn(self common.EntityId, world *ecs.World) error {
-	sm := ecs.SpawnerManager{}
-	_, err := sm.Spawn(self, world)
+	_, err := world.SpawnerManager.Spawn(self, world)
 	if err != nil {
 		return fmt.Errorf("error during enemy spawn: %v", err)
 	}

@@ -11,9 +11,9 @@ func ResolvePhysicsCollisions(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	world *ecs.World,
 ) (collisionsResolved uint64, err error) {
-	tm := ecs.TransformManager{}
-	vm := ecs.VelocityManager{}
-	cm := ecs.PhysicsColliderManager{}
+	tm := world.TransformManager
+	vm := world.VelocityManager
+	cm := world.PhysicsColliderManager
 
 	for eA, cols := range collisions {
 		for eB, c := range cols {

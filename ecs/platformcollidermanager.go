@@ -6,7 +6,7 @@ import (
 	"ebittest/utils"
 )
 
-type PlatformColliderManager struct {
+type platformColliderManager struct {
 	BaseColliderManager[*platformCollider]
 }
 
@@ -18,38 +18,38 @@ func NewPlatformColliderComponent(
 	return &platformCollider{baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask)}
 }
 
-func (PlatformColliderManager) EntityIds(world *World) []common.EntityId {
+func (platformColliderManager) EntityIds(world *World) []common.EntityId {
 	return world.PlatformColliders.GetEntities()
 }
 
-func (PlatformColliderManager) HasCollider(e common.EntityId, world *World) bool {
+func (platformColliderManager) HasCollider(e common.EntityId, world *World) bool {
 	return world.PlatformColliders.HasComponent(e)
 }
 
-func (PlatformColliderManager) GetWorldPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return PlatformColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, world)
+func (platformColliderManager) GetWorldPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
+	return platformColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, world)
 }
 
-func (PlatformColliderManager) GetShapes(e common.EntityId, world *World) ([]shapes.Shape, error) {
-	return PlatformColliderManager{}.BaseColliderManager.GetShapes(e, world)
+func (platformColliderManager) GetShapes(e common.EntityId, world *World) ([]shapes.Shape, error) {
+	return platformColliderManager{}.BaseColliderManager.GetShapes(e, world)
 }
 
-func (PlatformColliderManager) GetLocalAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return PlatformColliderManager{}.BaseColliderManager.GetLocalAABB(e, world)
+func (platformColliderManager) GetLocalAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
+	return platformColliderManager{}.BaseColliderManager.GetLocalAABB(e, world)
 }
 
-func (PlatformColliderManager) GetLocalPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return PlatformColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, world)
+func (platformColliderManager) GetLocalPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
+	return platformColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, world)
 }
 
-func (PlatformColliderManager) GetCenter(e common.EntityId, world *World) (utils.Vec2, error) {
-	return PlatformColliderManager{}.BaseColliderManager.GetCenter(e, world)
+func (platformColliderManager) GetCenter(e common.EntityId, world *World) (utils.Vec2, error) {
+	return platformColliderManager{}.BaseColliderManager.GetCenter(e, world)
 }
 
-func (PlatformColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
-	return PlatformColliderManager{}.BaseColliderManager.GetLayer(e, world)
+func (platformColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
+	return platformColliderManager{}.BaseColliderManager.GetLayer(e, world)
 }
 
-func (PlatformColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
-	return PlatformColliderManager{}.BaseColliderManager.GetMask(e, world)
+func (platformColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
+	return platformColliderManager{}.BaseColliderManager.GetMask(e, world)
 }

@@ -17,7 +17,7 @@ func HumanInputSource(
 ) ecs.InputState {
 	var err error
 
-	im := ecs.InputManager{}
+	im := world.InputManager
 	is := ecs.InputState{}
 
 	is.Analog1Y, err = im.GetInput(e, ecs.Input_Analog1Y, world)
@@ -70,7 +70,7 @@ func HumanInputSource(
 		log.Printf("Error getting ability 2 input for entity %d: %v\n", e, err)
 	}
 
-	tm := ecs.TransformManager{}
+	tm := world.TransformManager
 
 	facingInput, err := im.GetFacingInput(e, world)
 	if err != nil {

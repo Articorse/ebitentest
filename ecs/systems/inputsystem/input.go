@@ -41,8 +41,8 @@ func HandleInputs(
 ) error {
 	for e, input := range allInputs {
 		if world.Transforms.HasComponent(e) {
-			tm := ecs.TransformManager{}
-			fpm := ecs.FacePositionManager{}
+			tm := world.TransformManager
+			fpm := world.FacePositionManager
 
 			eWorldPos, err := tm.GetWorldPos(e, world)
 			if err != nil {
@@ -77,7 +77,7 @@ func HandleInputs(
 			}
 
 			if world.Equippers.HasComponent(e) {
-				eqm := ecs.EquipManager{}
+				eqm := world.EquipManager
 
 				eqEntities, err := eqm.GetEquipmentEntities(e, world)
 				if err != nil {
@@ -116,7 +116,7 @@ func HandleInputs(
 		}
 
 		if world.Velocities.HasComponent(e) {
-			vm := ecs.VelocityManager{}
+			vm := world.VelocityManager
 
 			v := utils.Vec2{X: 0, Y: 0}
 
@@ -152,7 +152,7 @@ func HandleInputs(
 		}
 
 		if world.Equippers.HasComponent(e) {
-			em := ecs.EquipManager{}
+			em := world.EquipManager
 			for _, t := range equipTriggers {
 				if math.Abs(t.value) <= 0 {
 					continue
@@ -169,7 +169,7 @@ func HandleInputs(
 		}
 
 		if world.Abilities.HasComponent(e) {
-			am := ecs.AbilitiesManager{}
+			am := world.AbilitiesManager
 			for _, t := range selfTriggers {
 				if math.Abs(t.value) <= 0 {
 					continue

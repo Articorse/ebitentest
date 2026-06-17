@@ -12,10 +12,10 @@ func Tick(
 	shg map[common.CellKey][]common.EntityId,
 	world *ecs.World,
 ) error {
-	tm := ecs.TransformManager{}
-	pcm := ecs.PlatformColliderManager{}
-	pm := ecs.ParentManager{}
-	phcm := ecs.PhysicsColliderManager{}
+	tm := world.TransformManager
+	pcm := world.PlatformColliderManager
+	pm := world.ParentManager
+	phcm := world.PhysicsColliderManager
 
 	for _, eA := range world.PlatformColliders.GetEntities() {
 		aAABB, err := pcm.GetWorldAABB(eA, world)

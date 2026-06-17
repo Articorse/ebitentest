@@ -7,7 +7,7 @@ import (
 	"math"
 )
 
-type FacePositionManager struct{}
+type facePositionManager struct{}
 
 func NewFacePositionComponent(pos utils.Vec2, enabled bool) *facePosition {
 	return &facePosition{
@@ -16,7 +16,7 @@ func NewFacePositionComponent(pos utils.Vec2, enabled bool) *facePosition {
 	}
 }
 
-func (*FacePositionManager) GetEnabled(e common.EntityId, world *World) (bool, error) {
+func (*facePositionManager) GetEnabled(e common.EntityId, world *World) (bool, error) {
 	fpComp, err := world.FacePositions.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get face position component of entity %d: %v", e, err)
@@ -25,7 +25,7 @@ func (*FacePositionManager) GetEnabled(e common.EntityId, world *World) (bool, e
 	return fpComp.enabled, nil
 }
 
-func (*FacePositionManager) Enable(e common.EntityId, world *World) error {
+func (*facePositionManager) Enable(e common.EntityId, world *World) error {
 	fpComp, err := world.FacePositions.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get face position component of entity %d: %v", e, err)
@@ -36,7 +36,7 @@ func (*FacePositionManager) Enable(e common.EntityId, world *World) error {
 	return nil
 }
 
-func (*FacePositionManager) Disable(e common.EntityId, world *World) error {
+func (*facePositionManager) Disable(e common.EntityId, world *World) error {
 	fpComp, err := world.FacePositions.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get face position component of entity %d: %v", e, err)
@@ -47,7 +47,7 @@ func (*FacePositionManager) Disable(e common.EntityId, world *World) error {
 	return nil
 }
 
-func (*FacePositionManager) GetLocalPos(e common.EntityId, world *World) (utils.Vec2, error) {
+func (*facePositionManager) GetLocalPos(e common.EntityId, world *World) (utils.Vec2, error) {
 	fpComp, err := world.FacePositions.getComponent(e)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("could not get face position component of entity %d: %v", e, err)
@@ -56,9 +56,9 @@ func (*FacePositionManager) GetLocalPos(e common.EntityId, world *World) (utils.
 	return fpComp.pos, nil
 }
 
-func (*FacePositionManager) GetWorldPos(e common.EntityId, world *World) (utils.Vec2, error) {
-	tm := TransformManager{}
-	pm := ParentManager{}
+func (*facePositionManager) GetWorldPos(e common.EntityId, world *World) (utils.Vec2, error) {
+	tm := transformManager{}
+	pm := parentManager{}
 
 	fpComp, err := world.FacePositions.getComponent(e)
 	if err != nil {
@@ -89,7 +89,7 @@ func (*FacePositionManager) GetWorldPos(e common.EntityId, world *World) (utils.
 	}, nil
 }
 
-func (*FacePositionManager) SetLocalPos(e common.EntityId, pos utils.Vec2, world *World) error {
+func (*facePositionManager) SetLocalPos(e common.EntityId, pos utils.Vec2, world *World) error {
 	fpComp, err := world.FacePositions.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get face position component of entity %d: %v", e, err)
@@ -100,13 +100,13 @@ func (*FacePositionManager) SetLocalPos(e common.EntityId, pos utils.Vec2, world
 	return nil
 }
 
-func (*FacePositionManager) SetWorldPos(
+func (*facePositionManager) SetWorldPos(
 	e common.EntityId,
 	pos utils.Vec2,
 	world *World,
 ) error {
-	pm := ParentManager{}
-	tm := TransformManager{}
+	pm := parentManager{}
+	tm := transformManager{}
 
 	fpComp, err := world.FacePositions.getComponent(e)
 	if err != nil {

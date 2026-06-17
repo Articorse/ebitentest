@@ -65,7 +65,7 @@ func TestGetOrderedHierarchies(t *testing.T) {
 	world.AddComponent(24, ecs.NewTransformComponent(utils.Vec2{X: 0, Y: 0}, 1, 0))
 	world.AddComponent(25, ecs.NewTransformComponent(utils.Vec2{X: 0, Y: 0}, 1, 0))
 
-	pm := ecs.ParentManager{}
+	pm := world.ParentManager
 
 	pm.Attach(14, 12, world)
 	pm.Attach(13, 9, world)

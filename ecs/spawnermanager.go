@@ -8,7 +8,7 @@ import (
 	"math"
 )
 
-type SpawnerManager struct{}
+type spawnerManager struct{}
 
 func NewSpawnerComponent(
 	offset utils.Vec2,
@@ -32,12 +32,12 @@ func NewSpawnerComponent(
 	return &spawner{offset: offset, spawnerType: sType, shape: shape, components: components}, nil
 }
 
-func (*SpawnerManager) Spawn(
+func (*spawnerManager) Spawn(
 	spawnerEntity common.EntityId,
 	world *World,
 ) (common.EntityId, error) {
-	sm := SpawnerManager{}
-	tm := TransformManager{}
+	sm := spawnerManager{}
+	tm := transformManager{}
 
 	comps, err := sm.GetComponents(spawnerEntity, world)
 	if err != nil {
@@ -103,7 +103,7 @@ func (*SpawnerManager) Spawn(
 	return newEntity, nil
 }
 
-func (*SpawnerManager) GetOffset(
+func (*spawnerManager) GetOffset(
 	e common.EntityId,
 	world *World,
 ) (utils.Vec2, error) {
@@ -115,7 +115,7 @@ func (*SpawnerManager) GetOffset(
 	return spawnerComp.offset, nil
 }
 
-func (*SpawnerManager) GetSpawnerType(
+func (*spawnerManager) GetSpawnerType(
 	e common.EntityId,
 	world *World,
 ) (SpawnerType, error) {
@@ -127,7 +127,7 @@ func (*SpawnerManager) GetSpawnerType(
 	return spawnerComp.spawnerType, nil
 }
 
-func (*SpawnerManager) GetShape(
+func (*spawnerManager) GetShape(
 	e common.EntityId,
 	world *World,
 ) (shapes.Shape, error) {
@@ -139,7 +139,7 @@ func (*SpawnerManager) GetShape(
 	return spawnerComp.shape, nil
 }
 
-func (*SpawnerManager) GetComponents(
+func (*spawnerManager) GetComponents(
 	e common.EntityId,
 	world *World,
 ) ([]component, error) {

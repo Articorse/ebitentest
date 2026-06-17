@@ -7,7 +7,7 @@ import (
 )
 
 func Tick(world *ecs.World) error {
-	tm := ecs.TimerManager{}
+	tm := world.TimerManager
 	for _, e := range slices.Clone(world.Timers.GetEntities()) {
 		_, err := tm.TickDown(e, world)
 		if err != nil {

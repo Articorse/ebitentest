@@ -8,7 +8,7 @@ import (
 	"math"
 )
 
-type VelocityManager struct{}
+type velocityManager struct{}
 
 func NewDefaultVelocityComponent() *velocity {
 	return &velocity{drag: data.DefaultDrag, acceleration: data.DefaultAcceleration}
@@ -22,7 +22,7 @@ func NewVelocityComponentWithParams(
 	return &velocity{vector: vector, acceleration: acceleration, drag: drag}
 }
 
-func (*VelocityManager) GetLocalVector(
+func (*velocityManager) GetLocalVector(
 	e common.EntityId,
 	world *World,
 ) (utils.Vec2, error) {
@@ -34,13 +34,13 @@ func (*VelocityManager) GetLocalVector(
 	return velComp.vector, nil
 }
 
-func (*VelocityManager) GetWorldVector(
+func (*velocityManager) GetWorldVector(
 	e common.EntityId,
 	world *World,
 ) (utils.Vec2, error) {
-	pm := ParentManager{}
-	tm := TransformManager{}
-	vm := VelocityManager{}
+	pm := parentManager{}
+	tm := transformManager{}
+	vm := velocityManager{}
 
 	velComp, err := world.Velocities.getComponent(e)
 	if err != nil {
@@ -72,7 +72,7 @@ func (*VelocityManager) GetWorldVector(
 	}, nil
 }
 
-func (*VelocityManager) GetAcceleration(
+func (*velocityManager) GetAcceleration(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
@@ -84,7 +84,7 @@ func (*VelocityManager) GetAcceleration(
 	return velComp.acceleration, nil
 }
 
-func (*VelocityManager) GetDrag(
+func (*velocityManager) GetDrag(
 	e common.EntityId,
 	world *World,
 ) (float64, error) {
@@ -96,7 +96,7 @@ func (*VelocityManager) GetDrag(
 	return velComp.drag, nil
 }
 
-func (*VelocityManager) AddForce(
+func (*velocityManager) AddForce(
 	e common.EntityId,
 	force utils.Vec2,
 	world *World,
@@ -110,7 +110,7 @@ func (*VelocityManager) AddForce(
 	return nil
 }
 
-func (*VelocityManager) SetLocalVector(
+func (*velocityManager) SetLocalVector(
 	e common.EntityId,
 	vector utils.Vec2,
 	world *World,
@@ -124,14 +124,14 @@ func (*VelocityManager) SetLocalVector(
 	return nil
 }
 
-func (*VelocityManager) SetWorldVector(
+func (*velocityManager) SetWorldVector(
 	e common.EntityId,
 	vector utils.Vec2,
 	world *World,
 ) error {
-	pm := ParentManager{}
-	tm := TransformManager{}
-	vm := VelocityManager{}
+	pm := parentManager{}
+	tm := transformManager{}
+	vm := velocityManager{}
 
 	velComp, err := world.Velocities.getComponent(e)
 	if err != nil {
@@ -165,7 +165,7 @@ func (*VelocityManager) SetWorldVector(
 	return nil
 }
 
-func (*VelocityManager) SetDrag(
+func (*velocityManager) SetDrag(
 	e common.EntityId,
 	drag float64,
 	world *World,
@@ -179,7 +179,7 @@ func (*VelocityManager) SetDrag(
 	return nil
 }
 
-func (*VelocityManager) SetAcceleration(
+func (*velocityManager) SetAcceleration(
 	e common.EntityId,
 	acceleration float64,
 	world *World,
