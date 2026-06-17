@@ -50,6 +50,7 @@ func (x *Storage[T]) addComponent(e common.EntityId, c T) {
 }
 
 // TODO: Move manager instances here instead of instantiating every time
+// Do not instantiate directly, use NewWorld()
 type World struct {
 	nextEntity   common.EntityId
 	InputLog     map[uint64]map[common.EntityId]InputState

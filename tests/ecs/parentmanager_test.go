@@ -9,7 +9,7 @@ import (
 
 func TestGetOrderedHierarchies(t *testing.T) {
 	entities := []common.EntityId{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
-	world := &ecs.World{}
+	world := ecs.NewWorld()
 
 	world.AddComponent(0, ecs.NewParentComponent())
 	world.AddComponent(1, ecs.NewParentComponent())
