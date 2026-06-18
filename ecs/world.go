@@ -42,6 +42,7 @@ type World struct {
 	Equipments        Storage[equipment]
 	Equippers         Storage[equipper]
 	Deathrattles      Storage[deathrattle]
+	FloatingTexts     Storage[floatingText]
 
 	InputManager            inputManager
 	ParentManager           parentManager
@@ -61,6 +62,7 @@ type World struct {
 	FacePositionManager     facePositionManager
 	EquipManager            equipManager
 	DeathrattleManager      deathrattleManager
+	FloatingTextManager     floatingTextManager
 }
 
 func NewWorld() *World {
@@ -94,6 +96,7 @@ func NewWorld() *World {
 		Equipments:        Storage[equipment]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipment)},
 		Equippers:         Storage[equipper]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipper)},
 		Deathrattles:      Storage[deathrattle]{order: []common.EntityId{}, data: make(map[common.EntityId]*deathrattle)},
+		FloatingTexts:     Storage[floatingText]{order: []common.EntityId{}, data: make(map[common.EntityId]*floatingText)},
 
 		InputManager:            inputManager{},
 		ParentManager:           parentManager{},
@@ -113,6 +116,7 @@ func NewWorld() *World {
 		FacePositionManager:     facePositionManager{},
 		EquipManager:            equipManager{},
 		DeathrattleManager:      deathrattleManager{},
+		FloatingTextManager:     floatingTextManager{},
 	}
 }
 
@@ -186,6 +190,7 @@ func (x *World) RemoveScheduledEntities() error {
 		x.Equipments.deleteEntity(e)
 		x.Equippers.deleteEntity(e)
 		x.Deathrattles.deleteEntity(e)
+		x.FloatingTexts.deleteEntity(e)
 
 		pm := parentManager{}
 		err := pm.RemoveParentFromAllEntities(e, x)
@@ -280,6 +285,8 @@ func (x *World) AddComponent(e common.EntityId, comp component) {
 		x.Equippers.addComponent(e, c.Copy())
 	case *deathrattle:
 		x.Deathrattles.addComponent(e, c.Copy())
+	case *floatingText:
+		x.FloatingTexts.addComponent(e, c.Copy())
 	default:
 		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in World.AddComponent\n", comp, e)
 	}

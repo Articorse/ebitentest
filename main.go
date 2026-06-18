@@ -360,7 +360,7 @@ func (g *game) Update() error {
 func (g *game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
 
-	if err := drawsystem.DrawFrame(
+	if err := drawsystem.DrawSprites(
 		screen,
 		g.world.Camera,
 		g.world.TickState.CollisionGrid,
@@ -375,6 +375,10 @@ func (g *game) Draw(screen *ebiten.Image) {
 		if errors.As(err, &missingExpectedComponentError) {
 			g.world.ScheduleRemoveEntity(missingExpectedComponentError.Entity)
 		}
+	}
+
+	if err := drawsystem.DrawFloatingTexts(screen, g.world); err != nil {
+		log.Println("error while drawing floating texts: ", err)
 	}
 
 	g.DrawDebug(screen)
@@ -663,7 +667,7 @@ func main() {
 	if err != nil {
 		log.Fatal("error creating rocket timer component: ", err)
 	}
-	rocketDmgComp := ecs.NewContactDamageComponent(g.playerEntity, 0, true, false, 0)
+	rocketCDComp := ecs.NewContactDamageComponent(g.playerEntity, 20, true, false, 65)
 	rocketSprComp, err := ecs.NewSpriteComponent("assets/sprites/rocket_ss.png", 21, true)
 	if err != nil {
 		log.Fatal(err)
@@ -723,7 +727,7 @@ func main() {
 		utils.Vec2{X: 13, Y: 0},
 		ecs.SpawnerType_Point,
 		nil,
-		rocketTraComp, rocketSprComp, rocketVelComp, rocketDmgComp, rocketHurtboxComp, rocketAniComp, rocketTimerComp, rocketDeathComp,
+		rocketTraComp, rocketSprComp, rocketVelComp, rocketCDComp, rocketHurtboxComp, rocketAniComp, rocketTimerComp, rocketDeathComp,
 	)
 	if err != nil {
 		log.Fatal("error creating bazooka spawner component: ", err)
@@ -900,47 +904,47 @@ func main() {
 	g.replayEntity = tree
 
 	// Platform
-	// var inputLoop []ecs.InputState
-	// for range 50 {
-	// 	inputLoop = append(inputLoop, ecs.InputState{Analog1X: -1})
-	// }
-	// for range 50 {
-	// 	inputLoop = append(inputLoop, ecs.InputState{Analog1X: 1})
-	// }
-	// loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
-	// platInput := ecs.NewInputComponent(nil, loopSource, ecs.Facing_None)
-	//
-	// platParComp := ecs.NewParentComponent()
-	// platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
-	// platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, 0.3, data.DefaultDrag)
-	//
-	// platSprComp, err := ecs.NewSpriteComponent("assets/sprites/platform.png", 10, true)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	//
-	// platColShape, err := shapes.NewRectangleShape(28, 28, utils.Vec2{X: 0, Y: 0})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// platColComp := ecs.NewPlatformColliderComponent(
-	// 	ecs.Layer_Platform,
-	// 	ecs.Layer_Player|
-	// 		ecs.Layer_Enemy|
-	// 		ecs.Layer_EnemyProjectile|
-	// 		ecs.Layer_FriendlyProjectile|
-	// 		ecs.Layer_Terrain,
-	// 	[]shapes.Shape{platColShape},
-	// )
-	//
-	// _ = g.world.AddEntity(
-	// 	platInput,
-	// 	platParComp,
-	// 	platTraComp,
-	// 	platVelComp,
-	// 	platSprComp,
-	// 	platColComp,
-	// )
+	var inputLoop []ecs.InputState
+	for range 50 {
+		inputLoop = append(inputLoop, ecs.InputState{Analog1X: -1})
+	}
+	for range 50 {
+		inputLoop = append(inputLoop, ecs.InputState{Analog1X: 1})
+	}
+	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
+	platInput := ecs.NewInputComponent(nil, loopSource, ecs.Facing_None)
+
+	platParComp := ecs.NewParentComponent()
+	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
+	platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, 0.3, data.DefaultDrag)
+
+	platSprComp, err := ecs.NewSpriteComponent("assets/sprites/platform.png", 10, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	platColShape, err := shapes.NewRectangleShape(28, 28, utils.Vec2{X: 0, Y: 0})
+	if err != nil {
+		log.Fatal(err)
+	}
+	platColComp := ecs.NewPlatformColliderComponent(
+		ecs.Layer_Platform,
+		ecs.Layer_Player|
+			ecs.Layer_Enemy|
+			ecs.Layer_EnemyProjectile|
+			ecs.Layer_FriendlyProjectile|
+			ecs.Layer_Terrain,
+		[]shapes.Shape{platColShape},
+	)
+
+	_ = g.world.AddEntity(
+		platInput,
+		platParComp,
+		platTraComp,
+		platVelComp,
+		platSprComp,
+		platColComp,
+	)
 
 	// for _ = range 500 {
 	// 	g.AddRandomEntity()
