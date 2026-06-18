@@ -24,6 +24,11 @@ func DrawCollisions(
 	for eA, cols := range collisions {
 		tm := world.TransformManager
 
+		if !world.Transforms.HasComponent(eA) {
+			log.Printf("Entity %d in collisions does not have a transform component\n", eA)
+			continue
+		}
+
 		aWorldPos, err := tm.GetWorldPos(eA, world)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", eA, err)

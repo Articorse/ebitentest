@@ -83,13 +83,19 @@ func GetCollisions(
 						switch bS := bColShape.(type) {
 						case *shapes.RectangleShape:
 							collisionVector = getRectangleRectangleCollision(eA, eB, *aS, *bS, world)
-							collisionFound = true
+							if !collisionVector.IsZero() {
+								collisionFound = true
+							}
 						case *shapes.CircleShape:
 							collisionVector = getRectangleCircleCollision(eA, eB, *aS, *bS, world)
-							collisionFound = true
+							if !collisionVector.IsZero() {
+								collisionFound = true
+							}
 						case *shapes.PolygonShape:
 							collisionVector = getRectanglePolygonCollision(eA, eB, *aS, *bS, world)
-							collisionFound = true
+							if !collisionVector.IsZero() {
+								collisionFound = true
+							}
 						default:
 							log.Printf("unsupported collider shape type for collision detection: %T", bS)
 						}
@@ -98,13 +104,19 @@ func GetCollisions(
 						case *shapes.RectangleShape:
 							collisionVector = getRectangleCircleCollision(eB, eA, *bS, *aS, world)
 							collisionVector = collisionVector.Multiply(-1)
-							collisionFound = true
+							if !collisionVector.IsZero() {
+								collisionFound = true
+							}
 						case *shapes.CircleShape:
 							collisionVector = getCircleCircleCollision(eA, eB, *aS, *bS, world)
-							collisionFound = true
+							if !collisionVector.IsZero() {
+								collisionFound = true
+							}
 						case *shapes.PolygonShape:
 							collisionVector = getCirclePolygonCollision(eA, eB, *aS, *bS, world)
-							collisionFound = true
+							if !collisionVector.IsZero() {
+								collisionFound = true
+							}
 						default:
 							log.Printf("unsupported collider shape type for collision detection: %T", bS)
 						}
@@ -113,14 +125,20 @@ func GetCollisions(
 						case *shapes.RectangleShape:
 							collisionVector = getRectanglePolygonCollision(eB, eA, *bS, *aS, world)
 							collisionVector = collisionVector.Multiply(-1)
-							collisionFound = true
+							if !collisionVector.IsZero() {
+								collisionFound = true
+							}
 						case *shapes.CircleShape:
 							collisionVector = getCirclePolygonCollision(eB, eA, *bS, *aS, world)
 							collisionVector = collisionVector.Multiply(-1)
-							collisionFound = true
+							if !collisionVector.IsZero() {
+								collisionFound = true
+							}
 						case *shapes.PolygonShape:
 							collisionVector = getPolygonPolygonCollision(eA, eB, *aS, *bS, world)
-							collisionFound = true
+							if !collisionVector.IsZero() {
+								collisionFound = true
+							}
 						default:
 							log.Printf("unsupported collider shape type for collision detection: %T", bS)
 						}
@@ -221,7 +239,6 @@ func GetAABBCollisions(
 			}
 
 			if !aEnabled {
-				log.Printf("Collider for entity %d is disabled, skipping collision check\n", eA)
 				continue
 			}
 
@@ -232,7 +249,6 @@ func GetAABBCollisions(
 			}
 
 			if !bEnabled {
-				log.Printf("Collider for entity %d is disabled, skipping collision check\n", eB)
 				continue
 			}
 

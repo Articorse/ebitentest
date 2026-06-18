@@ -3,7 +3,10 @@ package damagesystem
 import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/ecs/timerfuncs"
 	"ebittest/utils"
+	"fmt"
+	"image/color"
 	"log"
 )
 
@@ -38,7 +41,7 @@ func DealContactDamage(
 	hpm := world.HitpointsManager
 
 	for dmgE, cols := range collisions {
-		deleteAfter := []common.EntityId{}
+		disableColliderAfter := []common.EntityId{}
 
 		for hitE, c := range cols {
 			isInvul, err := hpm.IsInvul(hitE, world)
@@ -93,7 +96,7 @@ func DealContactDamage(
 			// 	continue
 			// }
 
-			shapeIdx := c.BShapeIdx
+			shapeIdx := c.AShapeIdx
 
 			if len(damageTiers) <= shapeIdx {
 				log.Printf("Error: collider shape index %d out of range for damage tiers of entity %d\n", shapeIdx, dmgE)
@@ -105,6 +108,21 @@ func DealContactDamage(
 				log.Printf("Error applying damage to entity %d: %v\n", hitE, err)
 				continue
 			}
+
+			hitWorldPos, err := world.TransformManager.GetWorldPos(hitE, world)
+			if err != nil {
+				log.Printf("Error getting world position for entity %d: %v\n", hitE, err)
+				continue
+			}
+
+			ftTraComp := ecs.NewTransformComponent(hitWorldPos, 1, 0)
+			ftFtComp := ecs.NewFloatingTextComponent(fmt.Sprintf("%d", damageTiers[shapeIdx]), utils.Vec2{}, 12, color.RGBA{R: 255, G: 0, B: 255, A: 255})
+			ftVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 0, Y: -1}, 1, 1)
+			ftTimerComp, err := ecs.NewTimerComponent(1000, 1, timerfuncs.Selfdestruct)
+			if err != nil {
+				log.Fatal("error creating floating text timer component: ", err)
+			}
+			_ = world.AddEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp)
 
 			dieOnContact, err := cdm.GetDieOnContact(dmgE, world)
 			if err != nil {
@@ -123,7 +141,7 @@ func DealContactDamage(
 			}
 
 			if singleTick {
-				deleteAfter = append(deleteAfter, hitE)
+				disableColliderAfter = append(disableColliderAfter, hitE)
 			}
 
 			if dead {
@@ -132,8 +150,12 @@ func DealContactDamage(
 			}
 		}
 
-		for _, e := range deleteAfter {
-			world.HurtboxColliderManager.SetEnabled(e, false, world)
+		for _, e := range disableColliderAfter {
+			err := world.HurtboxColliderManager.SetEnabled(e, false, world)
+			if err != nil {
+				log.Printf("Error disabling hurtbox collider for entity %d: %v\n", e, err)
+				continue
+			}
 		}
 	}
 

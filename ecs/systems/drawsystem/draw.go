@@ -10,10 +10,11 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 // TODO: This could be optimized further by only ordering the drawing of sprites that overlap, possibly via AABBs?
-func DrawFrame(
+func DrawSprites(
 	screen *ebiten.Image,
 	camera utils.Vec2,
 	shg map[common.CellKey][]common.EntityId,
@@ -211,11 +212,58 @@ func DrawFrame(
 	return nil
 }
 
+func DrawFloatingTexts(screen *ebiten.Image, world *ecs.World) error {
+	tm := world.TransformManager
+	ftm := world.FloatingTextManager
+
+	for _, e := range world.FloatingTexts.GetEntities() {
+		worldPos, err := tm.GetWorldPos(e, world)
+		if err != nil {
+			return fmt.Errorf("error getting world position of floating text entity %d: %v", e, err)
+		}
+
+		offset, err := ftm.GetOffset(e, world)
+		if err != nil {
+			return fmt.Errorf("error getting offset of floating text entity %d: %v", e, err)
+		}
+
+		textValue, err := ftm.GetText(e, world)
+		if err != nil {
+			return fmt.Errorf("error getting text of floating text entity %d: %v", e, err)
+		}
+
+		color, err := ftm.GetColor(e, world)
+		if err != nil {
+			return fmt.Errorf("error getting color of floating text entity %d: %v", e, err)
+		}
+
+		face, err := ftm.GetFace(e, world)
+		if err != nil {
+			return fmt.Errorf("error getting font face of floating text entity %d: %v", e, err)
+		}
+
+		op := &text.DrawOptions{}
+		tX := worldPos.X + offset.X - world.Camera.X
+		tY := worldPos.Y + offset.Y - world.Camera.Y
+		w, h := text.Measure(textValue, &face, 0)
+		op.GeoM.Translate(tX-w/2, tY-h/2)
+		op.ColorScale.ScaleWithColor(color)
+
+		text.Draw(screen, textValue, &face, op)
+	}
+
+	return nil
+}
+
 func getNeighborBatch(
 	eA common.EntityId,
 	shg map[common.CellKey][]common.EntityId,
 	world *ecs.World,
 ) ([]common.EntityId, error) {
+	if !world.Sprites.HasComponent(eA) {
+		return nil, fmt.Errorf("entity %d does not have a sprite component", eA)
+	}
+
 	visitedEntities := make(map[common.EntityId]struct{})
 	neighbors, _, err := getNeighborsRecursive(eA, shg, visitedEntities, world)
 	if err != nil {
@@ -233,6 +281,10 @@ func getNeighborsRecursive(
 ) (neighbors []common.EntityId, _visited map[common.EntityId]struct{}, err error) {
 	tm := world.TransformManager
 	sm := world.SpriteManager
+
+	if !world.Sprites.HasComponent(eA) {
+		return nil, nil, fmt.Errorf("entity %d does not have a sprite component", eA)
+	}
 
 	visitedEntities[eA] = struct{}{}
 
@@ -252,6 +304,10 @@ func getNeighborsRecursive(
 	for dx := -1; dx <= 1; dx++ {
 		for dy := -1; dy <= 1; dy++ {
 			for _, eB := range shg[common.CellKey{X: startCellX + dx, Y: startCellY + dy}] {
+				if !world.Sprites.HasComponent(eB) {
+					return nil, nil, nil
+				}
+
 				if eA == eB {
 					continue
 				}
