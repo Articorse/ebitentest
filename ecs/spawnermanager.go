@@ -54,19 +54,19 @@ func (*spawnerManager) Spawn(
 
 	spawnerOffset, err := sm.GetOffset(spawnerEntity, world)
 	if err != nil {
-		_ = world.RemoveEntity(newEntity)
+		world.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error getting offset of spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	sType, err := sm.GetSpawnerType(spawnerEntity, world)
 	if err != nil {
-		_ = world.RemoveEntity(newEntity)
+		world.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error getting spawner type of spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	shape, err := sm.GetShape(spawnerEntity, world)
 	if err != nil {
-		_ = world.RemoveEntity(newEntity)
+		world.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error getting shape of spawner entity %d: %v", spawnerEntity, err)
 	}
 
@@ -90,13 +90,13 @@ func (*spawnerManager) Spawn(
 
 	err = tm.SetWorldPos(newEntity, worldPos.Add(finalOffset), world)
 	if err != nil {
-		_ = world.RemoveEntity(newEntity)
+		world.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error setting world position of new entity %d: %v", newEntity, err)
 	}
 
 	err = tm.SetWorldRotation(newEntity, worldRot, world)
 	if err != nil {
-		_ = world.RemoveEntity(newEntity)
+		world.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error setting world rotation of new entity %d: %v", newEntity, err)
 	}
 

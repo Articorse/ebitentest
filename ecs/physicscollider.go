@@ -29,6 +29,7 @@ func (x physicsCollider) Copy() physicsCollider {
 	return physicsCollider{
 		colliderType: x.colliderType,
 		baseCollider: baseCollider{
+			enabled:        x.enabled,
 			shapes:         colShapesCopy,
 			center:         x.center,
 			aabb:           x.aabb,

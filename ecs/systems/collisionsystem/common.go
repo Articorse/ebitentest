@@ -214,6 +214,28 @@ func GetAABBCollisions(
 				continue
 			}
 
+			aEnabled, err := aColManager.IsEnabled(eA, world)
+			if err != nil {
+				log.Printf("Error checking if collider is enabled for entity %d: %v\n", eA, err)
+				continue
+			}
+
+			if !aEnabled {
+				log.Printf("Collider for entity %d is disabled, skipping collision check\n", eA)
+				continue
+			}
+
+			bEnabled, err := bColManager.IsEnabled(eB, world)
+			if err != nil {
+				log.Printf("Error checking if collider is enabled for entity %d: %v\n", eB, err)
+				continue
+			}
+
+			if !bEnabled {
+				log.Printf("Collider for entity %d is disabled, skipping collision check\n", eB)
+				continue
+			}
+
 			aLayer, err := aColManager.GetLayer(eA, world)
 			if err != nil {
 				log.Printf("Error getting collider layer for entity %d: %v\n", eA, err)

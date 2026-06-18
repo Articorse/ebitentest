@@ -3,11 +3,12 @@ package abilitydefs
 import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 )
 
 func SpawnAbility(cooldown int) (ecs.AbilityEnum, ecs.AbilityDef) {
-	abiFunc := func(self common.EntityId, targets []common.EntityId, world *ecs.World) error {
+	abiFunc := func(self common.EntityId, targets []common.EntityId, targetPos utils.Vec2, world *ecs.World) error {
 		if world.Animations.HasComponent(self) {
 			am := world.AnimationManager
 

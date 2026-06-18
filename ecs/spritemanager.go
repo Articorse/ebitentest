@@ -15,13 +15,16 @@ type spriteManager struct{}
 
 func NewSpriteComponent(imageUri string, layer uint8, allowRotation bool) (*sprite, error) {
 	s := &sprite{offsetScale: 1, layer: layer, allowRotation: allowRotation}
-	spr, img, err := ebitenutil.NewImageFromFile(imageUri)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load sprite image: %w", err)
-	}
 
-	s.image = spr
-	s.layerYOffset = utils.GetFirstOpaquePixelY(img)
+	if len(imageUri) > 0 {
+		spr, img, err := ebitenutil.NewImageFromFile(imageUri)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load sprite image: %w", err)
+		}
+
+		s.image = spr
+		s.layerYOffset = utils.GetFirstOpaquePixelY(img)
+	}
 	return s, nil
 }
 

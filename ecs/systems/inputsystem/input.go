@@ -157,7 +157,7 @@ func HandleInputs(
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := em.ActivateAbility(e, t.slot, nil, t.abiIdx, world); err != nil {
+				if _, err := em.ActivateAbility(e, t.slot, nil, utils.Vec2{}, t.abiIdx, world); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}
@@ -174,7 +174,7 @@ func HandleInputs(
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := am.ActivateAbility(e, nil, t.abiIdx, world); err != nil {
+				if _, err := am.ActivateAbility(e, nil, utils.Vec2{}, t.abiIdx, world); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}

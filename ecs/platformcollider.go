@@ -18,6 +18,7 @@ func (x platformCollider) Copy() platformCollider {
 
 	return platformCollider{
 		baseCollider: baseCollider{
+			enabled:        x.enabled,
 			shapes:         colShapesCopy,
 			center:         x.center,
 			aabb:           x.aabb,

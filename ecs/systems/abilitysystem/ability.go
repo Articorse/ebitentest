@@ -23,5 +23,13 @@ func Tick(world *ecs.World) error {
 		}
 	}
 
+	drm := world.DeathrattleManager
+	for _, e := range slices.Clone(world.Deathrattles.GetEntities()) {
+		err := drm.TickAbilities(e, world)
+		if err != nil {
+			return fmt.Errorf("error ticking deathrattle ability of entity %d: %v", e, err)
+		}
+	}
+
 	return nil
 }

@@ -250,10 +250,7 @@ func (g *game) Update() error {
 		log.Println("animation system tick error: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
-			err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
@@ -267,10 +264,7 @@ func (g *game) Update() error {
 		log.Println("movement system error: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
-			err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
@@ -279,10 +273,7 @@ func (g *game) Update() error {
 		log.Println("error during populating spatial hash grid: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
-			err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
@@ -291,10 +282,7 @@ func (g *game) Update() error {
 		log.Println("error during spatial hash grid proximity checking: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
-			err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
@@ -303,10 +291,7 @@ func (g *game) Update() error {
 		log.Println("error during AABB collision checking: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
-			err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
@@ -315,10 +300,7 @@ func (g *game) Update() error {
 		log.Println("error during physics collision checking: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
-			err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
@@ -337,10 +319,7 @@ func (g *game) Update() error {
 		log.Println("error during AABB damage collision checking: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
-			err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
@@ -349,10 +328,7 @@ func (g *game) Update() error {
 		log.Println("error during damage collision checking: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
 		if errors.As(err, &invalidComponentsErr) {
-			err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
 
@@ -366,6 +342,10 @@ func (g *game) Update() error {
 	err = platformsystem.Tick(g.world.TickState.CollisionGrid, g.world)
 	if err != nil {
 		log.Println("platform system tick error: ", err)
+	}
+
+	if err := g.world.RemoveScheduledEntities(); err != nil {
+		log.Println("error while removing scheduled entities: ", err)
 	}
 
 	g.world.TickState.ProximateEntities = proximateEntities
@@ -389,17 +369,11 @@ func (g *game) Draw(screen *ebiten.Image) {
 		log.Println("error while drawing frame, removing offending entity: ", err)
 		var missingDependencyError *common.ErrorMissingComponentDependency
 		if errors.As(err, &missingDependencyError) {
-			err = g.world.RemoveEntity(missingDependencyError.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(missingDependencyError.Entity)
 		}
 		var missingExpectedComponentError *common.ErrorMissingExpectedComponent
 		if errors.As(err, &missingExpectedComponentError) {
-			err = g.world.RemoveEntity(missingExpectedComponentError.Entity)
-			if err != nil {
-				log.Println("error removing entity: ", err)
-			}
+			g.world.ScheduleRemoveEntity(missingExpectedComponentError.Entity)
 		}
 	}
 
@@ -428,10 +402,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			log.Println("error while drawing physics colliders: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
-				err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-				if err != nil {
-					log.Println("error removing entity: ", err)
-				}
+				g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 			}
 		}
 
@@ -439,10 +410,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			log.Println("error while drawing physics colliders: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
-				err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-				if err != nil {
-					log.Println("error removing entity: ", err)
-				}
+				g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 			}
 		}
 
@@ -458,10 +426,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			log.Println("error while drawing AABBs: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
-				err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-				if err != nil {
-					log.Println("error removing entity: ", err)
-				}
+				g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 			}
 		}
 
@@ -469,10 +434,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			log.Println("error while drawing AABBs: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
-				err = g.world.RemoveEntity(invalidComponentsErr.Entity)
-				if err != nil {
-					log.Println("error removing entity: ", err)
-				}
+				g.world.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 			}
 		}
 
@@ -559,7 +521,7 @@ func main() {
 			ecs.Layer_Platform,
 		pHitboxShape,
 	)
-	dodgeName, dodgeDef := abilitydefs.DodgeAbility()
+	dodgeName, dodgeDef := abilitydefs.DodgeAbility(1000, 200, 10)
 	pAbis := [16]ecs.EntityAbility{}
 	pAbis[0] = ecs.EntityAbility{
 		Name:   dodgeName,
@@ -579,99 +541,223 @@ func main() {
 		pAbiComp,
 	)
 
-	// Gun
-	gunParComp := ecs.NewParentComponent()
-	gunTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
-	gunVelComp := ecs.NewDefaultVelocityComponent()
-	gunSprComp, err := ecs.NewSpriteComponent("assets/sprites/gun.png", 20, true)
+	// // Gun
+	// gunParComp := ecs.NewParentComponent()
+	// gunTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
+	// gunVelComp := ecs.NewDefaultVelocityComponent()
+	// gunSprComp, err := ecs.NewSpriteComponent("assets/sprites/gun.png", 20, true)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// gunAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	// gunAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+	// 	{FrameIdx: 0, DurationMs: 1000},
+	// }
+	// gunAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
+	// 	{FrameIdx: 1, DurationMs: 100},
+	// }
+	// gunAniComp, err := ecs.NewAnimationComponent("assets/sprites/gun_ss.png", utils.Vec2{X: 32, Y: 32}, gunAniStateFrames)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// gunFPComp := ecs.NewFacePositionComponent(utils.Vec2{}, true)
+	//
+	// bulletTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
+	// bulletVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
+	// bulletTimerComp, err := ecs.NewTimerComponent(500, 1, timerfuncs.Selfdestruct)
+	// if err != nil {
+	// 	log.Fatal("error creating bullet timer component: ", err)
+	// }
+	// bulletDmgComp := ecs.NewContactDamageComponent(g.playerEntity, 10, true, true, 5)
+	// bulletSprComp, err := ecs.NewSpriteComponent("assets/sprites/bullet.png", 20, false)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// bulletAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	// bulletAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+	// 	{FrameIdx: 0, DurationMs: 50},
+	// 	{FrameIdx: 1, DurationMs: 50},
+	// 	{FrameIdx: 2, DurationMs: 50},
+	// 	{FrameIdx: 1, DurationMs: 50},
+	// }
+	// bulletAniComp, err := ecs.NewAnimationComponent("assets/sprites/bullet_ss.png", utils.Vec2{X: 32, Y: 32}, bulletAniStateFrames)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// bulletHurtboxShape, err := shapes.NewCircleShape(3, utils.Vec2{X: 0, Y: 0})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// bulletHurtboxComp := ecs.NewHurtboxColliderComponent(
+	// 	ecs.Layer_FriendlyProjectile,
+	// 	ecs.Layer_Enemy|
+	// 		ecs.Layer_Terrain,
+	// 	bulletHurtboxShape,
+	// )
+	//
+	// gunSpaComp, err := ecs.NewSpawnerComponent(
+	// 	utils.Vec2{X: 13, Y: 0},
+	// 	ecs.SpawnerType_Point,
+	// 	nil,
+	// 	bulletTraComp, bulletSprComp, bulletVelComp, bulletDmgComp, bulletHurtboxComp, bulletAniComp, bulletTimerComp,
+	// )
+	// if err != nil {
+	// 	log.Fatal("error creating gun spawner component: ", err)
+	// }
+	//
+	// spawnName, spawnDef := abilitydefs.SpawnAbility(200)
+	// gunAbis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
+	// gunAbis[0] = ecs.EntityAbility{
+	// 	Name:   spawnName,
+	// 	Def:    spawnDef,
+	// 	Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+	// }
+	// gunEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis)
+	//
+	// gun := g.world.AddEntity(
+	// 	gunParComp,
+	// 	gunTraComp,
+	// 	gunVelComp,
+	// 	gunSprComp,
+	// 	gunAniComp,
+	// 	gunSpaComp,
+	// 	gunFPComp,
+	// 	gunEquipmentComp,
+	// )
+	//
+	// pEquipperComp := ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{
+	// 	ecs.Equip_MainHand: gun,
+	// })
+	//
+	// g.world.AddComponent(g.playerEntity, pEquipperComp)
+	//
+	// err = pm.Attach(gun, g.playerEntity, g.world)
+	// if err != nil {
+	// 	log.Fatal("error attaching gun to player: ", err)
+	// }
+
+	// Bazooka
+	bazookaParComp := ecs.NewParentComponent()
+	bazookaTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
+	bazookaVelComp := ecs.NewDefaultVelocityComponent()
+	bazookaSprComp, err := ecs.NewSpriteComponent("assets/sprites/bazooka_ss.png", 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	gunAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	gunAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+	bazookaAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	bazookaAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
 		{FrameIdx: 0, DurationMs: 1000},
 	}
-	gunAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
+	bazookaAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
 		{FrameIdx: 1, DurationMs: 100},
 	}
-	gunAniComp, err := ecs.NewAnimationComponent("assets/sprites/gun_ss.png", utils.Vec2{X: 32, Y: 32}, gunAniStateFrames)
+	bazookaAniComp, err := ecs.NewAnimationComponent("assets/sprites/bazooka_ss.png", utils.Vec2{X: 32, Y: 32}, bazookaAniStateFrames)
 	if err != nil {
 		log.Fatal(err)
 	}
-	gunFPComp := ecs.NewFacePositionComponent(utils.Vec2{}, true)
+	bazookaFPComp := ecs.NewFacePositionComponent(utils.Vec2{}, true)
 
-	bulletTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
-	bulletVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
-	bulletTimerComp, err := ecs.NewTimerComponent(500, 1, timerfuncs.Selfdestruct)
+	rocketTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
+	rocketVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 3, Y: 0}, 0, 1)
+	rocketTimerComp, err := ecs.NewTimerComponent(2000, 1, timerfuncs.Selfdestruct)
 	if err != nil {
-		log.Fatal("error creating bullet timer component: ", err)
+		log.Fatal("error creating rocket timer component: ", err)
 	}
-	bulletDmgComp := ecs.NewContactDamageComponent(g.playerEntity, 10, true, 5)
-	bulletSprComp, err := ecs.NewSpriteComponent("assets/sprites/bullet.png", 20, false)
+	rocketDmgComp := ecs.NewContactDamageComponent(g.playerEntity, 0, true, false, 0)
+	rocketSprComp, err := ecs.NewSpriteComponent("assets/sprites/rocket_ss.png", 21, true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	bulletAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	bulletAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+	rocketAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	rocketAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
 		{FrameIdx: 0, DurationMs: 50},
 		{FrameIdx: 1, DurationMs: 50},
-		{FrameIdx: 2, DurationMs: 50},
-		{FrameIdx: 1, DurationMs: 50},
 	}
-	bulletAniComp, err := ecs.NewAnimationComponent("assets/sprites/bullet_ss.png", utils.Vec2{X: 32, Y: 32}, bulletAniStateFrames)
+	rocketAniComp, err := ecs.NewAnimationComponent("assets/sprites/rocket_ss.png", utils.Vec2{X: 32, Y: 32}, rocketAniStateFrames)
 	if err != nil {
 		log.Fatal(err)
 	}
-	bulletHurtboxShape, err := shapes.NewCircleShape(3, utils.Vec2{X: 0, Y: 0})
+	rocketHurtboxShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
 	}
-	bulletHurtboxComp := ecs.NewHurtboxColliderComponent(
+	rocketHurtboxComp := ecs.NewHurtboxColliderComponent(
 		ecs.Layer_FriendlyProjectile,
 		ecs.Layer_Enemy|
 			ecs.Layer_Terrain,
-		bulletHurtboxShape,
+		rocketHurtboxShape,
 	)
+	explosionForce := 20.0
+	explosionRadii := []float64{10, 20, 45}
+	explosionDmgTiers := []int{50, 25, 10}
+	explosionSpriteSheet, _, err := ebitenutil.NewImageFromFile("assets/sprites/explosion_ss.png")
+	if err != nil {
+		log.Fatal("error loading explosion sprite sheet: ", err)
+	}
+	explosionFrameSize := utils.Vec2{X: 128, Y: 128}
+	explosionAniFrames := []ecs.AnimationFrame{
+		{FrameIdx: 0, DurationMs: 50},
+		{FrameIdx: 1, DurationMs: 50},
+		{FrameIdx: 2, DurationMs: 50},
+		{FrameIdx: 3, DurationMs: 100},
+		{FrameIdx: 4, DurationMs: 100},
+		{FrameIdx: 5, DurationMs: 150},
+		{FrameIdx: 6, DurationMs: 200},
+	}
+	explodeAbiEnum, explodeAbiDef, err := abilitydefs.ExplodeAbility(
+		explosionForce, explosionRadii, explosionDmgTiers, explosionSpriteSheet, explosionFrameSize, explosionAniFrames, true, g.world)
+	if err != nil {
+		log.Fatal("error creating explode ability: ", err)
+	}
+	explodeAbi := ecs.EntityAbility{
+		Name:   explodeAbiEnum,
+		Def:    explodeAbiDef,
+		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+	}
+	rocketDeathComp, err := ecs.NewDeathrattleComponent(explodeAbi)
+	if err != nil {
+		log.Fatal("error creating rocket deathrattle component: ", err)
+	}
 
-	gunSpaComp, err := ecs.NewSpawnerComponent(
+	bazookaSpaComp, err := ecs.NewSpawnerComponent(
 		utils.Vec2{X: 13, Y: 0},
 		ecs.SpawnerType_Point,
 		nil,
-		bulletTraComp, bulletSprComp, bulletVelComp, bulletDmgComp, bulletHurtboxComp, bulletAniComp, bulletTimerComp,
+		rocketTraComp, rocketSprComp, rocketVelComp, rocketDmgComp, rocketHurtboxComp, rocketAniComp, rocketTimerComp, rocketDeathComp,
 	)
 	if err != nil {
-		log.Fatal("error creating gun spawner component: ", err)
+		log.Fatal("error creating bazooka spawner component: ", err)
 	}
 
-	spawnName, spawnDef := abilitydefs.SpawnAbility(200)
-	gunAbis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
-	gunAbis[0] = ecs.EntityAbility{
+	spawnName, spawnDef := abilitydefs.SpawnAbility(500)
+	bazookaAbis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
+	bazookaAbis[0] = ecs.EntityAbility{
 		Name:   spawnName,
 		Def:    spawnDef,
 		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
 	}
-	gunEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis)
+	bazookaEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, bazookaAbis)
 
-	gun := g.world.AddEntity(
-		gunParComp,
-		gunTraComp,
-		gunVelComp,
-		gunSprComp,
-		gunAniComp,
-		gunSpaComp,
-		gunFPComp,
-		gunEquipmentComp,
+	bazooka := g.world.AddEntity(
+		bazookaParComp,
+		bazookaTraComp,
+		bazookaVelComp,
+		bazookaSprComp,
+		bazookaAniComp,
+		bazookaSpaComp,
+		bazookaFPComp,
+		bazookaEquipmentComp,
 	)
 
 	pEquipperComp := ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{
-		ecs.Equip_MainHand: gun,
+		ecs.Equip_MainHand: bazooka,
 	})
 
 	g.world.AddComponent(g.playerEntity, pEquipperComp)
 
-	err = pm.Attach(gun, g.playerEntity, g.world)
+	err = pm.Attach(bazooka, g.playerEntity, g.world)
 	if err != nil {
-		log.Fatal("error attaching gun to player: ", err)
+		log.Fatal("error attaching bazooka to player: ", err)
 	}
 
 	// Enemy spawner
@@ -740,7 +826,7 @@ func main() {
 			ecs.Layer_Terrain,
 		enemyHurtboxColShape,
 	)
-	enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, 1)
+	enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, false, 1)
 	enemyFollowInput := inputsources.NewFollowInputSource(g.playerEntity)
 	enemyInputComp := ecs.NewInputComponent(nil, enemyFollowInput, ecs.Facing_None)
 
@@ -814,47 +900,47 @@ func main() {
 	g.replayEntity = tree
 
 	// Platform
-	var inputLoop []ecs.InputState
-	for range 50 {
-		inputLoop = append(inputLoop, ecs.InputState{Analog1X: -1})
-	}
-	for range 50 {
-		inputLoop = append(inputLoop, ecs.InputState{Analog1X: 1})
-	}
-	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
-	platInput := ecs.NewInputComponent(nil, loopSource, ecs.Facing_None)
-
-	platParComp := ecs.NewParentComponent()
-	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
-	platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, 0.3, data.DefaultDrag)
-
-	platSprComp, err := ecs.NewSpriteComponent("assets/sprites/platform.png", 10, true)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	platColShape, err := shapes.NewRectangleShape(28, 28, utils.Vec2{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-	platColComp := ecs.NewPlatformColliderComponent(
-		ecs.Layer_Platform,
-		ecs.Layer_Player|
-			ecs.Layer_Enemy|
-			ecs.Layer_EnemyProjectile|
-			ecs.Layer_FriendlyProjectile|
-			ecs.Layer_Terrain,
-		[]shapes.Shape{platColShape},
-	)
-
-	_ = g.world.AddEntity(
-		platInput,
-		platParComp,
-		platTraComp,
-		platVelComp,
-		platSprComp,
-		platColComp,
-	)
+	// var inputLoop []ecs.InputState
+	// for range 50 {
+	// 	inputLoop = append(inputLoop, ecs.InputState{Analog1X: -1})
+	// }
+	// for range 50 {
+	// 	inputLoop = append(inputLoop, ecs.InputState{Analog1X: 1})
+	// }
+	// loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
+	// platInput := ecs.NewInputComponent(nil, loopSource, ecs.Facing_None)
+	//
+	// platParComp := ecs.NewParentComponent()
+	// platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
+	// platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, 0.3, data.DefaultDrag)
+	//
+	// platSprComp, err := ecs.NewSpriteComponent("assets/sprites/platform.png", 10, true)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	//
+	// platColShape, err := shapes.NewRectangleShape(28, 28, utils.Vec2{X: 0, Y: 0})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// platColComp := ecs.NewPlatformColliderComponent(
+	// 	ecs.Layer_Platform,
+	// 	ecs.Layer_Player|
+	// 		ecs.Layer_Enemy|
+	// 		ecs.Layer_EnemyProjectile|
+	// 		ecs.Layer_FriendlyProjectile|
+	// 		ecs.Layer_Terrain,
+	// 	[]shapes.Shape{platColShape},
+	// )
+	//
+	// _ = g.world.AddEntity(
+	// 	platInput,
+	// 	platParComp,
+	// 	platTraComp,
+	// 	platVelComp,
+	// 	platSprComp,
+	// 	platColComp,
+	// )
 
 	// for _ = range 500 {
 	// 	g.AddRandomEntity()

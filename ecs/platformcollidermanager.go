@@ -26,6 +26,14 @@ func (platformColliderManager) HasCollider(e common.EntityId, world *World) bool
 	return world.PlatformColliders.HasComponent(e)
 }
 
+func (platformColliderManager) IsEnabled(e common.EntityId, world *World) (bool, error) {
+	return platformColliderManager{}.BaseColliderManager.IsEnabled(e, world)
+}
+
+func (platformColliderManager) SetEnabled(e common.EntityId, enabled bool, world *World) error {
+	return platformColliderManager{}.BaseColliderManager.SetEnabled(e, enabled, world)
+}
+
 func (platformColliderManager) GetWorldPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
 	return platformColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, world)
 }

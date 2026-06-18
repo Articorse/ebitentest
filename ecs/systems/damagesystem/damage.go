@@ -3,6 +3,7 @@ package damagesystem
 import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"log"
 )
 
@@ -37,12 +38,9 @@ func DealContactDamage(
 	hpm := world.HitpointsManager
 
 	for dmgE, cols := range collisions {
-		dmgESelfDestructed := false
-		for hitE, c := range cols {
-			if dmgESelfDestructed {
-				break
-			}
+		deleteAfter := []common.EntityId{}
 
+		for hitE, c := range cols {
 			isInvul, err := hpm.IsInvul(hitE, world)
 			if err != nil {
 				log.Printf("Error checking invulnerability for entity %d: %v\n", hitE, err)
@@ -69,10 +67,13 @@ func DealContactDamage(
 				continue
 			}
 
-			dmgVelVector, err := vm.GetWorldVector(dmgE, world)
-			if err != nil {
-				log.Printf("Error getting world velocity vector for entity %d: %v\n", dmgE, err)
-				continue
+			var dmgVelVector utils.Vec2
+			if world.Velocities.HasComponent(dmgE) {
+				dmgVelVector, err = vm.GetWorldVector(dmgE, world)
+				if err != nil {
+					log.Printf("Error getting world velocity vector for entity %d: %v\n", dmgE, err)
+					continue
+				}
 			}
 
 			dmgEForceNorm := dmgVelVector.Normalized()
@@ -112,20 +113,27 @@ func DealContactDamage(
 			}
 
 			if dieOnContact {
-				err = world.RemoveEntity(dmgE)
-				dmgESelfDestructed = true
-				if err != nil {
-					log.Printf("Error removing entity %d: %v\n", dmgE, err)
-				}
+				world.ScheduleRemoveEntity(dmgE)
+			}
+
+			singleTick, err := cdm.GetSingleTick(dmgE, world)
+			if err != nil {
+				log.Printf("Error getting single tick for entity %d: %v\n", dmgE, err)
+				continue
+			}
+
+			if singleTick {
+				deleteAfter = append(deleteAfter, hitE)
 			}
 
 			if dead {
 				entitiesKilled++
-				err = world.RemoveEntity(hitE)
-				if err != nil {
-					log.Printf("Error removing entity %d: %v\n", hitE, err)
-				}
+				world.ScheduleRemoveEntity(hitE)
 			}
+		}
+
+		for _, e := range deleteAfter {
+			world.HurtboxColliderManager.SetEnabled(e, false, world)
 		}
 	}
 

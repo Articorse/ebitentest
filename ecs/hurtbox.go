@@ -18,6 +18,7 @@ func (x hurtboxCollider) Copy() hurtboxCollider {
 
 	return hurtboxCollider{
 		baseCollider: baseCollider{
+			enabled:        x.enabled,
 			shapes:         colShapesCopy,
 			center:         x.center,
 			aabb:           x.aabb,

@@ -6,6 +6,7 @@ type contactDamage struct {
 	source       common.EntityId
 	knockback    float64
 	dieOnContact bool
+	singleTick   bool
 	damageTiers  []int
 }
 
@@ -19,6 +20,7 @@ func (x contactDamage) Copy() contactDamage {
 		source:       x.source,
 		knockback:    x.knockback,
 		dieOnContact: x.dieOnContact,
+		singleTick:   x.singleTick,
 		damageTiers:  dTiersCopy,
 	}
 }

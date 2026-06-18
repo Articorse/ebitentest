@@ -7,11 +7,14 @@ import (
 	"log"
 	"maps"
 	"math/rand/v2"
+	"slices"
 )
 
 // Do not instantiate directly, use NewWorld()
 type World struct {
-	nextEntity   common.EntityId
+	nextEntity           common.EntityId
+	scheduledForDeletion []common.EntityId
+
 	InputLog     map[uint64]map[common.EntityId]InputState
 	Camera       utils.Vec2
 	CameraFollow bool
@@ -38,6 +41,7 @@ type World struct {
 	FacePositions     Storage[facePosition]
 	Equipments        Storage[equipment]
 	Equippers         Storage[equipper]
+	Deathrattles      Storage[deathrattle]
 
 	InputManager            inputManager
 	ParentManager           parentManager
@@ -56,6 +60,7 @@ type World struct {
 	AbilitiesManager        abilitiesManager
 	FacePositionManager     facePositionManager
 	EquipManager            equipManager
+	DeathrattleManager      deathrattleManager
 }
 
 func NewWorld() *World {
@@ -88,6 +93,7 @@ func NewWorld() *World {
 		FacePositions:     Storage[facePosition]{order: []common.EntityId{}, data: make(map[common.EntityId]*facePosition)},
 		Equipments:        Storage[equipment]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipment)},
 		Equippers:         Storage[equipper]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipper)},
+		Deathrattles:      Storage[deathrattle]{order: []common.EntityId{}, data: make(map[common.EntityId]*deathrattle)},
 
 		InputManager:            inputManager{},
 		ParentManager:           parentManager{},
@@ -106,6 +112,7 @@ func NewWorld() *World {
 		AbilitiesManager:        abilitiesManager{},
 		FacePositionManager:     facePositionManager{},
 		EquipManager:            equipManager{},
+		DeathrattleManager:      deathrattleManager{},
 	}
 }
 
@@ -145,71 +152,91 @@ func (x *World) AddEntity(comps ...component) common.EntityId {
 	return e
 }
 
-func (x *World) RemoveEntity(e common.EntityId) error {
-	x.Parents.deleteEntity(e)
-	x.Transforms.deleteEntity(e)
-	x.Velocities.deleteEntity(e)
-	x.Sprites.deleteEntity(e)
-	x.Animations.deleteEntity(e)
-	x.PhysicsColliders.deleteEntity(e)
-	x.PlatformColliders.deleteEntity(e)
-	x.HitboxColliders.deleteEntity(e)
-	x.HurtboxColliders.deleteEntity(e)
-	x.Spawners.deleteEntity(e)
-	x.Timers.deleteEntity(e)
-	x.Hitpoints.deleteEntity(e)
-	x.ContactDamages.deleteEntity(e)
-	x.Inputs.deleteEntity(e)
-	x.Abilities.deleteEntity(e)
-	x.FacePositions.deleteEntity(e)
-	x.Equipments.deleteEntity(e)
-	x.Equippers.deleteEntity(e)
-
-	pm := parentManager{}
-	err := pm.RemoveParentFromAllEntities(e, x)
-	if err != nil {
-		return fmt.Errorf("error removing entity %d from parent component of all entities: %v", e, err)
+func (x *World) ScheduleRemoveEntity(e common.EntityId) {
+	if !slices.Contains(x.scheduledForDeletion, e) {
+		x.scheduledForDeletion = append(x.scheduledForDeletion, e)
 	}
+}
 
-	maps.DeleteFunc(x.TickState.AABBCollisions, func(k common.EntityId, v []common.EntityId) bool {
-		if k == e {
-			return true
-		}
-		for _, vE := range v {
-			if vE == e {
-				return true
+func (x *World) RemoveScheduledEntities() error {
+	for _, e := range slices.Clone(x.scheduledForDeletion) {
+		if x.Deathrattles.HasComponent(e) {
+			err := x.DeathrattleManager.Effect(e, x)
+			if err != nil {
+				log.Printf("Error executing deathrattle for entity %d: %v\n", e, err)
 			}
 		}
-		return false
-	})
 
-	maps.DeleteFunc(x.TickState.CollisionGrid, func(k common.CellKey, v []common.EntityId) bool {
-		for _, vE := range v {
-			if vE == e {
+		x.Parents.deleteEntity(e)
+		x.Transforms.deleteEntity(e)
+		x.Velocities.deleteEntity(e)
+		x.Sprites.deleteEntity(e)
+		x.Animations.deleteEntity(e)
+		x.PhysicsColliders.deleteEntity(e)
+		x.PlatformColliders.deleteEntity(e)
+		x.HitboxColliders.deleteEntity(e)
+		x.HurtboxColliders.deleteEntity(e)
+		x.Spawners.deleteEntity(e)
+		x.Timers.deleteEntity(e)
+		x.Hitpoints.deleteEntity(e)
+		x.ContactDamages.deleteEntity(e)
+		x.Inputs.deleteEntity(e)
+		x.Abilities.deleteEntity(e)
+		x.FacePositions.deleteEntity(e)
+		x.Equipments.deleteEntity(e)
+		x.Equippers.deleteEntity(e)
+		x.Deathrattles.deleteEntity(e)
+
+		pm := parentManager{}
+		err := pm.RemoveParentFromAllEntities(e, x)
+		if err != nil {
+			log.Printf("error removing entity %d from parent component of all entities: %v", e, err)
+			continue
+		}
+
+		maps.DeleteFunc(x.TickState.AABBCollisions, func(k common.EntityId, v []common.EntityId) bool {
+			if k == e {
 				return true
 			}
-		}
-		return false
-	})
-
-	maps.DeleteFunc(x.TickState.Collisions, func(k common.EntityId, v map[common.EntityId]common.Collision) bool {
-		for vE := range v {
-			if vE == e {
-				return true
+			for _, vE := range v {
+				if vE == e {
+					return true
+				}
 			}
-		}
-		return false
-	})
+			return false
+		})
 
-	maps.DeleteFunc(x.TickState.ProximateEntities, func(k common.EntityId, v []common.EntityId) bool {
-		for _, vE := range v {
-			if vE == e {
-				return true
+		maps.DeleteFunc(x.TickState.CollisionGrid, func(k common.CellKey, v []common.EntityId) bool {
+			for _, vE := range v {
+				if vE == e {
+					return true
+				}
 			}
-		}
-		return false
-	})
+			return false
+		})
 
+		maps.DeleteFunc(x.TickState.Collisions, func(k common.EntityId, v map[common.EntityId]common.Collision) bool {
+			for vE := range v {
+				if vE == e {
+					return true
+				}
+			}
+			return false
+		})
+
+		maps.DeleteFunc(x.TickState.ProximateEntities, func(k common.EntityId, v []common.EntityId) bool {
+			for _, vE := range v {
+				if vE == e {
+					return true
+				}
+			}
+			return false
+		})
+
+		x.scheduledForDeletion = slices.DeleteFunc(x.scheduledForDeletion, func(v common.EntityId) bool {
+			return v == e
+		})
+	}
 	return nil
 }
 
@@ -251,6 +278,8 @@ func (x *World) AddComponent(e common.EntityId, comp component) {
 		x.Equipments.addComponent(e, c.Copy())
 	case *equipper:
 		x.Equippers.addComponent(e, c.Copy())
+	case *deathrattle:
+		x.Deathrattles.addComponent(e, c.Copy())
 	default:
 		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in World.AddComponent\n", comp, e)
 	}

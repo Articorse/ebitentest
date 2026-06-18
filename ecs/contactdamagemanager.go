@@ -11,12 +11,14 @@ func NewContactDamageComponent(
 	source common.EntityId,
 	knockback float64,
 	dieOnContact bool,
+	singleTick bool,
 	damageTiers ...int,
 ) *contactDamage {
 	return &contactDamage{
 		source:       source,
 		knockback:    knockback,
 		dieOnContact: dieOnContact,
+		singleTick:   singleTick,
 		damageTiers:  damageTiers,
 	}
 }
@@ -67,4 +69,16 @@ func (*contactDamageManager) GetDieOnContact(
 	}
 
 	return cdComp.dieOnContact, nil
+}
+
+func (*contactDamageManager) GetSingleTick(
+	e common.EntityId,
+	world *World,
+) (bool, error) {
+	cdComp, err := world.ContactDamages.getComponent(e)
+	if err != nil {
+		return false, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
+	}
+
+	return cdComp.singleTick, nil
 }

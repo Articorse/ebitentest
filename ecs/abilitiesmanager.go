@@ -3,6 +3,7 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 )
 
@@ -123,6 +124,7 @@ func (abilitiesManager) EnableAbility(e common.EntityId, name AbilityEnum, world
 func (abilitiesManager) ActivateAbility(
 	e common.EntityId,
 	targets []common.EntityId,
+	targetPos utils.Vec2,
 	abiIdx int,
 	world *World,
 ) (activated bool, err error) {
@@ -145,7 +147,7 @@ func (abilitiesManager) ActivateAbility(
 		return false, nil
 	}
 
-	_, err = tryActivate(e, &abi, targets, world)
+	_, err = tryActivate(e, &abi, targets, targetPos, world)
 	if err != nil {
 		return false, fmt.Errorf("error trying to activate ability %v of entity %d: %v", abi.Name, e, err)
 	}

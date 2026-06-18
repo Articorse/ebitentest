@@ -22,6 +22,8 @@ type IColliderManager interface {
 	GetCenter(e common.EntityId, w *World) (utils.Vec2, error)
 	GetLayer(e common.EntityId, w *World) (LayerMask, error)
 	GetMask(e common.EntityId, w *World) (LayerMask, error)
+	IsEnabled(e common.EntityId, w *World) (bool, error)
+	SetEnabled(e common.EntityId, enabled bool, w *World) error
 }
 
 func newBaseCollider(
@@ -29,7 +31,7 @@ func newBaseCollider(
 	collisionLayer LayerMask,
 	collisionMask LayerMask,
 ) baseCollider {
-	c := baseCollider{shapes: colShapes, collisionLayer: collisionLayer, collisionMask: collisionMask}
+	c := baseCollider{enabled: true, shapes: colShapes, collisionLayer: collisionLayer, collisionMask: collisionMask}
 
 	c.center = shapes.CalculateCenter(colShapes)
 
@@ -105,6 +107,23 @@ func getCollider[T BaseColliderGetter](e common.EntityId, world *World) (T, erro
 	default:
 		return *new(T), fmt.Errorf("unsupported collider type %T", t)
 	}
+}
+
+func (BaseColliderManager[T]) IsEnabled(e common.EntityId, world *World) (bool, error) {
+	collider, err := getCollider[T](e, world)
+	if err != nil {
+		return false, fmt.Errorf("could not get collider of entity %d: %v", e, err)
+	}
+	return collider.getBaseCollider().enabled, nil
+}
+
+func (BaseColliderManager[T]) SetEnabled(e common.EntityId, enabled bool, world *World) error {
+	collider, err := getCollider[T](e, world)
+	if err != nil {
+		return fmt.Errorf("could not get collider of entity %d: %v", e, err)
+	}
+	collider.getBaseCollider().enabled = enabled
+	return nil
 }
 
 func (BaseColliderManager[T]) GetShapes(

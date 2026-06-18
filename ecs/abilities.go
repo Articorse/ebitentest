@@ -3,6 +3,7 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 )
 
 type AbilityEnum uint64
@@ -11,6 +12,7 @@ const (
 	Ability_None AbilityEnum = iota
 	Ability_Spawn
 	Ability_Dodge
+	Ability_Explode
 )
 
 type AbilityActivityEnum uint8
@@ -25,6 +27,7 @@ const (
 type AbilityFunc func(
 	self common.EntityId,
 	targets []common.EntityId,
+	targetPoint utils.Vec2,
 	world *World,
 ) error
 

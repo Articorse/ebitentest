@@ -8,9 +8,10 @@ import (
 
 type timerManager struct{}
 
+// TODO: Fix triggerCount = 0 being infinite triggers
 func NewTimerComponent(
 	counterMs int,
-	repeatCount int, // Set to -1 to repeat infinitely
+	triggerCount int, // Set to -1 to repeat infinitely
 	timerFunc TimerFunc,
 ) (*timer, error) {
 	if timerFunc == nil {
@@ -18,10 +19,10 @@ func NewTimerComponent(
 	}
 
 	return &timer{
-		counterMs:        counterMs,
-		maxTimeMs:        counterMs,
-		remainingRepeats: repeatCount,
-		timerFunc:        timerFunc,
+		counterMs:         counterMs,
+		maxTimeMs:         counterMs,
+		remainingTriggers: triggerCount,
+		timerFunc:         timerFunc,
 	}, nil
 }
 
@@ -34,7 +35,7 @@ func (timerManager) TickDown(
 		return false, fmt.Errorf("could not get timer component of entity %d: %v", e, err)
 	}
 
-	if timer.remainingRepeats == 0 {
+	if timer.remainingTriggers == 0 {
 		return true, nil
 	}
 
@@ -42,7 +43,7 @@ func (timerManager) TickDown(
 
 	if timer.counterMs <= 0 {
 		err := timer.timerFunc(e, world)
-		timer.remainingRepeats--
+		timer.remainingTriggers--
 		timer.counterMs = timer.maxTimeMs
 		if err != nil {
 			return false, fmt.Errorf("error executing timer function of entity %d: %v", e, err)

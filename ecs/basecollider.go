@@ -17,6 +17,7 @@ const (
 )
 
 type baseCollider struct {
+	enabled        bool
 	shapes         []shapes.Shape
 	center         utils.Vec2
 	aabb           [2]utils.Vec2

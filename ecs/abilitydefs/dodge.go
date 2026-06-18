@@ -8,14 +8,8 @@ import (
 	"math"
 )
 
-const (
-	Dodge_Cooldown = 1000
-	Dodge_Duration = 200
-	Dodge_Force    = 10
-)
-
-func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
-	abiFunc := func(self common.EntityId, targets []common.EntityId, world *ecs.World) error {
+func DodgeAbility(cooldownMs int, durationMs int, force float64) (ecs.AbilityEnum, ecs.AbilityDef) {
+	abiFunc := func(self common.EntityId, targets []common.EntityId, targetPos utils.Vec2, world *ecs.World) error {
 		am := world.AnimationManager
 		hpm := world.HitpointsManager
 		vm := world.VelocityManager
@@ -31,7 +25,7 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 			return fmt.Errorf("error setting queued animation state of entity %d to idle: %v", self, err)
 		}
 
-		err = hpm.SetInvul(self, Dodge_Duration, world)
+		err = hpm.SetInvul(self, durationMs, world)
 		if err != nil {
 			return fmt.Errorf("error setting invulnerability of entity %d: %v", self, err)
 		}
@@ -56,7 +50,7 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 
 		dir := utils.Vec2{X: is.Analog1X, Y: is.Analog1Y}.Normalized()
 
-		err = vm.AddForce(self, dir.Multiply(Dodge_Force), world)
+		err = vm.AddForce(self, dir.Multiply(force), world)
 		if err != nil {
 			return fmt.Errorf("error adding force to entity %d: %v", self, err)
 		}
@@ -64,7 +58,7 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 		return nil
 	}
 
-	abiPostFunc := func(self common.EntityId, targets []common.EntityId, world *ecs.World) error {
+	abiPostFunc := func(self common.EntityId, targets []common.EntityId, targetPos utils.Vec2, world *ecs.World) error {
 		hpm := world.HitpointsManager
 		sm := world.SpriteManager
 
@@ -83,8 +77,8 @@ func DodgeAbility() (ecs.AbilityEnum, ecs.AbilityDef) {
 
 	return ecs.Ability_Dodge, ecs.NewAbilityDef(
 		abiFunc,
-		Dodge_Cooldown,
-		Dodge_Duration,
+		cooldownMs,
+		durationMs,
 		abiPostFunc,
 	)
 }

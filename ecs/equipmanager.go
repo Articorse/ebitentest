@@ -3,6 +3,7 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 )
 
@@ -70,6 +71,7 @@ func (equipManager) ActivateAbility(
 	e common.EntityId,
 	slot EquipSlotEnum,
 	targets []common.EntityId,
+	targetPos utils.Vec2,
 	abiIdx int,
 	world *World,
 ) (activated bool, err error) {
@@ -95,7 +97,7 @@ func (equipManager) ActivateAbility(
 
 	abi := equipmentComp.abilities[abiIdx]
 
-	_, err = tryActivate(eqE, &abi, targets, world)
+	_, err = tryActivate(eqE, &abi, targets, targetPos, world)
 	if err != nil {
 		return false, fmt.Errorf("error trying to activate ability %v of equipment entity %d: %v", abi.Name, eqE, err)
 	}

@@ -30,6 +30,18 @@ func NewAnimationComponent(
 	}, nil
 }
 
+func NewAnimationComponentWithSheet(
+	sheet *ebiten.Image,
+	frameSize utils.Vec2,
+	stateFrames map[AnimationState][]AnimationFrame,
+) (*animation, error) {
+	return &animation{
+		sheet:       sheet,
+		frameSize:   frameSize,
+		stateFrames: stateFrames,
+	}, nil
+}
+
 func (animationManager) GetState(
 	e common.EntityId,
 	world *World,
