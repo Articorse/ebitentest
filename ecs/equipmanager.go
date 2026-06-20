@@ -34,9 +34,9 @@ func NewEquipperComponent(equipment map[EquipSlotEnum]common.EntityId) *equipper
 
 func (equipManager) GetEquipmentEntities(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) ([]common.EntityId, error) {
-	equipperComp, err := world.Equippers.getComponent(e)
+	equipperComp, err := ecs.Equippers.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get equipper component of entity %d: %v", e, err)
 	}
@@ -52,9 +52,9 @@ func (equipManager) GetEquipmentEntities(
 func (equipManager) GetEquipmentInSlot(
 	e common.EntityId,
 	slot EquipSlotEnum,
-	world *World,
+	ecs *ECS,
 ) (eq common.EntityId, hasEqInSlot bool, err error) {
-	equipperComp, err := world.Equippers.getComponent(e)
+	equipperComp, err := ecs.Equippers.getComponent(e)
 	if err != nil {
 		return -1, false, fmt.Errorf("could not get equipper component of entity %d: %v", e, err)
 	}
@@ -73,7 +73,7 @@ func (equipManager) ActivateAbility(
 	targets []common.EntityId,
 	targetPos utils.Vec2,
 	abiIdx int,
-	world *World,
+	ecs *ECS,
 ) (activated bool, err error) {
 	if abiIdx > data.MaxEquipmentAbilitySlots-1 {
 		return false, fmt.Errorf("ability index %d is out of bounds", abiIdx)
@@ -81,7 +81,7 @@ func (equipManager) ActivateAbility(
 
 	em := equipManager{}
 
-	eqE, hasEq, err := em.GetEquipmentInSlot(e, slot, world)
+	eqE, hasEq, err := em.GetEquipmentInSlot(e, slot, ecs)
 	if err != nil {
 		return false, fmt.Errorf("error getting equipment in slot %v of entity %d: %v", slot, e, err)
 	}
@@ -90,14 +90,14 @@ func (equipManager) ActivateAbility(
 		return false, nil
 	}
 
-	equipmentComp, err := world.Equipments.getComponent(eqE)
+	equipmentComp, err := ecs.Equipments.getComponent(eqE)
 	if err != nil {
 		return false, fmt.Errorf("could not get equipment component of entity %d: %v", eqE, err)
 	}
 
 	abi := equipmentComp.abilities[abiIdx]
 
-	_, err = tryActivate(eqE, &abi, targets, targetPos, world)
+	_, err = tryActivate(eqE, &abi, targets, targetPos, ecs)
 	if err != nil {
 		return false, fmt.Errorf("error trying to activate ability %v of equipment entity %d: %v", abi.Name, eqE, err)
 	}
@@ -107,14 +107,14 @@ func (equipManager) ActivateAbility(
 	return true, nil
 }
 
-func (equipManager) TickAbilities(e common.EntityId, world *World) error {
-	equipmentComp, err := world.Equipments.getComponent(e)
+func (equipManager) TickAbilities(e common.EntityId, ecs *ECS) error {
+	equipmentComp, err := ecs.Equipments.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get equipment component of entity %d: %v", e, err)
 	}
 
 	for i, a := range equipmentComp.abilities {
-		err := tickAbilityState(e, &a, world)
+		err := tickAbilityState(e, &a, ecs)
 		if err != nil {
 			return fmt.Errorf("error ticking ability %v of equipment entity %d: %v", a.Name, e, err)
 		}

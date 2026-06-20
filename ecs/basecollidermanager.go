@@ -13,17 +13,17 @@ type BaseColliderGetter interface {
 }
 
 type IColliderManager interface {
-	EntityIds(w *World) []common.EntityId
-	HasCollider(e common.EntityId, w *World) bool
-	GetWorldPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error)
-	GetShapes(e common.EntityId, w *World) ([]shapes.Shape, error)
-	GetLocalAABB(e common.EntityId, w *World) ([2]utils.Vec2, error)
-	GetLocalPaddedAABB(e common.EntityId, w *World) ([2]utils.Vec2, error)
-	GetCenter(e common.EntityId, w *World) (utils.Vec2, error)
-	GetLayer(e common.EntityId, w *World) (LayerMask, error)
-	GetMask(e common.EntityId, w *World) (LayerMask, error)
-	IsEnabled(e common.EntityId, w *World) (bool, error)
-	SetEnabled(e common.EntityId, enabled bool, w *World) error
+	EntityIds(w *ECS) []common.EntityId
+	HasCollider(e common.EntityId, w *ECS) bool
+	GetWorldPaddedAABB(e common.EntityId, w *ECS) ([2]utils.Vec2, error)
+	GetShapes(e common.EntityId, w *ECS) ([]shapes.Shape, error)
+	GetLocalAABB(e common.EntityId, w *ECS) ([2]utils.Vec2, error)
+	GetLocalPaddedAABB(e common.EntityId, w *ECS) ([2]utils.Vec2, error)
+	GetCenter(e common.EntityId, w *ECS) (utils.Vec2, error)
+	GetLayer(e common.EntityId, w *ECS) (LayerMask, error)
+	GetMask(e common.EntityId, w *ECS) (LayerMask, error)
+	IsEnabled(e common.EntityId, w *ECS) (bool, error)
+	SetEnabled(e common.EntityId, enabled bool, w *ECS) error
 }
 
 func newBaseCollider(
@@ -77,29 +77,29 @@ func newBaseCollider(
 
 type BaseColliderManager[T BaseColliderGetter] struct{}
 
-func getCollider[T BaseColliderGetter](e common.EntityId, world *World) (T, error) {
+func getCollider[T BaseColliderGetter](e common.EntityId, ecs *ECS) (T, error) {
 	var t T
 	switch BaseColliderGetter(t).(type) {
 	case *hitboxCollider:
-		c, err := world.HitboxColliders.getComponent(e)
+		c, err := ecs.HitboxColliders.getComponent(e)
 		if err != nil {
 			return *new(T), fmt.Errorf("could not get hitbox collider of entity %d: %v", e, err)
 		}
 		return any(c).(T), nil
 	case *hurtboxCollider:
-		c, err := world.HurtboxColliders.getComponent(e)
+		c, err := ecs.HurtboxColliders.getComponent(e)
 		if err != nil {
 			return *new(T), fmt.Errorf("could not get hurtbox collider of entity %d: %v", e, err)
 		}
 		return any(c).(T), nil
 	case *physicsCollider:
-		c, err := world.PhysicsColliders.getComponent(e)
+		c, err := ecs.PhysicsColliders.getComponent(e)
 		if err != nil {
 			return *new(T), fmt.Errorf("could not get physics collider of entity %d: %v", e, err)
 		}
 		return any(c).(T), nil
 	case *platformCollider:
-		c, err := world.PlatformColliders.getComponent(e)
+		c, err := ecs.PlatformColliders.getComponent(e)
 		if err != nil {
 			return *new(T), fmt.Errorf("could not get platform collider of entity %d: %v", e, err)
 		}
@@ -109,16 +109,16 @@ func getCollider[T BaseColliderGetter](e common.EntityId, world *World) (T, erro
 	}
 }
 
-func (BaseColliderManager[T]) IsEnabled(e common.EntityId, world *World) (bool, error) {
-	collider, err := getCollider[T](e, world)
+func (BaseColliderManager[T]) IsEnabled(e common.EntityId, ecs *ECS) (bool, error) {
+	collider, err := getCollider[T](e, ecs)
 	if err != nil {
 		return false, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
 	return collider.getBaseCollider().enabled, nil
 }
 
-func (BaseColliderManager[T]) SetEnabled(e common.EntityId, enabled bool, world *World) error {
-	collider, err := getCollider[T](e, world)
+func (BaseColliderManager[T]) SetEnabled(e common.EntityId, enabled bool, ecs *ECS) error {
+	collider, err := getCollider[T](e, ecs)
 	if err != nil {
 		return fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
@@ -128,9 +128,9 @@ func (BaseColliderManager[T]) SetEnabled(e common.EntityId, enabled bool, world 
 
 func (BaseColliderManager[T]) GetShapes(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) ([]shapes.Shape, error) {
-	collider, err := getCollider[T](e, world)
+	collider, err := getCollider[T](e, ecs)
 	if err != nil {
 		return nil, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
@@ -139,9 +139,9 @@ func (BaseColliderManager[T]) GetShapes(
 
 func (BaseColliderManager[T]) GetCenter(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (utils.Vec2, error) {
-	collider, err := getCollider[T](e, world)
+	collider, err := getCollider[T](e, ecs)
 	if err != nil {
 		return utils.Vec2{X: 0, Y: 0}, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
@@ -151,9 +151,9 @@ func (BaseColliderManager[T]) GetCenter(
 
 func (BaseColliderManager[T]) GetLocalAABB(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) ([2]utils.Vec2, error) {
-	collider, err := getCollider[T](e, world)
+	collider, err := getCollider[T](e, ecs)
 	if err != nil {
 		return [2]utils.Vec2{
 			utils.Vec2{X: 0, Y: 0},
@@ -166,31 +166,31 @@ func (BaseColliderManager[T]) GetLocalAABB(
 
 func (BaseColliderManager[T]) GetWorldAABB(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) ([2]utils.Vec2, error) {
 	tm := transformManager{}
 
-	colComp, err := getCollider[T](e, world)
+	colComp, err := getCollider[T](e, ecs)
 	if err != nil {
 		return [2]utils.Vec2{}, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
 
-	worldPos, err := tm.GetWorldPos(e, world)
+	ecsPos, err := tm.GetWorldPos(e, ecs)
 	if err != nil {
-		return [2]utils.Vec2{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
+		return [2]utils.Vec2{}, fmt.Errorf("error getting ecs position of entity %d: %v", e, err)
 	}
 
 	return [2]utils.Vec2{
-		utils.Vec2{X: colComp.getBaseCollider().aabb[0].X + worldPos.X, Y: colComp.getBaseCollider().aabb[0].Y + worldPos.Y},
-		utils.Vec2{X: colComp.getBaseCollider().aabb[1].X + worldPos.X, Y: colComp.getBaseCollider().aabb[1].Y + worldPos.Y},
+		utils.Vec2{X: colComp.getBaseCollider().aabb[0].X + ecsPos.X, Y: colComp.getBaseCollider().aabb[0].Y + ecsPos.Y},
+		utils.Vec2{X: colComp.getBaseCollider().aabb[1].X + ecsPos.X, Y: colComp.getBaseCollider().aabb[1].Y + ecsPos.Y},
 	}, nil
 }
 
 func (BaseColliderManager[T]) GetLocalPaddedAABB(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) ([2]utils.Vec2, error) {
-	collider, err := getCollider[T](e, world)
+	collider, err := getCollider[T](e, ecs)
 	if err != nil {
 		return [2]utils.Vec2{
 			utils.Vec2{X: 0, Y: 0},
@@ -203,31 +203,31 @@ func (BaseColliderManager[T]) GetLocalPaddedAABB(
 
 func (BaseColliderManager[T]) GetWorldPaddedAABB(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) ([2]utils.Vec2, error) {
 	tm := transformManager{}
 
-	colComp, err := getCollider[T](e, world)
+	colComp, err := getCollider[T](e, ecs)
 	if err != nil {
 		return [2]utils.Vec2{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	worldPos, err := tm.GetWorldPos(e, world)
+	ecsPos, err := tm.GetWorldPos(e, ecs)
 	if err != nil {
-		return [2]utils.Vec2{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
+		return [2]utils.Vec2{}, fmt.Errorf("error getting ecs position of entity %d: %v", e, err)
 	}
 
 	return [2]utils.Vec2{
-		utils.Vec2{X: colComp.getBaseCollider().paddedAabb[0].X + worldPos.X, Y: colComp.getBaseCollider().paddedAabb[0].Y + worldPos.Y},
-		utils.Vec2{X: colComp.getBaseCollider().paddedAabb[1].X + worldPos.X, Y: colComp.getBaseCollider().paddedAabb[1].Y + worldPos.Y},
+		utils.Vec2{X: colComp.getBaseCollider().paddedAabb[0].X + ecsPos.X, Y: colComp.getBaseCollider().paddedAabb[0].Y + ecsPos.Y},
+		utils.Vec2{X: colComp.getBaseCollider().paddedAabb[1].X + ecsPos.X, Y: colComp.getBaseCollider().paddedAabb[1].Y + ecsPos.Y},
 	}, nil
 }
 
 func (BaseColliderManager[T]) GetLayer(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (LayerMask, error) {
-	colComp, err := getCollider[T](e, world)
+	colComp, err := getCollider[T](e, ecs)
 	if err != nil {
 		return 0, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
@@ -237,9 +237,9 @@ func (BaseColliderManager[T]) GetLayer(
 
 func (BaseColliderManager[T]) GetMask(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (LayerMask, error) {
-	colComp, err := getCollider[T](e, world)
+	colComp, err := getCollider[T](e, ecs)
 	if err != nil {
 		return 0, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}

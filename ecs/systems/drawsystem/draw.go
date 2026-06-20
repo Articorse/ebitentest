@@ -18,11 +18,11 @@ func DrawSprites(
 	screen *ebiten.Image,
 	camera utils.Vec2,
 	shg map[common.CellKey][]common.EntityId,
-	world *ecs.World,
+	ecs *ecs.ECS,
 ) error {
-	sm := world.SpriteManager
-	pm := world.ParentManager
-	tm := world.TransformManager
+	sm := ecs.SpriteManager
+	pm := ecs.ParentManager
+	tm := ecs.TransformManager
 
 	batches := make(map[uint8][][]common.EntityId)
 	visitedSprites := make(map[common.EntityId]struct{})
@@ -32,10 +32,10 @@ func DrawSprites(
 		utils.Vec2{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
 	}
 
-	for _, e := range world.Sprites.GetEntities() {
-		eWorldPos, err := tm.GetWorldPos(e, world)
+	for _, e := range ecs.Sprites.GetEntities() {
+		eWorldPos, err := tm.GetWorldPos(e, ecs)
 		if err != nil {
-			return fmt.Errorf("error getting world position of entity %d: %v", e, err)
+			return fmt.Errorf("error getting ecs position of entity %d: %v", e, err)
 		}
 
 		if eWorldPos.X < drawWindow[0].X ||
@@ -50,7 +50,7 @@ func DrawSprites(
 		}
 		visitedSprites[e] = struct{}{}
 
-		sprImg, err := sm.GetImage(e, world)
+		sprImg, err := sm.GetImage(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting sprite image for entity %d: %v", e, err)
 		}
@@ -59,7 +59,7 @@ func DrawSprites(
 			continue
 		}
 
-		layer, err := sm.GetLayer(e, world)
+		layer, err := sm.GetLayer(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting sprite layer for entity %d: %v", e, err)
 		}
@@ -76,7 +76,7 @@ func DrawSprites(
 		batches[layer] = append(batches[layer], []common.EntityId{})
 		batches[layer][i] = append(batches[layer][i], e)
 
-		neighbors, err := getNeighborBatch(e, shg, world)
+		neighbors, err := getNeighborBatch(e, shg, ecs)
 		if err != nil {
 			return err
 		}
@@ -84,7 +84,7 @@ func DrawSprites(
 		for j, n := range neighbors {
 			visitedSprites[neighbors[j]] = struct{}{}
 
-			nSprImg, err := sm.GetImage(n, world)
+			nSprImg, err := sm.GetImage(n, ecs)
 			if err != nil {
 				return fmt.Errorf("error getting sprite image for entity %d: %v", n, err)
 			}
@@ -99,7 +99,7 @@ func DrawSprites(
 		if len(batches[layer][i]) > 1 {
 			var err error
 
-			hierarchies, err := pm.GetOrderedHierarchies(batches[layer][i], world)
+			hierarchies, err := pm.GetOrderedHierarchies(batches[layer][i], ecs)
 			if err != nil {
 				return fmt.Errorf("error getting ordered hierarchies for batch in layer %d: %v", layer, err)
 			}
@@ -108,12 +108,12 @@ func DrawSprites(
 				a := aRoot[0][0]
 				b := bRoot[0][0]
 
-				aTotalY, err := sm.GetWorldLayerYOffset(a, world)
+				aTotalY, err := sm.GetWorldLayerYOffset(a, ecs)
 				if err != nil {
 					return -1
 				}
 
-				bTotalY, err := sm.GetWorldLayerYOffset(b, world)
+				bTotalY, err := sm.GetWorldLayerYOffset(b, ecs)
 				if err != nil {
 					return -1
 				}
@@ -157,29 +157,29 @@ func DrawSprites(
 	for _, layer := range orderedKeys {
 		for _, batch := range batches[layer] {
 			for _, batchEntity := range batch {
-				v, err := sm.GetWorldOffsetPos(batchEntity, world)
+				v, err := sm.GetWorldOffsetPos(batchEntity, ecs)
 				if err != nil {
-					return fmt.Errorf("error getting world offset position of batchEntity %d: %v", batchEntity, err)
+					return fmt.Errorf("error getting ecs offset position of batchEntity %d: %v", batchEntity, err)
 				}
 
 				r := 0.0
-				allowRot, err := sm.GetAllowRotation(batchEntity, world)
+				allowRot, err := sm.GetAllowRotation(batchEntity, ecs)
 				if err != nil {
 					return fmt.Errorf("error getting allow rotation of batchEntity %d: %v", batchEntity, err)
 				}
 				if allowRot {
-					r, err = sm.GetWorldOffsetRotation(batchEntity, world)
+					r, err = sm.GetWorldOffsetRotation(batchEntity, ecs)
 					if err != nil {
-						return fmt.Errorf("error getting world offset rotation of batchEntity %d: %v", batchEntity, err)
+						return fmt.Errorf("error getting ecs offset rotation of batchEntity %d: %v", batchEntity, err)
 					}
 				}
 
-				s, err := sm.GetWorldOffsetScale(batchEntity, world)
+				s, err := sm.GetWorldOffsetScale(batchEntity, ecs)
 				if err != nil {
-					return fmt.Errorf("error getting world offset scale of batchEntity %d: %v", batchEntity, err)
+					return fmt.Errorf("error getting ecs offset scale of batchEntity %d: %v", batchEntity, err)
 				}
 
-				img, err := sm.GetImage(batchEntity, world)
+				img, err := sm.GetImage(batchEntity, ecs)
 				if err != nil {
 					return fmt.Errorf("error getting sprite image for batchEntity %d: %v", batchEntity, err)
 				}
@@ -191,7 +191,7 @@ func DrawSprites(
 				opts.GeoM.Rotate(r)
 				opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
 
-				color, ok, err := sm.GetCurrentColor(batchEntity, world)
+				color, ok, err := sm.GetCurrentColor(batchEntity, ecs)
 				if err != nil {
 					return fmt.Errorf("error getting current color of batchEntity %d: %v", batchEntity, err)
 				}
@@ -212,39 +212,39 @@ func DrawSprites(
 	return nil
 }
 
-func DrawFloatingTexts(screen *ebiten.Image, world *ecs.World) error {
-	tm := world.TransformManager
-	ftm := world.FloatingTextManager
+func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECS) error {
+	tm := ecs.TransformManager
+	ftm := ecs.FloatingTextManager
 
-	for _, e := range world.FloatingTexts.GetEntities() {
-		worldPos, err := tm.GetWorldPos(e, world)
+	for _, e := range ecs.FloatingTexts.GetEntities() {
+		ecsPos, err := tm.GetWorldPos(e, ecs)
 		if err != nil {
-			return fmt.Errorf("error getting world position of floating text entity %d: %v", e, err)
+			return fmt.Errorf("error getting ecs position of floating text entity %d: %v", e, err)
 		}
 
-		offset, err := ftm.GetOffset(e, world)
+		offset, err := ftm.GetOffset(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting offset of floating text entity %d: %v", e, err)
 		}
 
-		textValue, err := ftm.GetText(e, world)
+		textValue, err := ftm.GetText(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting text of floating text entity %d: %v", e, err)
 		}
 
-		color, err := ftm.GetColor(e, world)
+		color, err := ftm.GetColor(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting color of floating text entity %d: %v", e, err)
 		}
 
-		face, err := ftm.GetFace(e, world)
+		face, err := ftm.GetFace(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting font face of floating text entity %d: %v", e, err)
 		}
 
 		op := &text.DrawOptions{}
-		tX := worldPos.X + offset.X - world.Camera.X
-		tY := worldPos.Y + offset.Y - world.Camera.Y
+		tX := ecsPos.X + offset.X - ecs.Camera.X
+		tY := ecsPos.Y + offset.Y - ecs.Camera.Y
 		w, h := text.Measure(textValue, &face, 0)
 		op.GeoM.Translate(tX-w/2, tY-h/2)
 		op.ColorScale.ScaleWithColor(color)
@@ -258,14 +258,14 @@ func DrawFloatingTexts(screen *ebiten.Image, world *ecs.World) error {
 func getNeighborBatch(
 	eA common.EntityId,
 	shg map[common.CellKey][]common.EntityId,
-	world *ecs.World,
+	ecs *ecs.ECS,
 ) ([]common.EntityId, error) {
-	if !world.Sprites.HasComponent(eA) {
+	if !ecs.Sprites.HasComponent(eA) {
 		return nil, fmt.Errorf("entity %d does not have a sprite component", eA)
 	}
 
 	visitedEntities := make(map[common.EntityId]struct{})
-	neighbors, _, err := getNeighborsRecursive(eA, shg, visitedEntities, world)
+	neighbors, _, err := getNeighborsRecursive(eA, shg, visitedEntities, ecs)
 	if err != nil {
 		return nil, err
 	}
@@ -277,23 +277,23 @@ func getNeighborsRecursive(
 	eA common.EntityId,
 	shg map[common.CellKey][]common.EntityId,
 	visitedEntities map[common.EntityId]struct{},
-	world *ecs.World,
+	ecs *ecs.ECS,
 ) (neighbors []common.EntityId, _visited map[common.EntityId]struct{}, err error) {
-	tm := world.TransformManager
-	sm := world.SpriteManager
+	tm := ecs.TransformManager
+	sm := ecs.SpriteManager
 
-	if !world.Sprites.HasComponent(eA) {
+	if !ecs.Sprites.HasComponent(eA) {
 		return nil, nil, fmt.Errorf("entity %d does not have a sprite component", eA)
 	}
 
 	visitedEntities[eA] = struct{}{}
 
-	aWorldPos, err := tm.GetWorldPos(eA, world)
+	aWorldPos, err := tm.GetWorldPos(eA, ecs)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error getting world position of entity %d: %v", eA, err)
+		return nil, nil, fmt.Errorf("error getting ecs position of entity %d: %v", eA, err)
 	}
 
-	aLayer, err := sm.GetLayer(eA, world)
+	aLayer, err := sm.GetLayer(eA, ecs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting sprite layer for entity %d: %v", eA, err)
 	}
@@ -304,7 +304,7 @@ func getNeighborsRecursive(
 	for dx := -1; dx <= 1; dx++ {
 		for dy := -1; dy <= 1; dy++ {
 			for _, eB := range shg[common.CellKey{X: startCellX + dx, Y: startCellY + dy}] {
-				if !world.Sprites.HasComponent(eB) {
+				if !ecs.Sprites.HasComponent(eB) {
 					return nil, nil, nil
 				}
 
@@ -321,7 +321,7 @@ func getNeighborsRecursive(
 				}
 				visitedEntities[eB] = struct{}{}
 
-				bLayer, err := sm.GetLayer(eB, world)
+				bLayer, err := sm.GetLayer(eB, ecs)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error getting sprite layer for entity %d: %v", eB, err)
 				}
@@ -330,7 +330,7 @@ func getNeighborsRecursive(
 					continue
 				}
 
-				n, v, err := getNeighborsRecursive(eB, shg, visitedEntities, world)
+				n, v, err := getNeighborsRecursive(eB, shg, visitedEntities, ecs)
 				if err != nil {
 					return nil, nil, err
 				}

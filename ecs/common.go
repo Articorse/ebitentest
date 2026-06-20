@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func tickAbilityState(owner common.EntityId, abi *EntityAbility, world *World) error {
+func tickAbilityState(owner common.EntityId, abi *EntityAbility, ecs *ECS) error {
 	switch abi.Status.State {
 	case AbiAct_Active:
 		abi.Status.DurationCounterMs -= data.TickMs
@@ -16,7 +16,7 @@ func tickAbilityState(owner common.EntityId, abi *EntityAbility, world *World) e
 			abi.Status.State = AbiAct_OnCooldown
 
 			if abi.Def.PostEffect != nil {
-				err := abi.Def.PostEffect(owner, nil, utils.Vec2{}, world)
+				err := abi.Def.PostEffect(owner, nil, utils.Vec2{}, ecs)
 				if err != nil {
 					return fmt.Errorf("error executing post effect of ability %v of entity %d: %v", abi.Name, owner, err)
 				}
@@ -38,7 +38,7 @@ func tryActivate(
 	abi *EntityAbility,
 	targets []common.EntityId,
 	targetPos utils.Vec2,
-	world *World,
+	ecs *ECS,
 ) (bool, error) {
 	if abi.Name == Ability_None {
 		return false, nil
@@ -52,7 +52,7 @@ func tryActivate(
 	abi.Status.CooldownCounterMs = abi.Def.CooldownMs
 	abi.Status.State = AbiAct_Active
 
-	err := abi.Def.Effect(owner, targets, targetPos, world)
+	err := abi.Def.Effect(owner, targets, targetPos, ecs)
 	if err != nil {
 		return false, fmt.Errorf("error executing effect of ability %v of entity %d: %v", abi.Name, owner, err)
 	}

@@ -35,8 +35,8 @@ func NewFloatingTextComponent(ptext string, pos utils.Vec2, size float64, color 
 	}
 }
 
-func (floatingTextManager) GetText(e common.EntityId, world *World) (string, error) {
-	textComp, err := world.FloatingTexts.getComponent(e)
+func (floatingTextManager) GetText(e common.EntityId, ecs *ECS) (string, error) {
+	textComp, err := ecs.FloatingTexts.getComponent(e)
 	if err != nil {
 		return "", err
 	}
@@ -44,8 +44,8 @@ func (floatingTextManager) GetText(e common.EntityId, world *World) (string, err
 	return textComp.text, nil
 }
 
-func (floatingTextManager) GetOffset(e common.EntityId, world *World) (utils.Vec2, error) {
-	textComp, err := world.FloatingTexts.getComponent(e)
+func (floatingTextManager) GetOffset(e common.EntityId, ecs *ECS) (utils.Vec2, error) {
+	textComp, err := ecs.FloatingTexts.getComponent(e)
 	if err != nil {
 		return utils.Vec2{}, err
 	}
@@ -53,8 +53,8 @@ func (floatingTextManager) GetOffset(e common.EntityId, world *World) (utils.Vec
 	return textComp.offset, nil
 }
 
-func (floatingTextManager) GetSize(e common.EntityId, world *World) (float64, error) {
-	textComp, err := world.FloatingTexts.getComponent(e)
+func (floatingTextManager) GetSize(e common.EntityId, ecs *ECS) (float64, error) {
+	textComp, err := ecs.FloatingTexts.getComponent(e)
 	if err != nil {
 		return 0, err
 	}
@@ -62,8 +62,8 @@ func (floatingTextManager) GetSize(e common.EntityId, world *World) (float64, er
 	return textComp.size, nil
 }
 
-func (floatingTextManager) GetColor(e common.EntityId, world *World) (color.RGBA, error) {
-	textComp, err := world.FloatingTexts.getComponent(e)
+func (floatingTextManager) GetColor(e common.EntityId, ecs *ECS) (color.RGBA, error) {
+	textComp, err := ecs.FloatingTexts.getComponent(e)
 	if err != nil {
 		return color.RGBA{R: 255, G: 0, B: 255, A: 255}, err
 	}
@@ -71,8 +71,8 @@ func (floatingTextManager) GetColor(e common.EntityId, world *World) (color.RGBA
 	return textComp.color, nil
 }
 
-func (floatingTextManager) GetFace(e common.EntityId, world *World) (text.GoTextFace, error) {
-	textComp, err := world.FloatingTexts.getComponent(e)
+func (floatingTextManager) GetFace(e common.EntityId, ecs *ECS) (text.GoTextFace, error) {
+	textComp, err := ecs.FloatingTexts.getComponent(e)
 	if err != nil {
 		return text.GoTextFace{}, err
 	}

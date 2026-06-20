@@ -9,21 +9,21 @@ import (
 
 func ResolvePhysicsCollisions(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
-	world *ecs.World,
+	ecs *ecs.ECS,
 ) (collisionsResolved uint64, err error) {
-	tm := world.TransformManager
-	vm := world.VelocityManager
-	cm := world.PhysicsColliderManager
+	tm := ecs.TransformManager
+	vm := ecs.VelocityManager
+	cm := ecs.PhysicsColliderManager
 
 	for eA, cols := range collisions {
 		for eB, c := range cols {
-			aColType, err := cm.GetColliderType(eA, world)
+			aColType, err := cm.GetColliderType(eA, ecs)
 			if err != nil {
 				log.Printf("Error getting collider type for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			bColType, err := cm.GetColliderType(eB, world)
+			bColType, err := cm.GetColliderType(eB, ecs)
 			if err != nil {
 				log.Printf("Error getting collider type for entity %d: %v\n", eB, err)
 				continue
@@ -35,23 +35,23 @@ func ResolvePhysicsCollisions(
 
 			// Mob-Mob
 			if aColType == ecs.Collider_Mob && bColType == ecs.Collider_Mob {
-				aLocalVelVec, err := vm.GetLocalVector(eA, world)
+				aLocalVelVec, err := vm.GetLocalVector(eA, ecs)
 				if err != nil {
 					log.Printf("Error getting local velocity vector for entity %d: %v\n", eA, err)
 					continue
 				}
-				bLocalVelVec, err := vm.GetLocalVector(eB, world)
+				bLocalVelVec, err := vm.GetLocalVector(eB, ecs)
 				if err != nil {
 					log.Printf("Error getting local velocity vector for entity %d: %v\n", eB, err)
 					continue
 				}
 
-				err = tm.AddLocalPos(eA, c.Vector.Multiply(-0.5), world)
+				err = tm.AddLocalPos(eA, c.Vector.Multiply(-0.5), ecs)
 				if err != nil {
 					log.Printf("Error adding local position for entity %d: %v\n", eA, err)
 					continue
 				}
-				err = tm.AddLocalPos(eB, c.Vector.Multiply(0.5), world)
+				err = tm.AddLocalPos(eB, c.Vector.Multiply(0.5), ecs)
 				if err != nil {
 					log.Printf("Error adding local position for entity %d: %v\n", eB, err)
 					continue
@@ -65,12 +65,12 @@ func ResolvePhysicsCollisions(
 					restitution := data.Bounciness
 					impulseMagnitude := -(1 + restitution) * velocityAlongNormal
 					impulse := normal.Multiply(impulseMagnitude)
-					err = vm.AddForce(eA, impulse.Multiply(-0.5), world)
+					err = vm.AddForce(eA, impulse.Multiply(-0.5), ecs)
 					if err != nil {
 						log.Printf("Error adding force to entity %d: %v\n", eA, err)
 						continue
 					}
-					err = vm.AddForce(eB, impulse.Multiply(0.5), world)
+					err = vm.AddForce(eB, impulse.Multiply(0.5), ecs)
 					if err != nil {
 						log.Printf("Error adding force to entity %d: %v\n", eB, err)
 						continue
@@ -98,23 +98,23 @@ func ResolvePhysicsCollisions(
 					staE = eA
 				}
 
-				mobLocalPos, err := tm.GetLocalPos(mobE, world)
+				mobLocalPos, err := tm.GetLocalPos(mobE, ecs)
 				if err != nil {
 					log.Printf("Error getting local position for entity %d: %v\n", mobE, err)
 					continue
 				}
-				mobLocalVelVec, err := vm.GetLocalVector(mobE, world)
+				mobLocalVelVec, err := vm.GetLocalVector(mobE, ecs)
 				if err != nil {
 					log.Printf("Error getting local velocity vector for entity %d: %v\n", mobE, err)
 					continue
 				}
-				staLocalVelVec, err := vm.GetLocalVector(staE, world)
+				staLocalVelVec, err := vm.GetLocalVector(staE, ecs)
 				if err != nil {
 					log.Printf("Error getting local velocity vector for entity %d: %v\n", staE, err)
 					continue
 				}
 
-				err = tm.SetLocalPos(mobE, mobLocalPos.Add(c.Vector), world)
+				err = tm.SetLocalPos(mobE, mobLocalPos.Add(c.Vector), ecs)
 				if err != nil {
 					log.Printf("Error setting local position for entity %d: %v\n", mobE, err)
 					continue
@@ -128,7 +128,7 @@ func ResolvePhysicsCollisions(
 					restitution := data.Bounciness
 					impulseMagnitude := -(1 + restitution) * velocityAlongNormal
 					impulse := normal.Multiply(impulseMagnitude)
-					err = vm.SetLocalVector(mobE, mobLocalVelVec.Add(impulse), world)
+					err = vm.SetLocalVector(mobE, mobLocalVelVec.Add(impulse), ecs)
 					if err != nil {
 						log.Printf("Error setting local velocity vector for entity %d: %v\n", mobE, err)
 						continue

@@ -8,7 +8,7 @@ import (
 func DummyInputSource(
 	entityId common.EntityId,
 	tick uint64,
-	world *ecs.World,
+	ecs *ecs.ECS,
 ) ecs.InputState {
 	return ecs.InputState{}
 }

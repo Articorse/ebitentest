@@ -2,7 +2,7 @@ package ecs
 
 import "ebittest/ecs/common"
 
-type TimerFunc func(self common.EntityId, world *World) error
+type TimerFunc func(self common.EntityId, ecs *ECS) error
 
 type timer struct {
 	counterMs         int

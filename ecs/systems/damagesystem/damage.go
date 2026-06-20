@@ -10,11 +10,11 @@ import (
 	"log"
 )
 
-func Tick(world *ecs.World) {
-	hpm := world.HitpointsManager
+func Tick(ecs *ecs.ECS) {
+	hpm := ecs.HitpointsManager
 
-	for _, e := range world.Hitpoints.GetEntities() {
-		invulCur, err := hpm.GetInvulCurrent(e, world)
+	for _, e := range ecs.Hitpoints.GetEntities() {
+		invulCur, err := hpm.GetInvulCurrent(e, ecs)
 		if err != nil {
 			log.Printf("Error getting invulnerability current for entity %d: %v\n", e, err)
 			continue
@@ -24,7 +24,7 @@ func Tick(world *ecs.World) {
 			continue
 		}
 
-		err = hpm.TickInvul(e, world)
+		err = hpm.TickInvul(e, ecs)
 		if err != nil {
 			log.Printf("Error ticking invulnerability for entity %d: %v\n", e, err)
 			continue
@@ -34,17 +34,17 @@ func Tick(world *ecs.World) {
 
 func DealContactDamage(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
-	world *ecs.World,
+	ecs *ecs.ECS,
 ) (entitiesKilled uint64, err error) {
-	vm := world.VelocityManager
-	cdm := world.ContactDamageManager
-	hpm := world.HitpointsManager
+	vm := ecs.VelocityManager
+	cdm := ecs.ContactDamageManager
+	hpm := ecs.HitpointsManager
 
 	for dmgE, cols := range collisions {
 		disableColliderAfter := []common.EntityId{}
 
 		for hitE, c := range cols {
-			isInvul, err := hpm.IsInvul(hitE, world)
+			isInvul, err := hpm.IsInvul(hitE, ecs)
 			if err != nil {
 				log.Printf("Error checking invulnerability for entity %d: %v\n", hitE, err)
 				continue
@@ -54,7 +54,7 @@ func DealContactDamage(
 				continue
 			}
 
-			damageTiers, err := cdm.GetDamageTiers(dmgE, world)
+			damageTiers, err := cdm.GetDamageTiers(dmgE, ecs)
 			if err != nil {
 				log.Printf("Error getting damage tiers for entity %d: %v\n", dmgE, err)
 				continue
@@ -64,17 +64,17 @@ func DealContactDamage(
 				continue
 			}
 
-			knockback, err := cdm.GetKnockback(dmgE, world)
+			knockback, err := cdm.GetKnockback(dmgE, ecs)
 			if err != nil {
 				log.Printf("Error getting knockback for entity %d: %v\n", dmgE, err)
 				continue
 			}
 
 			var dmgVelVector utils.Vec2
-			if world.Velocities.HasComponent(dmgE) {
-				dmgVelVector, err = vm.GetWorldVector(dmgE, world)
+			if ecs.Velocities.HasComponent(dmgE) {
+				dmgVelVector, err = vm.GetWorldVector(dmgE, ecs)
 				if err != nil {
-					log.Printf("Error getting world velocity vector for entity %d: %v\n", dmgE, err)
+					log.Printf("Error getting ecs velocity vector for entity %d: %v\n", dmgE, err)
 					continue
 				}
 			}
@@ -83,14 +83,14 @@ func DealContactDamage(
 			colForceNorm := c.Vector.Normalized()
 			finalForceNorm := dmgEForceNorm.Multiply(0.5).Add(colForceNorm.Multiply(0.5))
 
-			err = vm.AddForce(hitE, finalForceNorm.Multiply(knockback), world)
+			err = vm.AddForce(hitE, finalForceNorm.Multiply(knockback), ecs)
 			if err != nil {
 				log.Printf("Error applying knockback to entity %d: %v\n", hitE, err)
 				continue
 			}
 
 			// TODO: Implement source
-			// source, err := cdm.GetSource(dmgE, world.ContactDamages)
+			// source, err := cdm.GetSource(dmgE, ecs.ContactDamages)
 			// if err != nil {
 			// 	log.Printf("Error getting source for entity %d: %v\n", dmgE, err)
 			// 	continue
@@ -103,15 +103,15 @@ func DealContactDamage(
 				continue
 			}
 
-			dead, err := hpm.TakeDamage(hitE, damageTiers[shapeIdx], world)
+			dead, err := hpm.TakeDamage(hitE, damageTiers[shapeIdx], ecs)
 			if err != nil {
 				log.Printf("Error applying damage to entity %d: %v\n", hitE, err)
 				continue
 			}
 
-			hitWorldPos, err := world.TransformManager.GetWorldPos(hitE, world)
+			hitWorldPos, err := ecs.TransformManager.GetWorldPos(hitE, ecs)
 			if err != nil {
-				log.Printf("Error getting world position for entity %d: %v\n", hitE, err)
+				log.Printf("Error getting ecs position for entity %d: %v\n", hitE, err)
 				continue
 			}
 
@@ -122,19 +122,19 @@ func DealContactDamage(
 			if err != nil {
 				log.Fatal("error creating floating text timer component: ", err)
 			}
-			_ = world.AddEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp)
+			_ = ecs.AddEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp)
 
-			dieOnContact, err := cdm.GetDieOnContact(dmgE, world)
+			dieOnContact, err := cdm.GetDieOnContact(dmgE, ecs)
 			if err != nil {
 				log.Printf("Error getting die on contact for entity %d: %v\n", dmgE, err)
 				continue
 			}
 
 			if dieOnContact {
-				world.ScheduleRemoveEntity(dmgE)
+				ecs.ScheduleRemoveEntity(dmgE)
 			}
 
-			singleTick, err := cdm.GetSingleTick(dmgE, world)
+			singleTick, err := cdm.GetSingleTick(dmgE, ecs)
 			if err != nil {
 				log.Printf("Error getting single tick for entity %d: %v\n", dmgE, err)
 				continue
@@ -146,12 +146,12 @@ func DealContactDamage(
 
 			if dead {
 				entitiesKilled++
-				world.ScheduleRemoveEntity(hitE)
+				ecs.ScheduleRemoveEntity(hitE)
 			}
 		}
 
 		for _, e := range disableColliderAfter {
-			err := world.HurtboxColliderManager.SetEnabled(e, false, world)
+			err := ecs.HurtboxColliderManager.SetEnabled(e, false, ecs)
 			if err != nil {
 				log.Printf("Error disabling hurtbox collider for entity %d: %v\n", e, err)
 				continue

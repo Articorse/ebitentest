@@ -1,4 +1,4 @@
 package common
 
-// Do not instantiate directly, use World.AddEntity()
+// Do not instantiate directly, use ECS.AddEntity()
 type EntityId int64

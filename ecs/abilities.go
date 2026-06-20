@@ -28,7 +28,7 @@ type AbilityFunc func(
 	self common.EntityId,
 	targets []common.EntityId,
 	targetPoint utils.Vec2,
-	world *World,
+	ecs *ECS,
 ) error
 
 type AbilityDef struct {

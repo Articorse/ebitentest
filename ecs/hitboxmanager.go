@@ -18,46 +18,46 @@ func NewHitboxColliderComponent(
 	return &hitboxCollider{baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask)}
 }
 
-func (hitboxColliderManager) EntityIds(world *World) []common.EntityId {
-	return world.HitboxColliders.GetEntities()
+func (hitboxColliderManager) EntityIds(ecs *ECS) []common.EntityId {
+	return ecs.HitboxColliders.GetEntities()
 }
 
-func (hitboxColliderManager) HasCollider(e common.EntityId, world *World) bool {
-	return world.HitboxColliders.HasComponent(e)
+func (hitboxColliderManager) HasCollider(e common.EntityId, ecs *ECS) bool {
+	return ecs.HitboxColliders.HasComponent(e)
 }
 
-func (hitboxColliderManager) IsEnabled(e common.EntityId, world *World) (bool, error) {
-	return world.HitboxColliderManager.BaseColliderManager.IsEnabled(e, world)
+func (hitboxColliderManager) IsEnabled(e common.EntityId, ecs *ECS) (bool, error) {
+	return ecs.HitboxColliderManager.BaseColliderManager.IsEnabled(e, ecs)
 }
 
-func (hitboxColliderManager) SetEnabled(e common.EntityId, enabled bool, world *World) error {
-	return world.HitboxColliderManager.BaseColliderManager.SetEnabled(e, enabled, world)
+func (hitboxColliderManager) SetEnabled(e common.EntityId, enabled bool, ecs *ECS) error {
+	return ecs.HitboxColliderManager.BaseColliderManager.SetEnabled(e, enabled, ecs)
 }
 
-func (hitboxColliderManager) GetWorldPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return world.HitboxColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, world)
+func (hitboxColliderManager) GetWorldPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
+	return ecs.HitboxColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, ecs)
 }
 
-func (hitboxColliderManager) GetShapes(e common.EntityId, world *World) ([]shapes.Shape, error) {
-	return world.HitboxColliderManager.BaseColliderManager.GetShapes(e, world)
+func (hitboxColliderManager) GetShapes(e common.EntityId, ecs *ECS) ([]shapes.Shape, error) {
+	return ecs.HitboxColliderManager.BaseColliderManager.GetShapes(e, ecs)
 }
 
-func (hitboxColliderManager) GetLocalAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return world.HitboxColliderManager.BaseColliderManager.GetLocalAABB(e, world)
+func (hitboxColliderManager) GetLocalAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
+	return ecs.HitboxColliderManager.BaseColliderManager.GetLocalAABB(e, ecs)
 }
 
-func (hitboxColliderManager) GetLocalPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return world.HitboxColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, world)
+func (hitboxColliderManager) GetLocalPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
+	return ecs.HitboxColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, ecs)
 }
 
-func (hitboxColliderManager) GetCenter(e common.EntityId, world *World) (utils.Vec2, error) {
-	return world.HitboxColliderManager.BaseColliderManager.GetCenter(e, world)
+func (hitboxColliderManager) GetCenter(e common.EntityId, ecs *ECS) (utils.Vec2, error) {
+	return ecs.HitboxColliderManager.BaseColliderManager.GetCenter(e, ecs)
 }
 
-func (hitboxColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
-	return world.HitboxColliderManager.BaseColliderManager.GetLayer(e, world)
+func (hitboxColliderManager) GetLayer(e common.EntityId, ecs *ECS) (LayerMask, error) {
+	return ecs.HitboxColliderManager.BaseColliderManager.GetLayer(e, ecs)
 }
 
-func (hitboxColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
-	return world.HitboxColliderManager.BaseColliderManager.GetMask(e, world)
+func (hitboxColliderManager) GetMask(e common.EntityId, ecs *ECS) (LayerMask, error) {
+	return ecs.HitboxColliderManager.BaseColliderManager.GetMask(e, ecs)
 }

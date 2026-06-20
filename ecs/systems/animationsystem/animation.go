@@ -7,19 +7,19 @@ import (
 	"log"
 )
 
-func Tick(world *ecs.World) error {
-	am := world.AnimationManager
-	sm := world.SpriteManager
+func Tick(ecs *ecs.ECS) error {
+	am := ecs.AnimationManager
+	sm := ecs.SpriteManager
 
-	for _, e := range world.Animations.GetEntities() {
-		err := am.Tick(e, world)
+	for _, e := range ecs.Animations.GetEntities() {
+		err := am.Tick(e, ecs)
 		if err != nil {
 			log.Printf("Error ticking animation for entity %d: %v\n", e, err)
 			continue
 		}
 
 		// TODO: Don't halt all animation processing if one fails
-		if !world.Sprites.HasComponent(e) {
+		if !ecs.Sprites.HasComponent(e) {
 			return &common.ErrorMissingComponentDependency{
 				Entity:           e,
 				PresentComponent: "Animation",
@@ -27,13 +27,13 @@ func Tick(world *ecs.World) error {
 			}
 		}
 
-		currentFrame, err := am.GetCurrentFrame(e, world)
+		currentFrame, err := am.GetCurrentFrame(e, ecs)
 		if err != nil {
 			log.Printf("Error getting current frame for entity %d: %v\n", e, err)
 			continue
 		}
 
-		err = sm.SetImage(e, currentFrame, world)
+		err = sm.SetImage(e, currentFrame, ecs)
 		if err != nil {
 			log.Printf("Error setting sprite image for entity %d: %v\n", e, err)
 			continue
@@ -43,15 +43,15 @@ func Tick(world *ecs.World) error {
 		// Maybe calculate these once for each frame and store them in the animation component.
 		layerYOffset := utils.GetFirstOpaquePixelY(currentFrame)
 
-		err = sm.SetLocalLayerYOffset(e, layerYOffset, world)
+		err = sm.SetLocalLayerYOffset(e, layerYOffset, ecs)
 		if err != nil {
 			log.Printf("Error setting local layer Y offset for entity %d: %v\n", e, err)
 			continue
 		}
 	}
 
-	for _, e := range world.Sprites.GetEntities() {
-		err := sm.TickFlash(e, world)
+	for _, e := range ecs.Sprites.GetEntities() {
+		err := sm.TickFlash(e, ecs)
 		if err != nil {
 			log.Printf("Error ticking flash for entity %d: %v\n", e, err)
 			continue

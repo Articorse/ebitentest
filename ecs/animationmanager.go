@@ -44,9 +44,9 @@ func NewAnimationComponentWithSheet(
 
 func (animationManager) GetState(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (AnimationState, error) {
-	animComp, err := world.Animations.getComponent(e)
+	animComp, err := ecs.Animations.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}
@@ -56,9 +56,9 @@ func (animationManager) GetState(
 
 func (animationManager) GetCurrentFrame(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (*ebiten.Image, error) {
-	animComp, err := world.Animations.getComponent(e)
+	animComp, err := ecs.Animations.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}
@@ -88,9 +88,9 @@ func (animationManager) GetCurrentFrame(
 func (animationManager) SetState(
 	e common.EntityId,
 	newState AnimationState,
-	world *World,
+	ecs *ECS,
 ) error {
-	animComp, err := world.Animations.getComponent(e)
+	animComp, err := ecs.Animations.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}
@@ -109,9 +109,9 @@ func (animationManager) SetState(
 func (animationManager) SetQueuedStateIfNone(
 	e common.EntityId,
 	newState AnimationState,
-	world *World,
+	ecs *ECS,
 ) error {
-	animComp, err := world.Animations.getComponent(e)
+	animComp, err := ecs.Animations.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}
@@ -129,9 +129,9 @@ func (animationManager) SetQueuedStateIfNone(
 
 func (animationManager) Tick(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) error {
-	animComp, err := world.Animations.getComponent(e)
+	animComp, err := ecs.Animations.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get animation component of entity %d: %v", e, err)
 	}

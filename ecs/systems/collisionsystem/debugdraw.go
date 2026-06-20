@@ -19,19 +19,19 @@ func DrawCollisions(
 	color color.RGBA,
 	camera utils.Vec2,
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
-	world *ecs.World,
+	ecs *ecs.ECS,
 ) error {
 	for eA, cols := range collisions {
-		tm := world.TransformManager
+		tm := ecs.TransformManager
 
-		if !world.Transforms.HasComponent(eA) {
+		if !ecs.Transforms.HasComponent(eA) {
 			log.Printf("Entity %d in collisions does not have a transform component\n", eA)
 			continue
 		}
 
-		aWorldPos, err := tm.GetWorldPos(eA, world)
+		aWorldPos, err := tm.GetWorldPos(eA, ecs)
 		if err != nil {
-			log.Printf("Error getting world position for entity %d: %v\n", eA, err)
+			log.Printf("Error getting ecs position for entity %d: %v\n", eA, err)
 			continue
 		}
 
@@ -59,14 +59,14 @@ func DrawColliders(
 	screen *ebiten.Image,
 	camera utils.Vec2,
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
-	world *ecs.World,
+	ecs *ecs.ECS,
 ) error {
-	for _, e := range colManager.EntityIds(world) {
-		tm := world.TransformManager
+	for _, e := range colManager.EntityIds(ecs) {
+		tm := ecs.TransformManager
 
-		worldPos, err := tm.GetWorldPos(e, world)
+		ecsPos, err := tm.GetWorldPos(e, ecs)
 		if err != nil {
-			log.Printf("Error getting world position for entity %d: %v\n", e, err)
+			log.Printf("Error getting ecs position for entity %d: %v\n", e, err)
 			continue
 		}
 
@@ -75,10 +75,10 @@ func DrawColliders(
 			utils.Vec2{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
 		}
 
-		if worldPos.X < drawWindow[0].X ||
-			worldPos.X > drawWindow[1].X ||
-			worldPos.Y < drawWindow[0].Y ||
-			worldPos.Y > drawWindow[1].Y {
+		if ecsPos.X < drawWindow[0].X ||
+			ecsPos.X > drawWindow[1].X ||
+			ecsPos.Y < drawWindow[0].Y ||
+			ecsPos.Y > drawWindow[1].Y {
 			continue
 		}
 
@@ -95,7 +95,7 @@ func DrawColliders(
 			}
 		}
 
-		colShapes, err := colManager.GetShapes(e, world)
+		colShapes, err := colManager.GetShapes(e, ecs)
 		if err != nil {
 			log.Printf("Error getting collider shapes for entity %d: %v\n", e, err)
 			continue
@@ -105,11 +105,11 @@ func DrawColliders(
 			switch h := shape.(type) {
 			case *shapes.RectangleShape:
 				verts := []utils.Vec2{
-					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
-					utils.Vec2{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[0].Y},
-					utils.Vec2{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[1].Y},
-					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[1].Y},
-					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
+					utils.Vec2{X: ecsPos.X + h.GetAABB()[0].X, Y: ecsPos.Y + h.GetAABB()[0].Y},
+					utils.Vec2{X: ecsPos.X + h.GetAABB()[1].X, Y: ecsPos.Y + h.GetAABB()[0].Y},
+					utils.Vec2{X: ecsPos.X + h.GetAABB()[1].X, Y: ecsPos.Y + h.GetAABB()[1].Y},
+					utils.Vec2{X: ecsPos.X + h.GetAABB()[0].X, Y: ecsPos.Y + h.GetAABB()[1].Y},
+					utils.Vec2{X: ecsPos.X + h.GetAABB()[0].X, Y: ecsPos.Y + h.GetAABB()[0].Y},
 				}
 				for i := range verts[:len(verts)-1] {
 					vector.StrokeLine(
@@ -124,7 +124,7 @@ func DrawColliders(
 					)
 				}
 			case *shapes.CircleShape:
-				center := utils.Vec2{X: worldPos.X + h.GetOffset().X, Y: worldPos.Y + h.GetOffset().Y}
+				center := utils.Vec2{X: ecsPos.X + h.GetOffset().X, Y: ecsPos.Y + h.GetOffset().Y}
 				vector.StrokeCircle(
 					screen,
 					float32(center.X-camera.X),
@@ -137,7 +137,7 @@ func DrawColliders(
 			case *shapes.PolygonShape:
 				var verts []utils.Vec2
 				for _, v := range h.GetVertices() {
-					verts = append(verts, utils.Vec2{X: worldPos.X + v.X, Y: worldPos.Y + v.Y})
+					verts = append(verts, utils.Vec2{X: ecsPos.X + v.X, Y: ecsPos.Y + v.Y})
 				}
 				for _, v := range verts[:len(verts)-1] {
 					vector.StrokeLine(
@@ -164,14 +164,14 @@ func DrawAABBs(
 	screen *ebiten.Image,
 	camera utils.Vec2,
 	aabbcollisions map[common.EntityId][]common.EntityId,
-	world *ecs.World,
+	ecs *ecs.ECS,
 ) error {
-	for _, e := range colManager.EntityIds(world) {
-		tm := world.TransformManager
+	for _, e := range colManager.EntityIds(ecs) {
+		tm := ecs.TransformManager
 
-		worldPos, err := tm.GetWorldPos(e, world)
+		ecsPos, err := tm.GetWorldPos(e, ecs)
 		if err != nil {
-			log.Printf("Error getting world position for entity %d: %v\n", e, err)
+			log.Printf("Error getting ecs position for entity %d: %v\n", e, err)
 			continue
 		}
 
@@ -180,10 +180,10 @@ func DrawAABBs(
 			utils.Vec2{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
 		}
 
-		if worldPos.X < drawWindow[0].X ||
-			worldPos.X > drawWindow[1].X ||
-			worldPos.Y < drawWindow[0].Y ||
-			worldPos.Y > drawWindow[1].Y {
+		if ecsPos.X < drawWindow[0].X ||
+			ecsPos.X > drawWindow[1].X ||
+			ecsPos.Y < drawWindow[0].Y ||
+			ecsPos.Y > drawWindow[1].Y {
 			continue
 		}
 
@@ -205,7 +205,7 @@ func DrawAABBs(
 			lineColor = collidedColor
 		}
 
-		aabb, err := colManager.GetWorldPaddedAABB(e, world)
+		aabb, err := colManager.GetWorldPaddedAABB(e, ecs)
 		if err != nil {
 			log.Printf("Error getting AABB for entity %d: %v\n", e, err)
 			continue

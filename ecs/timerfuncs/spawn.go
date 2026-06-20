@@ -6,8 +6,8 @@ import (
 	"fmt"
 )
 
-func Spawn(self common.EntityId, world *ecs.World) error {
-	_, err := world.SpawnerManager.Spawn(self, world)
+func Spawn(self common.EntityId, ecs *ecs.ECS) error {
+	_, err := ecs.SpawnerManager.Spawn(self, ecs)
 	if err != nil {
 		return fmt.Errorf("error during enemy spawn: %v", err)
 	}

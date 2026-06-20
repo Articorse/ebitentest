@@ -24,9 +24,9 @@ func NewVelocityComponentWithParams(
 
 func (*velocityManager) GetLocalVector(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (utils.Vec2, error) {
-	velComp, err := world.Velocities.getComponent(e)
+	velComp, err := ecs.Velocities.getComponent(e)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
@@ -36,35 +36,35 @@ func (*velocityManager) GetLocalVector(
 
 func (*velocityManager) GetWorldVector(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (utils.Vec2, error) {
 	pm := parentManager{}
 	tm := transformManager{}
 	vm := velocityManager{}
 
-	velComp, err := world.Velocities.getComponent(e)
+	velComp, err := ecs.Velocities.getComponent(e)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
 
 	parVelVectorOffset := utils.Vec2{}
 
-	parEntity := pm.GetEntity(e, world)
+	parEntity := pm.GetEntity(e, ecs)
 	if parEntity != -1 {
 		var err error
-		parVelVectorOffset, err = vm.GetWorldVector(parEntity, world)
+		parVelVectorOffset, err = vm.GetWorldVector(parEntity, ecs)
 		if err != nil {
-			return utils.Vec2{}, fmt.Errorf("error getting world velocity vector of parent entity %d: %v", parEntity, err)
+			return utils.Vec2{}, fmt.Errorf("error getting ecs velocity vector of parent entity %d: %v", parEntity, err)
 		}
 	}
 
-	worldRot, err := tm.GetWorldRotation(e, world)
+	ecsRot, err := tm.GetWorldRotation(e, ecs)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world rotation of entity %d: %v", parEntity, err)
+		return utils.Vec2{}, fmt.Errorf("error getting ecs rotation of entity %d: %v", parEntity, err)
 	}
 
-	cos := math.Cos(worldRot)
-	sin := math.Sin(worldRot)
+	cos := math.Cos(ecsRot)
+	sin := math.Sin(ecsRot)
 
 	return utils.Vec2{
 		X: parVelVectorOffset.X + (velComp.vector.X*cos - velComp.vector.Y*sin),
@@ -74,9 +74,9 @@ func (*velocityManager) GetWorldVector(
 
 func (*velocityManager) GetAcceleration(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (float64, error) {
-	velComp, err := world.Velocities.getComponent(e)
+	velComp, err := ecs.Velocities.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
@@ -86,9 +86,9 @@ func (*velocityManager) GetAcceleration(
 
 func (*velocityManager) GetDrag(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (float64, error) {
-	velComp, err := world.Velocities.getComponent(e)
+	velComp, err := ecs.Velocities.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
@@ -99,9 +99,9 @@ func (*velocityManager) GetDrag(
 func (*velocityManager) AddForce(
 	e common.EntityId,
 	force utils.Vec2,
-	world *World,
+	ecs *ECS,
 ) error {
-	valComp, err := world.Velocities.getComponent(e)
+	valComp, err := ecs.Velocities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
@@ -113,9 +113,9 @@ func (*velocityManager) AddForce(
 func (*velocityManager) SetLocalVector(
 	e common.EntityId,
 	vector utils.Vec2,
-	world *World,
+	ecs *ECS,
 ) error {
-	valComp, err := world.Velocities.getComponent(e)
+	valComp, err := ecs.Velocities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
@@ -127,31 +127,31 @@ func (*velocityManager) SetLocalVector(
 func (*velocityManager) SetWorldVector(
 	e common.EntityId,
 	vector utils.Vec2,
-	world *World,
+	ecs *ECS,
 ) error {
 	pm := parentManager{}
 	tm := transformManager{}
 	vm := velocityManager{}
 
-	velComp, err := world.Velocities.getComponent(e)
+	velComp, err := ecs.Velocities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, world)
+	parEntity := pm.GetEntity(e, ecs)
 	if parEntity == -1 {
 		velComp.vector = vector
 		return nil
 	}
 
-	pWorldVector, err := vm.GetWorldVector(parEntity, world)
+	pWorldVector, err := vm.GetWorldVector(parEntity, ecs)
 	if err != nil {
-		return fmt.Errorf("error getting world velocity vector of parent entity %d: %v", parEntity, err)
+		return fmt.Errorf("error getting ecs velocity vector of parent entity %d: %v", parEntity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parEntity, world)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, ecs)
 	if err != nil {
-		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
+		return fmt.Errorf("error getting ecs rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	cos := math.Cos(pWorldRot)
@@ -168,9 +168,9 @@ func (*velocityManager) SetWorldVector(
 func (*velocityManager) SetDrag(
 	e common.EntityId,
 	drag float64,
-	world *World,
+	ecs *ECS,
 ) error {
-	valComp, err := world.Velocities.getComponent(e)
+	valComp, err := ecs.Velocities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
@@ -182,9 +182,9 @@ func (*velocityManager) SetDrag(
 func (*velocityManager) SetAcceleration(
 	e common.EntityId,
 	acceleration float64,
-	world *World,
+	ecs *ECS,
 ) error {
-	valComp, err := world.Velocities.getComponent(e)
+	valComp, err := ecs.Velocities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}

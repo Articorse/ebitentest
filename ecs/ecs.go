@@ -10,8 +10,8 @@ import (
 	"slices"
 )
 
-// Do not instantiate directly, use NewWorld()
-type World struct {
+// Do not instantiate directly, use NewECS()
+type ECS struct {
 	nextEntity           common.EntityId
 	scheduledForDeletion []common.EntityId
 
@@ -65,8 +65,8 @@ type World struct {
 	FloatingTextManager     floatingTextManager
 }
 
-func NewWorld() *World {
-	return &World{
+func NewECS() *ECS {
+	return &ECS{
 		nextEntity: 0,
 		InputLog:   make(map[uint64]map[common.EntityId]InputState),
 
@@ -120,14 +120,14 @@ func NewWorld() *World {
 	}
 }
 
-func (x *World) GetCurrentTickInputs() (map[common.EntityId]InputState, error) {
+func (x *ECS) GetCurrentTickInputs() (map[common.EntityId]InputState, error) {
 	if tickInputs, ok := x.InputLog[x.TickIdx]; ok {
 		return tickInputs, nil
 	}
 	return nil, fmt.Errorf("no inputs found for tick %d", x.TickIdx)
 }
 
-func (x *World) GetCurrentTickInputsForEntity(e common.EntityId) (InputState, error) {
+func (x *ECS) GetCurrentTickInputsForEntity(e common.EntityId) (InputState, error) {
 	if tickInputs, ok := x.InputLog[x.TickIdx]; ok {
 		if input, ok := tickInputs[e]; ok {
 			return input, nil
@@ -137,16 +137,16 @@ func (x *World) GetCurrentTickInputsForEntity(e common.EntityId) (InputState, er
 	return InputState{}, fmt.Errorf("no inputs found for tick %d", x.TickIdx)
 }
 
-func (x *World) SetTickInputs(tick uint64, inputs map[common.EntityId]InputState) {
+func (x *ECS) SetTickInputs(tick uint64, inputs map[common.EntityId]InputState) {
 	x.InputLog[tick] = inputs
 }
 
-func (x *World) AddEmptyEntity() common.EntityId {
+func (x *ECS) AddEmptyEntity() common.EntityId {
 	x.nextEntity++
 	return x.nextEntity - 1
 }
 
-func (x *World) AddEntity(comps ...component) common.EntityId {
+func (x *ECS) AddEntity(comps ...component) common.EntityId {
 	e := x.AddEmptyEntity()
 
 	for _, comp := range comps {
@@ -156,13 +156,13 @@ func (x *World) AddEntity(comps ...component) common.EntityId {
 	return e
 }
 
-func (x *World) ScheduleRemoveEntity(e common.EntityId) {
+func (x *ECS) ScheduleRemoveEntity(e common.EntityId) {
 	if !slices.Contains(x.scheduledForDeletion, e) {
 		x.scheduledForDeletion = append(x.scheduledForDeletion, e)
 	}
 }
 
-func (x *World) RemoveScheduledEntities() error {
+func (x *ECS) RemoveScheduledEntities() error {
 	for _, e := range slices.Clone(x.scheduledForDeletion) {
 		if x.Deathrattles.HasComponent(e) {
 			err := x.DeathrattleManager.Effect(e, x)
@@ -245,7 +245,7 @@ func (x *World) RemoveScheduledEntities() error {
 	return nil
 }
 
-func (x *World) AddComponent(e common.EntityId, comp component) {
+func (x *ECS) AddComponent(e common.EntityId, comp component) {
 	switch c := comp.(type) {
 	case *parent:
 		x.Parents.addComponent(e, c.Copy())
@@ -288,6 +288,6 @@ func (x *World) AddComponent(e common.EntityId, comp component) {
 	case *floatingText:
 		x.FloatingTexts.addComponent(e, c.Copy())
 	default:
-		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in World.AddComponent\n", comp, e)
+		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in ECS.AddComponent\n", comp, e)
 	}
 }

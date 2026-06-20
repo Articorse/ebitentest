@@ -9,27 +9,27 @@ import (
 )
 
 // Should be called before other systems modify Transforms or Velocities
-func Tick(world *ecs.World) error {
-	tm := world.TransformManager
-	vm := world.VelocityManager
+func Tick(ecs *ecs.ECS) error {
+	tm := ecs.TransformManager
+	vm := ecs.VelocityManager
 
-	for _, e := range world.Velocities.GetEntities() {
-		localPos, err := tm.GetLocalPos(e, world)
+	for _, e := range ecs.Velocities.GetEntities() {
+		localPos, err := tm.GetLocalPos(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting local position of entity %d: %v", e, err)
 		}
 
-		drag, err := vm.GetDrag(e, world)
+		drag, err := vm.GetDrag(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting drag of entity %d: %v", e, err)
 		}
 
-		localVelVec, err := vm.GetLocalVector(e, world)
+		localVelVec, err := vm.GetLocalVector(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting local velocity vector of entity %d: %v", e, err)
 		}
 
-		localRot, err := tm.GetLocalRotation(e, world)
+		localRot, err := tm.GetLocalRotation(e, ecs)
 		if err != nil {
 			return fmt.Errorf("error getting local rotation of entity %d: %v", e, err)
 		}
@@ -42,17 +42,17 @@ func Tick(world *ecs.World) error {
 			Y: (localVelVec.X*sin + localVelVec.Y*cos),
 		}
 
-		err = tm.SetLocalPos(e, localPos.Add(movementVector), world)
+		err = tm.SetLocalPos(e, localPos.Add(movementVector), ecs)
 		if err != nil {
 			return fmt.Errorf("error setting local position of entity %d: %v", e, err)
 		}
-		err = vm.SetLocalVector(e, localVelVec.Multiply(drag), world)
+		err = vm.SetLocalVector(e, localVelVec.Multiply(drag), ecs)
 		if err != nil {
 			return fmt.Errorf("error setting local velocity vector of entity %d: %v", e, err)
 		}
 
 		if localVelVec.Length() < data.VelocityThreshold {
-			err = vm.SetLocalVector(e, utils.Vec2{X: 0, Y: 0}, world)
+			err = vm.SetLocalVector(e, utils.Vec2{X: 0, Y: 0}, ecs)
 			if err != nil {
 				return fmt.Errorf("error setting local velocity vector of entity %d: %v", e, err)
 			}

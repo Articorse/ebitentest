@@ -16,8 +16,8 @@ func NewFacePositionComponent(pos utils.Vec2, enabled bool) *facePosition {
 	}
 }
 
-func (*facePositionManager) GetEnabled(e common.EntityId, world *World) (bool, error) {
-	fpComp, err := world.FacePositions.getComponent(e)
+func (*facePositionManager) GetEnabled(e common.EntityId, ecs *ECS) (bool, error) {
+	fpComp, err := ecs.FacePositions.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get face position component of entity %d: %v", e, err)
 	}
@@ -25,8 +25,8 @@ func (*facePositionManager) GetEnabled(e common.EntityId, world *World) (bool, e
 	return fpComp.enabled, nil
 }
 
-func (*facePositionManager) Enable(e common.EntityId, world *World) error {
-	fpComp, err := world.FacePositions.getComponent(e)
+func (*facePositionManager) Enable(e common.EntityId, ecs *ECS) error {
+	fpComp, err := ecs.FacePositions.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get face position component of entity %d: %v", e, err)
 	}
@@ -36,8 +36,8 @@ func (*facePositionManager) Enable(e common.EntityId, world *World) error {
 	return nil
 }
 
-func (*facePositionManager) Disable(e common.EntityId, world *World) error {
-	fpComp, err := world.FacePositions.getComponent(e)
+func (*facePositionManager) Disable(e common.EntityId, ecs *ECS) error {
+	fpComp, err := ecs.FacePositions.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get face position component of entity %d: %v", e, err)
 	}
@@ -47,8 +47,8 @@ func (*facePositionManager) Disable(e common.EntityId, world *World) error {
 	return nil
 }
 
-func (*facePositionManager) GetLocalPos(e common.EntityId, world *World) (utils.Vec2, error) {
-	fpComp, err := world.FacePositions.getComponent(e)
+func (*facePositionManager) GetLocalPos(e common.EntityId, ecs *ECS) (utils.Vec2, error) {
+	fpComp, err := ecs.FacePositions.getComponent(e)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("could not get face position component of entity %d: %v", e, err)
 	}
@@ -56,28 +56,28 @@ func (*facePositionManager) GetLocalPos(e common.EntityId, world *World) (utils.
 	return fpComp.pos, nil
 }
 
-func (*facePositionManager) GetWorldPos(e common.EntityId, world *World) (utils.Vec2, error) {
+func (*facePositionManager) GetWorldPos(e common.EntityId, ecs *ECS) (utils.Vec2, error) {
 	tm := transformManager{}
 	pm := parentManager{}
 
-	fpComp, err := world.FacePositions.getComponent(e)
+	fpComp, err := ecs.FacePositions.getComponent(e)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("could not get face position component of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, world)
+	parEntity := pm.GetEntity(e, ecs)
 	if parEntity == -1 {
 		return fpComp.pos, nil
 	}
 
-	pWorldPos, err := tm.GetWorldPos(parEntity, world)
+	pWorldPos, err := tm.GetWorldPos(parEntity, ecs)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, err)
+		return utils.Vec2{}, fmt.Errorf("error getting ecs position of parent entity %d: %v", parEntity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parEntity, world)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, ecs)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
+		return utils.Vec2{}, fmt.Errorf("error getting ecs rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	cos := math.Cos(pWorldRot)
@@ -89,8 +89,8 @@ func (*facePositionManager) GetWorldPos(e common.EntityId, world *World) (utils.
 	}, nil
 }
 
-func (*facePositionManager) SetLocalPos(e common.EntityId, pos utils.Vec2, world *World) error {
-	fpComp, err := world.FacePositions.getComponent(e)
+func (*facePositionManager) SetLocalPos(e common.EntityId, pos utils.Vec2, ecs *ECS) error {
+	fpComp, err := ecs.FacePositions.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get face position component of entity %d: %v", e, err)
 	}
@@ -103,30 +103,30 @@ func (*facePositionManager) SetLocalPos(e common.EntityId, pos utils.Vec2, world
 func (*facePositionManager) SetWorldPos(
 	e common.EntityId,
 	pos utils.Vec2,
-	world *World,
+	ecs *ECS,
 ) error {
 	pm := parentManager{}
 	tm := transformManager{}
 
-	fpComp, err := world.FacePositions.getComponent(e)
+	fpComp, err := ecs.FacePositions.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get facePosition of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, world)
+	parEntity := pm.GetEntity(e, ecs)
 	if parEntity == -1 {
 		fpComp.pos = pos
 		return nil
 	}
 
-	pWorldPos, err := tm.GetWorldPos(parEntity, world)
+	pWorldPos, err := tm.GetWorldPos(parEntity, ecs)
 	if err != nil {
-		return fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, err)
+		return fmt.Errorf("error getting ecs position of parent entity %d: %v", parEntity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parEntity, world)
+	pWorldRot, err := tm.GetWorldRotation(parEntity, ecs)
 	if err != nil {
-		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
+		return fmt.Errorf("error getting ecs rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	cos := math.Cos(pWorldRot)

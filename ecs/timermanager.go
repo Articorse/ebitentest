@@ -28,9 +28,9 @@ func NewTimerComponent(
 
 func (timerManager) TickDown(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (timerOver bool, err error) {
-	timer, err := world.Timers.getComponent(e)
+	timer, err := ecs.Timers.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get timer component of entity %d: %v", e, err)
 	}
@@ -42,7 +42,7 @@ func (timerManager) TickDown(
 	timer.counterMs -= data.TickMs
 
 	if timer.counterMs <= 0 {
-		err := timer.timerFunc(e, world)
+		err := timer.timerFunc(e, ecs)
 		timer.remainingTriggers--
 		timer.counterMs = timer.maxTimeMs
 		if err != nil {

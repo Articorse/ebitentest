@@ -25,9 +25,9 @@ func NewContactDamageComponent(
 
 func (*contactDamageManager) GetSource(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (common.EntityId, error) {
-	cdComp, err := world.ContactDamages.getComponent(e)
+	cdComp, err := ecs.ContactDamages.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
@@ -37,9 +37,9 @@ func (*contactDamageManager) GetSource(
 
 func (*contactDamageManager) GetDamageTiers(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) ([]int, error) {
-	cdComp, err := world.ContactDamages.getComponent(e)
+	cdComp, err := ecs.ContactDamages.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
@@ -49,9 +49,9 @@ func (*contactDamageManager) GetDamageTiers(
 
 func (*contactDamageManager) GetKnockback(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (float64, error) {
-	cdComp, err := world.ContactDamages.getComponent(e)
+	cdComp, err := ecs.ContactDamages.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
@@ -61,9 +61,9 @@ func (*contactDamageManager) GetKnockback(
 
 func (*contactDamageManager) GetDieOnContact(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (bool, error) {
-	cdComp, err := world.ContactDamages.getComponent(e)
+	cdComp, err := ecs.ContactDamages.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
@@ -73,9 +73,9 @@ func (*contactDamageManager) GetDieOnContact(
 
 func (*contactDamageManager) GetSingleTick(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (bool, error) {
-	cdComp, err := world.ContactDamages.getComponent(e)
+	cdComp, err := ecs.ContactDamages.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}

@@ -25,9 +25,9 @@ func NewPhysicsColliderComponent(
 
 func (*physicsColliderManager) GetColliderType(
 	e common.EntityId,
-	world *World,
+	ecs *ECS,
 ) (PhysicsColliderType, error) {
-	collider, err := world.PhysicsColliders.getComponent(e)
+	collider, err := ecs.PhysicsColliders.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
@@ -35,46 +35,46 @@ func (*physicsColliderManager) GetColliderType(
 	return collider.colliderType, nil
 }
 
-func (physicsColliderManager) EntityIds(w *World) []common.EntityId {
+func (physicsColliderManager) EntityIds(w *ECS) []common.EntityId {
 	return w.PhysicsColliders.GetEntities()
 }
 
-func (physicsColliderManager) HasCollider(e common.EntityId, w *World) bool {
+func (physicsColliderManager) HasCollider(e common.EntityId, w *ECS) bool {
 	return w.PhysicsColliders.HasComponent(e)
 }
 
-func (physicsColliderManager) IsEnabled(e common.EntityId, world *World) (bool, error) {
-	return world.PhysicsColliderManager.BaseColliderManager.IsEnabled(e, world)
+func (physicsColliderManager) IsEnabled(e common.EntityId, ecs *ECS) (bool, error) {
+	return ecs.PhysicsColliderManager.BaseColliderManager.IsEnabled(e, ecs)
 }
 
-func (physicsColliderManager) SetEnabled(e common.EntityId, enabled bool, world *World) error {
-	return world.PhysicsColliderManager.BaseColliderManager.SetEnabled(e, enabled, world)
+func (physicsColliderManager) SetEnabled(e common.EntityId, enabled bool, ecs *ECS) error {
+	return ecs.PhysicsColliderManager.BaseColliderManager.SetEnabled(e, enabled, ecs)
 }
 
-func (physicsColliderManager) GetWorldPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return world.PhysicsColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, world)
+func (physicsColliderManager) GetWorldPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
+	return ecs.PhysicsColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, ecs)
 }
 
-func (physicsColliderManager) GetShapes(e common.EntityId, world *World) ([]shapes.Shape, error) {
-	return world.PhysicsColliderManager.BaseColliderManager.GetShapes(e, world)
+func (physicsColliderManager) GetShapes(e common.EntityId, ecs *ECS) ([]shapes.Shape, error) {
+	return ecs.PhysicsColliderManager.BaseColliderManager.GetShapes(e, ecs)
 }
 
-func (physicsColliderManager) GetLocalAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return world.PhysicsColliderManager.BaseColliderManager.GetLocalAABB(e, world)
+func (physicsColliderManager) GetLocalAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
+	return ecs.PhysicsColliderManager.BaseColliderManager.GetLocalAABB(e, ecs)
 }
 
-func (physicsColliderManager) GetLocalPaddedAABB(e common.EntityId, world *World) ([2]utils.Vec2, error) {
-	return world.PhysicsColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, world)
+func (physicsColliderManager) GetLocalPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
+	return ecs.PhysicsColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, ecs)
 }
 
-func (physicsColliderManager) GetCenter(e common.EntityId, world *World) (utils.Vec2, error) {
-	return world.PhysicsColliderManager.BaseColliderManager.GetCenter(e, world)
+func (physicsColliderManager) GetCenter(e common.EntityId, ecs *ECS) (utils.Vec2, error) {
+	return ecs.PhysicsColliderManager.BaseColliderManager.GetCenter(e, ecs)
 }
 
-func (physicsColliderManager) GetLayer(e common.EntityId, world *World) (LayerMask, error) {
-	return world.PhysicsColliderManager.BaseColliderManager.GetLayer(e, world)
+func (physicsColliderManager) GetLayer(e common.EntityId, ecs *ECS) (LayerMask, error) {
+	return ecs.PhysicsColliderManager.BaseColliderManager.GetLayer(e, ecs)
 }
 
-func (physicsColliderManager) GetMask(e common.EntityId, world *World) (LayerMask, error) {
-	return world.PhysicsColliderManager.BaseColliderManager.GetMask(e, world)
+func (physicsColliderManager) GetMask(e common.EntityId, ecs *ECS) (LayerMask, error) {
+	return ecs.PhysicsColliderManager.BaseColliderManager.GetMask(e, ecs)
 }
