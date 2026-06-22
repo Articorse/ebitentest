@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-type Storage[T component] struct {
+type Storage[T Component] struct {
 	order []common.EntityId
 	data  map[common.EntityId]*T
 }

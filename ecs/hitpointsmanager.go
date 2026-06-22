@@ -20,9 +20,9 @@ func NewHitpointsComponent(max int, invul int) *hitpoints {
 
 func (hitpointsManager) GetMax(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (int, error) {
-	hpComp, err := ecs.Hitpoints.getComponent(e)
+	hpComp, err := ecsContainer.Hitpoints.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
@@ -33,9 +33,9 @@ func (hitpointsManager) GetMax(
 // Returns -1 if component not found
 func (hitpointsManager) GetCurrent(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (int, error) {
-	hpComp, err := ecs.Hitpoints.getComponent(e)
+	hpComp, err := ecsContainer.Hitpoints.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
@@ -45,9 +45,9 @@ func (hitpointsManager) GetCurrent(
 
 func (hitpointsManager) GetInvulMax(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (int, error) {
-	hpComp, err := ecs.Hitpoints.getComponent(e)
+	hpComp, err := ecsContainer.Hitpoints.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
@@ -57,9 +57,9 @@ func (hitpointsManager) GetInvulMax(
 
 func (hitpointsManager) GetInvulCurrent(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (int, error) {
-	hpComp, err := ecs.Hitpoints.getComponent(e)
+	hpComp, err := ecsContainer.Hitpoints.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
@@ -70,9 +70,9 @@ func (hitpointsManager) GetInvulCurrent(
 func (hitpointsManager) SetInvul(
 	e common.EntityId,
 	time int,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) error {
-	hpComp, err := ecs.Hitpoints.getComponent(e)
+	hpComp, err := ecsContainer.Hitpoints.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
@@ -83,9 +83,9 @@ func (hitpointsManager) SetInvul(
 
 func (hitpointsManager) IsInvul(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (bool, error) {
-	hpComp, err := ecs.Hitpoints.getComponent(e)
+	hpComp, err := ecsContainer.Hitpoints.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
@@ -95,9 +95,9 @@ func (hitpointsManager) IsInvul(
 
 func (hitpointsManager) TickInvul(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) error {
-	hpComp, err := ecs.Hitpoints.getComponent(e)
+	hpComp, err := ecsContainer.Hitpoints.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
@@ -117,11 +117,11 @@ func (hitpointsManager) TickInvul(
 func (hitpointsManager) TakeDamage(
 	e common.EntityId,
 	damage int,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (dead bool, err error) {
 	sm := spriteManager{}
 
-	hpComp, err := ecs.Hitpoints.getComponent(e)
+	hpComp, err := ecsContainer.Hitpoints.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}
@@ -144,7 +144,7 @@ func (hitpointsManager) TakeDamage(
 		},
 		[]int{100, 100},
 		hpComp.postHitInvulMs,
-		ecs,
+		ecsContainer,
 	)
 	if err != nil {
 		return false, fmt.Errorf("could not set sprite flash of entity %d: %v", e, err)
@@ -156,9 +156,9 @@ func (hitpointsManager) TakeDamage(
 func (hitpointsManager) Heal(
 	e common.EntityId,
 	heal int,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) error {
-	hpComp, err := ecs.Hitpoints.getComponent(e)
+	hpComp, err := ecsContainer.Hitpoints.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get hitpoints component of entity %d: %v", e, err)
 	}

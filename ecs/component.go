@@ -1,5 +1,5 @@
 package ecs
 
-type component interface {
+type Component interface {
 	isComponent()
 }

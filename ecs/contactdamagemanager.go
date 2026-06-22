@@ -25,9 +25,9 @@ func NewContactDamageComponent(
 
 func (*contactDamageManager) GetSource(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (common.EntityId, error) {
-	cdComp, err := ecs.ContactDamages.getComponent(e)
+	cdComp, err := ecsContainer.ContactDamages.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
@@ -37,9 +37,9 @@ func (*contactDamageManager) GetSource(
 
 func (*contactDamageManager) GetDamageTiers(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) ([]int, error) {
-	cdComp, err := ecs.ContactDamages.getComponent(e)
+	cdComp, err := ecsContainer.ContactDamages.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
@@ -49,9 +49,9 @@ func (*contactDamageManager) GetDamageTiers(
 
 func (*contactDamageManager) GetKnockback(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (float64, error) {
-	cdComp, err := ecs.ContactDamages.getComponent(e)
+	cdComp, err := ecsContainer.ContactDamages.getComponent(e)
 	if err != nil {
 		return -1, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
@@ -61,9 +61,9 @@ func (*contactDamageManager) GetKnockback(
 
 func (*contactDamageManager) GetDieOnContact(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (bool, error) {
-	cdComp, err := ecs.ContactDamages.getComponent(e)
+	cdComp, err := ecsContainer.ContactDamages.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}
@@ -73,9 +73,9 @@ func (*contactDamageManager) GetDieOnContact(
 
 func (*contactDamageManager) GetSingleTick(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (bool, error) {
-	cdComp, err := ecs.ContactDamages.getComponent(e)
+	cdComp, err := ecsContainer.ContactDamages.getComponent(e)
 	if err != nil {
 		return false, fmt.Errorf("could not get contact damage component of entity %d: %v", e, err)
 	}

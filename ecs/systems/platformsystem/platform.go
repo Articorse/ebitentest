@@ -10,33 +10,33 @@ import (
 
 func Tick(
 	shg map[common.CellKey][]common.EntityId,
-	ecs *ecs.ECS,
+	ecsContainer *ecs.ECSContainer,
 ) error {
-	tm := ecs.TransformManager
-	pcm := ecs.PlatformColliderManager
-	pm := ecs.ParentManager
-	phcm := ecs.PhysicsColliderManager
+	tm := ecsContainer.TransformManager
+	pcm := ecsContainer.PlatformColliderManager
+	pm := ecsContainer.ParentManager
+	phcm := ecsContainer.PhysicsColliderManager
 
-	for _, eA := range ecs.PlatformColliders.GetEntities() {
-		aAABB, err := pcm.GetWorldAABB(eA, ecs)
+	for _, eA := range ecsContainer.PlatformColliders.GetEntities() {
+		aAABB, err := pcm.GetWorldAABB(eA, ecsContainer)
 		if err != nil {
 			log.Printf("error getting AABB of entity %d: %v", eA, err)
 			continue
 		}
 
-		aWorldPos, err := tm.GetWorldPos(eA, ecs)
+		aWorldPos, err := tm.GetWorldPos(eA, ecsContainer)
 		if err != nil {
-			log.Printf("error getting ecs position of entity %d: %v", eA, err)
+			log.Printf("error getting world position of entity %d: %v", eA, err)
 			continue
 		}
 
-		aLayer, err := pcm.GetLayer(eA, ecs)
+		aLayer, err := pcm.GetLayer(eA, ecsContainer)
 		if err != nil {
 			log.Printf("error getting layer of entity %d: %v", eA, err)
 			continue
 		}
 
-		aMask, err := pcm.GetMask(eA, ecs)
+		aMask, err := pcm.GetMask(eA, ecsContainer)
 		if err != nil {
 			log.Printf("error getting mask of entity %d: %v", eA, err)
 			continue
@@ -52,17 +52,17 @@ func Tick(
 						continue
 					}
 
-					if !ecs.PhysicsColliders.HasComponent(eB) {
+					if !ecsContainer.PhysicsColliders.HasComponent(eB) {
 						continue
 					}
 
-					bLayer, err := phcm.GetLayer(eB, ecs)
+					bLayer, err := phcm.GetLayer(eB, ecsContainer)
 					if err != nil {
 						log.Printf("error getting layer of entity %d: %v", eB, err)
 						continue
 					}
 
-					bMask, err := phcm.GetMask(eB, ecs)
+					bMask, err := phcm.GetMask(eB, ecsContainer)
 					if err != nil {
 						log.Printf("error getting mask of entity %d: %v", eB, err)
 						continue
@@ -72,24 +72,24 @@ func Tick(
 						continue
 					}
 
-					bWorldPos, err := tm.GetWorldPos(eB, ecs)
+					bWorldPos, err := tm.GetWorldPos(eB, ecsContainer)
 					if err != nil {
-						log.Printf("error getting ecs position of entity %d: %v", eB, err)
+						log.Printf("error getting world position of entity %d: %v", eB, err)
 						continue
 					}
 
 					if utils.PointInAABB(bWorldPos, aAABB) {
-						err := pm.Attach(eB, eA, ecs)
+						err := pm.Attach(eB, eA, ecsContainer)
 						if err != nil {
 							log.Printf("error attaching entity %d to platform entity %d: %v", eB, eA, err)
 						}
 						continue
 					}
 
-					pEnt := pm.GetEntity(eB, ecs)
+					pEnt := pm.GetEntity(eB, ecsContainer)
 
 					if pEnt == eA {
-						err := pm.Detach(eB, ecs)
+						err := pm.Detach(eB, ecsContainer)
 						if err != nil {
 							log.Printf("error detaching entity %d to platform entity %d: %v", eB, eA, err)
 						}

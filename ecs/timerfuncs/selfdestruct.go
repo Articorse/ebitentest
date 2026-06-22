@@ -5,7 +5,7 @@ import (
 	"ebittest/ecs/common"
 )
 
-func Selfdestruct(self common.EntityId, ecs *ecs.ECS) error {
-	ecs.ScheduleRemoveEntity(self)
+func Selfdestruct(self common.EntityId, ecsContainer *ecs.ECSContainer) error {
+	ecsContainer.ScheduleRemoveEntity(self)
 	return nil
 }

@@ -17,9 +17,9 @@ func NewParentComponent() *parent {
 
 func (*parentManager) GetEntity(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) common.EntityId {
-	parComp, err := ecs.Parents.getComponent(e)
+	parComp, err := ecsContainer.Parents.getComponent(e)
 	if err != nil {
 		return -1
 	}
@@ -30,40 +30,40 @@ func (*parentManager) GetEntity(
 func (*parentManager) Attach(
 	c common.EntityId,
 	p common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) error {
 	tm := transformManager{}
 	pm := parentManager{}
 
-	parComp, err := ecs.Parents.getComponent(c)
+	parComp, err := ecsContainer.Parents.getComponent(c)
 	if err == nil {
-		if err := pm.Detach(c, ecs); err != nil {
+		if err := pm.Detach(c, ecsContainer); err != nil {
 			return fmt.Errorf("error during detach: %v", err)
 		}
 	}
 
 	parComp.entity = p
 
-	traComp, _ := ecs.Transforms.getComponent(c)
-	pTraComp, _ := ecs.Transforms.getComponent(p)
+	traComp, _ := ecsContainer.Transforms.getComponent(c)
+	pTraComp, _ := ecsContainer.Transforms.getComponent(p)
 
 	if traComp == nil || pTraComp == nil {
 		return nil
 	}
 
-	pWorldPos, err := tm.GetWorldPos(parComp.entity, ecs)
+	pWorldPos, err := tm.GetWorldPos(parComp.entity, ecsContainer)
 	if err != nil {
-		return fmt.Errorf("error getting ecs position of parent entity %d: %v", parComp.entity, err)
+		return fmt.Errorf("error getting world position of parent entity %d: %v", parComp.entity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parComp.entity, ecs)
+	pWorldRot, err := tm.GetWorldRotation(parComp.entity, ecsContainer)
 	if err != nil {
-		return fmt.Errorf("error getting ecs rotation of parent entity %d: %v", parComp.entity, err)
+		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.entity, err)
 	}
 
-	pWorldScale, err := tm.GetWorldScale(parComp.entity, ecs)
+	pWorldScale, err := tm.GetWorldScale(parComp.entity, ecsContainer)
 	if err != nil {
-		return fmt.Errorf("error getting ecs scale of parent entity %d: %v", parComp.entity, err)
+		return fmt.Errorf("error getting world scale of parent entity %d: %v", parComp.entity, err)
 	}
 
 	cos := math.Cos(pTraComp.rotation)
@@ -82,11 +82,11 @@ func (*parentManager) Attach(
 // If error handling is changed, check Attach()
 func (*parentManager) Detach(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) error {
 	tm := transformManager{}
 
-	parComp, err := ecs.Parents.getComponent(e)
+	parComp, err := ecsContainer.Parents.getComponent(e)
 	if err != nil {
 		return nil
 	}
@@ -95,19 +95,19 @@ func (*parentManager) Detach(
 		return nil
 	}
 
-	traComp, err := ecs.Transforms.getComponent(e)
+	traComp, err := ecsContainer.Transforms.getComponent(e)
 	if err != nil {
 		return nil
 	}
 
-	pWorldPos, err := tm.GetWorldPos(parComp.entity, ecs)
+	pWorldPos, err := tm.GetWorldPos(parComp.entity, ecsContainer)
 	if err != nil {
-		return fmt.Errorf("error getting ecs position of parent entity %d: %v", parComp.entity, err)
+		return fmt.Errorf("error getting world position of parent entity %d: %v", parComp.entity, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(parComp.entity, ecs)
+	pWorldRot, err := tm.GetWorldRotation(parComp.entity, ecsContainer)
 	if err != nil {
-		return fmt.Errorf("error getting ecs rotation of parent entity %d: %v", parComp.entity, err)
+		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parComp.entity, err)
 	}
 
 	cos := math.Cos(pWorldRot)
@@ -118,14 +118,14 @@ func (*parentManager) Detach(
 		Y: pWorldPos.Y + (traComp.pos.X*sin + traComp.pos.Y*cos),
 	}
 
-	eWorldScale, err := tm.GetWorldScale(e, ecs)
+	eWorldScale, err := tm.GetWorldScale(e, ecsContainer)
 	if err != nil {
-		return fmt.Errorf("error getting ecs scale of entity %d: %v", e, err)
+		return fmt.Errorf("error getting world scale of entity %d: %v", e, err)
 	}
 
-	eWorldRot, err := tm.GetWorldRotation(e, ecs)
+	eWorldRot, err := tm.GetWorldRotation(e, ecsContainer)
 	if err != nil {
-		return fmt.Errorf("error getting ecs rotation of entity %d: %v", e, err)
+		return fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
 	}
 
 	traComp.scale = eWorldScale
@@ -138,14 +138,14 @@ func (*parentManager) Detach(
 
 func (*parentManager) RemoveParentFromAllEntities(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) error {
 	pm := parentManager{}
-	parents := ecs.Parents.getData()
+	parents := ecsContainer.Parents.getData()
 
 	for pE, p := range parents {
 		if p.entity == e {
-			err := pm.Detach(pE, ecs)
+			err := pm.Detach(pE, ecsContainer)
 			if err != nil {
 				log.Printf("error detaching entity %d from parent entity %d: %v", pE, e, err)
 				continue
@@ -158,10 +158,10 @@ func (*parentManager) RemoveParentFromAllEntities(
 
 func (*parentManager) GetChildEntities(
 	p common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) ([]common.EntityId, error) {
 	children := []common.EntityId{}
-	parents := ecs.Parents.getData()
+	parents := ecsContainer.Parents.getData()
 
 	for c, parComp := range parents {
 		if parComp.entity == p {
@@ -174,7 +174,7 @@ func (*parentManager) GetChildEntities(
 
 func (*parentManager) GetOrderedHierarchies(
 	entities []common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) ([][][]common.EntityId, error) {
 	if len(entities) == 0 {
 		return [][][]common.EntityId{}, fmt.Errorf("entities slice empty")
@@ -197,7 +197,7 @@ func (*parentManager) GetOrderedHierarchies(
 		root := e
 
 		for {
-			currentParent := pm.GetEntity(root, ecs)
+			currentParent := pm.GetEntity(root, ecsContainer)
 
 			if currentParent == -1 || !slices.Contains(entities, currentParent) {
 				break
@@ -213,7 +213,7 @@ func (*parentManager) GetOrderedHierarchies(
 			hierarchy,
 			checkedEntities,
 			entities,
-			ecs,
+			ecsContainer,
 		)
 		if err != nil {
 			return [][][]common.EntityId{},
@@ -232,7 +232,7 @@ func getChildHierarchyRecursive(
 	hierarchy [][]common.EntityId,
 	checkedEntities map[common.EntityId]struct{},
 	entities []common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) ([][]common.EntityId, error) {
 	pm := parentManager{}
 
@@ -243,7 +243,7 @@ func getChildHierarchyRecursive(
 	hierarchy[level] = append(hierarchy[level], e)
 	checkedEntities[e] = struct{}{}
 
-	children, err := pm.GetChildEntities(e, ecs)
+	children, err := pm.GetChildEntities(e, ecsContainer)
 	if err != nil {
 		return [][]common.EntityId{}, fmt.Errorf("error getting child entities of entity %d: %v", e, err)
 	}
@@ -253,7 +253,7 @@ func getChildHierarchyRecursive(
 			continue
 		}
 
-		hierarchy, err = getChildHierarchyRecursive(c, level+1, hierarchy, checkedEntities, entities, ecs)
+		hierarchy, err = getChildHierarchyRecursive(c, level+1, hierarchy, checkedEntities, entities, ecsContainer)
 		if err != nil {
 			return [][]common.EntityId{}, fmt.Errorf("error getting child hierarchy of child entity %d: %v", c, err)
 		}

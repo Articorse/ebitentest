@@ -8,30 +8,35 @@ import (
 )
 
 func SpawnAbility(cooldown int) (ecs.AbilityEnum, ecs.AbilityDef) {
-	abiFunc := func(self common.EntityId, targets []common.EntityId, targetPos utils.Vec2, ecs *ecs.ECS) error {
-		if ecs.Animations.HasComponent(self) {
-			am := ecs.AnimationManager
+	abiFunc := func(
+		self common.EntityId,
+		targets []common.EntityId,
+		targetPos utils.Vec2,
+		ecsContainer *ecs.ECSContainer,
+	) error {
+		if ecsContainer.Animations.HasComponent(self) {
+			am := ecsContainer.AnimationManager
 
-			nextState, err := am.GetState(self, ecs)
+			nextState, err := am.GetState(self, ecsContainer)
 			if err != nil {
 				return fmt.Errorf("error getting animation state for entity %d: %v", self, err)
 			}
 
-			err = am.SetQueuedStateIfNone(self, nextState, ecs)
+			err = am.SetQueuedStateIfNone(self, nextState, ecsContainer)
 			if err != nil {
 				return fmt.Errorf("error setting queued animation state for entity %d: %v", self, err)
 			}
 
 			// TODO: Maybe decouple the animation here by adding it as a parameter to SpawnAbility
-			err = am.SetState(self, ecs.Anim_Use, ecs)
+			err = am.SetState(self, ecs.Anim_Use, ecsContainer)
 			if err != nil {
 				return fmt.Errorf("error setting animation state for entity %d: %v", self, err)
 			}
 		}
 
-		if ecs.Spawners.HasComponent(self) {
-			sm := ecs.SpawnerManager
-			_, err := sm.Spawn(self, ecs)
+		if ecsContainer.Spawners.HasComponent(self) {
+			sm := ecsContainer.SpawnerManager
+			_, err := sm.Spawn(self, ecsContainer)
 			if err != nil {
 				return fmt.Errorf("error spawning entity from spawner %d: %v", self, err)
 			}

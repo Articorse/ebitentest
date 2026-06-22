@@ -18,46 +18,46 @@ func NewHurtboxColliderComponent(
 	return &hurtboxCollider{baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask)}
 }
 
-func (hurtboxColliderManager) EntityIds(ecs *ECS) []common.EntityId {
-	return ecs.HurtboxColliders.GetEntities()
+func (hurtboxColliderManager) EntityIds(ecsContainer *ECSContainer) []common.EntityId {
+	return ecsContainer.HurtboxColliders.GetEntities()
 }
 
-func (hurtboxColliderManager) HasCollider(e common.EntityId, ecs *ECS) bool {
-	return ecs.HurtboxColliders.HasComponent(e)
+func (hurtboxColliderManager) HasCollider(e common.EntityId, ecsContainer *ECSContainer) bool {
+	return ecsContainer.HurtboxColliders.HasComponent(e)
 }
 
-func (hurtboxColliderManager) IsEnabled(e common.EntityId, ecs *ECS) (bool, error) {
-	return ecs.HurtboxColliderManager.BaseColliderManager.IsEnabled(e, ecs)
+func (hurtboxColliderManager) IsEnabled(e common.EntityId, ecsContainer *ECSContainer) (bool, error) {
+	return ecsContainer.HurtboxColliderManager.BaseColliderManager.IsEnabled(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) SetEnabled(e common.EntityId, enabled bool, ecs *ECS) error {
-	return ecs.HurtboxColliderManager.BaseColliderManager.SetEnabled(e, enabled, ecs)
+func (hurtboxColliderManager) SetEnabled(e common.EntityId, enabled bool, ecsContainer *ECSContainer) error {
+	return ecsContainer.HurtboxColliderManager.BaseColliderManager.SetEnabled(e, enabled, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetWorldPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
-	return ecs.HurtboxColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, ecs)
+func (hurtboxColliderManager) GetecsContainerPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetShapes(e common.EntityId, ecs *ECS) ([]shapes.Shape, error) {
-	return ecs.HurtboxColliderManager.BaseColliderManager.GetShapes(e, ecs)
+func (hurtboxColliderManager) GetShapes(e common.EntityId, ecsContainer *ECSContainer) ([]shapes.Shape, error) {
+	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetShapes(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetLocalAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
-	return ecs.HurtboxColliderManager.BaseColliderManager.GetLocalAABB(e, ecs)
+func (hurtboxColliderManager) GetLocalAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetLocalAABB(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetLocalPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
-	return ecs.HurtboxColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, ecs)
+func (hurtboxColliderManager) GetLocalPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetCenter(e common.EntityId, ecs *ECS) (utils.Vec2, error) {
-	return ecs.HurtboxColliderManager.BaseColliderManager.GetCenter(e, ecs)
+func (hurtboxColliderManager) GetCenter(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2, error) {
+	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetCenter(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetLayer(e common.EntityId, ecs *ECS) (LayerMask, error) {
-	return ecs.HurtboxColliderManager.BaseColliderManager.GetLayer(e, ecs)
+func (hurtboxColliderManager) GetLayer(e common.EntityId, ecsContainer *ECSContainer) (LayerMask, error) {
+	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetLayer(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetMask(e common.EntityId, ecs *ECS) (LayerMask, error) {
-	return ecs.HurtboxColliderManager.BaseColliderManager.GetMask(e, ecs)
+func (hurtboxColliderManager) GetMask(e common.EntityId, ecsContainer *ECSContainer) (LayerMask, error) {
+	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetMask(e, ecsContainer)
 }

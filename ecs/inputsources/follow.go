@@ -10,20 +10,20 @@ func NewFollowInputSource(followEntity common.EntityId) ecs.InputSourceFunc {
 	return func(
 		entityId common.EntityId,
 		tick uint64,
-		ecs *ecs.ECS,
+		ecsContainer *ecs.ECSContainer,
 	) ecs.InputState {
-		tm := ecs.TransformManager
+		tm := ecsContainer.TransformManager
 		is := ecs.InputState{}
 
-		selfWorldPos, err := tm.GetWorldPos(entityId, ecs)
+		selfWorldPos, err := tm.GetWorldPos(entityId, ecsContainer)
 		if err != nil {
-			log.Printf("error getting ecs position for self entity %d: %v\n", entityId, err)
+			log.Printf("error getting world position for self entity %d: %v\n", entityId, err)
 			return is
 		}
 
-		targetWorldPos, err := tm.GetWorldPos(followEntity, ecs)
+		targetWorldPos, err := tm.GetWorldPos(followEntity, ecsContainer)
 		if err != nil {
-			log.Printf("error getting ecs position for follow entity %d: %v\n", followEntity, err)
+			log.Printf("error getting world position for follow entity %d: %v\n", followEntity, err)
 			return is
 		}
 

@@ -22,13 +22,13 @@ type selfTrigger struct {
 }
 
 func GetTickInputs(
-	ecs *ecs.ECS,
+	ecsContainer *ecs.ECSContainer,
 	tick uint64,
 	inputSource ecs.InputSourceFunc,
 ) map[common.EntityId]ecs.InputState {
 	tickInputs := make(map[common.EntityId]ecs.InputState)
-	for _, e := range ecs.Inputs.GetEntities() {
-		input := inputSource(e, tick, ecs)
+	for _, e := range ecsContainer.Inputs.GetEntities() {
+		input := inputSource(e, tick, ecsContainer)
 		tickInputs[e] = input
 	}
 	return tickInputs
@@ -36,24 +36,24 @@ func GetTickInputs(
 
 func HandleInputs(
 	camera utils.Vec2,
-	ecs *ecs.ECS,
+	ecsContainer *ecs.ECSContainer,
 	allInputs map[common.EntityId]ecs.InputState,
 ) error {
 	for e, input := range allInputs {
-		if ecs.Transforms.HasComponent(e) {
-			tm := ecs.TransformManager
-			fpm := ecs.FacePositionManager
+		if ecsContainer.Transforms.HasComponent(e) {
+			tm := ecsContainer.TransformManager
+			fpm := ecsContainer.FacePositionManager
 
-			eWorldPos, err := tm.GetWorldPos(e, ecs)
+			eWorldPos, err := tm.GetWorldPos(e, ecsContainer)
 			if err != nil {
-				log.Printf("Error getting ecs position for entity %d: %v\n", e, err)
+				log.Printf("Error getting world position for entity %d: %v\n", e, err)
 				continue
 			}
 
-			hasFPComp := ecs.FacePositions.HasComponent(e)
+			hasFPComp := ecsContainer.FacePositions.HasComponent(e)
 
 			if hasFPComp {
-				hpEnabled, err := fpm.GetEnabled(e, ecs)
+				hpEnabled, err := fpm.GetEnabled(e, ecsContainer)
 				if err != nil {
 					log.Printf("Error getting face position enabled for entity %d: %v\n", e, err)
 					continue
@@ -68,28 +68,28 @@ func HandleInputs(
 						dY := mY - eWorldPos.Y
 						r := math.Atan2(dY, dX)
 
-						err = tm.SetLocalRotation(e, r, ecs)
+						err = tm.SetLocalRotation(e, r, ecsContainer)
 						if err != nil {
-							log.Printf("Error setting ecs rotation for entity %d: %v\n", e, err)
+							log.Printf("Error setting world rotation for entity %d: %v\n", e, err)
 						}
 					}
 				}
 			}
 
-			if ecs.Equippers.HasComponent(e) {
-				eqm := ecs.EquipManager
+			if ecsContainer.Equippers.HasComponent(e) {
+				eqm := ecsContainer.EquipManager
 
-				eqEntities, err := eqm.GetEquipmentEntities(e, ecs)
+				eqEntities, err := eqm.GetEquipmentEntities(e, ecsContainer)
 				if err != nil {
 					log.Printf("Error getting equipment entities for entity %d: %v\n", e, err)
 					continue
 				}
 
 				for _, eqE := range eqEntities {
-					hasFPComp := ecs.FacePositions.HasComponent(eqE)
+					hasFPComp := ecsContainer.FacePositions.HasComponent(eqE)
 
 					if hasFPComp {
-						hpEnabled, err := fpm.GetEnabled(eqE, ecs)
+						hpEnabled, err := fpm.GetEnabled(eqE, ecsContainer)
 						if err != nil {
 							log.Printf("Error getting face position enabled for entity %d: %v\n", eqE, err)
 							continue
@@ -104,9 +104,9 @@ func HandleInputs(
 								dY := mY - eWorldPos.Y
 								r := math.Atan2(dY, dX)
 
-								err = tm.SetLocalRotation(eqE, r, ecs)
+								err = tm.SetLocalRotation(eqE, r, ecsContainer)
 								if err != nil {
-									log.Printf("Error setting ecs rotation for entity %d: %v\n", eqE, err)
+									log.Printf("Error setting world rotation for entity %d: %v\n", eqE, err)
 								}
 							}
 						}
@@ -115,8 +115,8 @@ func HandleInputs(
 			}
 		}
 
-		if ecs.Velocities.HasComponent(e) {
-			vm := ecs.VelocityManager
+		if ecsContainer.Velocities.HasComponent(e) {
+			vm := ecsContainer.VelocityManager
 
 			v := utils.Vec2{X: 0, Y: 0}
 
@@ -125,19 +125,19 @@ func HandleInputs(
 
 			v = v.Normalized()
 
-			pLocalVelVec, err := vm.GetLocalVector(e, ecs)
+			pLocalVelVec, err := vm.GetLocalVector(e, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting local velocity vector for entity %d: %v\n", e, err)
 				continue
 			}
 
-			pAccel, err := vm.GetAcceleration(e, ecs)
+			pAccel, err := vm.GetAcceleration(e, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting acceleration for entity %d: %v\n", e, err)
 				continue
 			}
 
-			err = vm.SetLocalVector(e, pLocalVelVec.Add(v.Multiply(pAccel)), ecs)
+			err = vm.SetLocalVector(e, pLocalVelVec.Add(v.Multiply(pAccel)), ecsContainer)
 			if err != nil {
 				log.Printf("Error setting local velocity vector for entity %d: %v\n", e, err)
 				continue
@@ -151,13 +151,13 @@ func HandleInputs(
 			{input.OffHandEqAbility2, ecs.Equip_OffHand, 1, "off hand ability 2"},
 		}
 
-		if ecs.Equippers.HasComponent(e) {
-			em := ecs.EquipManager
+		if ecsContainer.Equippers.HasComponent(e) {
+			em := ecsContainer.EquipManager
 			for _, t := range equipTriggers {
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := em.ActivateAbility(e, t.slot, nil, utils.Vec2{}, t.abiIdx, ecs); err != nil {
+				if _, err := em.ActivateAbility(e, t.slot, nil, utils.Vec2{}, t.abiIdx, ecsContainer); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}
@@ -168,13 +168,13 @@ func HandleInputs(
 			{input.Ability2, 1, "ability 2"},
 		}
 
-		if ecs.Abilities.HasComponent(e) {
-			am := ecs.AbilitiesManager
+		if ecsContainer.Abilities.HasComponent(e) {
+			am := ecsContainer.AbilitiesManager
 			for _, t := range selfTriggers {
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := am.ActivateAbility(e, nil, utils.Vec2{}, t.abiIdx, ecs); err != nil {
+				if _, err := am.ActivateAbility(e, nil, utils.Vec2{}, t.abiIdx, ecsContainer); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}

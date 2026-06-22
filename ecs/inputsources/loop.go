@@ -9,7 +9,7 @@ func NewLoopInputSource(loopInputs []ecs.InputState, startTick uint64) ecs.Input
 	return func(
 		entityId common.EntityId,
 		tick uint64,
-		ecs *ecs.ECS,
+		ecsContainer *ecs.ECSContainer,
 	) ecs.InputState {
 		if len(loopInputs) == 0 {
 			return ecs.InputState{}

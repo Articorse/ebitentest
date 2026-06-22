@@ -11,7 +11,7 @@ import (
 )
 
 // Do not instantiate directly, use NewECS()
-type ECS struct {
+type ECSContainer struct {
 	nextEntity           common.EntityId
 	scheduledForDeletion []common.EntityId
 
@@ -43,6 +43,7 @@ type ECS struct {
 	Equippers         Storage[equipper]
 	Deathrattles      Storage[deathrattle]
 	FloatingTexts     Storage[floatingText]
+	EphemeralTiles    Storage[ephemeralTile]
 
 	InputManager            inputManager
 	ParentManager           parentManager
@@ -63,10 +64,11 @@ type ECS struct {
 	EquipManager            equipManager
 	DeathrattleManager      deathrattleManager
 	FloatingTextManager     floatingTextManager
+	EphemeralTileManager    ephemeralTileManager
 }
 
-func NewECS() *ECS {
-	return &ECS{
+func NewECSContainer() *ECSContainer {
+	return &ECSContainer{
 		nextEntity: 0,
 		InputLog:   make(map[uint64]map[common.EntityId]InputState),
 
@@ -97,6 +99,7 @@ func NewECS() *ECS {
 		Equippers:         Storage[equipper]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipper)},
 		Deathrattles:      Storage[deathrattle]{order: []common.EntityId{}, data: make(map[common.EntityId]*deathrattle)},
 		FloatingTexts:     Storage[floatingText]{order: []common.EntityId{}, data: make(map[common.EntityId]*floatingText)},
+		EphemeralTiles:    Storage[ephemeralTile]{order: []common.EntityId{}, data: make(map[common.EntityId]*ephemeralTile)},
 
 		InputManager:            inputManager{},
 		ParentManager:           parentManager{},
@@ -117,17 +120,18 @@ func NewECS() *ECS {
 		EquipManager:            equipManager{},
 		DeathrattleManager:      deathrattleManager{},
 		FloatingTextManager:     floatingTextManager{},
+		EphemeralTileManager:    ephemeralTileManager{},
 	}
 }
 
-func (x *ECS) GetCurrentTickInputs() (map[common.EntityId]InputState, error) {
+func (x *ECSContainer) GetCurrentTickInputs() (map[common.EntityId]InputState, error) {
 	if tickInputs, ok := x.InputLog[x.TickIdx]; ok {
 		return tickInputs, nil
 	}
 	return nil, fmt.Errorf("no inputs found for tick %d", x.TickIdx)
 }
 
-func (x *ECS) GetCurrentTickInputsForEntity(e common.EntityId) (InputState, error) {
+func (x *ECSContainer) GetCurrentTickInputsForEntity(e common.EntityId) (InputState, error) {
 	if tickInputs, ok := x.InputLog[x.TickIdx]; ok {
 		if input, ok := tickInputs[e]; ok {
 			return input, nil
@@ -137,16 +141,16 @@ func (x *ECS) GetCurrentTickInputsForEntity(e common.EntityId) (InputState, erro
 	return InputState{}, fmt.Errorf("no inputs found for tick %d", x.TickIdx)
 }
 
-func (x *ECS) SetTickInputs(tick uint64, inputs map[common.EntityId]InputState) {
+func (x *ECSContainer) SetTickInputs(tick uint64, inputs map[common.EntityId]InputState) {
 	x.InputLog[tick] = inputs
 }
 
-func (x *ECS) AddEmptyEntity() common.EntityId {
+func (x *ECSContainer) AddEmptyEntity() common.EntityId {
 	x.nextEntity++
 	return x.nextEntity - 1
 }
 
-func (x *ECS) AddEntity(comps ...component) common.EntityId {
+func (x *ECSContainer) AddEntity(comps ...Component) common.EntityId {
 	e := x.AddEmptyEntity()
 
 	for _, comp := range comps {
@@ -156,13 +160,13 @@ func (x *ECS) AddEntity(comps ...component) common.EntityId {
 	return e
 }
 
-func (x *ECS) ScheduleRemoveEntity(e common.EntityId) {
+func (x *ECSContainer) ScheduleRemoveEntity(e common.EntityId) {
 	if !slices.Contains(x.scheduledForDeletion, e) {
 		x.scheduledForDeletion = append(x.scheduledForDeletion, e)
 	}
 }
 
-func (x *ECS) RemoveScheduledEntities() error {
+func (x *ECSContainer) RemoveScheduledEntities() error {
 	for _, e := range slices.Clone(x.scheduledForDeletion) {
 		if x.Deathrattles.HasComponent(e) {
 			err := x.DeathrattleManager.Effect(e, x)
@@ -191,6 +195,7 @@ func (x *ECS) RemoveScheduledEntities() error {
 		x.Equippers.deleteEntity(e)
 		x.Deathrattles.deleteEntity(e)
 		x.FloatingTexts.deleteEntity(e)
+		x.EphemeralTiles.deleteEntity(e)
 
 		pm := parentManager{}
 		err := pm.RemoveParentFromAllEntities(e, x)
@@ -245,7 +250,7 @@ func (x *ECS) RemoveScheduledEntities() error {
 	return nil
 }
 
-func (x *ECS) AddComponent(e common.EntityId, comp component) {
+func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
 	switch c := comp.(type) {
 	case *parent:
 		x.Parents.addComponent(e, c.Copy())
@@ -287,6 +292,8 @@ func (x *ECS) AddComponent(e common.EntityId, comp component) {
 		x.Deathrattles.addComponent(e, c.Copy())
 	case *floatingText:
 		x.FloatingTexts.addComponent(e, c.Copy())
+	case *ephemeralTile:
+		x.EphemeralTiles.addComponent(e, c.Copy())
 	default:
 		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in ECS.AddComponent\n", comp, e)
 	}

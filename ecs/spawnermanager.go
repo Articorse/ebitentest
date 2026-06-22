@@ -14,7 +14,7 @@ func NewSpawnerComponent(
 	offset utils.Vec2,
 	sType SpawnerType,
 	shape shapes.Shape,
-	components ...component,
+	components ...Component,
 ) (*spawner, error) {
 	switch sType {
 	case SpawnerType_Point:
@@ -34,47 +34,47 @@ func NewSpawnerComponent(
 
 func (*spawnerManager) Spawn(
 	spawnerEntity common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (common.EntityId, error) {
 	sm := spawnerManager{}
 	tm := transformManager{}
 
-	comps, err := sm.GetComponents(spawnerEntity, ecs)
+	comps, err := sm.GetComponents(spawnerEntity, ecsContainer)
 	if err != nil {
 		return -1, fmt.Errorf("error getting components to spawn for spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	newEntity := ecs.AddEntity(
+	newEntity := ecsContainer.AddEntity(
 		comps...,
 	)
 
 	// If there is no Transform, then both of these are zero, which is fine if spawning based on camera or other entity
-	ecsPos, _ := tm.GetWorldPos(spawnerEntity, ecs)
-	ecsRot, _ := tm.GetWorldRotation(spawnerEntity, ecs)
+	worldPos, _ := tm.GetWorldPos(spawnerEntity, ecsContainer)
+	worldRot, _ := tm.GetWorldRotation(spawnerEntity, ecsContainer)
 
-	spawnerOffset, err := sm.GetOffset(spawnerEntity, ecs)
+	spawnerOffset, err := sm.GetOffset(spawnerEntity, ecsContainer)
 	if err != nil {
-		ecs.ScheduleRemoveEntity(newEntity)
+		ecsContainer.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error getting offset of spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	sType, err := sm.GetSpawnerType(spawnerEntity, ecs)
+	sType, err := sm.GetSpawnerType(spawnerEntity, ecsContainer)
 	if err != nil {
-		ecs.ScheduleRemoveEntity(newEntity)
+		ecsContainer.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error getting spawner type of spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	shape, err := sm.GetShape(spawnerEntity, ecs)
+	shape, err := sm.GetShape(spawnerEntity, ecsContainer)
 	if err != nil {
-		ecs.ScheduleRemoveEntity(newEntity)
+		ecsContainer.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error getting shape of spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	var finalOffset utils.Vec2
 	switch sType {
 	case SpawnerType_Point:
-		cos := math.Cos(ecsRot)
-		sin := math.Sin(ecsRot)
+		cos := math.Cos(worldRot)
+		sin := math.Sin(worldRot)
 
 		rotatedOffset := utils.Vec2{
 			X: (spawnerOffset.X*cos - spawnerOffset.Y*sin),
@@ -83,21 +83,21 @@ func (*spawnerManager) Spawn(
 
 		finalOffset = rotatedOffset
 	case SpawnerType_Inside:
-		finalOffset = shape.GetRandomPoint(ecs.Rng).Add(ecsPos).Add(spawnerOffset)
+		finalOffset = shape.GetRandomPoint(ecsContainer.Rng).Add(worldPos).Add(spawnerOffset)
 	case SpawnerType_Perimeter:
-		finalOffset = shape.GetRandomPointAroundShape(ecs.Rng).Add(ecsPos).Add(spawnerOffset)
+		finalOffset = shape.GetRandomPointAroundShape(ecsContainer.Rng).Add(worldPos).Add(spawnerOffset)
 	}
 
-	err = tm.SetWorldPos(newEntity, ecsPos.Add(finalOffset), ecs)
+	err = tm.SetWorldPos(newEntity, worldPos.Add(finalOffset), ecsContainer)
 	if err != nil {
-		ecs.ScheduleRemoveEntity(newEntity)
-		return -1, fmt.Errorf("error setting ecs position of new entity %d: %v", newEntity, err)
+		ecsContainer.ScheduleRemoveEntity(newEntity)
+		return -1, fmt.Errorf("error setting world position of new entity %d: %v", newEntity, err)
 	}
 
-	err = tm.SetWorldRotation(newEntity, ecsRot, ecs)
+	err = tm.SetWorldRotation(newEntity, worldRot, ecsContainer)
 	if err != nil {
-		ecs.ScheduleRemoveEntity(newEntity)
-		return -1, fmt.Errorf("error setting ecs rotation of new entity %d: %v", newEntity, err)
+		ecsContainer.ScheduleRemoveEntity(newEntity)
+		return -1, fmt.Errorf("error setting world rotation of new entity %d: %v", newEntity, err)
 	}
 
 	return newEntity, nil
@@ -105,9 +105,9 @@ func (*spawnerManager) Spawn(
 
 func (*spawnerManager) GetOffset(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (utils.Vec2, error) {
-	spawnerComp, err := ecs.Spawners.getComponent(e)
+	spawnerComp, err := ecsContainer.Spawners.getComponent(e)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
 	}
@@ -117,9 +117,9 @@ func (*spawnerManager) GetOffset(
 
 func (*spawnerManager) GetSpawnerType(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (SpawnerType, error) {
-	spawnerComp, err := ecs.Spawners.getComponent(e)
+	spawnerComp, err := ecsContainer.Spawners.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
 	}
@@ -129,9 +129,9 @@ func (*spawnerManager) GetSpawnerType(
 
 func (*spawnerManager) GetShape(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (shapes.Shape, error) {
-	spawnerComp, err := ecs.Spawners.getComponent(e)
+	spawnerComp, err := ecsContainer.Spawners.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
 	}
@@ -141,9 +141,9 @@ func (*spawnerManager) GetShape(
 
 func (*spawnerManager) GetComponents(
 	e common.EntityId,
-	ecs *ECS,
-) ([]component, error) {
-	spawnerComp, err := ecs.Spawners.getComponent(e)
+	ecsContainer *ECSContainer,
+) ([]Component, error) {
+	spawnerComp, err := ecsContainer.Spawners.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
 	}

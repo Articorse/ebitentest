@@ -17,14 +17,14 @@ type spawner struct {
 	offset      utils.Vec2
 	spawnerType SpawnerType
 	shape       shapes.Shape
-	components  []component
+	components  []Component
 }
 
 func (spawner) isComponent() {}
 
 // TODO: Might require a deep copy
 func (x spawner) Copy() spawner {
-	componentsCopy := make([]component, len(x.components))
+	componentsCopy := make([]Component, len(x.components))
 	copy(componentsCopy, x.components)
 	var shape shapes.Shape
 	if x.shape != nil {

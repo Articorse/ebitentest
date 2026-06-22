@@ -12,7 +12,7 @@ func NewReplayInputSource(
 	return func(
 		entityId common.EntityId,
 		tick uint64,
-		ecs *ecs.ECS,
+		ecsContainer *ecs.ECSContainer,
 	) ecs.InputState {
 		relTick := tick - replayStartTick
 		relTickInput, ok := replayInputs[relTick]

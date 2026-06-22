@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/tilesystem"
 	"ebittest/utils"
 	"fmt"
 	"maps"
@@ -13,16 +14,30 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
+func DrawChunks(
+	screen *ebiten.Image,
+	camera utils.Vec2,
+	chunkCont *tilesystem.ChunkContainer,
+) error {
+	for _, c := range chunkCont.GetChunks() {
+		opts := ebiten.DrawImageOptions{}
+		opts.GeoM.Translate(c.GetPos().X-camera.X, c.GetPos().Y-camera.Y)
+		screen.DrawImage(c.Image, &opts)
+	}
+
+	return nil
+}
+
 // TODO: This could be optimized further by only ordering the drawing of sprites that overlap, possibly via AABBs?
 func DrawSprites(
 	screen *ebiten.Image,
 	camera utils.Vec2,
 	shg map[common.CellKey][]common.EntityId,
-	ecs *ecs.ECS,
+	ecsContainer *ecs.ECSContainer,
 ) error {
-	sm := ecs.SpriteManager
-	pm := ecs.ParentManager
-	tm := ecs.TransformManager
+	sm := ecsContainer.SpriteManager
+	pm := ecsContainer.ParentManager
+	tm := ecsContainer.TransformManager
 
 	batches := make(map[uint8][][]common.EntityId)
 	visitedSprites := make(map[common.EntityId]struct{})
@@ -32,8 +47,8 @@ func DrawSprites(
 		utils.Vec2{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
 	}
 
-	for _, e := range ecs.Sprites.GetEntities() {
-		eWorldPos, err := tm.GetWorldPos(e, ecs)
+	for _, e := range ecsContainer.Sprites.GetEntities() {
+		eWorldPos, err := tm.GetWorldPos(e, ecsContainer)
 		if err != nil {
 			return fmt.Errorf("error getting ecs position of entity %d: %v", e, err)
 		}
@@ -50,7 +65,7 @@ func DrawSprites(
 		}
 		visitedSprites[e] = struct{}{}
 
-		sprImg, err := sm.GetImage(e, ecs)
+		sprImg, err := sm.GetImage(e, ecsContainer)
 		if err != nil {
 			return fmt.Errorf("error getting sprite image for entity %d: %v", e, err)
 		}
@@ -59,7 +74,7 @@ func DrawSprites(
 			continue
 		}
 
-		layer, err := sm.GetLayer(e, ecs)
+		layer, err := sm.GetLayer(e, ecsContainer)
 		if err != nil {
 			return fmt.Errorf("error getting sprite layer for entity %d: %v", e, err)
 		}
@@ -76,7 +91,7 @@ func DrawSprites(
 		batches[layer] = append(batches[layer], []common.EntityId{})
 		batches[layer][i] = append(batches[layer][i], e)
 
-		neighbors, err := getNeighborBatch(e, shg, ecs)
+		neighbors, err := getNeighborBatch(e, shg, ecsContainer)
 		if err != nil {
 			return err
 		}
@@ -84,7 +99,7 @@ func DrawSprites(
 		for j, n := range neighbors {
 			visitedSprites[neighbors[j]] = struct{}{}
 
-			nSprImg, err := sm.GetImage(n, ecs)
+			nSprImg, err := sm.GetImage(n, ecsContainer)
 			if err != nil {
 				return fmt.Errorf("error getting sprite image for entity %d: %v", n, err)
 			}
@@ -99,7 +114,7 @@ func DrawSprites(
 		if len(batches[layer][i]) > 1 {
 			var err error
 
-			hierarchies, err := pm.GetOrderedHierarchies(batches[layer][i], ecs)
+			hierarchies, err := pm.GetOrderedHierarchies(batches[layer][i], ecsContainer)
 			if err != nil {
 				return fmt.Errorf("error getting ordered hierarchies for batch in layer %d: %v", layer, err)
 			}
@@ -108,12 +123,12 @@ func DrawSprites(
 				a := aRoot[0][0]
 				b := bRoot[0][0]
 
-				aTotalY, err := sm.GetWorldLayerYOffset(a, ecs)
+				aTotalY, err := sm.GetWorldLayerYOffset(a, ecsContainer)
 				if err != nil {
 					return -1
 				}
 
-				bTotalY, err := sm.GetWorldLayerYOffset(b, ecs)
+				bTotalY, err := sm.GetWorldLayerYOffset(b, ecsContainer)
 				if err != nil {
 					return -1
 				}
@@ -157,29 +172,29 @@ func DrawSprites(
 	for _, layer := range orderedKeys {
 		for _, batch := range batches[layer] {
 			for _, batchEntity := range batch {
-				v, err := sm.GetWorldOffsetPos(batchEntity, ecs)
+				v, err := sm.GetWorldOffsetPos(batchEntity, ecsContainer)
 				if err != nil {
 					return fmt.Errorf("error getting ecs offset position of batchEntity %d: %v", batchEntity, err)
 				}
 
 				r := 0.0
-				allowRot, err := sm.GetAllowRotation(batchEntity, ecs)
+				allowRot, err := sm.GetAllowRotation(batchEntity, ecsContainer)
 				if err != nil {
 					return fmt.Errorf("error getting allow rotation of batchEntity %d: %v", batchEntity, err)
 				}
 				if allowRot {
-					r, err = sm.GetWorldOffsetRotation(batchEntity, ecs)
+					r, err = sm.GetWorldOffsetRotation(batchEntity, ecsContainer)
 					if err != nil {
 						return fmt.Errorf("error getting ecs offset rotation of batchEntity %d: %v", batchEntity, err)
 					}
 				}
 
-				s, err := sm.GetWorldOffsetScale(batchEntity, ecs)
+				s, err := sm.GetWorldOffsetScale(batchEntity, ecsContainer)
 				if err != nil {
 					return fmt.Errorf("error getting ecs offset scale of batchEntity %d: %v", batchEntity, err)
 				}
 
-				img, err := sm.GetImage(batchEntity, ecs)
+				img, err := sm.GetImage(batchEntity, ecsContainer)
 				if err != nil {
 					return fmt.Errorf("error getting sprite image for batchEntity %d: %v", batchEntity, err)
 				}
@@ -191,7 +206,7 @@ func DrawSprites(
 				opts.GeoM.Rotate(r)
 				opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
 
-				color, ok, err := sm.GetCurrentColor(batchEntity, ecs)
+				color, ok, err := sm.GetCurrentColor(batchEntity, ecsContainer)
 				if err != nil {
 					return fmt.Errorf("error getting current color of batchEntity %d: %v", batchEntity, err)
 				}
@@ -212,7 +227,7 @@ func DrawSprites(
 	return nil
 }
 
-func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECS) error {
+func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECSContainer) error {
 	tm := ecs.TransformManager
 	ftm := ecs.FloatingTextManager
 
@@ -258,7 +273,7 @@ func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECS) error {
 func getNeighborBatch(
 	eA common.EntityId,
 	shg map[common.CellKey][]common.EntityId,
-	ecs *ecs.ECS,
+	ecs *ecs.ECSContainer,
 ) ([]common.EntityId, error) {
 	if !ecs.Sprites.HasComponent(eA) {
 		return nil, fmt.Errorf("entity %d does not have a sprite component", eA)
@@ -277,7 +292,7 @@ func getNeighborsRecursive(
 	eA common.EntityId,
 	shg map[common.CellKey][]common.EntityId,
 	visitedEntities map[common.EntityId]struct{},
-	ecs *ecs.ECS,
+	ecs *ecs.ECSContainer,
 ) (neighbors []common.EntityId, _visited map[common.EntityId]struct{}, err error) {
 	tm := ecs.TransformManager
 	sm := ecs.SpriteManager

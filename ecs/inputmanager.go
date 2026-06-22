@@ -31,15 +31,15 @@ type InputState struct {
 type InputSourceFunc func(
 	e common.EntityId,
 	tick uint64,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) InputState
 
 func NewInputComponent(config map[InputType]InputKey, inputSourceFunc InputSourceFunc, facingInput FacingInputEnum) *input {
 	return &input{config: config, inputSourceFunc: inputSourceFunc, facingInput: facingInput}
 }
 
-func (*inputManager) GetInput(e common.EntityId, inputType InputType, ecs *ECS) (float64, error) {
-	inComp, err := ecs.Inputs.getComponent(e)
+func (*inputManager) GetInput(e common.EntityId, inputType InputType, ecsContainer *ECSContainer) (float64, error) {
+	inComp, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
@@ -54,9 +54,9 @@ func (*inputManager) GetInput(e common.EntityId, inputType InputType, ecs *ECS) 
 
 func (*inputManager) GetInputSourceFunc(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (InputSourceFunc, error) {
-	isf, err := ecs.Inputs.getComponent(e)
+	isf, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
@@ -67,9 +67,9 @@ func (*inputManager) GetInputSourceFunc(
 func (*inputManager) SetInputSourceFunc(
 	e common.EntityId,
 	inputSourceFunc InputSourceFunc,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) error {
-	isf, err := ecs.Inputs.getComponent(e)
+	isf, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
@@ -79,8 +79,8 @@ func (*inputManager) SetInputSourceFunc(
 	return nil
 }
 
-func (*inputManager) GetFacingInput(e common.EntityId, ecs *ECS) (FacingInputEnum, error) {
-	inComp, err := ecs.Inputs.getComponent(e)
+func (*inputManager) GetFacingInput(e common.EntityId, ecsContainer *ECSContainer) (FacingInputEnum, error) {
+	inComp, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
 		return Facing_None, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
@@ -88,8 +88,8 @@ func (*inputManager) GetFacingInput(e common.EntityId, ecs *ECS) (FacingInputEnu
 	return inComp.facingInput, nil
 }
 
-func (*inputManager) GetLastFacingDir(e common.EntityId, ecs *ECS) (utils.Vec2, error) {
-	inComp, err := ecs.Inputs.getComponent(e)
+func (*inputManager) GetLastFacingDir(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2, error) {
+	inComp, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
 		return utils.Vec2{}, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
@@ -97,8 +97,8 @@ func (*inputManager) GetLastFacingDir(e common.EntityId, ecs *ECS) (utils.Vec2, 
 	return inComp.lastFacingDir, nil
 }
 
-func (*inputManager) SetLastFacingDir(e common.EntityId, facingDir utils.Vec2, ecs *ECS) error {
-	inComp, err := ecs.Inputs.getComponent(e)
+func (*inputManager) SetLastFacingDir(e common.EntityId, facingDir utils.Vec2, ecsContainer *ECSContainer) error {
+	inComp, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}

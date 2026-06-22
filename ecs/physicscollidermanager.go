@@ -25,9 +25,9 @@ func NewPhysicsColliderComponent(
 
 func (*physicsColliderManager) GetColliderType(
 	e common.EntityId,
-	ecs *ECS,
+	ecsContainer *ECSContainer,
 ) (PhysicsColliderType, error) {
-	collider, err := ecs.PhysicsColliders.getComponent(e)
+	collider, err := ecsContainer.PhysicsColliders.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
@@ -35,46 +35,46 @@ func (*physicsColliderManager) GetColliderType(
 	return collider.colliderType, nil
 }
 
-func (physicsColliderManager) EntityIds(w *ECS) []common.EntityId {
+func (physicsColliderManager) EntityIds(w *ECSContainer) []common.EntityId {
 	return w.PhysicsColliders.GetEntities()
 }
 
-func (physicsColliderManager) HasCollider(e common.EntityId, w *ECS) bool {
+func (physicsColliderManager) HasCollider(e common.EntityId, w *ECSContainer) bool {
 	return w.PhysicsColliders.HasComponent(e)
 }
 
-func (physicsColliderManager) IsEnabled(e common.EntityId, ecs *ECS) (bool, error) {
-	return ecs.PhysicsColliderManager.BaseColliderManager.IsEnabled(e, ecs)
+func (physicsColliderManager) IsEnabled(e common.EntityId, ecsContainer *ECSContainer) (bool, error) {
+	return ecsContainer.PhysicsColliderManager.BaseColliderManager.IsEnabled(e, ecsContainer)
 }
 
-func (physicsColliderManager) SetEnabled(e common.EntityId, enabled bool, ecs *ECS) error {
-	return ecs.PhysicsColliderManager.BaseColliderManager.SetEnabled(e, enabled, ecs)
+func (physicsColliderManager) SetEnabled(e common.EntityId, enabled bool, ecsContainer *ECSContainer) error {
+	return ecsContainer.PhysicsColliderManager.BaseColliderManager.SetEnabled(e, enabled, ecsContainer)
 }
 
-func (physicsColliderManager) GetWorldPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
-	return ecs.PhysicsColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, ecs)
+func (physicsColliderManager) GetecsContainerPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, ecsContainer)
 }
 
-func (physicsColliderManager) GetShapes(e common.EntityId, ecs *ECS) ([]shapes.Shape, error) {
-	return ecs.PhysicsColliderManager.BaseColliderManager.GetShapes(e, ecs)
+func (physicsColliderManager) GetShapes(e common.EntityId, ecsContainer *ECSContainer) ([]shapes.Shape, error) {
+	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetShapes(e, ecsContainer)
 }
 
-func (physicsColliderManager) GetLocalAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
-	return ecs.PhysicsColliderManager.BaseColliderManager.GetLocalAABB(e, ecs)
+func (physicsColliderManager) GetLocalAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetLocalAABB(e, ecsContainer)
 }
 
-func (physicsColliderManager) GetLocalPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
-	return ecs.PhysicsColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, ecs)
+func (physicsColliderManager) GetLocalPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, ecsContainer)
 }
 
-func (physicsColliderManager) GetCenter(e common.EntityId, ecs *ECS) (utils.Vec2, error) {
-	return ecs.PhysicsColliderManager.BaseColliderManager.GetCenter(e, ecs)
+func (physicsColliderManager) GetCenter(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2, error) {
+	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetCenter(e, ecsContainer)
 }
 
-func (physicsColliderManager) GetLayer(e common.EntityId, ecs *ECS) (LayerMask, error) {
-	return ecs.PhysicsColliderManager.BaseColliderManager.GetLayer(e, ecs)
+func (physicsColliderManager) GetLayer(e common.EntityId, ecsContainer *ECSContainer) (LayerMask, error) {
+	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetLayer(e, ecsContainer)
 }
 
-func (physicsColliderManager) GetMask(e common.EntityId, ecs *ECS) (LayerMask, error) {
-	return ecs.PhysicsColliderManager.BaseColliderManager.GetMask(e, ecs)
+func (physicsColliderManager) GetMask(e common.EntityId, ecsContainer *ECSContainer) (LayerMask, error) {
+	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetMask(e, ecsContainer)
 }

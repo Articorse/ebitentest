@@ -9,20 +9,21 @@ import (
 )
 
 func PopulateSpatialHashGrid(
-	ecs *ecs.ECS,
+	ecsContainer *ecs.ECSContainer,
+	cellSize int,
 ) (map[common.CellKey][]common.EntityId, error) {
 	grid := make(map[common.CellKey][]common.EntityId)
-	tm := ecs.TransformManager
+	tm := ecsContainer.TransformManager
 
-	for _, e := range ecs.Transforms.GetEntities() {
-		ecsPos, err := tm.GetWorldPos(e, ecs)
+	for _, e := range ecsContainer.Transforms.GetEntities() {
+		worldPos, err := tm.GetWorldPos(e, ecsContainer)
 		if err != nil {
-			log.Printf("error getting ecs position of entity %d: %v", e, err)
+			log.Printf("error getting world position of entity %d: %v", e, err)
 			continue
 		}
 
-		x := int(ecsPos.X / data.SpatialHashGridCellSize)
-		y := int(ecsPos.Y / data.SpatialHashGridCellSize)
+		x := int(worldPos.X / float64(cellSize))
+		y := int(worldPos.Y / float64(cellSize))
 		grid[common.CellKey{X: x, Y: y}] = append(grid[common.CellKey{X: x, Y: y}], e)
 	}
 
@@ -31,20 +32,20 @@ func PopulateSpatialHashGrid(
 
 func GetSHGProximities(
 	shg map[common.CellKey][]common.EntityId,
-	ecs *ecs.ECS,
+	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId][]common.EntityId, error) {
 	proximateEntities := make(map[common.EntityId][]common.EntityId)
 
-	for _, eA := range ecs.Transforms.GetEntities() {
-		tm := ecs.TransformManager
-		ecsPosA, err := tm.GetWorldPos(eA, ecs)
+	for _, eA := range ecsContainer.Transforms.GetEntities() {
+		tm := ecsContainer.TransformManager
+		worldPosA, err := tm.GetWorldPos(eA, ecsContainer)
 		if err != nil {
-			log.Printf("error getting ecs position of entity %d: %v", eA, err)
+			log.Printf("error getting world position of entity %d: %v", eA, err)
 			continue
 		}
 
-		cellX := int(ecsPosA.X / data.SpatialHashGridCellSize)
-		cellY := int(ecsPosA.Y / data.SpatialHashGridCellSize)
+		cellX := int(worldPosA.X / data.SpatialHashGridCellSize)
+		cellY := int(worldPosA.Y / data.SpatialHashGridCellSize)
 		for dx := -1; dx <= 1; dx++ {
 			for dy := -1; dy <= 1; dy++ {
 				for _, eB := range shg[common.CellKey{X: cellX + dx, Y: cellY + dy}] {
@@ -52,7 +53,7 @@ func GetSHGProximities(
 						continue
 					}
 
-					if !ecs.Transforms.HasComponent(eB) {
+					if !ecsContainer.Transforms.HasComponent(eB) {
 						return nil, &common.ErrorMissingComponentDependency{
 							Entity:           eB,
 							PresentComponent: "Collider",

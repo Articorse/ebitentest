@@ -1,0 +1,44 @@
+[
+  {
+    "id": 0,
+    "imagePath": "assets/debug/16x16.png",
+    "maxHealth": -1,
+    "passable": true,
+    "opaque": false
+  },
+  {
+    "id": 1,
+    "imagePath": "assets/tiles/dirt.png",
+    "maxHealth": 50,
+    "passable": true,
+    "opaque": false
+  },
+  {
+    "id": 2,
+    "imagePath": "assets/tiles/grass.png",
+    "maxHealth": 50,
+    "passable": true,
+    "opaque": false
+  },
+  {
+    "id": 3,
+    "imagePath": "assets/tiles/rock.png",
+    "maxHealth": 200,
+    "passable": false,
+    "opaque": true
+  },
+  {
+    "id": 4,
+    "imagePath": "assets/tiles/watershallow.png",
+    "maxHealth": -1,
+    "passable": true,
+    "opaque": false
+  },
+  {
+    "id": 5,
+    "imagePath": "assets/tiles/waterdeep.png",
+    "maxHealth": -1,
+    "passable": true,
+    "opaque": false
+  }
+]

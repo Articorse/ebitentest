@@ -19,17 +19,16 @@ func ExplodeAbility(
 	frameSize utils.Vec2,
 	animationframes []ecs.AnimationFrame,
 	selfDestruct bool,
-	ecs *ecs.ECS,
 ) (ecs.AbilityEnum, ecs.AbilityDef, error) {
 	if len(radii) != len(dmgTiers) {
 		return ecs.Ability_None, ecs.AbilityDef{}, fmt.Errorf("explodeAbility created with mismatched radii and damage tiers lengths: %d vs %d", len(radii), len(dmgTiers))
 	}
 
-	abiFunc := func(self common.EntityId, targets []common.EntityId, targetPos utils.Vec2, ecs *ecs.ECS) error {
+	abiFunc := func(self common.EntityId, targets []common.EntityId, targetPos utils.Vec2, ecsContainer *ecs.ECSContainer) error {
 		var totalDuration uint64
-		explosionE := ecs.AddEmptyEntity()
+		explosionE := ecsContainer.AddEmptyEntity()
 
-		if !ecs.Transforms.HasComponent(self) {
+		if !ecsContainer.Transforms.HasComponent(self) {
 			return fmt.Errorf("entity %d does not have a transform component for explode ability", self)
 		}
 
@@ -37,40 +36,40 @@ func ExplodeAbility(
 			totalDuration += f.DurationMs
 		}
 
-		exWorldPos, err := ecs.TransformManager.GetWorldPos(self, ecs)
+		exWorldPos, err := ecsContainer.TransformManager.GetWorldPos(self, ecsContainer)
 		if err != nil {
-			return fmt.Errorf("error getting ecs position of entity %d for explode ability: %v", self, err)
+			return fmt.Errorf("error getting world position of entity %d for explode ability: %v", self, err)
 		}
 
-		exWorldRot, err := ecs.TransformManager.GetWorldRotation(self, ecs)
+		exWorldRot, err := ecsContainer.TransformManager.GetWorldRotation(self, ecsContainer)
 		if err != nil {
-			return fmt.Errorf("error getting ecs rotation of entity %d for explode ability: %v", self, err)
+			return fmt.Errorf("error getting world rotation of entity %d for explode ability: %v", self, err)
 		}
 
-		exWorldScale, err := ecs.TransformManager.GetWorldScale(self, ecs)
+		exWorldScale, err := ecsContainer.TransformManager.GetWorldScale(self, ecsContainer)
 		if err != nil {
-			return fmt.Errorf("error getting ecs scale of entity %d for explode ability: %v", self, err)
+			return fmt.Errorf("error getting world scale of entity %d for explode ability: %v", self, err)
 		}
 
 		var exSprLayer uint8
 
-		if ecs.Sprites.HasComponent(self) {
-			exSprLayer, err = ecs.SpriteManager.GetLayer(self, ecs)
+		if ecsContainer.Sprites.HasComponent(self) {
+			exSprLayer, err = ecsContainer.SpriteManager.GetLayer(self, ecsContainer)
 			if err != nil {
 				return fmt.Errorf("error getting sprite layer of entity %d for explode ability: %v", self, err)
 			}
 		}
 
-		if !ecs.HurtboxColliders.HasComponent(self) {
+		if !ecsContainer.HurtboxColliders.HasComponent(self) {
 			return fmt.Errorf("entity %d does not have a hurtbox collider component for explode ability", self)
 		}
 
-		dmgLayer, err := ecs.HurtboxColliderManager.GetLayer(self, ecs)
+		dmgLayer, err := ecsContainer.HurtboxColliderManager.GetLayer(self, ecsContainer)
 		if err != nil {
 			return fmt.Errorf("error getting hurtbox collider layer of entity %d for explode ability: %v", self, err)
 		}
 
-		dmgMask, err := ecs.HurtboxColliderManager.GetMask(self, ecs)
+		dmgMask, err := ecsContainer.HurtboxColliderManager.GetMask(self, ecsContainer)
 		if err != nil {
 			return fmt.Errorf("error getting hurtbox collider mask of entity %d for explode ability: %v", self, err)
 		}
@@ -102,12 +101,12 @@ func ExplodeAbility(
 		hurtComp := ecs.NewHurtboxColliderComponent(dmgLayer, dmgMask, hurtShapes...)
 		cdComp := ecs.NewContactDamageComponent(self, force, false, true, dmgTiers...)
 
-		ecs.AddComponent(explosionE, traComp)
-		ecs.AddComponent(explosionE, sprComp)
-		ecs.AddComponent(explosionE, aniComp)
-		ecs.AddComponent(explosionE, timerComp)
-		ecs.AddComponent(explosionE, cdComp)
-		ecs.AddComponent(explosionE, hurtComp)
+		ecsContainer.AddComponent(explosionE, traComp)
+		ecsContainer.AddComponent(explosionE, sprComp)
+		ecsContainer.AddComponent(explosionE, aniComp)
+		ecsContainer.AddComponent(explosionE, timerComp)
+		ecsContainer.AddComponent(explosionE, cdComp)
+		ecsContainer.AddComponent(explosionE, hurtComp)
 
 		return nil
 	}

@@ -10,7 +10,7 @@ import (
 	"log"
 )
 
-func Tick(ecs *ecs.ECS) {
+func Tick(ecs *ecs.ECSContainer) {
 	hpm := ecs.HitpointsManager
 
 	for _, e := range ecs.Hitpoints.GetEntities() {
@@ -34,17 +34,17 @@ func Tick(ecs *ecs.ECS) {
 
 func DealContactDamage(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
-	ecs *ecs.ECS,
+	ecsCont *ecs.ECSContainer,
 ) (entitiesKilled uint64, err error) {
-	vm := ecs.VelocityManager
-	cdm := ecs.ContactDamageManager
-	hpm := ecs.HitpointsManager
+	vm := ecsCont.VelocityManager
+	cdm := ecsCont.ContactDamageManager
+	hpm := ecsCont.HitpointsManager
 
 	for dmgE, cols := range collisions {
 		disableColliderAfter := []common.EntityId{}
 
 		for hitE, c := range cols {
-			isInvul, err := hpm.IsInvul(hitE, ecs)
+			isInvul, err := hpm.IsInvul(hitE, ecsCont)
 			if err != nil {
 				log.Printf("Error checking invulnerability for entity %d: %v\n", hitE, err)
 				continue
@@ -54,7 +54,7 @@ func DealContactDamage(
 				continue
 			}
 
-			damageTiers, err := cdm.GetDamageTiers(dmgE, ecs)
+			damageTiers, err := cdm.GetDamageTiers(dmgE, ecsCont)
 			if err != nil {
 				log.Printf("Error getting damage tiers for entity %d: %v\n", dmgE, err)
 				continue
@@ -64,15 +64,15 @@ func DealContactDamage(
 				continue
 			}
 
-			knockback, err := cdm.GetKnockback(dmgE, ecs)
+			knockback, err := cdm.GetKnockback(dmgE, ecsCont)
 			if err != nil {
 				log.Printf("Error getting knockback for entity %d: %v\n", dmgE, err)
 				continue
 			}
 
 			var dmgVelVector utils.Vec2
-			if ecs.Velocities.HasComponent(dmgE) {
-				dmgVelVector, err = vm.GetWorldVector(dmgE, ecs)
+			if ecsCont.Velocities.HasComponent(dmgE) {
+				dmgVelVector, err = vm.GetWorldVector(dmgE, ecsCont)
 				if err != nil {
 					log.Printf("Error getting ecs velocity vector for entity %d: %v\n", dmgE, err)
 					continue
@@ -83,7 +83,7 @@ func DealContactDamage(
 			colForceNorm := c.Vector.Normalized()
 			finalForceNorm := dmgEForceNorm.Multiply(0.5).Add(colForceNorm.Multiply(0.5))
 
-			err = vm.AddForce(hitE, finalForceNorm.Multiply(knockback), ecs)
+			err = vm.AddForce(hitE, finalForceNorm.Multiply(knockback), ecsCont)
 			if err != nil {
 				log.Printf("Error applying knockback to entity %d: %v\n", hitE, err)
 				continue
@@ -103,13 +103,13 @@ func DealContactDamage(
 				continue
 			}
 
-			dead, err := hpm.TakeDamage(hitE, damageTiers[shapeIdx], ecs)
+			dead, err := hpm.TakeDamage(hitE, damageTiers[shapeIdx], ecsCont)
 			if err != nil {
 				log.Printf("Error applying damage to entity %d: %v\n", hitE, err)
 				continue
 			}
 
-			hitWorldPos, err := ecs.TransformManager.GetWorldPos(hitE, ecs)
+			hitWorldPos, err := ecsCont.TransformManager.GetWorldPos(hitE, ecsCont)
 			if err != nil {
 				log.Printf("Error getting ecs position for entity %d: %v\n", hitE, err)
 				continue
@@ -122,19 +122,19 @@ func DealContactDamage(
 			if err != nil {
 				log.Fatal("error creating floating text timer component: ", err)
 			}
-			_ = ecs.AddEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp)
+			_ = ecsCont.AddEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp)
 
-			dieOnContact, err := cdm.GetDieOnContact(dmgE, ecs)
+			dieOnContact, err := cdm.GetDieOnContact(dmgE, ecsCont)
 			if err != nil {
 				log.Printf("Error getting die on contact for entity %d: %v\n", dmgE, err)
 				continue
 			}
 
 			if dieOnContact {
-				ecs.ScheduleRemoveEntity(dmgE)
+				ecsCont.ScheduleRemoveEntity(dmgE)
 			}
 
-			singleTick, err := cdm.GetSingleTick(dmgE, ecs)
+			singleTick, err := cdm.GetSingleTick(dmgE, ecsCont)
 			if err != nil {
 				log.Printf("Error getting single tick for entity %d: %v\n", dmgE, err)
 				continue
@@ -146,12 +146,12 @@ func DealContactDamage(
 
 			if dead {
 				entitiesKilled++
-				ecs.ScheduleRemoveEntity(hitE)
+				ecsCont.ScheduleRemoveEntity(hitE)
 			}
 		}
 
 		for _, e := range disableColliderAfter {
-			err := ecs.HurtboxColliderManager.SetEnabled(e, false, ecs)
+			err := ecsCont.HurtboxColliderManager.SetEnabled(e, false, ecsCont)
 			if err != nil {
 				log.Printf("Error disabling hurtbox collider for entity %d: %v\n", e, err)
 				continue

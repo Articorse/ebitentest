@@ -18,46 +18,46 @@ func NewPlatformColliderComponent(
 	return &platformCollider{baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask)}
 }
 
-func (platformColliderManager) EntityIds(ecs *ECS) []common.EntityId {
-	return ecs.PlatformColliders.GetEntities()
+func (platformColliderManager) EntityIds(ecsContainer *ECSContainer) []common.EntityId {
+	return ecsContainer.PlatformColliders.GetEntities()
 }
 
-func (platformColliderManager) HasCollider(e common.EntityId, ecs *ECS) bool {
-	return ecs.PlatformColliders.HasComponent(e)
+func (platformColliderManager) HasCollider(e common.EntityId, ecsContainer *ECSContainer) bool {
+	return ecsContainer.PlatformColliders.HasComponent(e)
 }
 
-func (platformColliderManager) IsEnabled(e common.EntityId, ecs *ECS) (bool, error) {
-	return platformColliderManager{}.BaseColliderManager.IsEnabled(e, ecs)
+func (platformColliderManager) IsEnabled(e common.EntityId, ecsContainer *ECSContainer) (bool, error) {
+	return platformColliderManager{}.BaseColliderManager.IsEnabled(e, ecsContainer)
 }
 
-func (platformColliderManager) SetEnabled(e common.EntityId, enabled bool, ecs *ECS) error {
-	return platformColliderManager{}.BaseColliderManager.SetEnabled(e, enabled, ecs)
+func (platformColliderManager) SetEnabled(e common.EntityId, enabled bool, ecsContainer *ECSContainer) error {
+	return platformColliderManager{}.BaseColliderManager.SetEnabled(e, enabled, ecsContainer)
 }
 
-func (platformColliderManager) GetWorldPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
-	return platformColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, ecs)
+func (platformColliderManager) GetecsContainerPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+	return platformColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, ecsContainer)
 }
 
-func (platformColliderManager) GetShapes(e common.EntityId, ecs *ECS) ([]shapes.Shape, error) {
-	return platformColliderManager{}.BaseColliderManager.GetShapes(e, ecs)
+func (platformColliderManager) GetShapes(e common.EntityId, ecsContainer *ECSContainer) ([]shapes.Shape, error) {
+	return platformColliderManager{}.BaseColliderManager.GetShapes(e, ecsContainer)
 }
 
-func (platformColliderManager) GetLocalAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
-	return platformColliderManager{}.BaseColliderManager.GetLocalAABB(e, ecs)
+func (platformColliderManager) GetLocalAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+	return platformColliderManager{}.BaseColliderManager.GetLocalAABB(e, ecsContainer)
 }
 
-func (platformColliderManager) GetLocalPaddedAABB(e common.EntityId, ecs *ECS) ([2]utils.Vec2, error) {
-	return platformColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, ecs)
+func (platformColliderManager) GetLocalPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+	return platformColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, ecsContainer)
 }
 
-func (platformColliderManager) GetCenter(e common.EntityId, ecs *ECS) (utils.Vec2, error) {
-	return platformColliderManager{}.BaseColliderManager.GetCenter(e, ecs)
+func (platformColliderManager) GetCenter(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2, error) {
+	return platformColliderManager{}.BaseColliderManager.GetCenter(e, ecsContainer)
 }
 
-func (platformColliderManager) GetLayer(e common.EntityId, ecs *ECS) (LayerMask, error) {
-	return platformColliderManager{}.BaseColliderManager.GetLayer(e, ecs)
+func (platformColliderManager) GetLayer(e common.EntityId, ecsContainer *ECSContainer) (LayerMask, error) {
+	return platformColliderManager{}.BaseColliderManager.GetLayer(e, ecsContainer)
 }
 
-func (platformColliderManager) GetMask(e common.EntityId, ecs *ECS) (LayerMask, error) {
-	return platformColliderManager{}.BaseColliderManager.GetMask(e, ecs)
+func (platformColliderManager) GetMask(e common.EntityId, ecsContainer *ECSContainer) (LayerMask, error) {
+	return platformColliderManager{}.BaseColliderManager.GetMask(e, ecsContainer)
 }

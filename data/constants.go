@@ -19,6 +19,8 @@ const (
 	MaxEquipmentAbilitySlots = 2
 	GamepadDeadzone          = 0.15
 	GamepadAimDeadzone       = 0.5
+	TileSize                 = 16
+	ChunkSize                = 64
 )
 
 var (

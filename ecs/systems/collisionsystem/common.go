@@ -13,7 +13,7 @@ func GetCollisions(
 	aColManager ecs.IColliderManager,
 	bColManager ecs.IColliderManager,
 	potentialCollisions map[common.EntityId][]common.EntityId,
-	ecs *ecs.ECS,
+	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId]map[common.EntityId]common.Collision, error) {
 	collisions := make(map[common.EntityId]map[common.EntityId]common.Collision)
 	for e1, colEntities := range potentialCollisions {
@@ -22,10 +22,10 @@ func GetCollisions(
 				continue
 			}
 
-			e1HasA := aColManager.HasCollider(e1, ecs)
-			e1HasB := bColManager.HasCollider(e1, ecs)
-			e2HasA := aColManager.HasCollider(e2, ecs)
-			e2HasB := bColManager.HasCollider(e2, ecs)
+			e1HasA := aColManager.HasCollider(e1, ecsContainer)
+			e1HasB := bColManager.HasCollider(e1, ecsContainer)
+			e2HasA := aColManager.HasCollider(e2, ecsContainer)
+			e2HasB := bColManager.HasCollider(e2, ecsContainer)
 
 			eA := common.EntityId(-1)
 			eB := common.EntityId(-1)
@@ -48,13 +48,13 @@ func GetCollisions(
 				}
 			}
 
-			aColShapes, err := aColManager.GetShapes(eA, ecs)
+			aColShapes, err := aColManager.GetShapes(eA, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting collider shapes for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			bColShapes, err := bColManager.GetShapes(eB, ecs)
+			bColShapes, err := bColManager.GetShapes(eB, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting collider shapes for entity %d: %v\n", eB, err)
 				continue
@@ -82,17 +82,17 @@ func GetCollisions(
 					case *shapes.RectangleShape:
 						switch bS := bColShape.(type) {
 						case *shapes.RectangleShape:
-							collisionVector = getRectangleRectangleCollision(eA, eB, *aS, *bS, ecs)
+							collisionVector = getRectangleRectangleCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.CircleShape:
-							collisionVector = getRectangleCircleCollision(eA, eB, *aS, *bS, ecs)
+							collisionVector = getRectangleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.PolygonShape:
-							collisionVector = getRectanglePolygonCollision(eA, eB, *aS, *bS, ecs)
+							collisionVector = getRectanglePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
@@ -102,18 +102,18 @@ func GetCollisions(
 					case *shapes.CircleShape:
 						switch bS := bColShape.(type) {
 						case *shapes.RectangleShape:
-							collisionVector = getRectangleCircleCollision(eB, eA, *bS, *aS, ecs)
+							collisionVector = getRectangleCircleCollision(eB, eA, *bS, *aS, ecsContainer)
 							collisionVector = collisionVector.Multiply(-1)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.CircleShape:
-							collisionVector = getCircleCircleCollision(eA, eB, *aS, *bS, ecs)
+							collisionVector = getCircleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.PolygonShape:
-							collisionVector = getCirclePolygonCollision(eA, eB, *aS, *bS, ecs)
+							collisionVector = getCirclePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
@@ -123,19 +123,19 @@ func GetCollisions(
 					case *shapes.PolygonShape:
 						switch bS := bColShape.(type) {
 						case *shapes.RectangleShape:
-							collisionVector = getRectanglePolygonCollision(eB, eA, *bS, *aS, ecs)
+							collisionVector = getRectanglePolygonCollision(eB, eA, *bS, *aS, ecsContainer)
 							collisionVector = collisionVector.Multiply(-1)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.CircleShape:
-							collisionVector = getCirclePolygonCollision(eB, eA, *bS, *aS, ecs)
+							collisionVector = getCirclePolygonCollision(eB, eA, *bS, *aS, ecsContainer)
 							collisionVector = collisionVector.Multiply(-1)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.PolygonShape:
-							collisionVector = getPolygonPolygonCollision(eA, eB, *aS, *bS, ecs)
+							collisionVector = getPolygonPolygonCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
@@ -166,16 +166,16 @@ func GetMirrorAABBCollisions(
 	aColManager ecs.IColliderManager,
 	bColManager ecs.IColliderManager,
 	proximateEntities map[common.EntityId][]common.EntityId,
-	ecs *ecs.ECS,
+	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId][]common.EntityId, error) {
 	allCollisions := make(map[common.EntityId][]common.EntityId)
 
-	aCollisions, err := GetAABBCollisions(aColManager, bColManager, proximateEntities, ecs)
+	aCollisions, err := GetAABBCollisions(aColManager, bColManager, proximateEntities, ecsContainer)
 	if err != nil {
 		return nil, err
 	}
 
-	bCollisions, err := GetAABBCollisions(bColManager, aColManager, proximateEntities, ecs)
+	bCollisions, err := GetAABBCollisions(bColManager, aColManager, proximateEntities, ecsContainer)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func GetAABBCollisions(
 	aColManager ecs.IColliderManager,
 	bColManager ecs.IColliderManager,
 	proximateEntities map[common.EntityId][]common.EntityId,
-	ecs *ecs.ECS,
+	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId][]common.EntityId, error) {
 	collisions := make(map[common.EntityId][]common.EntityId)
 
@@ -212,10 +212,10 @@ func GetAABBCollisions(
 				continue
 			}
 
-			e1HasA := aColManager.HasCollider(e1, ecs)
-			e1HasB := bColManager.HasCollider(e1, ecs)
-			e2HasA := aColManager.HasCollider(e2, ecs)
-			e2HasB := bColManager.HasCollider(e2, ecs)
+			e1HasA := aColManager.HasCollider(e1, ecsContainer)
+			e1HasB := bColManager.HasCollider(e1, ecsContainer)
+			e2HasA := aColManager.HasCollider(e2, ecsContainer)
+			e2HasB := bColManager.HasCollider(e2, ecsContainer)
 
 			eA := common.EntityId(-1)
 			eB := common.EntityId(-1)
@@ -232,7 +232,7 @@ func GetAABBCollisions(
 				continue
 			}
 
-			aEnabled, err := aColManager.IsEnabled(eA, ecs)
+			aEnabled, err := aColManager.IsEnabled(eA, ecsContainer)
 			if err != nil {
 				log.Printf("Error checking if collider is enabled for entity %d: %v\n", eA, err)
 				continue
@@ -242,7 +242,7 @@ func GetAABBCollisions(
 				continue
 			}
 
-			bEnabled, err := bColManager.IsEnabled(eB, ecs)
+			bEnabled, err := bColManager.IsEnabled(eB, ecsContainer)
 			if err != nil {
 				log.Printf("Error checking if collider is enabled for entity %d: %v\n", eB, err)
 				continue
@@ -252,31 +252,31 @@ func GetAABBCollisions(
 				continue
 			}
 
-			aLayer, err := aColManager.GetLayer(eA, ecs)
+			aLayer, err := aColManager.GetLayer(eA, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting collider layer for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			aMask, err := aColManager.GetMask(eA, ecs)
+			aMask, err := aColManager.GetMask(eA, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting collider mask for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			aAABB, err := aColManager.GetWorldPaddedAABB(eA, ecs)
+			aAABB, err := aColManager.GetWorldPaddedAABB(eA, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting AABB for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			bLayer, err := bColManager.GetLayer(eB, ecs)
+			bLayer, err := bColManager.GetLayer(eB, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting collider layer for entity %d: %v\n", eB, err)
 				continue
 			}
 
-			bMask, err := bColManager.GetMask(eB, ecs)
+			bMask, err := bColManager.GetMask(eB, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting collider mask for entity %d: %v\n", eB, err)
 				continue
@@ -292,7 +292,7 @@ func GetAABBCollisions(
 				}
 			}
 
-			bAABB, err := bColManager.GetWorldPaddedAABB(eB, ecs)
+			bAABB, err := bColManager.GetWorldPaddedAABB(eB, ecsContainer)
 			if err != nil {
 				log.Printf("Error getting AABB for entity %d: %v\n", eB, err)
 				continue

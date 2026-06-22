@@ -18,6 +18,7 @@ import (
 	"ebittest/ecs/systems/platformsystem"
 	"ebittest/ecs/systems/timersystem"
 	"ebittest/ecs/timerfuncs"
+	"ebittest/tilesystem"
 	"ebittest/utils"
 	"encoding/json"
 	"errors"
@@ -32,7 +33,7 @@ import (
 )
 
 var (
-	g = game{ecs: ecs.NewECS()}
+	g = game{ecs: ecs.NewECSContainer()}
 
 	DEBUG_LEVEL                      = 0
 	max_vel                          = 0.0
@@ -52,8 +53,10 @@ var (
 )
 
 type game struct {
-	ecs          *ecs.ECS
+	ecs          *ecs.ECSContainer
 	playerEntity common.EntityId
+
+	chunkContainer *tilesystem.ChunkContainer
 
 	recording          bool
 	recordingStartTick uint64
@@ -69,41 +72,41 @@ func (g *game) Update() error {
 	var err error
 
 	// HACK: Add gamepad here because ebiten.AppendGamepadIDs needs to be called after ebiten.RunGame
-	if !gamepadFound {
-		ids := ebiten.AppendGamepadIDs(nil)
-		id := ids[0]
-		for _, sId := range ids {
-			if ebiten.IsStandardGamepadLayoutAvailable(sId) {
-				id = sId
-				gamepadFound = true
-				break
-			}
-		}
-		if gamepadFound {
-			pInputConfig := make(map[ecs.InputType]ecs.InputKey)
-			pInputConfig[ecs.Input_Analog1Y] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisLeftStickVertical)
-			pInputConfig[ecs.Input_Analog1X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisLeftStickHorizontal)
-			pInputConfig[ecs.Input_Analog2Y] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickVertical)
-			pInputConfig[ecs.Input_Analog2X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickHorizontal)
-			pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewGamepadButtonInputKey(id, new(ebiten.StandardGamepadButtonFrontBottomRight), nil)
-			pInputConfig[ecs.Input_Ability1] = ecs.NewGamepadButtonInputKey(id, new(ebiten.StandardGamepadButtonRightBottom), nil)
-			pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_Analog2)
-			g.ecs.AddComponent(g.playerEntity, pInpComp)
-		} else {
-			log.Fatal("no gamepad found")
-		}
-	}
-
 	// if !gamepadFound {
-	// 	pInputConfig := make(map[ecs.InputType]ecs.InputKey)
-	// 	pInputConfig[ecs.Input_Analog1Y] = ecs.NewKeyboardInputKey(new(ebiten.KeyS), new(ebiten.KeyW))
-	// 	pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(new(ebiten.KeyD), new(ebiten.KeyA))
-	// 	pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(new(ebiten.KeySpace), nil)
-	// 	pInputConfig[ecs.Input_Ability2] = ecs.NewMouseInputKey(new(ebiten.MouseButtonLeft), nil)
-	// 	pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_None)
-	// 	g.ecs.AddComponent(g.playerEntity, pInpComp)
-	// 	gamepadFound = true
+	// 	ids := ebiten.AppendGamepadIDs(nil)
+	// 	id := ids[0]
+	// 	for _, sId := range ids {
+	// 		if ebiten.IsStandardGamepadLayoutAvailable(sId) {
+	// 			id = sId
+	// 			gamepadFound = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if gamepadFound {
+	// 		pInputConfig := make(map[ecs.InputType]ecs.InputKey)
+	// 		pInputConfig[ecs.Input_Analog1Y] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisLeftStickVertical)
+	// 		pInputConfig[ecs.Input_Analog1X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisLeftStickHorizontal)
+	// 		pInputConfig[ecs.Input_Analog2Y] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickVertical)
+	// 		pInputConfig[ecs.Input_Analog2X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickHorizontal)
+	// 		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewGamepadButtonInputKey(id, new(ebiten.StandardGamepadButtonFrontBottomRight), nil)
+	// 		pInputConfig[ecs.Input_Ability1] = ecs.NewGamepadButtonInputKey(id, new(ebiten.StandardGamepadButtonRightBottom), nil)
+	// 		pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_Analog2)
+	// 		g.ecs.AddComponent(g.playerEntity, pInpComp)
+	// 	} else {
+	// 		log.Fatal("no gamepad found")
+	// 	}
 	// }
+
+	if !gamepadFound {
+		pInputConfig := make(map[ecs.InputType]ecs.InputKey)
+		pInputConfig[ecs.Input_Analog1Y] = ecs.NewKeyboardInputKey(new(ebiten.KeyS), new(ebiten.KeyW))
+		pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(new(ebiten.KeyD), new(ebiten.KeyA))
+		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewMouseInputKey(new(ebiten.MouseButtonLeft), nil)
+		pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(new(ebiten.KeySpace), nil)
+		pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_Mouse)
+		g.ecs.AddComponent(g.playerEntity, pInpComp)
+		gamepadFound = true
+	}
 
 	tickInputs := make(map[common.EntityId]ecs.InputState)
 	for _, eid := range g.ecs.Inputs.GetEntities() {
@@ -268,7 +271,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	g.ecs.TickState.CollisionGrid, err = commonsystems.PopulateSpatialHashGrid(g.ecs)
+	g.ecs.TickState.CollisionGrid, err = commonsystems.PopulateSpatialHashGrid(g.ecs, data.SpatialHashGridCellSize)
 	if err != nil {
 		log.Println("error during populating spatial hash grid: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
@@ -284,6 +287,16 @@ func (g *game) Update() error {
 		if errors.As(err, &invalidComponentsErr) {
 			g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
+	}
+
+	collisionTiles, err := g.chunkContainer.GetTilesWithPotentialCollisions(g.ecs, data.TileSize)
+	if err != nil {
+		log.Println("error during getting tiles with potential collisions: ", err)
+	}
+
+	err = g.chunkContainer.PopulateEphemeralColliders(collisionTiles, g.ecs)
+	if err != nil {
+		log.Println("error during populating temporary colliders: ", err)
 	}
 
 	physicsAABBCollisions, err := collisionsystem.GetAABBCollisions(pcm, pcm, proximateEntities, g.ecs)
@@ -360,6 +373,10 @@ func (g *game) Update() error {
 func (g *game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
 
+	if err := drawsystem.DrawChunks(screen, g.ecs.Camera, g.chunkContainer); err != nil {
+		log.Println("error while drawing chunks: ", err)
+	}
+
 	if err := drawsystem.DrawSprites(
 		screen,
 		g.ecs.Camera,
@@ -394,53 +411,53 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 	}
 
 	if DEBUG_LEVEL == 2 {
-		// if err := collisionsystem.DrawColliders(pcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
+		if err := collisionsystem.DrawColliders(pcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
+			log.Println("error while drawing physics colliders: ", err, "removing entity")
+			var invalidComponentsErr *common.ErrorMissingComponentDependency
+			if errors.As(err, &invalidComponentsErr) {
+				g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
+			}
+		}
+
+		// if err := collisionsystem.DrawColliders(hurtcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
 		// 	log.Println("error while drawing physics colliders: ", err, "removing entity")
 		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
 		// 	if errors.As(err, &invalidComponentsErr) {
-		// 		g.ecs.RemoveEntity(invalidComponentsErr.Entity)
+		// 		g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		// 	}
 		// }
 
-		if err := collisionsystem.DrawColliders(hurtcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
-			log.Println("error while drawing physics colliders: ", err, "removing entity")
+		// if err := collisionsystem.DrawColliders(hitcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
+		// 	log.Println("error while drawing physics colliders: ", err, "removing entity")
+		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
+		// 	if errors.As(err, &invalidComponentsErr) {
+		// 		g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
+		// 	}
+		// }
+
+		if err := collisionsystem.DrawAABBs(pcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
+			log.Println("error while drawing AABBs: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
 				g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 			}
 		}
 
-		if err := collisionsystem.DrawColliders(hitcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
-			log.Println("error while drawing physics colliders: ", err, "removing entity")
-			var invalidComponentsErr *common.ErrorMissingComponentDependency
-			if errors.As(err, &invalidComponentsErr) {
-				g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-			}
-		}
-
-		// if err := collisionsystem.DrawAABBs(pcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
+		// if err := collisionsystem.DrawAABBs(hurtcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
 		// 	log.Println("error while drawing AABBs: ", err, "removing entity")
 		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
 		// 	if errors.As(err, &invalidComponentsErr) {
-		// 		g.ecs.RemoveEntity(invalidComponentsErr.Entity)
+		// 		g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		// 	}
 		// }
-
-		if err := collisionsystem.DrawAABBs(hurtcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
-			log.Println("error while drawing AABBs: ", err, "removing entity")
-			var invalidComponentsErr *common.ErrorMissingComponentDependency
-			if errors.As(err, &invalidComponentsErr) {
-				g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-			}
-		}
-
-		if err := collisionsystem.DrawAABBs(hitcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
-			log.Println("error while drawing AABBs: ", err, "removing entity")
-			var invalidComponentsErr *common.ErrorMissingComponentDependency
-			if errors.As(err, &invalidComponentsErr) {
-				g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-			}
-		}
+		//
+		// if err := collisionsystem.DrawAABBs(hitcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
+		// 	log.Println("error while drawing AABBs: ", err, "removing entity")
+		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
+		// 	if errors.As(err, &invalidComponentsErr) {
+		// 		g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
+		// 	}
+		// }
 
 		if err := collisionsystem.DrawCollisions(screen, data.Debug_CollisionVectorColor, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
 			log.Println("error while drawing collisions: ", err)
@@ -471,6 +488,12 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetTPS(data.TPS)
+
+	g.chunkContainer = &tilesystem.ChunkContainer{}
+	err := g.chunkContainer.Generate(g.ecs.Rng)
+	if err != nil {
+		log.Fatal("error generating chunk container: ", err)
+	}
 
 	g.ecs.TickState = *common.NewTickState()
 
@@ -709,7 +732,7 @@ func main() {
 		{FrameIdx: 6, DurationMs: 200},
 	}
 	explodeAbiEnum, explodeAbiDef, err := abilitydefs.ExplodeAbility(
-		explosionForce, explosionRadii, explosionDmgTiers, explosionSpriteSheet, explosionFrameSize, explosionAniFrames, true, g.ecs)
+		explosionForce, explosionRadii, explosionDmgTiers, explosionSpriteSheet, explosionFrameSize, explosionAniFrames, true)
 	if err != nil {
 		log.Fatal("error creating explode ability: ", err)
 	}
