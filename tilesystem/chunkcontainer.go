@@ -18,7 +18,7 @@ type ChunkContainer struct {
 	Atlas map[data.TileEnum]TileDef
 }
 
-func (cC *ChunkContainer) newChunk(r *rand.Rand, atlas map[data.TileEnum]TileDef) (*chunk, error) {
+func (cc *ChunkContainer) newChunk(r *rand.Rand, atlas map[data.TileEnum]TileDef) (*chunk, error) {
 	c := chunk{}
 	c.promotedTiles = make(map[common.CellKey]promotedTile)
 
@@ -36,24 +36,24 @@ func (cC *ChunkContainer) newChunk(r *rand.Rand, atlas map[data.TileEnum]TileDef
 	return &c, nil
 }
 
-func (x *ChunkContainer) Generate(r *rand.Rand) error {
-	x.chunks = make(map[common.CellKey]*chunk)
+func (cc *ChunkContainer) Generate(r *rand.Rand) error {
+	cc.chunks = make(map[common.CellKey]*chunk)
 
-	err := x.generateTileAtlasFromJson("assets/tiles/atlas.json")
+	err := cc.generateTileAtlasFromJson("assets/tiles/atlas.json")
 	if err != nil {
 		return fmt.Errorf("failed to generate tile atlas: %v", err)
 	}
-	if x.chunks[common.CellKey{}], err = x.newChunk(r, x.Atlas); err != nil {
+	if cc.chunks[common.CellKey{}], err = cc.newChunk(r, cc.Atlas); err != nil {
 		return fmt.Errorf("failed to generate chunk: %v", err)
 	}
 	return nil
 }
 
-func (x *ChunkContainer) GetChunks() map[common.CellKey]*chunk {
-	return x.chunks
+func (cc *ChunkContainer) GetChunks() map[common.CellKey]*chunk {
+	return cc.chunks
 }
 
-func (x *ChunkContainer) generateTileAtlasFromJson(input string) error {
+func (cc *ChunkContainer) generateTileAtlasFromJson(input string) error {
 	f, err := os.ReadFile(input)
 	if err != nil {
 		return fmt.Errorf("error reading tile atlas json file: %v", err)
@@ -70,12 +70,12 @@ func (x *ChunkContainer) generateTileAtlasFromJson(input string) error {
 		return fmt.Errorf("error converting tile atlas DTOs to defs: %v", err)
 	}
 
-	x.Atlas = atlas
+	cc.Atlas = atlas
 
 	return nil
 }
 
-func (x *ChunkContainer) GetTilesWithPotentialCollisions(
+func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 	ecsContainer *ecs.ECSContainer,
 	tileSize int,
 ) (potentialCollisions map[common.EntityId][]common.CellKey, err error) {
@@ -111,14 +111,14 @@ func (x *ChunkContainer) GetTilesWithPotentialCollisions(
 		for tx := minTileX; tx <= maxTileX; tx++ {
 			for ty := minTileY; ty <= maxTileY; ty++ {
 				tilePos := common.CellKey{X: tx, Y: ty}
-				chunk, err := x.GetChunkAtGridPos(tilePos)
+				chunk, err := cc.GetChunkAtGridPos(tilePos)
 				if err != nil {
 					log.Printf("error getting chunk at grid position %v: %v", tilePos, err)
 					continue
 				}
 
 				tileId := chunk.GetTileDefId(tilePos)
-				tileDef, ok := x.Atlas[tileId]
+				tileDef, ok := cc.Atlas[tileId]
 				if !ok {
 					log.Printf("no tile definition found for tile enum %d", tileId)
 					continue
@@ -134,11 +134,11 @@ func (x *ChunkContainer) GetTilesWithPotentialCollisions(
 	return potentialCollisions, nil
 }
 
-func (c *ChunkContainer) GetChunkAtGridPos(pos common.CellKey) (*chunk, error) {
+func (cc *ChunkContainer) GetChunkAtGridPos(pos common.CellKey) (*chunk, error) {
 	y := int(int(pos.Y) / data.ChunkSize)
 	x := int(int(pos.X) / data.ChunkSize)
 
-	r, ok := c.chunks[common.CellKey{X: x, Y: y}]
+	r, ok := cc.chunks[common.CellKey{X: x, Y: y}]
 	if !ok {
 		return nil, fmt.Errorf("no chunk found at grid position %v", pos)
 	}

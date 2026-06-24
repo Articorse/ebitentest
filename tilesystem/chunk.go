@@ -17,17 +17,18 @@ type chunk struct {
 	Image *ebiten.Image
 }
 
-func (x chunk) GetPos() utils.Vec2 {
+func (x *chunk) GetPos() utils.Vec2 {
 	return x.pos
 }
 
-func (x chunk) GetTileDefId(cellKey common.CellKey) data.TileEnum {
+func (x *chunk) GetTileDefId(cellKey common.CellKey) data.TileEnum {
 	if cellKey.X < 0 || cellKey.X >= data.ChunkSize || cellKey.Y < 0 || cellKey.Y >= data.ChunkSize {
 		return 0
 	}
 
-	idx := cellKey.Y*data.ChunkSize + cellKey.X
-
+	localX := ((cellKey.X % data.ChunkSize) + data.ChunkSize) % data.ChunkSize
+	localY := ((cellKey.Y % data.ChunkSize) + data.ChunkSize) % data.ChunkSize
+	idx := localY*data.ChunkSize + localX
 	if len(x.tiles) <= idx {
 		return 0
 	}
@@ -35,7 +36,7 @@ func (x chunk) GetTileDefId(cellKey common.CellKey) data.TileEnum {
 	return x.tiles[idx]
 }
 
-func (x chunk) GetPromotedTiles() map[common.CellKey]promotedTile {
+func (x *chunk) GetPromotedTiles() map[common.CellKey]promotedTile {
 	return x.promotedTiles
 }
 

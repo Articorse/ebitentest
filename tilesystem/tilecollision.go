@@ -172,11 +172,7 @@ func GetAABBCollisions(
 			}
 
 			if utils.DetectAABBCollision(eAABB, tAABB) {
-				v, ok := collisions[e]
-				if !ok {
-					collisions[e] = []common.CellKey{t}
-				}
-				collisions[e] = append(v, t)
+				collisions[e] = append(collisions[e], t)
 			}
 		}
 	}
