@@ -289,16 +289,6 @@ func (g *game) Update() error {
 		}
 	}
 
-	collisionTiles, err := g.chunkContainer.GetTilesWithPotentialCollisions(g.ecs, data.TileSize)
-	if err != nil {
-		log.Println("error during getting tiles with potential collisions: ", err)
-	}
-
-	err = g.chunkContainer.PopulateEphemeralColliders(collisionTiles, g.ecs)
-	if err != nil {
-		log.Println("error during populating temporary colliders: ", err)
-	}
-
 	physicsAABBCollisions, err := collisionsystem.GetAABBCollisions(pcm, pcm, proximateEntities, g.ecs)
 	if err != nil {
 		log.Println("error during AABB collision checking: ", err, "removing entity")
@@ -320,6 +310,26 @@ func (g *game) Update() error {
 	resolvedPhysicsCollisions, err = collisionsystem.ResolvePhysicsCollisions(physicsCollisions, g.ecs)
 	if err != nil {
 		log.Println("error during collision resolution: ", err)
+	}
+
+	potentialCollisionTiles, err := g.chunkContainer.GetTilesWithPotentialCollisions(g.ecs, data.TileSize)
+	if err != nil {
+		log.Println("error during getting tiles with potential collisions: ", err)
+	}
+
+	tileAABBCollisions, err := tilesystem.GetAABBCollisions(potentialCollisionTiles, g.ecs)
+	if err != nil {
+		log.Println("error during tile AABB collision checking: ", err)
+	}
+
+	tileCollisions, err := tilesystem.GetCollisions(tileAABBCollisions, g.ecs)
+	if err != nil {
+		log.Println("error during tile collision checking: ", err)
+	}
+
+	_, err = tilesystem.ResolvePhysicsCollisions(tileCollisions, g.ecs)
+	if err != nil {
+		log.Println("error during tile collision resolution: ", err)
 	}
 
 	err = abilitysystem.Tick(g.ecs)

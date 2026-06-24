@@ -4,37 +4,52 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
-	"ebittest/ecs/shapes"
-	"ebittest/utils"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math"
 	"math/rand/v2"
 	"os"
-	"slices"
 )
 
 type ChunkContainer struct {
-	chunks [1]chunk
+	chunks map[common.CellKey]*chunk
 
 	Atlas map[data.TileEnum]TileDef
 }
 
+func (cC *ChunkContainer) newChunk(r *rand.Rand, atlas map[data.TileEnum]TileDef) (*chunk, error) {
+	c := chunk{}
+	c.promotedTiles = make(map[common.CellKey]promotedTile)
+
+	for y := range data.ChunkSize {
+		for x := range data.ChunkSize {
+			tileId := data.TileEnum(r.IntN(3) + 1)
+			c.tiles[y*data.ChunkSize+x] = tileId
+		}
+	}
+
+	if err := c.generateChunkImage(atlas); err != nil {
+		return nil, fmt.Errorf("failed to generate chunk image: %v", err)
+	}
+
+	return &c, nil
+}
+
 func (x *ChunkContainer) Generate(r *rand.Rand) error {
+	x.chunks = make(map[common.CellKey]*chunk)
+
 	err := x.generateTileAtlasFromJson("assets/tiles/atlas.json")
 	if err != nil {
 		return fmt.Errorf("failed to generate tile atlas: %v", err)
 	}
-	for i := range x.chunks {
-		if err = x.chunks[i].newChunk(r, x.Atlas); err != nil {
-			return fmt.Errorf("failed to generate chunk %d: %v", i, err)
-		}
+	if x.chunks[common.CellKey{}], err = x.newChunk(r, x.Atlas); err != nil {
+		return fmt.Errorf("failed to generate chunk: %v", err)
 	}
 	return nil
 }
 
-func (x *ChunkContainer) GetChunks() [1]chunk {
+func (x *ChunkContainer) GetChunks() map[common.CellKey]*chunk {
 	return x.chunks
 }
 
@@ -60,71 +75,12 @@ func (x *ChunkContainer) generateTileAtlasFromJson(input string) error {
 	return nil
 }
 
-func (x *ChunkContainer) PopulateEphemeralColliders(tileKeys []common.CellKey, ecsContainer *ecs.ECSContainer) error {
-	etm := ecsContainer.EphemeralTileManager
-	currentColliderEntities := []common.EntityId{}
-
-	for _, tileKey := range tileKeys {
-		tileDefId, exists := x.chunks[0].GetTileDefId(tileKey)
-		if !exists {
-			continue
-		}
-
-		tileDef, exists := x.Atlas[tileDefId]
-		if !exists {
-			log.Printf("no tile definition found for tile enum %d", tileDefId)
-			continue
-		}
-
-		if !tileDef.Passable {
-			existingE, _ := etm.GetEntityIdByGridPos(tileKey, ecsContainer)
-
-			if existingE != -1 {
-				currentColliderEntities = append(currentColliderEntities, existingE)
-				continue
-			}
-
-			traComp := ecs.NewTransformComponent(
-				utils.Vec2{X: float64(tileKey.X * data.TileSize), Y: float64(tileKey.Y * data.TileSize)}, // TODO: Add Chunk position offset
-				1,
-				0,
-			)
-
-			shape, err := shapes.NewRectangleShape(data.TileSize, data.TileSize, utils.Vec2{})
-			if err != nil {
-				log.Printf("error creating rectangle shape for tile at grid position %v: %v", tileKey, err)
-				continue
-			}
-
-			phcComp := ecs.NewPhysicsColliderComponent(
-				ecs.Layer_Terrain,
-				ecs.Layer_Player|ecs.Layer_Enemy|ecs.Layer_FriendlyProjectile|ecs.Layer_EnemyProjectile,
-				ecs.Collider_Static,
-				shape,
-			)
-
-			etComp := ecs.NewEphemeralTileComponent(tileKey)
-
-			e := ecsContainer.AddEntity(traComp, phcComp, etComp)
-			currentColliderEntities = append(currentColliderEntities, e)
-		}
-	}
-
-	ephemeralEntities := ecsContainer.EphemeralTiles.GetEntities()
-	for _, e := range ephemeralEntities {
-		if !slices.Contains(currentColliderEntities, e) {
-			ecsContainer.ScheduleRemoveEntity(e)
-		}
-	}
-
-	return nil
-}
-
 func (x *ChunkContainer) GetTilesWithPotentialCollisions(
 	ecsContainer *ecs.ECSContainer,
 	tileSize int,
-) (tiles []common.CellKey, err error) {
+) (potentialCollisions map[common.EntityId][]common.CellKey, err error) {
 	pcm := ecsContainer.PhysicsColliderManager
+	potentialCollisions = make(map[common.EntityId][]common.CellKey)
 
 	for _, e := range ecsContainer.Transforms.GetEntities() {
 		if !pcm.HasCollider(e, ecsContainer) {
@@ -154,11 +110,38 @@ func (x *ChunkContainer) GetTilesWithPotentialCollisions(
 
 		for tx := minTileX; tx <= maxTileX; tx++ {
 			for ty := minTileY; ty <= maxTileY; ty++ {
-				tile := common.CellKey{X: tx, Y: ty}
-				tiles = append(tiles, tile)
+				tilePos := common.CellKey{X: tx, Y: ty}
+				chunk, err := x.GetChunkAtGridPos(tilePos)
+				if err != nil {
+					log.Printf("error getting chunk at grid position %v: %v", tilePos, err)
+					continue
+				}
+
+				tileId := chunk.GetTileDefId(tilePos)
+				tileDef, ok := x.Atlas[tileId]
+				if !ok {
+					log.Printf("no tile definition found for tile enum %d", tileId)
+					continue
+				}
+
+				if !tileDef.Passable {
+					potentialCollisions[e] = append(potentialCollisions[e], tilePos)
+				}
 			}
 		}
 	}
 
-	return tiles, nil
+	return potentialCollisions, nil
+}
+
+func (c *ChunkContainer) GetChunkAtGridPos(pos common.CellKey) (*chunk, error) {
+	y := int(int(pos.Y) / data.ChunkSize)
+	x := int(int(pos.X) / data.ChunkSize)
+
+	r, ok := c.chunks[common.CellKey{X: x, Y: y}]
+	if !ok {
+		return nil, fmt.Errorf("no chunk found at grid position %v", pos)
+	}
+
+	return r, nil
 }

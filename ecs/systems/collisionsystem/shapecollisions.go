@@ -9,7 +9,8 @@ import (
 	"math"
 )
 
-func getRectangleCircleCollision(
+// Pass -1 in case of collision without entity
+func GetRectangleCircleCollision(
 	rEnt common.EntityId,
 	cEnt common.EntityId,
 	rHit shapes.RectangleShape,
@@ -18,24 +19,39 @@ func getRectangleCircleCollision(
 ) utils.Vec2 {
 	tm := ecsContainer.TransformManager
 	vm := ecsContainer.VelocityManager
+	var err error
 
-	cHasVel := ecsContainer.Velocities.HasComponent(cEnt)
-	rHasVel := ecsContainer.Velocities.HasComponent(rEnt)
+	var cWorldPos, rWorldPos utils.Vec2
 
-	cWorldPos, err := tm.GetWorldPos(cEnt, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for circle entity %d: %v\n", cEnt, err)
-		return utils.Vec2{X: 0, Y: 0}
+	if cEnt != -1 {
+		cWorldPos, err = tm.GetWorldPos(cEnt, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for circle entity %d: %v\n", cEnt, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
-	rWorldPos, err := tm.GetWorldPos(rEnt, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for rectangle entity %d: %v\n", rEnt, err)
-		return utils.Vec2{X: 0, Y: 0}
+
+	if rEnt != -1 {
+		rWorldPos, err = tm.GetWorldPos(rEnt, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for rectangle entity %d: %v\n", rEnt, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
 
 	circleStart := utils.Vec2{X: cWorldPos.X + cHit.GetOffset().X, Y: cWorldPos.Y + cHit.GetOffset().Y}
 	rectMin := utils.Vec2{X: rWorldPos.X + rHit.GetAABB()[0].X, Y: rWorldPos.Y + rHit.GetAABB()[0].Y}
 	rectMax := utils.Vec2{X: rWorldPos.X + rHit.GetAABB()[1].X, Y: rWorldPos.Y + rHit.GetAABB()[1].Y}
+
+	cHasVel := false
+	rHasVel := false
+
+	if cEnt != -1 {
+		cHasVel = ecsContainer.Velocities.HasComponent(cEnt)
+	}
+	if rEnt != -1 {
+		rHasVel = ecsContainer.Velocities.HasComponent(rEnt)
+	}
 
 	var cVel, rVel utils.Vec2
 	if cHasVel {
@@ -139,7 +155,8 @@ func getRectangleCircleCollision(
 	return utils.Vec2{X: 0, Y: 0}
 }
 
-func getRectangleRectangleCollision(
+// Pass -1 in case of collision without entity
+func GetRectangleRectangleCollision(
 	r1Ent common.EntityId,
 	r2Ent common.EntityId,
 	r1Hit shapes.RectangleShape,
@@ -148,25 +165,39 @@ func getRectangleRectangleCollision(
 ) utils.Vec2 {
 	tm := ecsContainer.TransformManager
 	vm := ecsContainer.VelocityManager
+	var err error
 
-	r1HasVel := ecsContainer.Velocities.HasComponent(r1Ent)
-	r2HasVel := ecsContainer.Velocities.HasComponent(r2Ent)
+	var r1WorldPos, r2WorldPos utils.Vec2
 
-	r1WorldPos, err := tm.GetWorldPos(r1Ent, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for rectangle entity %d: %v\n", r1Ent, err)
-		return utils.Vec2{X: 0, Y: 0}
+	if r1Ent != -1 {
+		r1WorldPos, err = tm.GetWorldPos(r1Ent, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for rectangle entity %d: %v\n", r1Ent, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
-	r2WorldPos, err := tm.GetWorldPos(r2Ent, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for rectangle entity %d: %v\n", r2Ent, err)
-		return utils.Vec2{X: 0, Y: 0}
+	if r2Ent != -1 {
+		r2WorldPos, err = tm.GetWorldPos(r2Ent, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for rectangle entity %d: %v\n", r2Ent, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
 
 	r1Min := utils.Vec2{X: r1WorldPos.X + r1Hit.GetAABB()[0].X, Y: r1WorldPos.Y + r1Hit.GetAABB()[0].Y}
 	r1Max := utils.Vec2{X: r1WorldPos.X + r1Hit.GetAABB()[1].X, Y: r1WorldPos.Y + r1Hit.GetAABB()[1].Y}
 	r2Min := utils.Vec2{X: r2WorldPos.X + r2Hit.GetAABB()[0].X, Y: r2WorldPos.Y + r2Hit.GetAABB()[0].Y}
 	r2Max := utils.Vec2{X: r2WorldPos.X + r2Hit.GetAABB()[1].X, Y: r2WorldPos.Y + r2Hit.GetAABB()[1].Y}
+
+	r1HasVel := false
+	r2HasVel := false
+
+	if r1Ent != -1 {
+		r1HasVel = ecsContainer.Velocities.HasComponent(r1Ent)
+	}
+	if r2Ent != -1 {
+		r2HasVel = ecsContainer.Velocities.HasComponent(r2Ent)
+	}
 
 	var r1Vel, r2Vel utils.Vec2
 	if r1HasVel {
@@ -272,7 +303,8 @@ func getRectangleRectangleCollision(
 	return utils.Vec2{X: 0, Y: 0}
 }
 
-func getCircleCircleCollision(
+// Pass -1 in case of collision without entity
+func GetCircleCircleCollision(
 	c1Ent common.EntityId,
 	c2Ent common.EntityId,
 	c1Hit shapes.CircleShape,
@@ -281,23 +313,38 @@ func getCircleCircleCollision(
 ) utils.Vec2 {
 	tm := ecsContainer.TransformManager
 	vm := ecsContainer.VelocityManager
+	var err error
 
-	c1HasVel := ecsContainer.Velocities.HasComponent(c1Ent)
-	c2HasVel := ecsContainer.Velocities.HasComponent(c2Ent)
+	var c1WorldPos, c2WorldPos utils.Vec2
 
-	c1WorldPos, err := tm.GetWorldPos(c1Ent, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for circle entity %d: %v\n", c1Ent, err)
-		return utils.Vec2{X: 0, Y: 0}
+	if c1Ent != -1 {
+		c1WorldPos, err = tm.GetWorldPos(c1Ent, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for circle entity %d: %v\n", c1Ent, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
-	c2WorldPos, err := tm.GetWorldPos(c2Ent, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for circle entity %d: %v\n", c2Ent, err)
-		return utils.Vec2{X: 0, Y: 0}
+
+	if c2Ent != -1 {
+		c2WorldPos, err = tm.GetWorldPos(c2Ent, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for circle entity %d: %v\n", c2Ent, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
 
 	center1 := utils.Vec2{X: c1WorldPos.X + c1Hit.GetOffset().X, Y: c1WorldPos.Y + c1Hit.GetOffset().Y}
 	center2 := utils.Vec2{X: c2WorldPos.X + c2Hit.GetOffset().X, Y: c2WorldPos.Y + c2Hit.GetOffset().Y}
+
+	c1HasVel := false
+	c2HasVel := false
+
+	if c1Ent != -1 {
+		c1HasVel = ecsContainer.Velocities.HasComponent(c1Ent)
+	}
+	if c2Ent != -1 {
+		c2HasVel = ecsContainer.Velocities.HasComponent(c2Ent)
+	}
 
 	var c1Vel, c2Vel utils.Vec2
 	if c1HasVel {
@@ -372,7 +419,8 @@ func getCircleCircleCollision(
 	return utils.Vec2{X: 0, Y: 0}
 }
 
-func getRectanglePolygonCollision(
+// Pass -1 in case of collision without entity
+func GetRectanglePolygonCollision(
 	rEnt common.EntityId,
 	pEnt common.EntityId,
 	rHit shapes.RectangleShape,
@@ -394,10 +442,11 @@ func getRectanglePolygonCollision(
 		return utils.Vec2{X: 0, Y: 0}
 	}
 
-	return getPolygonPolygonCollision(rEnt, pEnt, *rectAsPolygon, pHit, ecsContainer)
+	return GetPolygonPolygonCollision(rEnt, pEnt, *rectAsPolygon, pHit, ecsContainer)
 }
 
-func getCirclePolygonCollision(
+// Pass -1 in case of collision without entity
+func GetCirclePolygonCollision(
 	cEnt common.EntityId,
 	pEnt common.EntityId,
 	cHit shapes.CircleShape,
@@ -406,23 +455,38 @@ func getCirclePolygonCollision(
 ) utils.Vec2 {
 	tm := ecsContainer.TransformManager
 	vm := ecsContainer.VelocityManager
+	var err error
 
-	cHasVel := ecsContainer.Velocities.HasComponent(cEnt)
-	pHasVel := ecsContainer.Velocities.HasComponent(pEnt)
+	var cWorldPos, pWorldPos utils.Vec2
 
-	cWorldPos, err := tm.GetWorldPos(cEnt, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for circle entity %d: %v\n", cEnt, err)
-		return utils.Vec2{X: 0, Y: 0}
+	if cEnt != -1 {
+		cWorldPos, err = tm.GetWorldPos(cEnt, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for circle entity %d: %v\n", cEnt, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
-	pWorldPos, err := tm.GetWorldPos(pEnt, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for polygon entity %d: %v\n", pEnt, err)
-		return utils.Vec2{X: 0, Y: 0}
+
+	if pEnt != -1 {
+		pWorldPos, err = tm.GetWorldPos(pEnt, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for polygon entity %d: %v\n", pEnt, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
 
 	circleStart := utils.Vec2{X: cWorldPos.X + cHit.GetOffset().X, Y: cWorldPos.Y + cHit.GetOffset().Y}
 	polyVerts := GetWorldPolygonVertices(pHit, pWorldPos)
+
+	cHasVel := false
+	pHasVel := false
+
+	if cEnt != -1 {
+		cHasVel = ecsContainer.Velocities.HasComponent(cEnt)
+	}
+	if cEnt != -1 {
+		pHasVel = ecsContainer.Velocities.HasComponent(pEnt)
+	}
 
 	var cVel, pVel utils.Vec2
 	if cHasVel {
@@ -485,7 +549,8 @@ func getCirclePolygonCollision(
 	return utils.Vec2{X: 0, Y: 0}
 }
 
-func getPolygonPolygonCollision(
+// Pass -1 in case of collision without entity
+func GetPolygonPolygonCollision(
 	p1Ent common.EntityId,
 	p2Ent common.EntityId,
 	p1Hit shapes.PolygonShape,
@@ -494,23 +559,38 @@ func getPolygonPolygonCollision(
 ) utils.Vec2 {
 	tm := ecsContainer.TransformManager
 	vm := ecsContainer.VelocityManager
+	var err error
 
-	p1HasVel := ecsContainer.Velocities.HasComponent(p1Ent)
-	p2HasVel := ecsContainer.Velocities.HasComponent(p2Ent)
+	var p1WorldPos, p2WorldPos utils.Vec2
 
-	// Get world positions and transformed vertices
-	p1WorldPos, err := tm.GetWorldPos(p1Ent, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for polygon entity %d: %v\n", p1Ent, err)
-		return utils.Vec2{X: 0, Y: 0}
+	if p1Ent != -1 {
+		p1WorldPos, err = tm.GetWorldPos(p1Ent, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for polygon entity %d: %v\n", p1Ent, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
-	p2WorldPos, err := tm.GetWorldPos(p2Ent, ecsContainer)
-	if err != nil {
-		log.Printf("Error getting world position for polygon entity %d: %v\n", p2Ent, err)
-		return utils.Vec2{X: 0, Y: 0}
+
+	if p2Ent != -1 {
+		p2WorldPos, err = tm.GetWorldPos(p2Ent, ecsContainer)
+		if err != nil {
+			log.Printf("Error getting world position for polygon entity %d: %v\n", p2Ent, err)
+			return utils.Vec2{X: 0, Y: 0}
+		}
 	}
+
 	p1Verts := GetWorldPolygonVertices(p1Hit, p1WorldPos)
 	p2Verts := GetWorldPolygonVertices(p2Hit, p2WorldPos)
+
+	p1HasVel := false
+	p2HasVel := false
+
+	if p1Ent != -1 {
+		p1HasVel = ecsContainer.Velocities.HasComponent(p1Ent)
+	}
+	if p2Ent != -1 {
+		p2HasVel = ecsContainer.Velocities.HasComponent(p2Ent)
+	}
 
 	var p1Vel, p2Vel utils.Vec2
 	if p1HasVel {

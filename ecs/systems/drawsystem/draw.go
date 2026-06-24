@@ -21,7 +21,7 @@ func DrawChunks(
 ) error {
 	for _, c := range chunkCont.GetChunks() {
 		opts := ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(c.GetPos().X-camera.X, c.GetPos().Y-camera.Y)
+		opts.GeoM.Translate(c.GetPos().X-camera.X-data.TileSize/2, c.GetPos().Y-camera.Y-data.TileSize/2)
 		screen.DrawImage(c.Image, &opts)
 	}
 

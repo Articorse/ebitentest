@@ -82,17 +82,17 @@ func GetCollisions(
 					case *shapes.RectangleShape:
 						switch bS := bColShape.(type) {
 						case *shapes.RectangleShape:
-							collisionVector = getRectangleRectangleCollision(eA, eB, *aS, *bS, ecsContainer)
+							collisionVector = GetRectangleRectangleCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.CircleShape:
-							collisionVector = getRectangleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
+							collisionVector = GetRectangleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.PolygonShape:
-							collisionVector = getRectanglePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
+							collisionVector = GetRectanglePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
@@ -102,18 +102,18 @@ func GetCollisions(
 					case *shapes.CircleShape:
 						switch bS := bColShape.(type) {
 						case *shapes.RectangleShape:
-							collisionVector = getRectangleCircleCollision(eB, eA, *bS, *aS, ecsContainer)
+							collisionVector = GetRectangleCircleCollision(eB, eA, *bS, *aS, ecsContainer)
 							collisionVector = collisionVector.Multiply(-1)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.CircleShape:
-							collisionVector = getCircleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
+							collisionVector = GetCircleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.PolygonShape:
-							collisionVector = getCirclePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
+							collisionVector = GetCirclePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
@@ -123,19 +123,19 @@ func GetCollisions(
 					case *shapes.PolygonShape:
 						switch bS := bColShape.(type) {
 						case *shapes.RectangleShape:
-							collisionVector = getRectanglePolygonCollision(eB, eA, *bS, *aS, ecsContainer)
+							collisionVector = GetRectanglePolygonCollision(eB, eA, *bS, *aS, ecsContainer)
 							collisionVector = collisionVector.Multiply(-1)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.CircleShape:
-							collisionVector = getCirclePolygonCollision(eB, eA, *bS, *aS, ecsContainer)
+							collisionVector = GetCirclePolygonCollision(eB, eA, *bS, *aS, ecsContainer)
 							collisionVector = collisionVector.Multiply(-1)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
 						case *shapes.PolygonShape:
-							collisionVector = getPolygonPolygonCollision(eA, eB, *aS, *bS, ecsContainer)
+							collisionVector = GetPolygonPolygonCollision(eA, eB, *aS, *bS, ecsContainer)
 							if !collisionVector.IsZero() {
 								collisionFound = true
 							}
