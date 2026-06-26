@@ -108,6 +108,16 @@ func (g *game) Update() error {
 		gamepadFound = true
 	}
 
+	toBeAdded, toBeRemoved, err := g.chunkContainer.GetRequiredChunks(g.ecs)
+	if err != nil {
+		log.Println("error populating required chunks: ", err)
+	}
+
+	err = g.chunkContainer.Tick(g.ecs.Rng, toBeAdded, toBeRemoved)
+	if err != nil {
+		log.Fatal("error generating chunk container: ", err)
+	}
+
 	tickInputs := make(map[common.EntityId]ecs.InputState)
 	for _, eid := range g.ecs.Inputs.GetEntities() {
 		inputSourceFunc, err := im.GetInputSourceFunc(eid, g.ecs)
@@ -327,7 +337,7 @@ func (g *game) Update() error {
 		log.Println("error during tile collision checking: ", err)
 	}
 
-	_, err = tilesystem.ResolvePhysicsCollisions(tileCollisions, g.ecs)
+	_, err = tilesystem.ResolveTileCollisions(tileCollisions, g.ecs)
 	if err != nil {
 		log.Println("error during tile collision resolution: ", err)
 	}
@@ -500,9 +510,9 @@ func main() {
 	ebiten.SetTPS(data.TPS)
 
 	g.chunkContainer = &tilesystem.ChunkContainer{}
-	err := g.chunkContainer.Generate(g.ecs.Rng)
+	err := g.chunkContainer.GenerateTileAtlasFromJson("assets/tiles/atlas.json")
 	if err != nil {
-		log.Fatal("error generating chunk container: ", err)
+		log.Fatal("error generating tile atlas from json: ", err)
 	}
 
 	g.ecs.TickState = *common.NewTickState()
@@ -566,6 +576,7 @@ func main() {
 		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
 	}
 	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
+	pCLComp := ecs.NewChunkLoaderComponent(1)
 	g.playerEntity = g.ecs.AddEntity(
 		pParComp,
 		pTraComp,
@@ -576,6 +587,7 @@ func main() {
 		pHpComp,
 		pHitboxComp,
 		pAbiComp,
+		pCLComp,
 	)
 
 	// // Gun
@@ -798,106 +810,106 @@ func main() {
 	}
 
 	// Enemy spawner
-	enemyTraComp := ecs.NewTransformComponent(utils.Vec2{X: 300, Y: 150}, 1, 0)
-	enemyVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, data.DefaultAcceleration*0.25, data.DefaultDrag)
-	enemyParComp := ecs.NewParentComponent()
-	enemySprComp, err := ecs.NewSpriteComponent("assets/sprites/evilslime.png", 20, true)
-	if err != nil {
-		log.Fatal(err)
-	}
-	enemyAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	enemyAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-		{FrameIdx: 0, DurationMs: 2000},
-		{FrameIdx: 1, DurationMs: 100},
-		{FrameIdx: 2, DurationMs: 100},
-		{FrameIdx: 3, DurationMs: 100},
-		{FrameIdx: 4, DurationMs: 100},
-		{FrameIdx: 3, DurationMs: 100},
-		{FrameIdx: 2, DurationMs: 100},
-		{FrameIdx: 1, DurationMs: 100},
-	}
-	enemyAniComp, err := ecs.NewAnimationComponent(
-		"assets/sprites/evilslime_ss.png",
-		utils.Vec2{X: 32, Y: 32},
-		enemyAniStateFrames,
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	enemyHpComp := ecs.NewHitpointsComponent(20, 100)
-	enemyPhyColShape, err := shapes.NewCircleShape(7, utils.Vec2{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-	enemyPhyColComp := ecs.NewPhysicsColliderComponent(
-		ecs.Layer_Enemy,
-		ecs.Layer_Player|
-			ecs.Layer_FriendlyProjectile|
-			ecs.Layer_Platform|
-			ecs.Layer_Enemy|
-			ecs.Layer_Terrain,
-		ecs.Collider_Mob,
-		enemyPhyColShape,
-	)
-	enemyHitboxColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-	enemyHitboxComp := ecs.NewHitboxColliderComponent(
-		ecs.Layer_Enemy,
-		ecs.Layer_Player|
-			ecs.Layer_FriendlyProjectile|
-			ecs.Layer_Platform|
-			ecs.Layer_Terrain,
-		enemyHitboxColShape,
-	)
-	enemyHurtboxColShape, err := shapes.NewCircleShape(7, utils.Vec2{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-	enemyHurtboxComp := ecs.NewHurtboxColliderComponent(
-		ecs.Layer_Enemy,
-		ecs.Layer_Player|
-			ecs.Layer_FriendlyProjectile|
-			ecs.Layer_Platform|
-			ecs.Layer_Terrain,
-		enemyHurtboxColShape,
-	)
-	enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, false, 1)
-	enemyFollowInput := inputsources.NewFollowInputSource(g.playerEntity)
-	enemyInputComp := ecs.NewInputComponent(nil, enemyFollowInput, ecs.Facing_None)
-
-	enemySpawnerTimerComp, err := ecs.NewTimerComponent(1000, -1, timerfuncs.Spawn)
-	if err != nil {
-		log.Fatal("error creating enemy spawner timer component: ", err)
-	}
-	enemySpawnerShape, err := shapes.NewRectangleShape(data.CameraWidth+100, data.CameraHeight+100, utils.Vec2{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	enemySpawnerComp, err := ecs.NewSpawnerComponent(
-		utils.Vec2{
-			X: g.ecs.Camera.X + (data.CameraWidth / 2),
-			Y: g.ecs.Camera.Y + (data.CameraHeight / 2),
-		},
-		ecs.SpawnerType_Perimeter,
-		enemySpawnerShape,
-		enemyParComp,
-		enemyTraComp,
-		enemyVelComp,
-		enemySprComp,
-		enemyAniComp,
-		enemyHpComp,
-		enemyPhyColComp,
-		enemyHitboxComp,
-		enemyHurtboxComp,
-		enemyCDmgComp,
-		enemyInputComp,
-	)
-	if err != nil {
-		log.Fatal("error creating enemy spawner component: ", err)
-	}
-	g.ecs.AddEntity(enemySpawnerTimerComp, enemySpawnerComp)
+	// enemyTraComp := ecs.NewTransformComponent(utils.Vec2{X: 300, Y: 150}, 1, 0)
+	// enemyVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, data.DefaultAcceleration*0.25, data.DefaultDrag)
+	// enemyParComp := ecs.NewParentComponent()
+	// enemySprComp, err := ecs.NewSpriteComponent("assets/sprites/evilslime.png", 20, true)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// enemyAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	// enemyAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+	// 	{FrameIdx: 0, DurationMs: 2000},
+	// 	{FrameIdx: 1, DurationMs: 100},
+	// 	{FrameIdx: 2, DurationMs: 100},
+	// 	{FrameIdx: 3, DurationMs: 100},
+	// 	{FrameIdx: 4, DurationMs: 100},
+	// 	{FrameIdx: 3, DurationMs: 100},
+	// 	{FrameIdx: 2, DurationMs: 100},
+	// 	{FrameIdx: 1, DurationMs: 100},
+	// }
+	// enemyAniComp, err := ecs.NewAnimationComponent(
+	// 	"assets/sprites/evilslime_ss.png",
+	// 	utils.Vec2{X: 32, Y: 32},
+	// 	enemyAniStateFrames,
+	// )
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// enemyHpComp := ecs.NewHitpointsComponent(20, 100)
+	// enemyPhyColShape, err := shapes.NewCircleShape(7, utils.Vec2{X: 0, Y: 0})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// enemyPhyColComp := ecs.NewPhysicsColliderComponent(
+	// 	ecs.Layer_Enemy,
+	// 	ecs.Layer_Player|
+	// 		ecs.Layer_FriendlyProjectile|
+	// 		ecs.Layer_Platform|
+	// 		ecs.Layer_Enemy|
+	// 		ecs.Layer_Terrain,
+	// 	ecs.Collider_Mob,
+	// 	enemyPhyColShape,
+	// )
+	// enemyHitboxColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// enemyHitboxComp := ecs.NewHitboxColliderComponent(
+	// 	ecs.Layer_Enemy,
+	// 	ecs.Layer_Player|
+	// 		ecs.Layer_FriendlyProjectile|
+	// 		ecs.Layer_Platform|
+	// 		ecs.Layer_Terrain,
+	// 	enemyHitboxColShape,
+	// )
+	// enemyHurtboxColShape, err := shapes.NewCircleShape(7, utils.Vec2{X: 0, Y: 0})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// enemyHurtboxComp := ecs.NewHurtboxColliderComponent(
+	// 	ecs.Layer_Enemy,
+	// 	ecs.Layer_Player|
+	// 		ecs.Layer_FriendlyProjectile|
+	// 		ecs.Layer_Platform|
+	// 		ecs.Layer_Terrain,
+	// 	enemyHurtboxColShape,
+	// )
+	// enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, false, 1)
+	// enemyFollowInput := inputsources.NewFollowInputSource(g.playerEntity)
+	// enemyInputComp := ecs.NewInputComponent(nil, enemyFollowInput, ecs.Facing_None)
+	//
+	// enemySpawnerTimerComp, err := ecs.NewTimerComponent(1000, -1, timerfuncs.Spawn)
+	// if err != nil {
+	// 	log.Fatal("error creating enemy spawner timer component: ", err)
+	// }
+	// enemySpawnerShape, err := shapes.NewRectangleShape(data.CameraWidth+100, data.CameraHeight+100, utils.Vec2{})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// enemySpawnerComp, err := ecs.NewSpawnerComponent(
+	// 	utils.Vec2{
+	// 		X: g.ecs.Camera.X + (data.CameraWidth / 2),
+	// 		Y: g.ecs.Camera.Y + (data.CameraHeight / 2),
+	// 	},
+	// 	ecs.SpawnerType_Perimeter,
+	// 	enemySpawnerShape,
+	// 	enemyParComp,
+	// 	enemyTraComp,
+	// 	enemyVelComp,
+	// 	enemySprComp,
+	// 	enemyAniComp,
+	// 	enemyHpComp,
+	// 	enemyPhyColComp,
+	// 	enemyHitboxComp,
+	// 	enemyHurtboxComp,
+	// 	enemyCDmgComp,
+	// 	enemyInputComp,
+	// )
+	// if err != nil {
+	// 	log.Fatal("error creating enemy spawner component: ", err)
+	// }
+	// g.ecs.AddEntity(enemySpawnerTimerComp, enemySpawnerComp)
 
 	// Tree
 	treeInpComp := ecs.NewInputComponent(nil, inputsources.DummyInputSource, ecs.Facing_None)

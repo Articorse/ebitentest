@@ -127,21 +127,17 @@ func ResolvePhysicsCollisions(
 
 				normal := c.Vector.Normalized()
 				relativeVelocity := mobLocalVelVec.Subtract(staLocalVelVec)
-				velocityAlongNormal := relativeVelocity.Dot(normal)
 
-				if velocityAlongNormal < 0 {
-					restitution := data.Bounciness
-					impulseMagnitude := -(1 + restitution) * velocityAlongNormal
-					impulse := normal.Multiply(impulseMagnitude)
+				impulse := utils.CalculateImpulse(relativeVelocity, normal, data.Bounciness)
+				if impulse.Length() > 0 {
 					err = vm.SetLocalVector(mobE, mobLocalVelVec.Add(impulse), ecsContainer)
 					if err != nil {
 						log.Printf("Error setting local velocity vector for entity %d: %v\n", mobE, err)
 						continue
 					}
-				}
 
-				collisionsResolved++
-				continue
+					collisionsResolved++
+				}
 			}
 
 			// Static-Static

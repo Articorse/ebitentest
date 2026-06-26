@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,14 +14,14 @@ import (
 )
 
 type ChunkContainer struct {
-	chunks map[common.CellKey]*chunk
+	chunks map[utils.CellKey]*chunk
 
 	Atlas map[data.TileEnum]TileDef
 }
 
 func (cc *ChunkContainer) newChunk(r *rand.Rand, atlas map[data.TileEnum]TileDef) (*chunk, error) {
 	c := chunk{}
-	c.promotedTiles = make(map[common.CellKey]promotedTile)
+	c.promotedTiles = make(map[utils.CellKey]promotedTile)
 
 	for y := range data.ChunkSize {
 		for x := range data.ChunkSize {
@@ -36,24 +37,28 @@ func (cc *ChunkContainer) newChunk(r *rand.Rand, atlas map[data.TileEnum]TileDef
 	return &c, nil
 }
 
-func (cc *ChunkContainer) Generate(r *rand.Rand) error {
-	cc.chunks = make(map[common.CellKey]*chunk)
-
-	err := cc.generateTileAtlasFromJson("assets/tiles/atlas.json")
-	if err != nil {
-		return fmt.Errorf("failed to generate tile atlas: %v", err)
+func (cc *ChunkContainer) Tick(r *rand.Rand, toBeAdded []utils.CellKey, toBeRemoved []utils.CellKey) error {
+	if cc.chunks == nil {
+		cc.chunks = make(map[utils.CellKey]*chunk)
 	}
-	if cc.chunks[common.CellKey{}], err = cc.newChunk(r, cc.Atlas); err != nil {
-		return fmt.Errorf("failed to generate chunk: %v", err)
+
+	for _, cPos := range toBeRemoved {
+		delete(cc.chunks, cPos)
+	}
+	for _, cPos := range toBeAdded {
+		var err error
+		if cc.chunks[cPos], err = cc.newChunk(r, cc.Atlas); err != nil {
+			return fmt.Errorf("failed to generate chunk at %v: %v", cPos, err)
+		}
 	}
 	return nil
 }
 
-func (cc *ChunkContainer) GetChunks() map[common.CellKey]*chunk {
+func (cc *ChunkContainer) GetChunks() map[utils.CellKey]*chunk {
 	return cc.chunks
 }
 
-func (cc *ChunkContainer) generateTileAtlasFromJson(input string) error {
+func (cc *ChunkContainer) GenerateTileAtlasFromJson(input string) error {
 	f, err := os.ReadFile(input)
 	if err != nil {
 		return fmt.Errorf("error reading tile atlas json file: %v", err)
@@ -78,9 +83,9 @@ func (cc *ChunkContainer) generateTileAtlasFromJson(input string) error {
 func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 	ecsContainer *ecs.ECSContainer,
 	tileSize int,
-) (potentialCollisions map[common.EntityId][]common.CellKey, err error) {
+) (potentialCollisions map[common.EntityId][]utils.CellKey, err error) {
 	pcm := ecsContainer.PhysicsColliderManager
-	potentialCollisions = make(map[common.EntityId][]common.CellKey)
+	potentialCollisions = make(map[common.EntityId][]utils.CellKey)
 
 	for _, e := range ecsContainer.Transforms.GetEntities() {
 		if !pcm.HasCollider(e, ecsContainer) {
@@ -110,14 +115,22 @@ func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 
 		for tx := minTileX; tx <= maxTileX; tx++ {
 			for ty := minTileY; ty <= maxTileY; ty++ {
-				tilePos := common.CellKey{X: tx, Y: ty}
-				chunk, err := cc.GetChunkAtGridPos(tilePos)
-				if err != nil {
-					log.Printf("error getting chunk at grid position %v: %v", tilePos, err)
+				worldTilePos := utils.CellKey{X: tx, Y: ty}
+				chunkGridPos := utils.CellKey{
+					X: int(math.Floor(math.Floor(float64(worldTilePos.X) / data.ChunkSize))),
+					Y: int(math.Floor(math.Floor(float64(worldTilePos.Y) / data.ChunkSize))),
+				}
+				chunk, ok := cc.chunks[chunkGridPos]
+				if !ok {
+					fmt.Printf("no chunk found at grid position %v for world tile position %v\n", chunkGridPos, worldTilePos)
 					continue
 				}
 
-				tileId := chunk.GetTileDefId(tilePos)
+				localTilePos := utils.CellKey{
+					X: ((worldTilePos.X % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
+					Y: ((worldTilePos.Y % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
+				}
+				tileId := chunk.GetTileDefId(localTilePos)
 				tileDef, ok := cc.Atlas[tileId]
 				if !ok {
 					log.Printf("no tile definition found for tile enum %d", tileId)
@@ -125,23 +138,11 @@ func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 				}
 
 				if !tileDef.Passable {
-					potentialCollisions[e] = append(potentialCollisions[e], tilePos)
+					potentialCollisions[e] = append(potentialCollisions[e], worldTilePos)
 				}
 			}
 		}
 	}
 
 	return potentialCollisions, nil
-}
-
-func (cc *ChunkContainer) GetChunkAtGridPos(pos common.CellKey) (*chunk, error) {
-	y := int(int(pos.Y) / data.ChunkSize)
-	x := int(int(pos.X) / data.ChunkSize)
-
-	r, ok := cc.chunks[common.CellKey{X: x, Y: y}]
-	if !ok {
-		return nil, fmt.Errorf("no chunk found at grid position %v", pos)
-	}
-
-	return r, nil
 }

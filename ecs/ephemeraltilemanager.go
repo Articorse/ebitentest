@@ -2,19 +2,20 @@ package ecs
 
 import (
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 )
 
 type ephemeralTileManager struct{}
 
-func NewEphemeralTileComponent(gridPos common.CellKey) *ephemeralTile {
+func NewEphemeralTileComponent(gridPos utils.CellKey) *ephemeralTile {
 	return &ephemeralTile{
 		gridPos: gridPos,
 	}
 }
 
 func (ephemeralTileManager) GetEntityIdByGridPos(
-	gridPos common.CellKey,
+	gridPos utils.CellKey,
 	ecsContainer *ECSContainer,
 ) (common.EntityId, error) {
 	for _, e := range ecsContainer.EphemeralTiles.GetEntities() {

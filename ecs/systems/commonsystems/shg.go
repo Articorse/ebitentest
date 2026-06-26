@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"log"
 	"slices"
 )
@@ -11,8 +12,8 @@ import (
 func PopulateSpatialHashGrid(
 	ecsContainer *ecs.ECSContainer,
 	cellSize int,
-) (map[common.CellKey][]common.EntityId, error) {
-	grid := make(map[common.CellKey][]common.EntityId)
+) (map[utils.CellKey][]common.EntityId, error) {
+	grid := make(map[utils.CellKey][]common.EntityId)
 	tm := ecsContainer.TransformManager
 
 	for _, e := range ecsContainer.Transforms.GetEntities() {
@@ -24,14 +25,14 @@ func PopulateSpatialHashGrid(
 
 		x := int(worldPos.X / float64(cellSize))
 		y := int(worldPos.Y / float64(cellSize))
-		grid[common.CellKey{X: x, Y: y}] = append(grid[common.CellKey{X: x, Y: y}], e)
+		grid[utils.CellKey{X: x, Y: y}] = append(grid[utils.CellKey{X: x, Y: y}], e)
 	}
 
 	return grid, nil
 }
 
 func GetSHGProximities(
-	shg map[common.CellKey][]common.EntityId,
+	shg map[utils.CellKey][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId][]common.EntityId, error) {
 	proximateEntities := make(map[common.EntityId][]common.EntityId)
@@ -48,7 +49,7 @@ func GetSHGProximities(
 		cellY := int(worldPosA.Y / data.SpatialHashGridCellSize)
 		for dx := -1; dx <= 1; dx++ {
 			for dy := -1; dy <= 1; dy++ {
-				for _, eB := range shg[common.CellKey{X: cellX + dx, Y: cellY + dy}] {
+				for _, eB := range shg[utils.CellKey{X: cellX + dx, Y: cellY + dy}] {
 					if eA == eB {
 						continue
 					}

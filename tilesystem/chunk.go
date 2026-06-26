@@ -2,7 +2,6 @@ package tilesystem
 
 import (
 	"ebittest/data"
-	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
 
@@ -10,18 +9,13 @@ import (
 )
 
 type chunk struct {
-	pos           utils.Vec2
 	tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
-	promotedTiles map[common.CellKey]promotedTile
+	promotedTiles map[utils.CellKey]promotedTile
 
 	Image *ebiten.Image
 }
 
-func (x *chunk) GetPos() utils.Vec2 {
-	return x.pos
-}
-
-func (x *chunk) GetTileDefId(cellKey common.CellKey) data.TileEnum {
+func (x *chunk) GetTileDefId(cellKey utils.CellKey) data.TileEnum {
 	if cellKey.X < 0 || cellKey.X >= data.ChunkSize || cellKey.Y < 0 || cellKey.Y >= data.ChunkSize {
 		return 0
 	}
@@ -36,7 +30,7 @@ func (x *chunk) GetTileDefId(cellKey common.CellKey) data.TileEnum {
 	return x.tiles[idx]
 }
 
-func (x *chunk) GetPromotedTiles() map[common.CellKey]promotedTile {
+func (x *chunk) GetPromotedTiles() map[utils.CellKey]promotedTile {
 	return x.promotedTiles
 }
 

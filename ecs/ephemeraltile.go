@@ -1,9 +1,9 @@
 package ecs
 
-import "ebittest/ecs/common"
+import "ebittest/utils"
 
 type ephemeralTile struct {
-	gridPos common.CellKey
+	gridPos utils.CellKey
 }
 
 func (ephemeralTile) isComponent() {}

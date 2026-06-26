@@ -10,7 +10,7 @@ import (
 	"log"
 )
 
-func ResolvePhysicsCollisions(
+func ResolveTileCollisions(
 	collisions map[common.EntityId]utils.Vec2,
 	ecsContainer *ecs.ECSContainer,
 ) (collisionsResolved uint64, err error) {
@@ -35,13 +35,8 @@ func ResolvePhysicsCollisions(
 			continue
 		}
 
-		normal := c.Normalized()
-		velocityAlongNormal := mobLocalVelVec.Dot(normal)
-
-		if velocityAlongNormal < 0 {
-			restitution := data.Bounciness
-			impulseMagnitude := -(1 + restitution) * velocityAlongNormal
-			impulse := normal.Multiply(impulseMagnitude)
+		impulse := utils.CalculateImpulse(mobLocalVelVec, c.Normalized(), data.Bounciness)
+		if impulse.Length() > 0 {
 			err = vm.SetLocalVector(e, mobLocalVelVec.Add(impulse), ecsContainer)
 			if err != nil {
 				log.Printf("Error setting local velocity vector for entity %d: %v\n", e, err)
@@ -49,7 +44,6 @@ func ResolvePhysicsCollisions(
 			}
 
 			collisionsResolved++
-			continue
 		}
 	}
 
@@ -57,7 +51,7 @@ func ResolvePhysicsCollisions(
 }
 
 func GetCollisions(
-	potentialCollisions map[common.EntityId][]common.CellKey,
+	potentialCollisions map[common.EntityId][]utils.CellKey,
 	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId]utils.Vec2, error) {
 	pcm := ecsContainer.PhysicsColliderManager
@@ -122,11 +116,11 @@ func GetCollisions(
 }
 
 func GetAABBCollisions(
-	potentialCollisions map[common.EntityId][]common.CellKey,
+	potentialCollisions map[common.EntityId][]utils.CellKey,
 	ecsContainer *ecs.ECSContainer,
-) (map[common.EntityId][]common.CellKey, error) {
+) (map[common.EntityId][]utils.CellKey, error) {
 	pcm := ecsContainer.PhysicsColliderManager
-	collisions := make(map[common.EntityId][]common.CellKey)
+	collisions := make(map[common.EntityId][]utils.CellKey)
 
 	for e, colTiles := range potentialCollisions {
 		for _, t := range colTiles {

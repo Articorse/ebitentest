@@ -19,9 +19,11 @@ func DrawChunks(
 	camera utils.Vec2,
 	chunkCont *tilesystem.ChunkContainer,
 ) error {
-	for _, c := range chunkCont.GetChunks() {
+	for gt, c := range chunkCont.GetChunks() {
 		opts := ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(c.GetPos().X-camera.X-data.TileSize/2, c.GetPos().Y-camera.Y-data.TileSize/2)
+		posX := float64(gt.X)*data.ChunkSize*data.TileSize - camera.X - data.TileSize/2
+		posY := float64(gt.Y)*data.ChunkSize*data.TileSize - camera.Y - data.TileSize/2
+		opts.GeoM.Translate(posX, posY)
 		screen.DrawImage(c.Image, &opts)
 	}
 
@@ -32,7 +34,7 @@ func DrawChunks(
 func DrawSprites(
 	screen *ebiten.Image,
 	camera utils.Vec2,
-	shg map[common.CellKey][]common.EntityId,
+	shg map[utils.CellKey][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	sm := ecsContainer.SpriteManager
@@ -272,7 +274,7 @@ func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECSContainer) error {
 
 func getNeighborBatch(
 	eA common.EntityId,
-	shg map[common.CellKey][]common.EntityId,
+	shg map[utils.CellKey][]common.EntityId,
 	ecs *ecs.ECSContainer,
 ) ([]common.EntityId, error) {
 	if !ecs.Sprites.HasComponent(eA) {
@@ -290,7 +292,7 @@ func getNeighborBatch(
 
 func getNeighborsRecursive(
 	eA common.EntityId,
-	shg map[common.CellKey][]common.EntityId,
+	shg map[utils.CellKey][]common.EntityId,
 	visitedEntities map[common.EntityId]struct{},
 	ecs *ecs.ECSContainer,
 ) (neighbors []common.EntityId, _visited map[common.EntityId]struct{}, err error) {
@@ -318,7 +320,7 @@ func getNeighborsRecursive(
 
 	for dx := -1; dx <= 1; dx++ {
 		for dy := -1; dy <= 1; dy++ {
-			for _, eB := range shg[common.CellKey{X: startCellX + dx, Y: startCellY + dy}] {
+			for _, eB := range shg[utils.CellKey{X: startCellX + dx, Y: startCellY + dy}] {
 				if !ecs.Sprites.HasComponent(eB) {
 					return nil, nil, nil
 				}

@@ -44,6 +44,7 @@ type ECSContainer struct {
 	Deathrattles      Storage[deathrattle]
 	FloatingTexts     Storage[floatingText]
 	EphemeralTiles    Storage[ephemeralTile]
+	ChunkLoaders      Storage[chunkLoader]
 
 	InputManager            inputManager
 	ParentManager           parentManager
@@ -65,6 +66,7 @@ type ECSContainer struct {
 	DeathrattleManager      deathrattleManager
 	FloatingTextManager     floatingTextManager
 	EphemeralTileManager    ephemeralTileManager
+	ChunkLoaderManager      chunkLoaderManager
 }
 
 func NewECSContainer() *ECSContainer {
@@ -100,6 +102,7 @@ func NewECSContainer() *ECSContainer {
 		Deathrattles:      Storage[deathrattle]{order: []common.EntityId{}, data: make(map[common.EntityId]*deathrattle)},
 		FloatingTexts:     Storage[floatingText]{order: []common.EntityId{}, data: make(map[common.EntityId]*floatingText)},
 		EphemeralTiles:    Storage[ephemeralTile]{order: []common.EntityId{}, data: make(map[common.EntityId]*ephemeralTile)},
+		ChunkLoaders:      Storage[chunkLoader]{order: []common.EntityId{}, data: make(map[common.EntityId]*chunkLoader)},
 
 		InputManager:            inputManager{},
 		ParentManager:           parentManager{},
@@ -121,6 +124,7 @@ func NewECSContainer() *ECSContainer {
 		DeathrattleManager:      deathrattleManager{},
 		FloatingTextManager:     floatingTextManager{},
 		EphemeralTileManager:    ephemeralTileManager{},
+		ChunkLoaderManager:      chunkLoaderManager{},
 	}
 }
 
@@ -196,6 +200,7 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 		x.Deathrattles.deleteEntity(e)
 		x.FloatingTexts.deleteEntity(e)
 		x.EphemeralTiles.deleteEntity(e)
+		x.ChunkLoaders.deleteEntity(e)
 
 		pm := parentManager{}
 		err := pm.RemoveParentFromAllEntities(e, x)
@@ -216,7 +221,7 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 			return false
 		})
 
-		maps.DeleteFunc(x.TickState.CollisionGrid, func(k common.CellKey, v []common.EntityId) bool {
+		maps.DeleteFunc(x.TickState.CollisionGrid, func(k utils.CellKey, v []common.EntityId) bool {
 			for _, vE := range v {
 				if vE == e {
 					return true
@@ -294,6 +299,8 @@ func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
 		x.FloatingTexts.addComponent(e, c.Copy())
 	case *ephemeralTile:
 		x.EphemeralTiles.addComponent(e, c.Copy())
+	case *chunkLoader:
+		x.ChunkLoaders.addComponent(e, c.Copy())
 	default:
 		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in ECS.AddComponent\n", comp, e)
 	}

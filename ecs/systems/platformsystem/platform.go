@@ -9,7 +9,7 @@ import (
 )
 
 func Tick(
-	shg map[common.CellKey][]common.EntityId,
+	shg map[utils.CellKey][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	tm := ecsContainer.TransformManager
@@ -47,7 +47,7 @@ func Tick(
 
 		for dx := -1; dx <= 1; dx++ {
 			for dy := -1; dy <= 1; dy++ {
-				for _, eB := range shg[common.CellKey{X: startCellX + dx, Y: startCellY + dy}] {
+				for _, eB := range shg[utils.CellKey{X: startCellX + dx, Y: startCellY + dy}] {
 					if eA == eB {
 						continue
 					}
