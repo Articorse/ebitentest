@@ -15,6 +15,19 @@ type chunk struct {
 	Image *ebiten.Image
 }
 
+type chunkDto struct {
+	X             int                                            `json:"x"`
+	Y             int                                            `json:"y"`
+	Tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum `json:"tiles"`
+	PromotedTiles []promotedTileDto                              `json:"promotedTiles"`
+}
+
+type promotedTileDto struct {
+	X             int `json:"x"`
+	Y             int `json:"y"`
+	CurrentHealth int `json:"currentHealth"`
+}
+
 func (x *chunk) GetTileDefId(cellKey utils.CellKey) data.TileEnum {
 	if cellKey.X < 0 || cellKey.X >= data.ChunkSize || cellKey.Y < 0 || cellKey.Y >= data.ChunkSize {
 		return 0

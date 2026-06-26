@@ -45,12 +45,12 @@ func (cc *ChunkContainer) GetRequiredChunks(
 	}
 
 	for requiredChunkPos := range chunks {
-		if _, exists := cc.chunks[requiredChunkPos]; !exists {
+		if _, exists := cc.Chunks[requiredChunkPos]; !exists {
 			toBeAdded = append(toBeAdded, requiredChunkPos)
 		}
 	}
 
-	for existingChunkPos := range cc.chunks {
+	for existingChunkPos := range cc.Chunks {
 		if _, exists := chunks[existingChunkPos]; !exists {
 			toBeRemoved = append(toBeRemoved, existingChunkPos)
 		}

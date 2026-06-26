@@ -2,24 +2,21 @@ package tilesystem
 
 import (
 	"ebittest/data"
-	"ebittest/ecs"
-	"ebittest/ecs/common"
 	"ebittest/utils"
+	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
-	"math"
 	"math/rand/v2"
 	"os"
 )
 
 type ChunkContainer struct {
-	chunks map[utils.CellKey]*chunk
-
-	Atlas map[data.TileEnum]TileDef
+	Chunks map[utils.CellKey]*chunk
+	Atlas  map[data.TileEnum]TileDef
 }
 
-func (cc *ChunkContainer) newChunk(r *rand.Rand, atlas map[data.TileEnum]TileDef) (*chunk, error) {
+func (cc *ChunkContainer) newChunk(r *rand.Rand, atlas map[data.TileEnum]TileDef, pos utils.CellKey) (*chunk, error) {
 	c := chunk{}
 	c.promotedTiles = make(map[utils.CellKey]promotedTile)
 
@@ -30,49 +27,78 @@ func (cc *ChunkContainer) newChunk(r *rand.Rand, atlas map[data.TileEnum]TileDef
 		}
 	}
 
+	cDto, err := cc.ChunkToDto(&c, pos)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert chunk to DTO: %w", err)
+	}
+	if err := SaveChunkGob(fmt.Sprintf(data.ChunkDataFilePathTemplate, cDto.X, cDto.Y), cDto); err != nil {
+		return nil, fmt.Errorf("failed to save new chunk: %w", err)
+	}
+
 	if err := c.generateChunkImage(atlas); err != nil {
-		return nil, fmt.Errorf("failed to generate chunk image: %v", err)
+		return nil, fmt.Errorf("failed to generate chunk image: %w", err)
 	}
 
 	return &c, nil
 }
 
 func (cc *ChunkContainer) Tick(r *rand.Rand, toBeAdded []utils.CellKey, toBeRemoved []utils.CellKey) error {
-	if cc.chunks == nil {
-		cc.chunks = make(map[utils.CellKey]*chunk)
+	if cc.Chunks == nil {
+		cc.Chunks = make(map[utils.CellKey]*chunk)
 	}
 
 	for _, cPos := range toBeRemoved {
-		delete(cc.chunks, cPos)
+		c, exists := cc.Chunks[cPos]
+		if !exists {
+			continue
+		}
+
+		cDto, err := cc.ChunkToDto(c, cPos)
+		if err != nil {
+			return fmt.Errorf("failed to convert chunk to DTO: %w", err)
+		}
+
+		fileName := fmt.Sprintf(data.ChunkDataFilePathTemplate, cDto.X, cDto.Y)
+		if err := SaveChunkGob(fileName, cDto); err != nil {
+			return fmt.Errorf("failed to save chunk at %v: %w", cPos, err)
+		}
+
+		delete(cc.Chunks, cPos)
 	}
 	for _, cPos := range toBeAdded {
-		var err error
-		if cc.chunks[cPos], err = cc.newChunk(r, cc.Atlas); err != nil {
-			return fmt.Errorf("failed to generate chunk at %v: %v", cPos, err)
+		fileName := fmt.Sprintf(data.ChunkDataFilePathTemplate, cPos.X, cPos.Y)
+		cDto, err := LoadChunkGob(fileName)
+		if err == nil {
+			chunkMap := cc.DtosToChunks([]chunkDto{cDto})
+			cc.Chunks[cPos] = chunkMap[cPos]
+		} else if errors.Is(err, os.ErrNotExist) {
+			c, err := cc.newChunk(r, cc.Atlas, cPos)
+			if err != nil {
+				return fmt.Errorf("failed to create new chunk at %v: %w", cPos, err)
+			}
+			cc.Chunks[cPos] = c
+		} else {
+			return fmt.Errorf("failed to load chunk at %v: %w", cPos, err)
 		}
 	}
 	return nil
 }
 
-func (cc *ChunkContainer) GetChunks() map[utils.CellKey]*chunk {
-	return cc.chunks
-}
-
 func (cc *ChunkContainer) GenerateTileAtlasFromJson(input string) error {
 	f, err := os.ReadFile(input)
 	if err != nil {
-		return fmt.Errorf("error reading tile atlas json file: %v", err)
+		return fmt.Errorf("error reading tile atlas json file: %w", err)
 	}
 
 	var tileDefs *[]tileDefDTO
 	err = json.Unmarshal(f, &tileDefs)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling tile atlas json: %v", err)
+		return fmt.Errorf("error unmarshalling tile atlas json: %w", err)
 	}
 
 	atlas, err := dtosToDefsMap(*tileDefs)
 	if err != nil {
-		return fmt.Errorf("error converting tile atlas DTOs to defs: %v", err)
+		return fmt.Errorf("error converting tile atlas DTOs to defs: %w", err)
 	}
 
 	cc.Atlas = atlas
@@ -80,69 +106,109 @@ func (cc *ChunkContainer) GenerateTileAtlasFromJson(input string) error {
 	return nil
 }
 
-func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
-	ecsContainer *ecs.ECSContainer,
-	tileSize int,
-) (potentialCollisions map[common.EntityId][]utils.CellKey, err error) {
-	pcm := ecsContainer.PhysicsColliderManager
-	potentialCollisions = make(map[common.EntityId][]utils.CellKey)
-
-	for _, e := range ecsContainer.Transforms.GetEntities() {
-		if !pcm.HasCollider(e, ecsContainer) {
-			continue
-		}
-
-		colType, err := pcm.GetColliderType(e, ecsContainer)
-		if err != nil {
-			log.Printf("error getting collider type of entity %d: %v", e, err)
-			continue
-		}
-
-		if colType != ecs.Collider_Mob {
-			continue
-		}
-
-		worldAABB, err := pcm.GetWorldAABB(e, ecsContainer)
-		if err != nil {
-			log.Printf("error getting world AABB of entity %d: %v", e, err)
-			continue
-		}
-
-		minTileX := int(math.Floor(worldAABB[0].X/float64(tileSize))) - 1
-		minTileY := int(math.Floor(worldAABB[0].Y/float64(tileSize))) - 1
-		maxTileX := int(math.Floor(worldAABB[1].X/float64(tileSize))) + 1
-		maxTileY := int(math.Floor(worldAABB[1].Y/float64(tileSize))) + 1
-
-		for tx := minTileX; tx <= maxTileX; tx++ {
-			for ty := minTileY; ty <= maxTileY; ty++ {
-				worldTilePos := utils.CellKey{X: tx, Y: ty}
-				chunkGridPos := utils.CellKey{
-					X: int(math.Floor(math.Floor(float64(worldTilePos.X) / data.ChunkSize))),
-					Y: int(math.Floor(math.Floor(float64(worldTilePos.Y) / data.ChunkSize))),
-				}
-				chunk, ok := cc.chunks[chunkGridPos]
-				if !ok {
-					fmt.Printf("no chunk found at grid position %v for world tile position %v\n", chunkGridPos, worldTilePos)
-					continue
-				}
-
-				localTilePos := utils.CellKey{
-					X: ((worldTilePos.X % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
-					Y: ((worldTilePos.Y % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
-				}
-				tileId := chunk.GetTileDefId(localTilePos)
-				tileDef, ok := cc.Atlas[tileId]
-				if !ok {
-					log.Printf("no tile definition found for tile enum %d", tileId)
-					continue
-				}
-
-				if !tileDef.Passable {
-					potentialCollisions[e] = append(potentialCollisions[e], worldTilePos)
-				}
-			}
-		}
+func (cc *ChunkContainer) ChunkToDto(c *chunk, pos utils.CellKey) (chunkDto, error) {
+	promotedTiles := make([]promotedTileDto, 0, len(c.promotedTiles))
+	for pPos, pTile := range c.promotedTiles {
+		promotedTiles = append(promotedTiles, promotedTileDto{
+			X:             pPos.X,
+			Y:             pPos.Y,
+			CurrentHealth: pTile.currentHealth,
+		})
 	}
 
-	return potentialCollisions, nil
+	return chunkDto{
+		X:             pos.X,
+		Y:             pos.Y,
+		Tiles:         c.tiles,
+		PromotedTiles: promotedTiles,
+	}, nil
+}
+
+func (cc *ChunkContainer) ChunksToDtos() []chunkDto {
+	chunkDtos := make([]chunkDto, 0, len(cc.Chunks))
+	for pos, c := range cc.Chunks {
+		promotedTiles := make([]promotedTileDto, 0, len(c.promotedTiles))
+		for pPos, pTile := range c.promotedTiles {
+			promotedTiles = append(promotedTiles, promotedTileDto{
+				X:             pPos.X,
+				Y:             pPos.Y,
+				CurrentHealth: pTile.currentHealth,
+			})
+		}
+
+		chunkDtos = append(chunkDtos, chunkDto{
+			X:             pos.X,
+			Y:             pos.Y,
+			Tiles:         c.tiles,
+			PromotedTiles: promotedTiles,
+		})
+	}
+
+	return chunkDtos
+}
+
+func (cc *ChunkContainer) DtosToChunks(dtos []chunkDto) map[utils.CellKey]*chunk {
+	chunks := make(map[utils.CellKey]*chunk)
+	for _, dto := range dtos {
+		promotedTiles := make(map[utils.CellKey]promotedTile)
+		for _, pDto := range dto.PromotedTiles {
+			promotedTiles[utils.CellKey{X: pDto.X, Y: pDto.Y}] = promotedTile{
+				currentHealth: pDto.CurrentHealth,
+			}
+		}
+
+		chunk := &chunk{
+			tiles:         dto.Tiles,
+			promotedTiles: promotedTiles,
+		}
+
+		err := chunk.generateChunkImage(cc.Atlas)
+		if err != nil {
+			fmt.Printf("error generating chunk image for chunk at (%d, %d): %v\n", dto.X, dto.Y, err)
+			continue
+		}
+
+		chunks[utils.CellKey{X: dto.X, Y: dto.Y}] = chunk
+	}
+
+	return chunks
+}
+
+func SaveChunkGob(filePath string, data chunkDto) error {
+	file, _ := os.Create(filePath)
+	encoder := gob.NewEncoder(file)
+
+	err := encoder.Encode(data)
+	if err != nil {
+		return fmt.Errorf("error encoding data: %w", err)
+	}
+
+	err = file.Close()
+	if err != nil {
+		return fmt.Errorf("error closing file: %w", err)
+	}
+
+	return nil
+}
+
+func LoadChunkGob(filePath string) (chunkDto, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return chunkDto{}, fmt.Errorf("error opening file: %w", err)
+	}
+
+	var data chunkDto
+	decoder := gob.NewDecoder(file)
+
+	err = decoder.Decode(&data)
+	if err != nil {
+		return chunkDto{}, fmt.Errorf("error decoding data: %w", err)
+	}
+
+	err = file.Close()
+	if err != nil {
+		return chunkDto{}, fmt.Errorf("error closing file: %w", err)
+	}
+
+	return data, nil
 }

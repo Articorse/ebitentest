@@ -7,7 +7,9 @@ import (
 	"ebittest/ecs/shapes"
 	"ebittest/ecs/systems/collisionsystem"
 	"ebittest/utils"
+	"fmt"
 	"log"
+	"math"
 )
 
 func ResolveTileCollisions(
@@ -172,4 +174,68 @@ func GetAABBCollisions(
 	}
 
 	return collisions, nil
+}
+
+func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
+	ecsContainer *ecs.ECSContainer,
+	tileSize int,
+) (potentialCollisions map[common.EntityId][]utils.CellKey, err error) {
+	pcm := ecsContainer.PhysicsColliderManager
+	potentialCollisions = make(map[common.EntityId][]utils.CellKey)
+
+	for _, e := range ecsContainer.Transforms.GetEntities() {
+		if !pcm.HasCollider(e, ecsContainer) {
+			continue
+		}
+
+		colType, err := pcm.GetColliderType(e, ecsContainer)
+		if err != nil {
+			log.Printf("error getting collider type of entity %d: %v", e, err)
+			continue
+		}
+
+		if colType != ecs.Collider_Mob {
+			continue
+		}
+
+		worldAABB, err := pcm.GetWorldAABB(e, ecsContainer)
+		if err != nil {
+			log.Printf("error getting world AABB of entity %d: %v", e, err)
+			continue
+		}
+
+		minTileX := int(math.Floor(worldAABB[0].X/float64(tileSize))) - 1
+		minTileY := int(math.Floor(worldAABB[0].Y/float64(tileSize))) - 1
+		maxTileX := int(math.Floor(worldAABB[1].X/float64(tileSize))) + 1
+		maxTileY := int(math.Floor(worldAABB[1].Y/float64(tileSize))) + 1
+
+		for tx := minTileX; tx <= maxTileX; tx++ {
+			for ty := minTileY; ty <= maxTileY; ty++ {
+				worldTilePos := utils.CellKey{X: tx, Y: ty}
+				chunkGridPos := utils.WorldPosToChunkGridPos(utils.Vec2{X: float64(worldTilePos.X * tileSize), Y: float64(worldTilePos.Y * tileSize)})
+				chunk, ok := cc.Chunks[chunkGridPos]
+				if !ok {
+					fmt.Printf("no chunk found at grid position %v for world tile position %v\n", chunkGridPos, worldTilePos)
+					continue
+				}
+
+				localTilePos := utils.CellKey{
+					X: ((worldTilePos.X % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
+					Y: ((worldTilePos.Y % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
+				}
+				tileId := chunk.GetTileDefId(localTilePos)
+				tileDef, ok := cc.Atlas[tileId]
+				if !ok {
+					log.Printf("no tile definition found for tile enum %d", tileId)
+					continue
+				}
+
+				if !tileDef.Passable {
+					potentialCollisions[e] = append(potentialCollisions[e], worldTilePos)
+				}
+			}
+		}
+	}
+
+	return potentialCollisions, nil
 }

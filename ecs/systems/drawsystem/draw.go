@@ -19,7 +19,7 @@ func DrawChunks(
 	camera utils.Vec2,
 	chunkCont *tilesystem.ChunkContainer,
 ) error {
-	for gt, c := range chunkCont.GetChunks() {
+	for gt, c := range chunkCont.Chunks {
 		opts := ebiten.DrawImageOptions{}
 		posX := float64(gt.X)*data.ChunkSize*data.TileSize - camera.X - data.TileSize/2
 		posY := float64(gt.Y)*data.ChunkSize*data.TileSize - camera.Y - data.TileSize/2
