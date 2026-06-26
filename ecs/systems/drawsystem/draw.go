@@ -1,6 +1,7 @@
 package drawsystem
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -36,6 +37,7 @@ func DrawSprites(
 	camera utils.Vec2,
 	shg map[utils.CellKey][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
+	assetManager *assetmanager.AssetManager,
 ) error {
 	sm := ecsContainer.SpriteManager
 	pm := ecsContainer.ParentManager
@@ -67,7 +69,7 @@ func DrawSprites(
 		}
 		visitedSprites[e] = struct{}{}
 
-		sprImg, err := sm.GetImage(e, ecsContainer)
+		sprImg, err := sm.GetCurrentFrame(e, ecsContainer, assetManager)
 		if err != nil {
 			return fmt.Errorf("error getting sprite image for entity %d: %v", e, err)
 		}
@@ -101,7 +103,7 @@ func DrawSprites(
 		for j, n := range neighbors {
 			visitedSprites[neighbors[j]] = struct{}{}
 
-			nSprImg, err := sm.GetImage(n, ecsContainer)
+			nSprImg, err := sm.GetCurrentFrame(n, ecsContainer, assetManager)
 			if err != nil {
 				return fmt.Errorf("error getting sprite image for entity %d: %v", n, err)
 			}
@@ -125,12 +127,12 @@ func DrawSprites(
 				a := aRoot[0][0]
 				b := bRoot[0][0]
 
-				aTotalY, err := sm.GetWorldLayerYOffset(a, ecsContainer)
+				aTotalY, err := sm.GetWorldLayerYOffset(a, ecsContainer, assetManager)
 				if err != nil {
 					return -1
 				}
 
-				bTotalY, err := sm.GetWorldLayerYOffset(b, ecsContainer)
+				bTotalY, err := sm.GetWorldLayerYOffset(b, ecsContainer, assetManager)
 				if err != nil {
 					return -1
 				}
@@ -196,7 +198,7 @@ func DrawSprites(
 					return fmt.Errorf("error getting ecs offset scale of batchEntity %d: %v", batchEntity, err)
 				}
 
-				img, err := sm.GetImage(batchEntity, ecsContainer)
+				img, err := sm.GetCurrentFrame(batchEntity, ecsContainer, assetManager)
 				if err != nil {
 					return fmt.Errorf("error getting sprite image for batchEntity %d: %v", batchEntity, err)
 				}

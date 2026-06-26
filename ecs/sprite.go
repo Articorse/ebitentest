@@ -1,9 +1,8 @@
 package ecs
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/utils"
-
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type SpriteFlash struct {
@@ -17,11 +16,11 @@ type SpriteFlash struct {
 }
 
 type sprite struct {
-	image          *ebiten.Image
+	imageAssetTag  assetmanager.ImageAssetTag
+	subImageIdx    int
 	offsetPos      utils.Vec2
 	offsetScale    float64
 	offsetRotation float64
-	layerYOffset   uint16
 	layer          uint8
 	allowRotation  bool
 	flash          *SpriteFlash
@@ -45,11 +44,11 @@ func (x sprite) Copy() sprite {
 	}
 
 	return sprite{
-		image:          x.image,
+		imageAssetTag:  x.imageAssetTag,
+		subImageIdx:    x.subImageIdx,
 		offsetPos:      x.offsetPos,
 		offsetScale:    x.offsetScale,
 		offsetRotation: x.offsetRotation,
-		layerYOffset:   x.layerYOffset,
 		layer:          x.layer,
 		allowRotation:  x.allowRotation,
 		flash:          flashCopy,

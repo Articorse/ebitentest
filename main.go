@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/abilitydefs"
@@ -33,7 +34,7 @@ import (
 )
 
 var (
-	g = game{ecs: ecs.NewECSContainer()}
+	g = game{ecs: ecs.NewECSContainer(), assetmanager: assetmanager.NewAssetManager()}
 
 	DEBUG_LEVEL                      = 0
 	max_vel                          = 0.0
@@ -57,6 +58,8 @@ type game struct {
 	playerEntity common.EntityId
 
 	chunkContainer *tilesystem.ChunkContainer
+
+	assetmanager *assetmanager.AssetManager
 
 	recording          bool
 	recordingStartTick uint64
@@ -258,7 +261,7 @@ func (g *game) Update() error {
 
 	// END DEBUG
 
-	err = animationsystem.Tick(g.ecs)
+	err = animationsystem.Tick(g.ecs, g.assetmanager)
 	if err != nil {
 		log.Println("animation system tick error: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
@@ -402,6 +405,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 		g.ecs.Camera,
 		g.ecs.TickState.CollisionGrid,
 		g.ecs,
+		g.assetmanager,
 	); err != nil {
 		log.Println("error while drawing frame, removing offending entity: ", err)
 		var missingDependencyError *common.ErrorMissingComponentDependency
@@ -521,7 +525,7 @@ func main() {
 	pParComp := ecs.NewParentComponent()
 	pTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := ecs.NewDefaultVelocityComponent()
-	pSprComp, err := ecs.NewSpriteComponent("assets/sprites/slime.png", 20, false)
+	pSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetSheetSlime, 20, false, g.assetmanager)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -538,7 +542,7 @@ func main() {
 		{FrameIdx: 2, DurationMs: 50},
 		{FrameIdx: 1, DurationMs: 50},
 	}
-	pAniComp, err := ecs.NewAnimationComponent("assets/sprites/slime_ss.png", utils.Vec2{X: 32, Y: 32}, pAniStateFrames)
+	pAniComp, err := ecs.NewAnimationComponent(assetmanager.AssetSheetSlime, pAniStateFrames)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -689,7 +693,7 @@ func main() {
 	bazookaParComp := ecs.NewParentComponent()
 	bazookaTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	bazookaVelComp := ecs.NewDefaultVelocityComponent()
-	bazookaSprComp, err := ecs.NewSpriteComponent("assets/sprites/bazooka_ss.png", 20, true)
+	bazookaSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetSheetBazooka, 20, true, g.assetmanager)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -700,7 +704,7 @@ func main() {
 	bazookaAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
 		{FrameIdx: 1, DurationMs: 100},
 	}
-	bazookaAniComp, err := ecs.NewAnimationComponent("assets/sprites/bazooka_ss.png", utils.Vec2{X: 32, Y: 32}, bazookaAniStateFrames)
+	bazookaAniComp, err := ecs.NewAnimationComponent(assetmanager.AssetSheetBazooka, bazookaAniStateFrames)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -713,7 +717,7 @@ func main() {
 		log.Fatal("error creating rocket timer component: ", err)
 	}
 	rocketCDComp := ecs.NewContactDamageComponent(g.playerEntity, 20, true, false, 65)
-	rocketSprComp, err := ecs.NewSpriteComponent("assets/sprites/rocket_ss.png", 21, true)
+	rocketSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetSheetRocket, 21, true, g.assetmanager)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -722,7 +726,7 @@ func main() {
 		{FrameIdx: 0, DurationMs: 50},
 		{FrameIdx: 1, DurationMs: 50},
 	}
-	rocketAniComp, err := ecs.NewAnimationComponent("assets/sprites/rocket_ss.png", utils.Vec2{X: 32, Y: 32}, rocketAniStateFrames)
+	rocketAniComp, err := ecs.NewAnimationComponent(assetmanager.AssetSheetRocket, rocketAniStateFrames)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -739,11 +743,6 @@ func main() {
 	explosionForce := 20.0
 	explosionRadii := []float64{10, 20, 45}
 	explosionDmgTiers := []int{50, 25, 10}
-	explosionSpriteSheet, _, err := ebitenutil.NewImageFromFile("assets/sprites/explosion_ss.png")
-	if err != nil {
-		log.Fatal("error loading explosion sprite sheet: ", err)
-	}
-	explosionFrameSize := utils.Vec2{X: 128, Y: 128}
 	explosionAniFrames := []ecs.AnimationFrame{
 		{FrameIdx: 0, DurationMs: 50},
 		{FrameIdx: 1, DurationMs: 50},
@@ -754,7 +753,7 @@ func main() {
 		{FrameIdx: 6, DurationMs: 200},
 	}
 	explodeAbiEnum, explodeAbiDef, err := abilitydefs.ExplodeAbility(
-		explosionForce, explosionRadii, explosionDmgTiers, explosionSpriteSheet, explosionFrameSize, explosionAniFrames, true)
+		explosionForce, explosionRadii, explosionDmgTiers, explosionAniFrames, true, g.assetmanager)
 	if err != nil {
 		log.Fatal("error creating explode ability: ", err)
 	}
@@ -916,7 +915,7 @@ func main() {
 	treeParComp := ecs.NewParentComponent()
 	treeTraComp := ecs.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
 	treeVelComp := ecs.NewDefaultVelocityComponent()
-	treeSprComp, err := ecs.NewSpriteComponent("assets/sprites/tree.png", 20, true)
+	treeSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetImageTree, 20, true, g.assetmanager)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -963,7 +962,7 @@ func main() {
 	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
 	platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, 0.3, data.DefaultDrag)
 
-	platSprComp, err := ecs.NewSpriteComponent("assets/sprites/platform.png", 10, true)
+	platSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetImagePlatform, 10, true, g.assetmanager)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1008,7 +1007,7 @@ func (g *game) AddRandomEntity() {
 	y := g.ecs.Rng.IntN(10000)
 
 	traComp := ecs.NewTransformComponent(utils.Vec2{X: float64(x), Y: float64(y)}, 1, 0)
-	sprComp, err := ecs.NewSpriteComponent("assets/sprites/tree.png", 20, true)
+	sprComp, err := ecs.NewSpriteComponent(assetmanager.AssetImageTree, 20, true, g.assetmanager)
 	if err != nil {
 		log.Fatal(err)
 	}

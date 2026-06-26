@@ -20,7 +20,7 @@ const (
 	GamepadDeadzone           = 0.15
 	GamepadAimDeadzone        = 0.5
 	TileSize                  = 16
-	ChunkSize                 = 64
+	ChunkSize                 = 8
 	ChunkDataFilePathTemplate = "chunkdata/chunk_%d_%d.gob"
 )
 

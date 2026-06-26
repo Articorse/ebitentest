@@ -1,9 +1,7 @@
 package ecs
 
 import (
-	"ebittest/utils"
-
-	"github.com/hajimehoshi/ebiten/v2"
+	"ebittest/assetmanager"
 )
 
 type AnimationState uint16
@@ -26,11 +24,10 @@ type FrameState struct {
 }
 
 type animation struct {
-	sheet       *ebiten.Image
-	frameSize   utils.Vec2
-	stateFrames map[AnimationState][]AnimationFrame
-	frameState  FrameState
-	queuedState *AnimationState
+	sheetAssetTag assetmanager.ImageAssetTag
+	stateFrames   map[AnimationState][]AnimationFrame
+	frameState    FrameState
+	queuedState   *AnimationState
 }
 
 func (animation) isComponent() {}
@@ -49,10 +46,9 @@ func (x animation) Copy() animation {
 	}
 
 	return animation{
-		sheet:       x.sheet,
-		frameSize:   x.frameSize,
-		stateFrames: sFrames,
-		frameState:  x.frameState,
-		queuedState: queuedState,
+		sheetAssetTag: x.sheetAssetTag,
+		stateFrames:   sFrames,
+		frameState:    x.frameState,
+		queuedState:   queuedState,
 	}
 }

@@ -1,13 +1,13 @@
 package animationsystem
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
-	"ebittest/utils"
 	"log"
 )
 
-func Tick(ecsContainer *ecs.ECSContainer) error {
+func Tick(ecsContainer *ecs.ECSContainer, assetManager *assetmanager.AssetManager) error {
 	am := ecsContainer.AnimationManager
 	sm := ecsContainer.SpriteManager
 
@@ -25,28 +25,6 @@ func Tick(ecsContainer *ecs.ECSContainer) error {
 				PresentComponent: "Animation",
 				MissingComponent: "Sprite",
 			}
-		}
-
-		currentFrame, err := am.GetCurrentFrame(e, ecsContainer)
-		if err != nil {
-			log.Printf("Error getting current frame for entity %d: %v\n", e, err)
-			continue
-		}
-
-		err = sm.SetImage(e, currentFrame, ecsContainer)
-		if err != nil {
-			log.Printf("Error setting sprite image for entity %d: %v\n", e, err)
-			continue
-		}
-
-		// TODO: Only do this if the image has changed.
-		// Maybe calculate these once for each frame and store them in the animation component.
-		layerYOffset := utils.GetFirstOpaquePixelY(currentFrame)
-
-		err = sm.SetLocalLayerYOffset(e, layerYOffset, ecsContainer)
-		if err != nil {
-			log.Printf("Error setting local layer Y offset for entity %d: %v\n", e, err)
-			continue
 		}
 	}
 

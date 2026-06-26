@@ -1,24 +1,22 @@
 package abilitydefs
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/ecs/timerfuncs"
 	"ebittest/utils"
 	"fmt"
-
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
 func ExplodeAbility(
 	force float64,
 	radii []float64,
 	dmgTiers []int,
-	spriteSheet *ebiten.Image,
-	frameSize utils.Vec2,
 	animationframes []ecs.AnimationFrame,
 	selfDestruct bool,
+	assetManager *assetmanager.AssetManager,
 ) (ecs.AbilityEnum, ecs.AbilityDef, error) {
 	if len(radii) != len(dmgTiers) {
 		return ecs.Ability_None, ecs.AbilityDef{}, fmt.Errorf("explodeAbility created with mismatched radii and damage tiers lengths: %d vs %d", len(radii), len(dmgTiers))
@@ -75,13 +73,13 @@ func ExplodeAbility(
 		}
 
 		traComp := ecs.NewTransformComponent(exWorldPos, exWorldScale, exWorldRot)
-		sprComp, err := ecs.NewSpriteComponent("", exSprLayer+1, false)
+		sprComp, err := ecs.NewSpriteComponent("", exSprLayer+1, false, assetManager)
 		if err != nil {
 			return fmt.Errorf("error creating sprite component for explode ability: %v", err)
 		}
 		stateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
 		stateFrames[ecs.Anim_Idle] = animationframes
-		aniComp, err := ecs.NewAnimationComponentWithSheet(spriteSheet, frameSize, stateFrames)
+		aniComp, err := ecs.NewAnimationComponent(assetmanager.AssetSheetExplosion, stateFrames)
 		if err != nil {
 			return fmt.Errorf("error creating animation component for explode ability: %v", err)
 		}

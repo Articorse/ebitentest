@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/utils"
@@ -8,23 +9,12 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 type spriteManager struct{}
 
-func NewSpriteComponent(imageUri string, layer uint8, allowRotation bool) (*sprite, error) {
-	s := &sprite{offsetScale: 1, layer: layer, allowRotation: allowRotation}
-
-	if len(imageUri) > 0 {
-		spr, img, err := ebitenutil.NewImageFromFile(imageUri)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load sprite image: %w", err)
-		}
-
-		s.image = spr
-		s.layerYOffset = utils.GetFirstOpaquePixelY(img)
-	}
+func NewSpriteComponent(imageAssetTag assetmanager.ImageAssetTag, layer uint8, allowRotation bool, assetManager *assetmanager.AssetManager) (*sprite, error) {
+	s := &sprite{imageAssetTag: imageAssetTag, offsetScale: 1, layer: layer, allowRotation: allowRotation}
 	return s, nil
 }
 
@@ -73,21 +63,31 @@ func (*spriteManager) StopFlash(e common.EntityId, ecsContainer *ECSContainer) e
 	return nil
 }
 
-func (*spriteManager) GetImage(
+func (*spriteManager) GetCurrentFrame(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
+	assetManager *assetmanager.AssetManager,
 ) (*ebiten.Image, error) {
 	sprite, err := ecsContainer.Sprites.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	return sprite.image, nil
+	imgAsset, err := assetManager.GetAsset(sprite.imageAssetTag)
+	if err != nil {
+		return nil, fmt.Errorf("could not get image asset for entity %d: %v", e, err)
+	}
+
+	if sprite.subImageIdx < 0 || sprite.subImageIdx >= len(imgAsset.Frames) {
+		return nil, fmt.Errorf("subImageIdx %d out of bounds for image asset %s of entity %d", sprite.subImageIdx, sprite.imageAssetTag, e)
+	}
+
+	return imgAsset.Frames[sprite.subImageIdx], nil
 }
 
-func (*spriteManager) SetImage(
+func (*spriteManager) SetImageAsset(
 	e common.EntityId,
-	image *ebiten.Image,
+	imageAssetTag assetmanager.ImageAssetTag,
 	ecsContainer *ECSContainer,
 ) error {
 	sprite, err := ecsContainer.Sprites.getComponent(e)
@@ -95,7 +95,34 @@ func (*spriteManager) SetImage(
 		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	sprite.image = image
+	sprite.imageAssetTag = imageAssetTag
+
+	return nil
+}
+
+func (*spriteManager) GetSubImageIdx(
+	e common.EntityId,
+	ecsContainer *ECSContainer,
+) (int, error) {
+	sprite, err := ecsContainer.Sprites.getComponent(e)
+	if err != nil {
+		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
+	}
+
+	return sprite.subImageIdx, nil
+}
+
+func (*spriteManager) SetSubImageIdx(
+	e common.EntityId,
+	subImageIdx int,
+	ecsContainer *ECSContainer,
+) error {
+	sprite, err := ecsContainer.Sprites.getComponent(e)
+	if err != nil {
+		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
+	}
+
+	sprite.subImageIdx = subImageIdx
 
 	return nil
 }
@@ -217,18 +244,25 @@ func (*spriteManager) GetWorldOffsetScale(
 func (*spriteManager) GetLocalLayerYOffset(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
+	assetManager *assetmanager.AssetManager,
 ) (uint16, error) {
 	sprite, err := ecsContainer.Sprites.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	return sprite.layerYOffset, nil
+	imgAsset, err := assetManager.GetAsset(sprite.imageAssetTag)
+	if err != nil {
+		return 0, fmt.Errorf("could not get image asset for entity %d: %v", e, err)
+	}
+
+	return imgAsset.LayerYOffset, nil
 }
 
 func (*spriteManager) GetWorldLayerYOffset(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
+	assetmanager *assetmanager.AssetManager,
 ) (uint16, error) {
 	sprComp, err := ecsContainer.Sprites.getComponent(e)
 	if err != nil {
@@ -250,7 +284,12 @@ func (*spriteManager) GetWorldLayerYOffset(
 	cos := math.Cos(pWorldRot)
 	sin := math.Sin(pWorldRot)
 
-	return uint16(pWorldPos.Y + (float64(sprComp.layerYOffset)*sin + float64(sprComp.layerYOffset)*cos)), nil
+	imgAsset, err := assetmanager.GetAsset(sprComp.imageAssetTag)
+	if err != nil {
+		return 0, fmt.Errorf("could not get image asset for entity %d: %v", e, err)
+	}
+
+	return uint16(pWorldPos.Y + (float64(imgAsset.LayerYOffset)*sin + float64(imgAsset.LayerYOffset)*cos)), nil
 }
 
 func (*spriteManager) GetLayer(
@@ -306,21 +345,6 @@ func (*spriteManager) SetLocalOffsetScale(
 	}
 
 	sprite.offsetScale = scale
-
-	return nil
-}
-
-func (*spriteManager) SetLocalLayerYOffset(
-	e common.EntityId,
-	offset uint16,
-	ecsContainer *ECSContainer,
-) error {
-	sprite, err := ecsContainer.Sprites.getComponent(e)
-	if err != nil {
-		return fmt.Errorf("could not get sprite of entity %d: %v", e, err)
-	}
-
-	sprite.layerYOffset = offset
 
 	return nil
 }
