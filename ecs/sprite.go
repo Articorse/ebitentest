@@ -1,22 +1,22 @@
 package ecs
 
 import (
-	"ebittest/assetmanager"
+	"ebittest/ecs/common"
 	"ebittest/utils"
 )
 
 type SpriteFlash struct {
-	colors           []utils.RelativeColor
-	colorDurationsMs []int
-	totalDurationMs  int
+	Colors           []utils.RelativeColor
+	ColorDurationsMs []int
+	TotalDurationMs  int
 
-	colorIdx       int
-	counterMs      int
-	loopDurationMs int
+	ColorIdx       int
+	CounterMs      int
+	LoopDurationMs int
 }
 
 type sprite struct {
-	imageAssetTag  assetmanager.ImageAssetTag
+	imageAssetTag  common.ImageAssetTag
 	subImageIdx    int
 	offsetPos      utils.Vec2
 	offsetScale    float64
@@ -32,15 +32,15 @@ func (x sprite) Copy() sprite {
 	var flashCopy *SpriteFlash
 	if x.flash != nil {
 		flashCopy = &SpriteFlash{
-			colors:           make([]utils.RelativeColor, len(x.flash.colors)),
-			colorDurationsMs: make([]int, len(x.flash.colorDurationsMs)),
-			totalDurationMs:  x.flash.totalDurationMs,
-			colorIdx:         x.flash.colorIdx,
-			counterMs:        x.flash.counterMs,
-			loopDurationMs:   x.flash.loopDurationMs,
+			Colors:           make([]utils.RelativeColor, len(x.flash.Colors)),
+			ColorDurationsMs: make([]int, len(x.flash.ColorDurationsMs)),
+			TotalDurationMs:  x.flash.TotalDurationMs,
+			ColorIdx:         x.flash.ColorIdx,
+			CounterMs:        x.flash.CounterMs,
+			LoopDurationMs:   x.flash.LoopDurationMs,
 		}
-		copy(flashCopy.colors, x.flash.colors)
-		copy(flashCopy.colorDurationsMs, x.flash.colorDurationsMs)
+		copy(flashCopy.Colors, x.flash.Colors)
+		copy(flashCopy.ColorDurationsMs, x.flash.ColorDurationsMs)
 	}
 
 	return sprite{
@@ -52,5 +52,44 @@ func (x sprite) Copy() sprite {
 		layer:          x.layer,
 		allowRotation:  x.allowRotation,
 		flash:          flashCopy,
+	}
+}
+
+type spriteDto struct {
+	ImageAssetTag  common.ImageAssetTag
+	SubImageIdx    int
+	OffsetPos      utils.Vec2
+	OffsetScale    float64
+	OffsetRotation float64
+	Layer          uint8
+	AllowRotation  bool
+	Flash          *SpriteFlash
+}
+
+func (spriteDto) isComponentDto() {}
+
+func (x sprite) ToDto() spriteDto {
+	return spriteDto{
+		ImageAssetTag:  x.imageAssetTag,
+		SubImageIdx:    x.subImageIdx,
+		OffsetPos:      x.offsetPos,
+		OffsetScale:    x.offsetScale,
+		OffsetRotation: x.offsetRotation,
+		Layer:          x.layer,
+		AllowRotation:  x.allowRotation,
+		Flash:          x.flash,
+	}
+}
+
+func (x *spriteDto) ToComponent() *sprite {
+	return &sprite{
+		imageAssetTag:  x.ImageAssetTag,
+		subImageIdx:    x.SubImageIdx,
+		offsetPos:      x.OffsetPos,
+		offsetScale:    x.OffsetScale,
+		offsetRotation: x.OffsetRotation,
+		layer:          x.Layer,
+		allowRotation:  x.AllowRotation,
+		flash:          x.Flash,
 	}
 }

@@ -19,3 +19,27 @@ func (x velocity) Copy() velocity {
 		drag:         x.drag,
 	}
 }
+
+type velocityDto struct {
+	Vector       utils.Vec2
+	Acceleration float64
+	Drag         float64
+}
+
+func (velocityDto) isComponentDto() {}
+
+func (x velocity) ToDto() velocityDto {
+	return velocityDto{
+		Vector:       x.vector,
+		Acceleration: x.acceleration,
+		Drag:         x.drag,
+	}
+}
+
+func (x *velocityDto) ToComponent() *velocity {
+	return &velocity{
+		vector:       x.Vector,
+		acceleration: x.Acceleration,
+		drag:         x.Drag,
+	}
+}

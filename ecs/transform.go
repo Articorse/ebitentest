@@ -19,3 +19,27 @@ func (x transform) Copy() transform {
 		rotation: x.rotation,
 	}
 }
+
+type transformDto struct {
+	Pos      utils.Vec2
+	Scale    float64
+	Rotation float64
+}
+
+func (transformDto) isComponentDto() {}
+
+func (x transform) ToDto() transformDto {
+	return transformDto{
+		Pos:      x.pos,
+		Scale:    x.scale,
+		Rotation: x.rotation,
+	}
+}
+
+func (x transformDto) ToComponent() *transform {
+	return &transform{
+		pos:      x.Pos,
+		scale:    x.Scale,
+		rotation: x.Rotation,
+	}
+}

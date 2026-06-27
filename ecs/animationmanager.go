@@ -1,7 +1,6 @@
 package ecs
 
 import (
-	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs/common"
 	"fmt"
@@ -10,7 +9,7 @@ import (
 type animationManager struct{}
 
 func NewAnimationComponent(
-	sheetAssetTag assetmanager.ImageAssetTag,
+	sheetAssetTag common.ImageAssetTag,
 	stateFrames map[AnimationState][]AnimationFrame,
 ) (*animation, error) {
 	return &animation{

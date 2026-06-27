@@ -1,6 +1,7 @@
 package drawsystem
 
 import (
+	"bytes"
 	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs"
@@ -9,6 +10,7 @@ import (
 	"ebittest/utils"
 	"fmt"
 	"maps"
+	"os"
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -83,7 +85,8 @@ func DrawSprites(
 			return fmt.Errorf("error getting sprite layer for entity %d: %v", e, err)
 		}
 
-		i, ok := layerIdxMap[layer]
+		var i uint64
+		_, ok := layerIdxMap[layer]
 		if !ok {
 			layerIdxMap[layer] = 0
 			i = 0
@@ -105,7 +108,7 @@ func DrawSprites(
 
 			nSprImg, err := sm.GetCurrentFrame(n, ecsContainer, assetManager)
 			if err != nil {
-				return fmt.Errorf("error getting sprite image for entity %d: %v", n, err)
+				return fmt.Errorf("error getting sprite image for neighbor entity %d: %v", n, err)
 			}
 
 			if nSprImg == nil {
@@ -161,8 +164,6 @@ func DrawSprites(
 
 			batches[layer][i] = flatOrder
 		}
-
-		i++
 	}
 
 	batchKeys := maps.Keys(batches)
@@ -256,9 +257,22 @@ func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECSContainer) error {
 			return fmt.Errorf("error getting color of floating text entity %d: %v", e, err)
 		}
 
-		face, err := ftm.GetFace(e, ecs)
+		size, err := ftm.GetSize(e, ecs)
 		if err != nil {
-			return fmt.Errorf("error getting font face of floating text entity %d: %v", e, err)
+			return fmt.Errorf("error getting size of floating text entity %d: %v", e, err)
+		}
+
+		// FIXME: Move this into a map
+		fontBytes, _ := os.ReadFile("/usr/share/fonts/noto/NotoSansMono-Black.ttf")
+
+		source, err := text.NewGoTextFaceSource(bytes.NewReader(fontBytes))
+		if err != nil {
+			return fmt.Errorf("error creating text face source for floating text entity %d: %v", e, err)
+		}
+
+		face := text.GoTextFace{
+			Source: source,
+			Size:   size,
 		}
 
 		op := &text.DrawOptions{}

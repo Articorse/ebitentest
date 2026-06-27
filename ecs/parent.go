@@ -14,3 +14,21 @@ func (x parent) Copy() parent {
 		entity: x.entity,
 	}
 }
+
+type parentDto struct {
+	Entity common.EntityId
+}
+
+func (parentDto) isComponentDto() {}
+
+func (x parent) ToDto() parentDto {
+	return parentDto{
+		Entity: x.entity,
+	}
+}
+
+func (x parentDto) ToComponent() *parent {
+	return &parent{
+		entity: x.Entity,
+	}
+}

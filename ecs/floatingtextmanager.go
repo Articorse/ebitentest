@@ -1,37 +1,19 @@
 package ecs
 
 import (
-	"bytes"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"image/color"
-	"log"
-	"os"
-
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 type floatingTextManager struct{}
 
 func NewFloatingTextComponent(ptext string, pos utils.Vec2, size float64, color color.RGBA) *floatingText {
-	fontBytes, _ := os.ReadFile("/usr/share/fonts/noto/NotoSansMono-Black.ttf")
-
-	source, err := text.NewGoTextFaceSource(bytes.NewReader(fontBytes))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	face := text.GoTextFace{
-		Source: source,
-		Size:   size,
-	}
-
 	return &floatingText{
 		text:   ptext,
 		offset: pos,
 		size:   size,
 		color:  color,
-		face:   face,
 	}
 }
 
@@ -69,13 +51,4 @@ func (floatingTextManager) GetColor(e common.EntityId, ecsContainer *ECSContaine
 	}
 
 	return textComp.color, nil
-}
-
-func (floatingTextManager) GetFace(e common.EntityId, ecsContainer *ECSContainer) (text.GoTextFace, error) {
-	textComp, err := ecsContainer.FloatingTexts.getComponent(e)
-	if err != nil {
-		return text.GoTextFace{}, err
-	}
-
-	return textComp.face, nil
 }

@@ -4,9 +4,7 @@ import (
 	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs"
-	"ebittest/ecs/abilitydefs"
 	"ebittest/ecs/common"
-	"ebittest/ecs/inputsources"
 	"ebittest/ecs/shapes"
 	"ebittest/ecs/systems/abilitysystem"
 	"ebittest/ecs/systems/animationsystem"
@@ -18,7 +16,6 @@ import (
 	"ebittest/ecs/systems/movementsystem"
 	"ebittest/ecs/systems/platformsystem"
 	"ebittest/ecs/systems/timersystem"
-	"ebittest/ecs/timerfuncs"
 	"ebittest/tilesystem"
 	"ebittest/utils"
 	"encoding/json"
@@ -91,8 +88,8 @@ func (g *game) Update() error {
 	// 		pInputConfig[ecs.Input_Analog1X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisLeftStickHorizontal)
 	// 		pInputConfig[ecs.Input_Analog2Y] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickVertical)
 	// 		pInputConfig[ecs.Input_Analog2X] = ecs.NewGamepadAxisInputKey(id, ebiten.StandardGamepadAxisRightStickHorizontal)
-	// 		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewGamepadButtonInputKey(id, new(ebiten.StandardGamepadButtonFrontBottomRight), nil)
-	// 		pInputConfig[ecs.Input_Ability1] = ecs.NewGamepadButtonInputKey(id, new(ebiten.StandardGamepadButtonRightBottom), nil)
+	// 		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewGamepadButtonInputKey(id, ebiten.StandardGamepadButtonFrontBottomRight, -1)
+	// 		pInputConfig[ecs.Input_Ability1] = ecs.NewGamepadButtonInputKey(id, ebiten.StandardGamepadButtonRightBottom, -1)
 	// 		pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_Analog2)
 	// 		g.ecs.AddComponent(g.playerEntity, pInpComp)
 	// 	} else {
@@ -102,11 +99,11 @@ func (g *game) Update() error {
 
 	if !gamepadFound {
 		pInputConfig := make(map[ecs.InputType]ecs.InputKey)
-		pInputConfig[ecs.Input_Analog1Y] = ecs.NewKeyboardInputKey(new(ebiten.KeyS), new(ebiten.KeyW))
-		pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(new(ebiten.KeyD), new(ebiten.KeyA))
-		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewMouseInputKey(new(ebiten.MouseButtonLeft), nil)
-		pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(new(ebiten.KeySpace), nil)
-		pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.HumanInputSource, ecs.Facing_Mouse)
+		pInputConfig[ecs.Input_Analog1Y] = ecs.NewKeyboardInputKey(ebiten.KeyS, ebiten.KeyW)
+		pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(ebiten.KeyD, ebiten.KeyA)
+		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewMouseInputKey(ebiten.MouseButtonLeft, -1)
+		pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(ebiten.KeySpace, -1)
+		pInpComp := ecs.NewInputComponent(pInputConfig, ecs.InputType_Human, nil, ecs.Facing_Mouse)
 		g.ecs.AddComponent(g.playerEntity, pInpComp)
 		gamepadFound = true
 	}
@@ -116,20 +113,38 @@ func (g *game) Update() error {
 		log.Println("error populating required chunks: ", err)
 	}
 
-	err = g.chunkContainer.Tick(g.ecs.Rng, toBeAdded, toBeRemoved)
+	err = g.chunkContainer.Tick(g.ecs.Rng, toBeAdded, toBeRemoved, g.ecs)
 	if err != nil {
 		log.Fatal("error generating chunk container: ", err)
 	}
 
 	tickInputs := make(map[common.EntityId]ecs.InputState)
 	for _, eid := range g.ecs.Inputs.GetEntities() {
-		inputSourceFunc, err := im.GetInputSourceFunc(eid, g.ecs)
+		inputType, err := im.GetInputType(eid, g.ecs)
+		if err != nil {
+			log.Printf("error getting input type for entity %d: %v\n", eid, err)
+			continue
+		}
+
+		inputParams, err := im.GetParams(eid, g.ecs)
+		if err != nil {
+			log.Printf("error getting input params for entity %d: %v\n", eid, err)
+			continue
+		}
+
+		inputSourceFunc, err := ecs.GetInputSourceFunc(inputType)
 		if err != nil {
 			log.Printf("error getting input source func for entity %d: %v\n", eid, err)
 			continue
 		}
 
-		tickInputs[eid] = inputSourceFunc(eid, g.ecs.TickIdx, g.ecs)
+		tInputs, err := inputSourceFunc(eid, g.ecs.TickIdx, inputParams, g.ecs)
+		if err != nil {
+			log.Printf("error getting tick inputs for entity %d: %v\n", eid, err)
+			continue
+		}
+
+		tickInputs[eid] = tInputs
 	}
 	g.ecs.SetTickInputs(g.ecs.TickIdx, tickInputs)
 
@@ -203,20 +218,6 @@ func (g *game) Update() error {
 	if g.recording {
 		relTick := g.ecs.TickIdx - g.recordingStartTick
 		g.recordedInputs[relTick] = g.ecs.InputLog[g.ecs.TickIdx][g.playerEntity]
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyF6) {
-		g.replaying = true
-		g.replayStartTick = g.ecs.TickIdx
-		// TODO: Load from file
-		g.replayInputs = g.recordedInputs
-
-		replaySource := inputsources.NewReplayInputSource(g.replayStartTick, g.replayInputs)
-
-		err := im.SetInputSourceFunc(g.replayEntity, replaySource, g.ecs)
-		if err != nil {
-			log.Println("error setting replay input source func: ", err)
-		}
 	}
 
 	// DEBUG
@@ -525,7 +526,7 @@ func main() {
 	pParComp := ecs.NewParentComponent()
 	pTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	pVelComp := ecs.NewDefaultVelocityComponent()
-	pSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetSheetSlime, 20, false, g.assetmanager)
+	pSprComp, err := ecs.NewSpriteComponent(common.AssetSheetSlime, 20, false)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -542,7 +543,7 @@ func main() {
 		{FrameIdx: 2, DurationMs: 50},
 		{FrameIdx: 1, DurationMs: 50},
 	}
-	pAniComp, err := ecs.NewAnimationComponent(assetmanager.AssetSheetSlime, pAniStateFrames)
+	pAniComp, err := ecs.NewAnimationComponent(common.AssetSheetSlime, pAniStateFrames)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -572,12 +573,18 @@ func main() {
 			ecs.Layer_Platform,
 		pHitboxShape,
 	)
-	dodgeName, dodgeDef := abilitydefs.DodgeAbility(1000, 200, 10)
 	pAbis := [16]ecs.EntityAbility{}
 	pAbis[0] = ecs.EntityAbility{
-		Name:   dodgeName,
-		Def:    dodgeDef,
+		Def: ecs.NewAbilityDef(
+			ecs.Ability_Dodge,
+			ecs.Ability_Dodge_Post,
+			1000,
+			200,
+		),
 		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+		Params: ecs.DodgeParams{
+			Force: 10,
+		},
 	}
 	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
 	pCLComp := ecs.NewChunkLoaderComponent(1)
@@ -693,7 +700,7 @@ func main() {
 	bazookaParComp := ecs.NewParentComponent()
 	bazookaTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
 	bazookaVelComp := ecs.NewDefaultVelocityComponent()
-	bazookaSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetSheetBazooka, 20, true, g.assetmanager)
+	bazookaSprComp, err := ecs.NewSpriteComponent(common.AssetSheetBazooka, 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -704,7 +711,7 @@ func main() {
 	bazookaAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
 		{FrameIdx: 1, DurationMs: 100},
 	}
-	bazookaAniComp, err := ecs.NewAnimationComponent(assetmanager.AssetSheetBazooka, bazookaAniStateFrames)
+	bazookaAniComp, err := ecs.NewAnimationComponent(common.AssetSheetBazooka, bazookaAniStateFrames)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -712,12 +719,12 @@ func main() {
 
 	rocketTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
 	rocketVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 3, Y: 0}, 0, 1)
-	rocketTimerComp, err := ecs.NewTimerComponent(2000, 1, timerfuncs.Selfdestruct)
+	rocketTimerComp, err := ecs.NewTimerComponent(2000, 1, ecs.TimerFunc_Selfdestruct)
 	if err != nil {
 		log.Fatal("error creating rocket timer component: ", err)
 	}
 	rocketCDComp := ecs.NewContactDamageComponent(g.playerEntity, 20, true, false, 65)
-	rocketSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetSheetRocket, 21, true, g.assetmanager)
+	rocketSprComp, err := ecs.NewSpriteComponent(common.AssetSheetRocket, 21, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -726,7 +733,7 @@ func main() {
 		{FrameIdx: 0, DurationMs: 50},
 		{FrameIdx: 1, DurationMs: 50},
 	}
-	rocketAniComp, err := ecs.NewAnimationComponent(assetmanager.AssetSheetRocket, rocketAniStateFrames)
+	rocketAniComp, err := ecs.NewAnimationComponent(common.AssetSheetRocket, rocketAniStateFrames)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -740,9 +747,6 @@ func main() {
 			ecs.Layer_Terrain,
 		rocketHurtboxShape,
 	)
-	explosionForce := 20.0
-	explosionRadii := []float64{10, 20, 45}
-	explosionDmgTiers := []int{50, 25, 10}
 	explosionAniFrames := []ecs.AnimationFrame{
 		{FrameIdx: 0, DurationMs: 50},
 		{FrameIdx: 1, DurationMs: 50},
@@ -752,15 +756,21 @@ func main() {
 		{FrameIdx: 5, DurationMs: 150},
 		{FrameIdx: 6, DurationMs: 200},
 	}
-	explodeAbiEnum, explodeAbiDef, err := abilitydefs.ExplodeAbility(
-		explosionForce, explosionRadii, explosionDmgTiers, explosionAniFrames, true, g.assetmanager)
-	if err != nil {
-		log.Fatal("error creating explode ability: ", err)
-	}
 	explodeAbi := ecs.EntityAbility{
-		Name:   explodeAbiEnum,
-		Def:    explodeAbiDef,
+		Def: ecs.NewAbilityDef(
+			ecs.Ability_Explode,
+			ecs.Ability_None,
+			0,
+			0,
+		),
 		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+		Params: ecs.ExplodeParams{
+			Force:           20.0,
+			Radii:           []float64{10, 20, 45},
+			DmgTiers:        []int{50, 25, 10},
+			Animationframes: explosionAniFrames,
+			SelfDestruct:    true,
+		},
 	}
 	rocketDeathComp, err := ecs.NewDeathrattleComponent(explodeAbi)
 	if err != nil {
@@ -777,12 +787,16 @@ func main() {
 		log.Fatal("error creating bazooka spawner component: ", err)
 	}
 
-	spawnName, spawnDef := abilitydefs.SpawnAbility(500)
 	bazookaAbis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
 	bazookaAbis[0] = ecs.EntityAbility{
-		Name:   spawnName,
-		Def:    spawnDef,
+		Def: ecs.NewAbilityDef(
+			ecs.Ability_Spawn,
+			ecs.Ability_None,
+			500,
+			0,
+		),
 		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+		Params: nil,
 	}
 	bazookaEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, bazookaAbis)
 
@@ -808,11 +822,11 @@ func main() {
 		log.Fatal("error attaching bazooka to player: ", err)
 	}
 
-	// Enemy spawner
+	// // Enemy spawner
 	// enemyTraComp := ecs.NewTransformComponent(utils.Vec2{X: 300, Y: 150}, 1, 0)
 	// enemyVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, data.DefaultAcceleration*0.25, data.DefaultDrag)
 	// enemyParComp := ecs.NewParentComponent()
-	// enemySprComp, err := ecs.NewSpriteComponent("assets/sprites/evilslime.png", 20, true)
+	// enemySprComp, err := ecs.NewSpriteComponent(common.AssetSheetEvilSlime, 20, true)
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
@@ -828,8 +842,7 @@ func main() {
 	// 	{FrameIdx: 1, DurationMs: 100},
 	// }
 	// enemyAniComp, err := ecs.NewAnimationComponent(
-	// 	"assets/sprites/evilslime_ss.png",
-	// 	utils.Vec2{X: 32, Y: 32},
+	// 	common.AssetSheetEvilSlime,
 	// 	enemyAniStateFrames,
 	// )
 	// if err != nil {
@@ -875,10 +888,12 @@ func main() {
 	// 	enemyHurtboxColShape,
 	// )
 	// enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, false, 1)
-	// enemyFollowInput := inputsources.NewFollowInputSource(g.playerEntity)
-	// enemyInputComp := ecs.NewInputComponent(nil, enemyFollowInput, ecs.Facing_None)
+	// enemyFollowInputParams := ecs.InputFollowParams{
+	// 	FollowEntity: g.playerEntity,
+	// }
+	// enemyInputComp := ecs.NewInputComponent(nil, ecs.InputType_Follow, enemyFollowInputParams, ecs.Facing_None)
 	//
-	// enemySpawnerTimerComp, err := ecs.NewTimerComponent(1000, -1, timerfuncs.Spawn)
+	// enemySpawnerTimerComp, err := ecs.NewTimerComponent(1000, -1, ecs.TimerFunc_Spawn)
 	// if err != nil {
 	// 	log.Fatal("error creating enemy spawner timer component: ", err)
 	// }
@@ -911,11 +926,11 @@ func main() {
 	// g.ecs.AddEntity(enemySpawnerTimerComp, enemySpawnerComp)
 
 	// Tree
-	treeInpComp := ecs.NewInputComponent(nil, inputsources.DummyInputSource, ecs.Facing_None)
+	treeInpComp := ecs.NewInputComponent(nil, ecs.InputType_Dummy, nil, ecs.Facing_None)
 	treeParComp := ecs.NewParentComponent()
-	treeTraComp := ecs.NewTransformComponent(utils.Vec2{X: 450, Y: 250}, 1, 0)
+	treeTraComp := ecs.NewTransformComponent(utils.Vec2{X: 200, Y: 200}, 1, 0)
 	treeVelComp := ecs.NewDefaultVelocityComponent()
-	treeSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetImageTree, 20, true, g.assetmanager)
+	treeSprComp, err := ecs.NewSpriteComponent(common.AssetImageTree, 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -955,14 +970,17 @@ func main() {
 	for range 50 {
 		inputLoop = append(inputLoop, ecs.InputState{Analog1X: 1})
 	}
-	loopSource := inputsources.NewLoopInputSource(inputLoop, 0)
-	platInput := ecs.NewInputComponent(nil, loopSource, ecs.Facing_None)
+	loopParams := ecs.InputLoopParams{
+		LoopInputs: inputLoop,
+		StartTick:  0,
+	}
+	platInput := ecs.NewInputComponent(nil, ecs.InputType_Loop, loopParams, ecs.Facing_None)
 
 	platParComp := ecs.NewParentComponent()
-	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 250, Y: 100}, 1, 0)
+	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 10}, 1, 0)
 	platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, 0.3, data.DefaultDrag)
 
-	platSprComp, err := ecs.NewSpriteComponent(assetmanager.AssetImagePlatform, 10, true, g.assetmanager)
+	platSprComp, err := ecs.NewSpriteComponent(common.AssetImagePlatform, 10, true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1007,7 +1025,7 @@ func (g *game) AddRandomEntity() {
 	y := g.ecs.Rng.IntN(10000)
 
 	traComp := ecs.NewTransformComponent(utils.Vec2{X: float64(x), Y: float64(y)}, 1, 0)
-	sprComp, err := ecs.NewSpriteComponent(assetmanager.AssetImageTree, 20, true, g.assetmanager)
+	sprComp, err := ecs.NewSpriteComponent(common.AssetImageTree, 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}

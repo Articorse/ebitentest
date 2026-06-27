@@ -2,6 +2,8 @@ package tilesystem
 
 import (
 	"ebittest/data"
+	"ebittest/ecs"
+	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
 
@@ -16,16 +18,17 @@ type chunk struct {
 }
 
 type chunkDto struct {
-	X             int                                            `json:"x"`
-	Y             int                                            `json:"y"`
-	Tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum `json:"tiles"`
-	PromotedTiles []promotedTileDto                              `json:"promotedTiles"`
+	X             int
+	Y             int
+	Tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
+	PromotedTiles []promotedTileDto
+	Entities      map[common.EntityId][]ecs.ComponentDto
 }
 
 type promotedTileDto struct {
-	X             int `json:"x"`
-	Y             int `json:"y"`
-	CurrentHealth int `json:"currentHealth"`
+	X             int
+	Y             int
+	CurrentHealth int
 }
 
 func (x *chunk) GetTileDefId(cellKey utils.CellKey) data.TileEnum {

@@ -29,3 +29,21 @@ func (x equipper) Copy() equipper {
 		equipment: equipmentCopy,
 	}
 }
+
+type equipperDto struct {
+	Equipment map[EquipSlotEnum]common.EntityId
+}
+
+func (equipperDto) isComponentDto() {}
+
+func (x equipper) ToDto() equipperDto {
+	return equipperDto{
+		Equipment: x.equipment,
+	}
+}
+
+func (x *equipperDto) ToComponent() *equipper {
+	return &equipper{
+		equipment: x.Equipment,
+	}
+}

@@ -12,10 +12,10 @@ type timerManager struct{}
 func NewTimerComponent(
 	counterMs int,
 	triggerCount int, // Set to -1 to repeat infinitely
-	timerFunc TimerFunc,
+	timerFunc TimerFuncEnum,
 ) (*timer, error) {
-	if timerFunc == nil {
-		return nil, fmt.Errorf("timer function cannot be nil")
+	if timerFunc == TimerFunc_None {
+		return nil, fmt.Errorf("timer function cannot be none")
 	}
 
 	return &timer{
@@ -42,7 +42,14 @@ func (timerManager) TickDown(
 	timer.counterMs -= data.TickMs
 
 	if timer.counterMs <= 0 {
-		err := timer.timerFunc(e, ecsContainer)
+		timerFunc, err := ecsContainer.TimerManager.GetTimerFunc(timer.timerFunc)
+		if err != nil {
+			return false, fmt.Errorf("could not get timer function of entity %d: %v", e, err)
+		}
+		err = timerFunc(e, ecsContainer)
+		if err != nil {
+			return false, fmt.Errorf("error executing timer function of entity %d: %v", e, err)
+		}
 		timer.remainingTriggers--
 		timer.counterMs = timer.maxTimeMs
 		if err != nil {
@@ -53,4 +60,19 @@ func (timerManager) TickDown(
 	}
 
 	return false, nil
+}
+
+func (timerManager) GetTimerFunc(
+	timerFuncId TimerFuncEnum,
+) (TimerFunc, error) {
+	switch timerFuncId {
+	case TimerFunc_None:
+		return nil, nil
+	case TimerFunc_Selfdestruct:
+		return Timer_Selfdestruct, nil
+	case TimerFunc_Spawn:
+		return Timer_Spawn, nil
+	default:
+		return nil, fmt.Errorf("timer function for timer %v not found", timerFuncId)
+	}
 }

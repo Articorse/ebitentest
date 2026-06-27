@@ -1,8 +1,6 @@
 package ecs
 
-import (
-	"ebittest/assetmanager"
-)
+import "ebittest/ecs/common"
 
 type AnimationState uint16
 
@@ -24,7 +22,7 @@ type FrameState struct {
 }
 
 type animation struct {
-	sheetAssetTag assetmanager.ImageAssetTag
+	sheetAssetTag common.ImageAssetTag
 	stateFrames   map[AnimationState][]AnimationFrame
 	frameState    FrameState
 	queuedState   *AnimationState
@@ -50,5 +48,32 @@ func (x animation) Copy() animation {
 		stateFrames:   sFrames,
 		frameState:    x.frameState,
 		queuedState:   queuedState,
+	}
+}
+
+type animationDto struct {
+	SheetAssetTag common.ImageAssetTag
+	StateFrames   map[AnimationState][]AnimationFrame
+	FrameState    FrameState
+	QueuedState   *AnimationState
+}
+
+func (animationDto) isComponentDto() {}
+
+func (x animation) ToDto() animationDto {
+	return animationDto{
+		SheetAssetTag: x.sheetAssetTag,
+		StateFrames:   x.stateFrames,
+		FrameState:    x.frameState,
+		QueuedState:   x.queuedState,
+	}
+}
+
+func (x *animationDto) ToComponent() *animation {
+	return &animation{
+		sheetAssetTag: x.SheetAssetTag,
+		stateFrames:   x.StateFrames,
+		frameState:    x.FrameState,
+		queuedState:   x.QueuedState,
 	}
 }

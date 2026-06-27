@@ -60,3 +60,10 @@ func (x *CircleShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
 
 	return utils.Vec2{X: x.radius*math.Cos(a) + x.offset.X, Y: x.radius*math.Sin(a) + x.offset.Y}
 }
+
+type CircleParams struct {
+	Radius float64
+	Offset utils.Vec2
+}
+
+func (CircleParams) isShapeParams() {}

@@ -9,12 +9,12 @@ import (
 
 type abilitiesManager struct{}
 
-func NewAbilityDef(effect AbilityFunc, cd int, duration int, postEffect AbilityFunc) AbilityDef {
+func NewAbilityDef(id AbilityEnum, postId AbilityEnum, cooldownMs int, durationMs int) AbilityDef {
 	return AbilityDef{
-		Effect:     effect,
-		CooldownMs: cd,
-		DurationMs: duration,
-		PostEffect: postEffect,
+		AbilityId:     id,
+		PostAbilityId: postId,
+		CooldownMs:    cooldownMs,
+		DurationMs:    durationMs,
 	}
 }
 
@@ -23,9 +23,9 @@ func NewAbilitiesComponent(defs [data.MaxAbilitySlots]EntityAbility) *abilities 
 
 	for i, abi := range defs {
 		abis[i] = EntityAbility{
-			Name:   abi.Name,
 			Def:    abi.Def,
 			Status: AbilityStatus{State: AbiAct_Ready},
+			Params: abi.Params,
 		}
 	}
 
@@ -43,7 +43,7 @@ func (abilitiesManager) TickAbilities(e common.EntityId, ecsContainer *ECSContai
 	for i, a := range abiComp.abilities {
 		err := tickAbilityState(e, &a, ecsContainer)
 		if err != nil {
-			return fmt.Errorf("error ticking ability %v of entity %d: %v", a.Name, e, err)
+			return fmt.Errorf("error ticking ability %v of entity %d: %v", a.Def.AbilityId, e, err)
 		}
 
 		abiComp.abilities[i] = a
@@ -52,14 +52,14 @@ func (abilitiesManager) TickAbilities(e common.EntityId, ecsContainer *ECSContai
 	return nil
 }
 
-func (abilitiesManager) HasAbility(e common.EntityId, name AbilityEnum, ecsContainer *ECSContainer) bool {
+func (abilitiesManager) HasAbility(e common.EntityId, id AbilityEnum, ecsContainer *ECSContainer) bool {
 	abiComp, err := ecsContainer.Abilities.getComponent(e)
 	if err != nil {
 		return false
 	}
 
 	for _, a := range abiComp.abilities {
-		if a.Name == name {
+		if a.Def.AbilityId == id {
 			return true
 		}
 	}
@@ -67,7 +67,7 @@ func (abilitiesManager) HasAbility(e common.EntityId, name AbilityEnum, ecsConta
 	return false
 }
 
-func (abilitiesManager) DisableAbility(e common.EntityId, name AbilityEnum, ecsContainer *ECSContainer) error {
+func (abilitiesManager) DisableAbility(e common.EntityId, id AbilityEnum, ecsContainer *ECSContainer) error {
 	abiComp, err := ecsContainer.Abilities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get abilities component of entity %d: %v", e, err)
@@ -77,7 +77,7 @@ func (abilitiesManager) DisableAbility(e common.EntityId, name AbilityEnum, ecsC
 	idx := -1
 
 	for i, a := range abiComp.abilities {
-		if a.Name == name {
+		if a.Def.AbilityId == id {
 			abi = a
 			idx = i
 			break
@@ -85,7 +85,7 @@ func (abilitiesManager) DisableAbility(e common.EntityId, name AbilityEnum, ecsC
 	}
 
 	if idx == -1 {
-		return fmt.Errorf("entity %d does not have ability %v", e, name)
+		return fmt.Errorf("entity %d does not have ability %v", e, id)
 	}
 
 	abi.Status.State = AbiAct_Disabled
@@ -94,7 +94,7 @@ func (abilitiesManager) DisableAbility(e common.EntityId, name AbilityEnum, ecsC
 	return nil
 }
 
-func (abilitiesManager) EnableAbility(e common.EntityId, name AbilityEnum, ecsContainer *ECSContainer) error {
+func (abilitiesManager) EnableAbility(e common.EntityId, id AbilityEnum, ecsContainer *ECSContainer) error {
 	abiComp, err := ecsContainer.Abilities.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get abilities component of entity %d: %v", e, err)
@@ -104,7 +104,7 @@ func (abilitiesManager) EnableAbility(e common.EntityId, name AbilityEnum, ecsCo
 	idx := -1
 
 	for i, a := range abiComp.abilities {
-		if a.Name == name {
+		if a.Def.AbilityId == id {
 			abi = a
 			idx = i
 			break
@@ -112,7 +112,7 @@ func (abilitiesManager) EnableAbility(e common.EntityId, name AbilityEnum, ecsCo
 	}
 
 	if idx == -1 {
-		return fmt.Errorf("entity %d does not have ability %v", e, name)
+		return fmt.Errorf("entity %d does not have ability %v", e, id)
 	}
 
 	abi.Status.State = AbiAct_Ready
@@ -139,7 +139,7 @@ func (abilitiesManager) ActivateAbility(
 
 	abi := abiComp.abilities[abiIdx]
 
-	if abi.Name == Ability_None {
+	if abi.Def.AbilityId == Ability_None {
 		return false, nil
 	}
 
@@ -149,10 +149,29 @@ func (abilitiesManager) ActivateAbility(
 
 	_, err = tryActivate(e, &abi, targets, targetPos, ecsContainer)
 	if err != nil {
-		return false, fmt.Errorf("error trying to activate ability %v of entity %d: %v", abi.Name, e, err)
+		return false, fmt.Errorf("error trying to activate ability %v of entity %d: %v", abi.Def.AbilityId, e, err)
 	}
 
 	abiComp.abilities[abiIdx] = abi
 
 	return true, nil
+}
+
+func (abilitiesManager) GetAbilityFunc(
+	abilityId AbilityEnum,
+) (AbilityFunc, error) {
+	switch abilityId {
+	case Ability_None:
+		return nil, nil
+	case Ability_Dodge:
+		return DodgeAbility, nil
+	case Ability_Dodge_Post:
+		return DodgeAbilityPost, nil
+	case Ability_Explode:
+		return ExplodeAbility, nil
+	case Ability_Spawn:
+		return SpawnAbility, nil
+	default:
+		return nil, fmt.Errorf("ability function for ability %v not found", abilityId)
+	}
 }

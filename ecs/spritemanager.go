@@ -13,7 +13,7 @@ import (
 
 type spriteManager struct{}
 
-func NewSpriteComponent(imageAssetTag assetmanager.ImageAssetTag, layer uint8, allowRotation bool, assetManager *assetmanager.AssetManager) (*sprite, error) {
+func NewSpriteComponent(imageAssetTag common.ImageAssetTag, layer uint8, allowRotation bool) (*sprite, error) {
 	s := &sprite{imageAssetTag: imageAssetTag, offsetScale: 1, layer: layer, allowRotation: allowRotation}
 	return s, nil
 }
@@ -41,10 +41,10 @@ func (*spriteManager) SetSpriteFlash(
 	}
 
 	f := SpriteFlash{
-		colors:           colors,
-		colorDurationsMs: colorDurationsMs,
-		totalDurationMs:  TotalDurationMs,
-		loopDurationMs:   loopDurationMs,
+		Colors:           colors,
+		ColorDurationsMs: colorDurationsMs,
+		TotalDurationMs:  TotalDurationMs,
+		LoopDurationMs:   loopDurationMs,
 	}
 
 	sprite.flash = &f
@@ -87,7 +87,7 @@ func (*spriteManager) GetCurrentFrame(
 
 func (*spriteManager) SetImageAsset(
 	e common.EntityId,
-	imageAssetTag assetmanager.ImageAssetTag,
+	imageAssetTag common.ImageAssetTag,
 	ecsContainer *ECSContainer,
 ) error {
 	sprite, err := ecsContainer.Sprites.getComponent(e)
@@ -404,7 +404,7 @@ func (*spriteManager) GetCurrentColor(
 		return color, false, nil
 	}
 
-	return sprite.flash.colors[sprite.flash.colorIdx], true, nil
+	return sprite.flash.Colors[sprite.flash.ColorIdx], true, nil
 }
 
 func (*spriteManager) TickFlash(
@@ -421,17 +421,17 @@ func (*spriteManager) TickFlash(
 	}
 
 	f := sprite.flash
-	f.counterMs += data.TickMs
+	f.CounterMs += data.TickMs
 
-	if f.counterMs >= f.totalDurationMs {
+	if f.CounterMs >= f.TotalDurationMs {
 		sprite.flash = nil
 	}
 
-	colorCounterMs := f.counterMs % f.loopDurationMs
+	colorCounterMs := f.CounterMs % f.LoopDurationMs
 
-	for i, c := range f.colorDurationsMs {
+	for i, c := range f.ColorDurationsMs {
 		if colorCounterMs < c {
-			f.colorIdx = i
+			f.ColorIdx = i
 			break
 		}
 		colorCounterMs -= c

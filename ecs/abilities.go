@@ -3,7 +3,6 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
-	"ebittest/utils"
 )
 
 type AbilityEnum uint64
@@ -12,6 +11,7 @@ const (
 	Ability_None AbilityEnum = iota
 	Ability_Spawn
 	Ability_Dodge
+	Ability_Dodge_Post
 	Ability_Explode
 )
 
@@ -24,18 +24,21 @@ const (
 	AbiAct_OnCooldown
 )
 
+type AbilityParams interface {
+	IsAbilityParams()
+}
+
 type AbilityFunc func(
 	self common.EntityId,
-	targets []common.EntityId,
-	targetPoint utils.Vec2,
+	params AbilityParams,
 	ecsContainer *ECSContainer,
 ) error
 
 type AbilityDef struct {
-	Effect     AbilityFunc
-	CooldownMs int
-	DurationMs int
-	PostEffect AbilityFunc
+	AbilityId     AbilityEnum
+	PostAbilityId AbilityEnum
+	CooldownMs    int
+	DurationMs    int
 }
 
 type AbilityStatus struct {
@@ -45,8 +48,8 @@ type AbilityStatus struct {
 }
 
 type EntityAbility struct {
-	Name   AbilityEnum
 	Def    AbilityDef
+	Params AbilityParams
 	Status AbilityStatus
 }
 
@@ -61,11 +64,29 @@ func (x abilities) Copy() abilities {
 
 	for i, abi := range x.abilities {
 		abisCopy.abilities[i] = EntityAbility{
-			Name:   abi.Name,
 			Def:    abi.Def,
 			Status: abi.Status,
+			Params: abi.Params,
 		}
 	}
 
 	return abisCopy
+}
+
+type abilitiesDto struct {
+	Abilities [data.MaxAbilitySlots]EntityAbility
+}
+
+func (abilitiesDto) isComponentDto() {}
+
+func (x abilities) ToDto() abilitiesDto {
+	return abilitiesDto{
+		Abilities: x.abilities,
+	}
+}
+
+func (x abilitiesDto) ToComponent() *abilities {
+	return &abilities{
+		abilities: x.Abilities,
+	}
 }

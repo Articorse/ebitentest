@@ -21,19 +21,6 @@ type selfTrigger struct {
 	label  string
 }
 
-func GetTickInputs(
-	ecsContainer *ecs.ECSContainer,
-	tick uint64,
-	inputSource ecs.InputSourceFunc,
-) map[common.EntityId]ecs.InputState {
-	tickInputs := make(map[common.EntityId]ecs.InputState)
-	for _, e := range ecsContainer.Inputs.GetEntities() {
-		input := inputSource(e, tick, ecsContainer)
-		tickInputs[e] = input
-	}
-	return tickInputs
-}
-
 func HandleInputs(
 	camera utils.Vec2,
 	ecsContainer *ecs.ECSContainer,

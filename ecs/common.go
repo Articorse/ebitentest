@@ -15,10 +15,15 @@ func tickAbilityState(owner common.EntityId, abi *EntityAbility, ecsContainer *E
 		if abi.Status.DurationCounterMs <= 0 {
 			abi.Status.State = AbiAct_OnCooldown
 
-			if abi.Def.PostEffect != nil {
-				err := abi.Def.PostEffect(owner, nil, utils.Vec2{}, ecsContainer)
+			postEffect, err := ecsContainer.AbilitiesManager.GetAbilityFunc(abi.Def.AbilityId)
+			if err != nil {
+				return fmt.Errorf("error getting post effect of ability %v of entity %d: %v", abi.Def.AbilityId, owner, err)
+			}
+
+			if postEffect != nil {
+				err := postEffect(owner, abi.Params, ecsContainer)
 				if err != nil {
-					return fmt.Errorf("error executing post effect of ability %v of entity %d: %v", abi.Name, owner, err)
+					return fmt.Errorf("error executing post effect of ability %v of entity %d: %v", abi.Def.AbilityId, owner, err)
 				}
 			}
 		}
@@ -40,7 +45,7 @@ func tryActivate(
 	targetPos utils.Vec2,
 	ecsContainer *ECSContainer,
 ) (bool, error) {
-	if abi.Name == Ability_None {
+	if abi.Def.AbilityId == Ability_None {
 		return false, nil
 	}
 
@@ -52,9 +57,14 @@ func tryActivate(
 	abi.Status.CooldownCounterMs = abi.Def.CooldownMs
 	abi.Status.State = AbiAct_Active
 
-	err := abi.Def.Effect(owner, targets, targetPos, ecsContainer)
+	effect, err := ecsContainer.AbilitiesManager.GetAbilityFunc(abi.Def.AbilityId)
 	if err != nil {
-		return false, fmt.Errorf("error executing effect of ability %v of entity %d: %v", abi.Name, owner, err)
+		return false, fmt.Errorf("error getting effect of ability %v of entity %d: %v", abi.Def.AbilityId, owner, err)
+	}
+
+	err = effect(owner, abi.Params, ecsContainer)
+	if err != nil {
+		return false, fmt.Errorf("error executing effect of ability %v of entity %d: %v", abi.Def.AbilityId, owner, err)
 	}
 
 	return true, nil

@@ -32,6 +32,18 @@ func NewRectangleShape(w float64, h float64, o utils.Vec2) (*RectangleShape, err
 	}, nil
 }
 
+func NewRectangleShapeFromCoords(topLeft utils.Vec2, bottomRight utils.Vec2, o utils.Vec2) (*RectangleShape, error) {
+	if bottomRight.X < topLeft.X || bottomRight.Y < topLeft.Y {
+		return nil, fmt.Errorf("bottomRight must be greater than or equal to topLeft")
+	}
+
+	return &RectangleShape{
+		topLeft:     utils.Vec2{X: topLeft.X, Y: topLeft.Y},
+		bottomRight: utils.Vec2{X: bottomRight.X, Y: bottomRight.Y},
+		offset:      o,
+	}, nil
+}
+
 func (x *RectangleShape) GetAABB() [2]utils.Vec2 {
 	return [2]utils.Vec2{x.topLeft, x.bottomRight}
 }
@@ -89,3 +101,11 @@ func (x *RectangleShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
 
 	return utils.Vec2{X: 0, Y: 0}
 }
+
+type RectangleParams struct {
+	TopLeft     utils.Vec2
+	BottomRight utils.Vec2
+	Offset      utils.Vec2
+}
+
+func (RectangleParams) isShapeParams() {}

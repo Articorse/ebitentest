@@ -14,7 +14,6 @@ func NewEquipmentComponent(slot EquipableSlotEnum, abilities [data.MaxEquipmentA
 
 	for i, abi := range abilities {
 		abis[i] = EntityAbility{
-			Name:   abi.Name,
 			Def:    abi.Def,
 			Status: AbilityStatus{State: AbiAct_Ready},
 		}
@@ -99,7 +98,7 @@ func (equipManager) ActivateAbility(
 
 	_, err = tryActivate(eqE, &abi, targets, targetPos, ecsContainer)
 	if err != nil {
-		return false, fmt.Errorf("error trying to activate ability %v of equipment entity %d: %v", abi.Name, eqE, err)
+		return false, fmt.Errorf("error trying to activate ability %v of equipment entity %d: %v", abi.Def.AbilityId, eqE, err)
 	}
 
 	equipmentComp.abilities[abiIdx] = abi
@@ -116,7 +115,7 @@ func (equipManager) TickAbilities(e common.EntityId, ecsContainer *ECSContainer)
 	for i, a := range equipmentComp.abilities {
 		err := tickAbilityState(e, &a, ecsContainer)
 		if err != nil {
-			return fmt.Errorf("error ticking ability %v of equipment entity %d: %v", a.Name, e, err)
+			return fmt.Errorf("error ticking ability %v of equipment entity %d: %v", a.Def.AbilityId, e, err)
 		}
 
 		equipmentComp.abilities[i] = a

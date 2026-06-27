@@ -174,3 +174,10 @@ func (x *PolygonShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
 
 	return utils.Vec2{} // Fallback, should not reach here
 }
+
+type PolygonParams struct {
+	Vertices []utils.Vec2
+	Offset   utils.Vec2
+}
+
+func (PolygonParams) isShapeParams() {}

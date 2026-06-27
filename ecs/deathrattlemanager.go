@@ -2,7 +2,6 @@ package ecs
 
 import (
 	"ebittest/ecs/common"
-	"ebittest/utils"
 	"fmt"
 )
 
@@ -20,7 +19,12 @@ func (deathrattleManager) Effect(e common.EntityId, ecsContainer *ECSContainer) 
 		return fmt.Errorf("could not get deathrattle component of entity %d: %v", e, err)
 	}
 
-	return dr.ability.Def.Effect(e, nil, utils.Vec2{}, ecsContainer)
+	effect, err := ecsContainer.AbilitiesManager.GetAbilityFunc(dr.ability.Def.AbilityId)
+	if err != nil {
+		return fmt.Errorf("could not get ability function for ability %v of entity %d: %v", dr.ability.Def.AbilityId, e, err)
+	}
+
+	return effect(e, dr.ability.Params, ecsContainer)
 }
 
 func (deathrattleManager) TickAbilities(e common.EntityId, ecsContainer *ECSContainer) error {
@@ -31,7 +35,7 @@ func (deathrattleManager) TickAbilities(e common.EntityId, ecsContainer *ECSCont
 
 	err = tickAbilityState(e, &drComp.ability, ecsContainer)
 	if err != nil {
-		return fmt.Errorf("error ticking ability %v of entity %d: %v", drComp.ability.Name, e, err)
+		return fmt.Errorf("error ticking ability %v of entity %d: %v", drComp.ability.Def.AbilityId, e, err)
 	}
 
 	return nil

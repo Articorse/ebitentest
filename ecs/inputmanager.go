@@ -28,14 +28,8 @@ type InputState struct {
 	FacingDir          utils.Vec2
 }
 
-type InputSourceFunc func(
-	e common.EntityId,
-	tick uint64,
-	ecsContainer *ECSContainer,
-) InputState
-
-func NewInputComponent(config map[InputType]InputKey, inputSourceFunc InputSourceFunc, facingInput FacingInputEnum) *input {
-	return &input{config: config, inputSourceFunc: inputSourceFunc, facingInput: facingInput}
+func NewInputComponent(config map[InputType]InputKey, inputType InputTypeEnum, params InputParams, facingInput FacingInputEnum) *input {
+	return &input{config: config, inputType: inputType, params: params, facingInput: facingInput}
 }
 
 func (*inputManager) GetInput(e common.EntityId, inputType InputType, ecsContainer *ECSContainer) (float64, error) {
@@ -52,31 +46,22 @@ func (*inputManager) GetInput(e common.EntityId, inputType InputType, ecsContain
 	return inKey.GetInput(), nil
 }
 
-func (*inputManager) GetInputSourceFunc(
-	e common.EntityId,
-	ecsContainer *ECSContainer,
-) (InputSourceFunc, error) {
-	isf, err := ecsContainer.Inputs.getComponent(e)
+func (*inputManager) GetParams(e common.EntityId, ecsContainer *ECSContainer) (InputParams, error) {
+	inComp, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
 		return nil, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
 
-	return isf.inputSourceFunc, nil
+	return inComp.params, nil
 }
 
-func (*inputManager) SetInputSourceFunc(
-	e common.EntityId,
-	inputSourceFunc InputSourceFunc,
-	ecsContainer *ECSContainer,
-) error {
-	isf, err := ecsContainer.Inputs.getComponent(e)
+func (*inputManager) GetInputType(e common.EntityId, ecsContainer *ECSContainer) (InputTypeEnum, error) {
+	inComp, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
-		return fmt.Errorf("could not get input of entity %d: %v", e, err)
+		return 0, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
 
-	isf.inputSourceFunc = inputSourceFunc
-
-	return nil
+	return inComp.inputType, nil
 }
 
 func (*inputManager) GetFacingInput(e common.EntityId, ecsContainer *ECSContainer) (FacingInputEnum, error) {

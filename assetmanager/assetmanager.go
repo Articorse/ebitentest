@@ -1,6 +1,7 @@
 package assetmanager
 
 import (
+	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
 	"image"
@@ -17,11 +18,11 @@ type ImageAsset struct {
 }
 
 type AssetManager struct {
-	StaticAssets map[ImageAssetTag]*ImageAsset
+	StaticAssets map[common.ImageAssetTag]*ImageAsset
 }
 
 func NewAssetManager() *AssetManager {
-	a := make(map[ImageAssetTag]*ImageAsset, len(assets))
+	a := make(map[common.ImageAssetTag]*ImageAsset, len(assets))
 	for assetName, asset := range assets {
 		img, err := loadImage(asset)
 		if err != nil {
@@ -39,9 +40,9 @@ func loadImage(def ImageAssetDef) (*ImageAsset, error) {
 	img, rawImg, err := ebitenutil.NewImageFromFile(def.path)
 	if err != nil {
 		fmt.Printf("Failed to load image from %s: %v\n", def.path, err)
-		img, rawImg, err = ebitenutil.NewImageFromFile(assets[AssetDebug16x16].path)
+		img, rawImg, err = ebitenutil.NewImageFromFile(assets[common.AssetDebug16x16].path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load debug image from %s: %w", AssetDebug16x16, err)
+			return nil, fmt.Errorf("failed to load debug image from %s: %w", common.AssetDebug16x16, err)
 		}
 	}
 
@@ -70,7 +71,7 @@ func loadImage(def ImageAssetDef) (*ImageAsset, error) {
 	}, nil
 }
 
-func (x *AssetManager) GetAsset(assetName ImageAssetTag) (*ImageAsset, error) {
+func (x *AssetManager) GetAsset(assetName common.ImageAssetTag) (*ImageAsset, error) {
 	asset, ok := x.StaticAssets[assetName]
 	if !ok {
 		return nil, fmt.Errorf("asset %s not found", assetName)
