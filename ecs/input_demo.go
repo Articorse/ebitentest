@@ -21,15 +21,15 @@ func DemoInputSource(
 		return InputState{}, fmt.Errorf("input params are nil")
 	}
 
-	var demoParams InputDemoParams
+	var demoParams *InputDemoParams
 	switch p := params.(type) {
 	case InputDemoParams:
-		demoParams = p
+		demoParams = &p
 	case *InputDemoParams:
 		if p == nil {
 			return InputState{}, fmt.Errorf("input params are nil")
 		}
-		demoParams = *p
+		demoParams = p
 	default:
 		return InputState{}, fmt.Errorf("input params are not of type InputDemoParams")
 	}

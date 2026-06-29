@@ -397,7 +397,7 @@ func (g *game) Update() error {
 func (g *game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
 
-	if err := drawsystem.DrawChunks(screen, g.ecs.Camera, g.chunkContainer); err != nil {
+	if err := tilesystem.DrawChunks(screen, g.ecs.Camera, g.chunkContainer); err != nil {
 		log.Println("error while drawing chunks: ", err)
 	}
 
@@ -964,15 +964,14 @@ func main() {
 
 	// Platform
 	var inputLoop []ecs.InputState
-	for range 50 {
+	for range 100 {
 		inputLoop = append(inputLoop, ecs.InputState{Analog1X: -1})
 	}
-	for range 50 {
+	for range 100 {
 		inputLoop = append(inputLoop, ecs.InputState{Analog1X: 1})
 	}
-	loopParams := ecs.InputLoopParams{
+	loopParams := &ecs.InputLoopParams{
 		LoopInputs: inputLoop,
-		StartTick:  0,
 	}
 	platInput := ecs.NewInputComponent(nil, ecs.InputType_Loop, loopParams, ecs.Facing_None)
 

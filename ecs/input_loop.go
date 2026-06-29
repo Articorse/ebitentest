@@ -6,8 +6,8 @@ import (
 )
 
 type InputLoopParams struct {
-	LoopInputs []InputState
-	StartTick  uint64
+	LoopInputs  []InputState
+	CurrentTick uint64
 }
 
 func (InputLoopParams) isInputParams() {}
@@ -22,15 +22,15 @@ func LoopInputSource(
 		return InputState{}, fmt.Errorf("input params are nil")
 	}
 
-	var loopParams InputLoopParams
+	var loopParams *InputLoopParams
 	switch p := params.(type) {
 	case InputLoopParams:
-		loopParams = p
+		loopParams = &p
 	case *InputLoopParams:
 		if p == nil {
 			return InputState{}, fmt.Errorf("input params are nil")
 		}
-		loopParams = *p
+		loopParams = p
 	default:
 		return InputState{}, fmt.Errorf("input params are not of type InputLoopParams")
 	}
@@ -38,6 +38,9 @@ func LoopInputSource(
 	if len(loopParams.LoopInputs) == 0 {
 		return InputState{}, fmt.Errorf("loopInputs is empty")
 	}
-	idx := (tick - loopParams.StartTick) % uint64(len(loopParams.LoopInputs))
-	return loopParams.LoopInputs[idx], nil
+	loopParams.CurrentTick++
+	if loopParams.CurrentTick >= uint64(len(loopParams.LoopInputs)) {
+		loopParams.CurrentTick = 0
+	}
+	return loopParams.LoopInputs[loopParams.CurrentTick], nil
 }

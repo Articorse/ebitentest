@@ -163,21 +163,19 @@ func GetRectangleRectangleCollision(
 	r2Hit shapes.RectangleShape,
 	ecsContainer *ecs.ECSContainer,
 ) utils.Vec2 {
-	tm := ecsContainer.TransformManager
-	vm := ecsContainer.VelocityManager
 	var err error
 
 	var r1WorldPos, r2WorldPos utils.Vec2
 
 	if r1Ent != -1 {
-		r1WorldPos, err = tm.GetWorldPos(r1Ent, ecsContainer)
+		r1WorldPos, err = ecsContainer.TransformManager.GetWorldPos(r1Ent, ecsContainer)
 		if err != nil {
 			log.Printf("Error getting world position for rectangle entity %d: %v\n", r1Ent, err)
 			return utils.Vec2{X: 0, Y: 0}
 		}
 	}
 	if r2Ent != -1 {
-		r2WorldPos, err = tm.GetWorldPos(r2Ent, ecsContainer)
+		r2WorldPos, err = ecsContainer.TransformManager.GetWorldPos(r2Ent, ecsContainer)
 		if err != nil {
 			log.Printf("Error getting world position for rectangle entity %d: %v\n", r2Ent, err)
 			return utils.Vec2{X: 0, Y: 0}
@@ -201,14 +199,14 @@ func GetRectangleRectangleCollision(
 
 	var r1Vel, r2Vel utils.Vec2
 	if r1HasVel {
-		r1Vel, err = vm.GetLocalVector(r1Ent, ecsContainer)
+		r1Vel, err = ecsContainer.VelocityManager.GetLocalVector(r1Ent, ecsContainer)
 		if err != nil {
 			log.Printf("Error getting velocity for rectangle entity %d: %v\n", r1Ent, err)
 			return utils.Vec2{X: 0, Y: 0}
 		}
 	}
 	if r2HasVel {
-		r2Vel, err = vm.GetLocalVector(r2Ent, ecsContainer)
+		r2Vel, err = ecsContainer.VelocityManager.GetLocalVector(r2Ent, ecsContainer)
 		if err != nil {
 			log.Printf("Error getting velocity for rectangle entity %d: %v\n", r2Ent, err)
 			return utils.Vec2{X: 0, Y: 0}

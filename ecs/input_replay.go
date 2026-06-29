@@ -22,15 +22,15 @@ func ReplayInputSource(
 		return InputState{}, fmt.Errorf("input params are nil")
 	}
 
-	var replayParams InputReplayParams
+	var replayParams *InputReplayParams
 	switch p := params.(type) {
 	case InputReplayParams:
-		replayParams = p
+		replayParams = &p
 	case *InputReplayParams:
 		if p == nil {
 			return InputState{}, fmt.Errorf("input params are nil")
 		}
-		replayParams = *p
+		replayParams = p
 	default:
 		return InputState{}, fmt.Errorf("input params are not of type InputReplayParams")
 	}

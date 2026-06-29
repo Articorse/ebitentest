@@ -21,15 +21,15 @@ func FollowInputSource(
 		return InputState{}, fmt.Errorf("input params are nil")
 	}
 
-	var followParams InputFollowParams
+	var followParams *InputFollowParams
 	switch p := params.(type) {
 	case InputFollowParams:
-		followParams = p
+		followParams = &p
 	case *InputFollowParams:
 		if p == nil {
 			return InputState{}, fmt.Errorf("input params are nil")
 		}
-		followParams = *p
+		followParams = p
 	default:
 		return InputState{}, fmt.Errorf("input params are not of type InputFollowParams")
 	}
