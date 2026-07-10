@@ -5,46 +5,57 @@ import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
-	"encoding/gob"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"os"
-	"path/filepath"
+	"sync"
 )
 
 type ChunkContainer struct {
 	Chunks map[utils.CellKey]*chunk
 	Atlas  map[data.TileEnum]TileDef
+
+	saveChunkCh chan chunkDto
+	loadChunkCh chan utils.CellKey
+
+	dispatchedLoadChunkPositionsMtx sync.Mutex
+	dispatchedLoadChunkPositions    map[utils.CellKey]struct{}
+
+	preloadedChunksMtx     sync.Mutex
+	preloadedChunks        map[utils.CellKey]*chunk
+	preloadedChunkEntities map[utils.CellKey]map[common.EntityId][]ecs.ComponentDto
 }
 
-func (cc *ChunkContainer) newChunk(
-	r *rand.Rand,
+func NewChunkContainer() *ChunkContainer {
+	cc := &ChunkContainer{
+		Chunks: make(map[utils.CellKey]*chunk),
+
+		saveChunkCh:                  make(chan chunkDto),
+		loadChunkCh:                  make(chan utils.CellKey),
+		dispatchedLoadChunkPositions: make(map[utils.CellKey]struct{}),
+	}
+
+	cc.StartIOThreads()
+
+	return cc
+}
+
+func (cc *ChunkContainer) newChunkData(
 	atlas map[data.TileEnum]TileDef,
 	pos utils.CellKey,
-	ecsCont *ecs.ECSContainer,
 ) (*chunk, error) {
+	r := rand.NewPCG(data.RngSeed1+uint64(pos.X), data.RngSeed2+uint64(pos.Y))
+
 	c := chunk{}
 	c.promotedTiles = make(map[utils.CellKey]promotedTile)
 
 	for y := range data.ChunkSize {
 		for x := range data.ChunkSize {
-			tileId := data.TileEnum(r.IntN(3) + 1)
+			tileId := data.TileEnum(r.Uint64()%3 + 1)
 			c.tiles[y*data.ChunkSize+x] = tileId
 		}
-	}
-
-	cDto, err := cc.ChunkToDto(&c, pos, ecsCont)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert chunk to DTO: %w", err)
-	}
-	if err := SaveChunkGob(fmt.Sprintf(data.ChunkDataFilePathTemplate, cDto.X, cDto.Y), cDto); err != nil {
-		return nil, fmt.Errorf("failed to save new chunk: %w", err)
-	}
-
-	if err := c.generateChunkImage(atlas); err != nil {
-		return nil, fmt.Errorf("failed to generate chunk image: %w", err)
 	}
 
 	return &c, nil
@@ -56,8 +67,48 @@ func (cc *ChunkContainer) Tick(
 	toBeRemoved []utils.CellKey,
 	ecsCont *ecs.ECSContainer,
 ) error {
-	if cc.Chunks == nil {
-		cc.Chunks = make(map[utils.CellKey]*chunk)
+	cc.preloadedChunksMtx.Lock()
+	preloadedChunksCopy := make(map[utils.CellKey]*chunk)
+	for k, v := range cc.preloadedChunks {
+		preloadedChunksCopy[k] = v
+	}
+	cc.preloadedChunks = make(map[utils.CellKey]*chunk)
+
+	preloadedChunkEntitiesCopy := make(map[utils.CellKey]map[common.EntityId][]ecs.ComponentDto)
+	for k, v := range cc.preloadedChunkEntities {
+		preloadedChunkEntitiesCopy[k] = v
+	}
+	cc.preloadedChunkEntities = make(map[utils.CellKey]map[common.EntityId][]ecs.ComponentDto)
+	cc.preloadedChunksMtx.Unlock()
+
+	for cPos, c := range preloadedChunksCopy {
+		if _, exists := cc.Chunks[cPos]; exists {
+			continue
+		}
+
+		err := c.generateChunkImage(cc.Atlas)
+		if err != nil {
+			log.Printf("Failed to generate chunk image for chunk at %v: %v\n", cPos, err)
+			continue
+		}
+
+		entities, ok := preloadedChunkEntitiesCopy[cPos]
+		if ok {
+			for _, compDtos := range entities {
+				comps := make([]ecs.Component, len(compDtos))
+				for i, compDto := range compDtos {
+					comp, err := ecs.DtoToComponent(compDto)
+					if err != nil {
+						log.Printf("Failed to convert component DTO to component: %v\n", err)
+						continue
+					}
+					comps[i] = comp
+				}
+				ecsCont.AddEntity(comps...)
+			}
+		}
+
+		cc.Chunks[cPos] = c
 	}
 
 	for _, cPos := range toBeRemoved {
@@ -71,10 +122,7 @@ func (cc *ChunkContainer) Tick(
 			return fmt.Errorf("failed to convert chunk to DTO: %w", err)
 		}
 
-		fileName := fmt.Sprintf(data.ChunkDataFilePathTemplate, cDto.X, cDto.Y)
-		if err := SaveChunkGob(fileName, cDto); err != nil {
-			return fmt.Errorf("failed to save chunk at %v: %w", cPos, err)
-		}
+		cc.saveChunkCh <- cDto
 
 		delete(cc.Chunks, cPos)
 		entityIds, err := cc.GetEntityIdsInChunk(cPos, ecsCont)
@@ -87,31 +135,20 @@ func (cc *ChunkContainer) Tick(
 		}
 	}
 	for _, cPos := range toBeAdded {
-		fileName := fmt.Sprintf(data.ChunkDataFilePathTemplate, cPos.X, cPos.Y)
-		cDto, err := LoadChunkGob(fileName)
-		if err == nil {
-			chunkMap := cc.DtosToChunks([]chunkDto{cDto})
-			cc.Chunks[cPos] = chunkMap[cPos]
-			for _, cDtos := range cDto.Entities {
-				comps := make([]ecs.Component, len(cDtos))
-				for i, cDto := range cDtos {
-					comp, err := ecs.DtoToComponent(cDto)
-					if err != nil {
-						return fmt.Errorf("failed to convert component DTO to component: %w", err)
-					}
-					comps[i] = comp
-				}
-				ecsCont.AddEntity(comps...)
-			}
-		} else if errors.Is(err, os.ErrNotExist) {
-			c, err := cc.newChunk(r, cc.Atlas, cPos, ecsCont)
-			if err != nil {
-				return fmt.Errorf("failed to create new chunk at %v: %w", cPos, err)
-			}
-			cc.Chunks[cPos] = c
-		} else {
-			return fmt.Errorf("failed to load chunk at %v: %w", cPos, err)
+		if _, loaded := cc.Chunks[cPos]; loaded {
+			continue
 		}
+
+		cc.dispatchedLoadChunkPositionsMtx.Lock()
+		if _, dispatched := cc.dispatchedLoadChunkPositions[cPos]; dispatched {
+			cc.dispatchedLoadChunkPositionsMtx.Unlock()
+			continue
+		}
+
+		cc.dispatchedLoadChunkPositions[cPos] = struct{}{}
+		cc.dispatchedLoadChunkPositionsMtx.Unlock()
+
+		cc.loadChunkCh <- cPos
 	}
 	return nil
 }
@@ -167,17 +204,7 @@ func (cc *ChunkContainer) ChunkToDto(c *chunk, pos utils.CellKey, ecsCont *ecs.E
 func (cc *ChunkContainer) DtosToChunks(dtos []chunkDto) map[utils.CellKey]*chunk {
 	chunks := make(map[utils.CellKey]*chunk)
 	for _, dto := range dtos {
-		promotedTiles := make(map[utils.CellKey]promotedTile)
-		for _, pDto := range dto.PromotedTiles {
-			promotedTiles[utils.CellKey{X: pDto.X, Y: pDto.Y}] = promotedTile{
-				currentHealth: pDto.CurrentHealth,
-			}
-		}
-
-		chunk := &chunk{
-			tiles:         dto.Tiles,
-			promotedTiles: promotedTiles,
-		}
+		chunk := cc.dtoToChunkData(dto)
 
 		err := chunk.generateChunkImage(cc.Atlas)
 		if err != nil {
@@ -189,6 +216,21 @@ func (cc *ChunkContainer) DtosToChunks(dtos []chunkDto) map[utils.CellKey]*chunk
 	}
 
 	return chunks
+}
+
+func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
+	promotedTiles := make(map[utils.CellKey]promotedTile)
+	for _, pDto := range dto.PromotedTiles {
+		promotedTiles[utils.CellKey{X: pDto.X, Y: pDto.Y}] = promotedTile{
+			currentHealth: pDto.CurrentHealth,
+		}
+	}
+
+	chunk := &chunk{
+		tiles:         dto.Tiles,
+		promotedTiles: promotedTiles,
+	}
+	return chunk
 }
 
 func (cc *ChunkContainer) GetEntityIdsInChunk(cPos utils.CellKey, ecsCont *ecs.ECSContainer) ([]common.EntityId, error) {
@@ -208,48 +250,4 @@ func (cc *ChunkContainer) GetEntityIdsInChunk(cPos utils.CellKey, ecsCont *ecs.E
 	}
 
 	return eIds, nil
-}
-
-func SaveChunkGob(filePath string, data chunkDto) error {
-	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", dir, err)
-	}
-
-	file, _ := os.Create(filePath)
-	encoder := gob.NewEncoder(file)
-
-	err := encoder.Encode(data)
-	if err != nil {
-		return fmt.Errorf("error encoding data: %w", err)
-	}
-
-	err = file.Close()
-	if err != nil {
-		return fmt.Errorf("error closing file: %w", err)
-	}
-
-	return nil
-}
-
-func LoadChunkGob(filePath string) (chunkDto, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return chunkDto{}, fmt.Errorf("error opening file: %w", err)
-	}
-
-	var data chunkDto
-	decoder := gob.NewDecoder(file)
-
-	err = decoder.Decode(&data)
-	if err != nil {
-		return chunkDto{}, fmt.Errorf("error decoding data: %w", err)
-	}
-
-	err = file.Close()
-	if err != nil {
-		return chunkDto{}, fmt.Errorf("error closing file: %w", err)
-	}
-
-	return data, nil
 }
