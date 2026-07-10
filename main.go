@@ -514,7 +514,7 @@ func main() {
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetTPS(data.TPS)
 
-	g.chunkContainer = &tilesystem.ChunkContainer{}
+	g.chunkContainer = tilesystem.NewChunkContainer()
 	err := g.chunkContainer.GenerateTileAtlasFromJson("assets/tiles/atlas.json")
 	if err != nil {
 		log.Fatal("error generating tile atlas from json: ", err)
