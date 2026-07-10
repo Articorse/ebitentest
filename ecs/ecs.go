@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
@@ -45,7 +46,6 @@ type ECSContainer struct {
 	Equippers         Storage[equipper]
 	Deathrattles      Storage[deathrattle]
 	FloatingTexts     Storage[floatingText]
-	EphemeralTiles    Storage[ephemeralTile]
 	ChunkLoaders      Storage[chunkLoader]
 
 	InputManager            inputManager
@@ -67,7 +67,6 @@ type ECSContainer struct {
 	EquipManager            equipManager
 	DeathrattleManager      deathrattleManager
 	FloatingTextManager     floatingTextManager
-	EphemeralTileManager    ephemeralTileManager
 	ChunkLoaderManager      chunkLoaderManager
 }
 
@@ -92,7 +91,6 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&equipperDto{})
 	gob.Register(&deathrattleDto{})
 	gob.Register(&floatingTextDto{})
-	gob.Register(&ephemeralTileDto{})
 	gob.Register(&chunkLoaderDto{})
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
@@ -108,9 +106,7 @@ func NewECSContainer() *ECSContainer {
 		nextEntity: 0,
 		InputLog:   make(map[uint64]map[common.EntityId]InputState),
 
-		Rng: rand.New(rand.NewChaCha8([32]byte{
-			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-		})),
+		Rng: rand.New(rand.NewPCG(data.RngSeed1, data.RngSeed2)),
 
 		TickIdx:   0,
 		TickState: common.TickState{},
@@ -135,7 +131,6 @@ func NewECSContainer() *ECSContainer {
 		Equippers:         Storage[equipper]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipper)},
 		Deathrattles:      Storage[deathrattle]{order: []common.EntityId{}, data: make(map[common.EntityId]*deathrattle)},
 		FloatingTexts:     Storage[floatingText]{order: []common.EntityId{}, data: make(map[common.EntityId]*floatingText)},
-		EphemeralTiles:    Storage[ephemeralTile]{order: []common.EntityId{}, data: make(map[common.EntityId]*ephemeralTile)},
 		ChunkLoaders:      Storage[chunkLoader]{order: []common.EntityId{}, data: make(map[common.EntityId]*chunkLoader)},
 
 		InputManager:            inputManager{},
@@ -157,7 +152,6 @@ func NewECSContainer() *ECSContainer {
 		EquipManager:            equipManager{},
 		DeathrattleManager:      deathrattleManager{},
 		FloatingTextManager:     floatingTextManager{},
-		EphemeralTileManager:    ephemeralTileManager{},
 		ChunkLoaderManager:      chunkLoaderManager{},
 	}
 }
@@ -233,7 +227,6 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 		x.Equippers.deleteEntity(e)
 		x.Deathrattles.deleteEntity(e)
 		x.FloatingTexts.deleteEntity(e)
-		x.EphemeralTiles.deleteEntity(e)
 		x.ChunkLoaders.deleteEntity(e)
 
 		pm := parentManager{}
@@ -331,8 +324,6 @@ func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
 		x.Deathrattles.addComponent(e, c.Copy())
 	case *floatingText:
 		x.FloatingTexts.addComponent(e, c.Copy())
-	case *ephemeralTile:
-		x.EphemeralTiles.addComponent(e, c.Copy())
 	case *chunkLoader:
 		x.ChunkLoaders.addComponent(e, c.Copy())
 	default:
@@ -445,10 +436,6 @@ func (x *ECSContainer) GetEntitiesWithComponents(entities []common.EntityId) map
 			dto := c.ToDto()
 			comps = append(comps, dto)
 		}
-		if c, err := x.EphemeralTiles.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
 		if c, err := x.ChunkLoaders.getComponent(e); err == nil {
 			dto := c.ToDto()
 			comps = append(comps, dto)
@@ -522,8 +509,6 @@ func DtoToComponent[T ComponentDto](dto T) (Component, error) {
 	case *deathrattleDto:
 		return d.ToComponent(), nil
 	case *floatingTextDto:
-		return d.ToComponent(), nil
-	case *ephemeralTileDto:
 		return d.ToComponent(), nil
 	case *chunkLoaderDto:
 		return d.ToComponent(), nil
