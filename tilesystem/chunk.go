@@ -2,10 +2,8 @@ package tilesystem
 
 import (
 	"ebittest/data"
-	"ebittest/ecs"
-	"ebittest/ecs/common"
 	"ebittest/utils"
-	"fmt"
+	"math/rand/v2"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -17,25 +15,30 @@ type chunk struct {
 	Image *ebiten.Image
 }
 
-type chunkDto struct {
-	X             int
-	Y             int
-	Tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
-	PromotedTiles []promotedTileDto
-	Entities      map[common.EntityId][]ecs.ComponentDto
+type chunkMeta struct {
+	state        chunkState
+	dirty        bool
+	saveInFlight bool
+	retryAtTick  uint64
 }
 
-type promotedTileDto struct {
-	X             int
-	Y             int
-	CurrentHealth int
-}
+func (cc *ChunkContainer) newChunkData(pos utils.CellKey) (*chunk, error) {
+	r := rand.NewPCG(data.RngSeed1+uint64(pos.X), data.RngSeed2+uint64(pos.Y))
 
-func (x *chunk) GetTileDefId(cellKey utils.CellKey) data.TileEnum {
-	if cellKey.X < 0 || cellKey.X >= data.ChunkSize || cellKey.Y < 0 || cellKey.Y >= data.ChunkSize {
-		return 0
+	c := chunk{}
+	c.promotedTiles = make(map[utils.CellKey]promotedTile)
+
+	for y := range data.ChunkSize {
+		for x := range data.ChunkSize {
+			tileId := data.TileEnum(r.Uint64()%3 + 1)
+			c.tiles[y*data.ChunkSize+x] = tileId
+		}
 	}
 
+	return &c, nil
+}
+
+func (x *chunk) getTileDefId(cellKey utils.CellKey) data.TileEnum {
 	localX := ((cellKey.X % data.ChunkSize) + data.ChunkSize) % data.ChunkSize
 	localY := ((cellKey.Y % data.ChunkSize) + data.ChunkSize) % data.ChunkSize
 	idx := localY*data.ChunkSize + localX
@@ -46,23 +49,6 @@ func (x *chunk) GetTileDefId(cellKey utils.CellKey) data.TileEnum {
 	return x.tiles[idx]
 }
 
-func (x *chunk) GetPromotedTiles() map[utils.CellKey]promotedTile {
+func (x *chunk) getPromotedTiles() map[utils.CellKey]promotedTile {
 	return x.promotedTiles
-}
-
-func (x *chunk) generateChunkImage(atlas map[data.TileEnum]TileDef) error {
-	x.Image = ebiten.NewImage(data.ChunkSize*data.TileSize, data.ChunkSize*data.TileSize)
-
-	for tCell, tEnum := range x.tiles {
-		tile, ok := atlas[tEnum]
-		if !ok {
-			return fmt.Errorf("tile enum %d not found in atlas", tEnum)
-		}
-
-		opts := ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(float64(tCell%data.ChunkSize*data.TileSize), float64(tCell/data.ChunkSize*data.TileSize))
-		x.Image.DrawImage(tile.Image, &opts)
-	}
-
-	return nil
 }

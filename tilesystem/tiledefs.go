@@ -9,11 +9,11 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-type TileDef struct {
-	Image     *ebiten.Image
-	MaxHealth int
-	Passable  bool
-	Opaque    bool // TODO: Use this for a visibility system
+type tileDef struct {
+	image     *ebiten.Image
+	maxHealth int
+	passable  bool
+	opaque    bool // TODO: Use this for a transparency system
 }
 
 type promotedTile struct {
@@ -28,8 +28,8 @@ type tileDefDTO struct {
 	Opaque    bool   `json:"opaque"`
 }
 
-func dtosToDefsMap(dtos []tileDefDTO) (map[data.TileEnum]TileDef, error) {
-	tileDefs := make(map[data.TileEnum]TileDef, len(dtos))
+func dtosToDefsMap(dtos []tileDefDTO) (map[data.TileEnum]tileDef, error) {
+	tileDefs := make(map[data.TileEnum]tileDef, len(dtos))
 	for _, dto := range dtos {
 		img, _, err := ebitenutil.NewImageFromFile(dto.ImagePath)
 		if err != nil {
@@ -40,11 +40,11 @@ func dtosToDefsMap(dtos []tileDefDTO) (map[data.TileEnum]TileDef, error) {
 			}
 		}
 
-		tileDefs[data.TileEnum(dto.Id)] = TileDef{
-			Image:     img,
-			MaxHealth: dto.MaxHealth,
-			Passable:  dto.Passable,
-			Opaque:    dto.Opaque,
+		tileDefs[data.TileEnum(dto.Id)] = tileDef{
+			image:     img,
+			maxHealth: dto.MaxHealth,
+			passable:  dto.Passable,
+			opaque:    dto.Opaque,
 		}
 	}
 

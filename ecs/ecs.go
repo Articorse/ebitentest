@@ -331,121 +331,110 @@ func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
 	}
 }
 
-func (x *ECSContainer) GetEntitiesWithComponents(entities []common.EntityId) map[common.EntityId][]ComponentDto {
-	foundEntities := make(map[common.EntityId][]ComponentDto)
-	for _, e := range entities {
-		var comps []ComponentDto
+func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
+	var comps []ComponentDto
 
-		if c, err := x.Parents.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Transforms.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Velocities.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Sprites.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Animations.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.PhysicsColliders.getComponent(e); err == nil {
-			dto, err := c.ToDto()
-			if err != nil {
-				log.Printf("error converting physics collider component of entity %d to DTO: %v", e, err)
-				continue
-			}
-			comps = append(comps, dto)
-		}
-		if c, err := x.PlatformColliders.getComponent(e); err == nil {
-			dto, err := c.ToDto()
-			if err != nil {
-				log.Printf("error converting platform collider component of entity %d to DTO: %v", e, err)
-				continue
-			}
-			comps = append(comps, dto)
-		}
-		if c, err := x.HitboxColliders.getComponent(e); err == nil {
-			dto, err := c.ToDto()
-			if err != nil {
-				log.Printf("error converting hitbox collider component of entity %d to DTO: %v", e, err)
-				continue
-			}
-			comps = append(comps, dto)
-		}
-		if c, err := x.HurtboxColliders.getComponent(e); err == nil {
-			dto, err := c.ToDto()
-			if err != nil {
-				log.Printf("error converting hurtbox collider component of entity %d to DTO: %v", e, err)
-				continue
-			}
-			comps = append(comps, dto)
-		}
-		if c, err := x.Spawners.getComponent(e); err == nil {
-			dto, err := c.ToDto()
-			if err != nil {
-				log.Printf("error converting spawner component of entity %d to DTO: %v", e, err)
-				continue
-			}
-			comps = append(comps, dto)
-		}
-		if c, err := x.Timers.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Hitpoints.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.ContactDamages.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Inputs.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Abilities.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.FacePositions.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Equipments.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Equippers.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.Deathrattles.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.FloatingTexts.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-		if c, err := x.ChunkLoaders.getComponent(e); err == nil {
-			dto := c.ToDto()
-			comps = append(comps, dto)
-		}
-
-		if len(comps) > 0 {
-			foundEntities[e] = comps
-		}
+	if c, err := x.Parents.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
 	}
-	return foundEntities
+	if c, err := x.Transforms.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.Velocities.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.Sprites.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.Animations.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.PhysicsColliders.getComponent(eId); err == nil {
+		dto, err := c.ToDto()
+		if err != nil {
+			log.Printf("error converting physics collider component of entity %d to DTO: %v", eId, err)
+		}
+		comps = append(comps, dto)
+	}
+	if c, err := x.PlatformColliders.getComponent(eId); err == nil {
+		dto, err := c.ToDto()
+		if err != nil {
+			log.Printf("error converting platform collider component of entity %d to DTO: %v", eId, err)
+		}
+		comps = append(comps, dto)
+	}
+	if c, err := x.HitboxColliders.getComponent(eId); err == nil {
+		dto, err := c.ToDto()
+		if err != nil {
+			log.Printf("error converting hitbox collider component of entity %d to DTO: %v", eId, err)
+		}
+		comps = append(comps, dto)
+	}
+	if c, err := x.HurtboxColliders.getComponent(eId); err == nil {
+		dto, err := c.ToDto()
+		if err != nil {
+			log.Printf("error converting hurtbox collider component of entity %d to DTO: %v", eId, err)
+		}
+		comps = append(comps, dto)
+	}
+	if c, err := x.Spawners.getComponent(eId); err == nil {
+		dto, err := c.ToDto()
+		if err != nil {
+			log.Printf("error converting spawner component of entity %d to DTO: %v", eId, err)
+		}
+		comps = append(comps, dto)
+	}
+	if c, err := x.Timers.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.Hitpoints.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.ContactDamages.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.Inputs.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.Abilities.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.FacePositions.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.Equipments.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.Equippers.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.Deathrattles.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.FloatingTexts.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+	if c, err := x.ChunkLoaders.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
+
+	return comps
 }
 
 func DtoToComponent[T ComponentDto](dto T) (Component, error) {

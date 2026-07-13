@@ -7,7 +7,6 @@ import (
 	"ebittest/ecs/shapes"
 	"ebittest/ecs/systems/collisionsystem"
 	"ebittest/utils"
-	"fmt"
 	"log"
 	"math"
 )
@@ -213,24 +212,25 @@ func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 			for ty := minTileY; ty <= maxTileY; ty++ {
 				worldTilePos := utils.CellKey{X: tx, Y: ty}
 				chunkGridPos := utils.WorldPosToChunkGridPos(utils.Vec2{X: float64(worldTilePos.X * tileSize), Y: float64(worldTilePos.Y * tileSize)})
-				chunk, ok := cc.Chunks[chunkGridPos]
-				if !ok {
-					fmt.Printf("no chunk found at grid position %v for world tile position %v\n", chunkGridPos, worldTilePos)
-					continue
-				}
-
 				localTilePos := utils.CellKey{
 					X: ((worldTilePos.X % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
 					Y: ((worldTilePos.Y % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
 				}
-				tileId := chunk.GetTileDefId(localTilePos)
-				tileDef, ok := cc.Atlas[tileId]
+
+				chunk, ok := cc.chunks[chunkGridPos]
+				if !ok {
+					potentialCollisions[e] = append(potentialCollisions[e], worldTilePos)
+					continue
+				}
+
+				tileId := chunk.getTileDefId(localTilePos)
+				tileDef, ok := cc.atlas[tileId]
 				if !ok {
 					log.Printf("no tile definition found for tile enum %d", tileId)
 					continue
 				}
 
-				if !tileDef.Passable {
+				if !tileDef.passable {
 					potentialCollisions[e] = append(potentialCollisions[e], worldTilePos)
 				}
 			}

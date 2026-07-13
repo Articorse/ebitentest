@@ -108,14 +108,14 @@ func (g *game) Update() error {
 		gamepadFound = true
 	}
 
-	toBeAdded, toBeRemoved, err := g.chunkContainer.GetRequiredChunks(g.ecs)
+	required, toBeAdded, toBeRemoved, priority, err := g.chunkContainer.ComputeChunkSets(g.ecs)
 	if err != nil {
-		log.Println("error populating required chunks: ", err)
+		log.Println("error computing chunk sets:", err)
 	}
 
-	err = g.chunkContainer.Tick(g.ecs.Rng, toBeAdded, toBeRemoved, g.ecs)
+	err = g.chunkContainer.Tick(g.ecs.Rng, toBeAdded, toBeRemoved, required, priority, g.ecs)
 	if err != nil {
-		log.Fatal("error generating chunk container: ", err)
+		log.Println("error ticking chunk container:", err)
 	}
 
 	tickInputs := make(map[common.EntityId]ecs.InputState)
@@ -587,7 +587,7 @@ func main() {
 		},
 	}
 	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
-	pCLComp := ecs.NewChunkLoaderComponent(1)
+	pCLComp := ecs.NewChunkLoaderComponent(3)
 	g.playerEntity = g.ecs.AddEntity(
 		pParComp,
 		pTraComp,
