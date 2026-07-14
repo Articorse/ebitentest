@@ -42,7 +42,7 @@ func tryActivate(
 	owner common.EntityId,
 	abi *EntityAbility,
 	targets []common.EntityId,
-	targetPos utils.Vec2,
+	targetPos utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) (bool, error) {
 	if abi.Def.AbilityId == Ability_None {

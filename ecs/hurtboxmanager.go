@@ -34,7 +34,7 @@ func (hurtboxColliderManager) SetEnabled(e common.EntityId, enabled bool, ecsCon
 	return ecsContainer.HurtboxColliderManager.BaseColliderManager.SetEnabled(e, enabled, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetecsContainerPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+func (hurtboxColliderManager) GetecsContainerPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2f, error) {
 	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, ecsContainer)
 }
 
@@ -42,15 +42,15 @@ func (hurtboxColliderManager) GetShapes(e common.EntityId, ecsContainer *ECSCont
 	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetShapes(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetLocalAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+func (hurtboxColliderManager) GetLocalAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2f, error) {
 	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetLocalAABB(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetLocalPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+func (hurtboxColliderManager) GetLocalPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2f, error) {
 	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, ecsContainer)
 }
 
-func (hurtboxColliderManager) GetCenter(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2, error) {
+func (hurtboxColliderManager) GetCenter(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2f, error) {
 	return ecsContainer.HurtboxColliderManager.BaseColliderManager.GetCenter(e, ecsContainer)
 }
 

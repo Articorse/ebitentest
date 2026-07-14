@@ -124,7 +124,7 @@ func (abilitiesManager) EnableAbility(e common.EntityId, id AbilityEnum, ecsCont
 func (abilitiesManager) ActivateAbility(
 	e common.EntityId,
 	targets []common.EntityId,
-	targetPos utils.Vec2,
+	targetPos utils.Vec2f,
 	abiIdx int,
 	ecsContainer *ECSContainer,
 ) (activated bool, err error) {

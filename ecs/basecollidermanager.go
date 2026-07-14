@@ -15,11 +15,11 @@ type BaseColliderGetter interface {
 type IColliderManager interface {
 	EntityIds(w *ECSContainer) []common.EntityId
 	HasCollider(e common.EntityId, w *ECSContainer) bool
-	GetWorldPaddedAABB(e common.EntityId, w *ECSContainer) ([2]utils.Vec2, error)
+	GetWorldPaddedAABB(e common.EntityId, w *ECSContainer) ([2]utils.Vec2f, error)
 	GetShapes(e common.EntityId, w *ECSContainer) ([]shapes.Shape, error)
-	GetLocalAABB(e common.EntityId, w *ECSContainer) ([2]utils.Vec2, error)
-	GetLocalPaddedAABB(e common.EntityId, w *ECSContainer) ([2]utils.Vec2, error)
-	GetCenter(e common.EntityId, w *ECSContainer) (utils.Vec2, error)
+	GetLocalAABB(e common.EntityId, w *ECSContainer) ([2]utils.Vec2f, error)
+	GetLocalPaddedAABB(e common.EntityId, w *ECSContainer) ([2]utils.Vec2f, error)
+	GetCenter(e common.EntityId, w *ECSContainer) (utils.Vec2f, error)
 	GetLayer(e common.EntityId, w *ECSContainer) (LayerMask, error)
 	GetMask(e common.EntityId, w *ECSContainer) (LayerMask, error)
 	IsEnabled(e common.EntityId, w *ECSContainer) (bool, error)
@@ -36,9 +36,9 @@ func newBaseCollider(
 	c.center = shapes.CalculateCenter(colShapes)
 
 	if len(colShapes) == 0 {
-		c.aabb = [2]utils.Vec2{
-			utils.Vec2{X: 0, Y: 0},
-			utils.Vec2{X: 0, Y: 0},
+		c.aabb = [2]utils.Vec2f{
+			utils.Vec2f{X: 0, Y: 0},
+			utils.Vec2f{X: 0, Y: 0},
 		}
 	} else {
 		firstAABB := colShapes[0].GetAABB()
@@ -61,15 +61,15 @@ func newBaseCollider(
 			}
 		}
 
-		c.aabb = [2]utils.Vec2{
-			utils.Vec2{X: minX, Y: minY},
-			utils.Vec2{X: maxX, Y: maxY},
+		c.aabb = [2]utils.Vec2f{
+			utils.Vec2f{X: minX, Y: minY},
+			utils.Vec2f{X: maxX, Y: maxY},
 		}
 	}
 
-	c.paddedAabb = [2]utils.Vec2{
-		utils.Vec2{X: c.aabb[0].X - data.AABBPadding, Y: c.aabb[0].Y - data.AABBPadding},
-		utils.Vec2{X: c.aabb[1].X + data.AABBPadding, Y: c.aabb[1].Y + data.AABBPadding},
+	c.paddedAabb = [2]utils.Vec2f{
+		utils.Vec2f{X: c.aabb[0].X - data.AABBPadding, Y: c.aabb[0].Y - data.AABBPadding},
+		utils.Vec2f{X: c.aabb[1].X + data.AABBPadding, Y: c.aabb[1].Y + data.AABBPadding},
 	}
 
 	return c
@@ -140,10 +140,10 @@ func (BaseColliderManager[T]) GetShapes(
 func (BaseColliderManager[T]) GetCenter(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) (utils.Vec2, error) {
+) (utils.Vec2f, error) {
 	collider, err := getCollider[T](e, ecsContainer)
 	if err != nil {
-		return utils.Vec2{X: 0, Y: 0}, fmt.Errorf("could not get collider of entity %d: %v", e, err)
+		return utils.Vec2f{X: 0, Y: 0}, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
 
 	return collider.getBaseCollider().center, nil
@@ -152,12 +152,12 @@ func (BaseColliderManager[T]) GetCenter(
 func (BaseColliderManager[T]) GetLocalAABB(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) ([2]utils.Vec2, error) {
+) ([2]utils.Vec2f, error) {
 	collider, err := getCollider[T](e, ecsContainer)
 	if err != nil {
-		return [2]utils.Vec2{
-			utils.Vec2{X: 0, Y: 0},
-			utils.Vec2{X: 0, Y: 0},
+		return [2]utils.Vec2f{
+			utils.Vec2f{X: 0, Y: 0},
+			utils.Vec2f{X: 0, Y: 0},
 		}, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
 
@@ -167,34 +167,34 @@ func (BaseColliderManager[T]) GetLocalAABB(
 func (BaseColliderManager[T]) GetWorldAABB(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) ([2]utils.Vec2, error) {
+) ([2]utils.Vec2f, error) {
 	tm := transformManager{}
 
 	colComp, err := getCollider[T](e, ecsContainer)
 	if err != nil {
-		return [2]utils.Vec2{}, fmt.Errorf("could not get collider of entity %d: %v", e, err)
+		return [2]utils.Vec2f{}, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
 
 	worldPos, err := tm.GetWorldPos(e, ecsContainer)
 	if err != nil {
-		return [2]utils.Vec2{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
+		return [2]utils.Vec2f{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
 
-	return [2]utils.Vec2{
-		utils.Vec2{X: colComp.getBaseCollider().aabb[0].X + worldPos.X, Y: colComp.getBaseCollider().aabb[0].Y + worldPos.Y},
-		utils.Vec2{X: colComp.getBaseCollider().aabb[1].X + worldPos.X, Y: colComp.getBaseCollider().aabb[1].Y + worldPos.Y},
+	return [2]utils.Vec2f{
+		utils.Vec2f{X: colComp.getBaseCollider().aabb[0].X + worldPos.X, Y: colComp.getBaseCollider().aabb[0].Y + worldPos.Y},
+		utils.Vec2f{X: colComp.getBaseCollider().aabb[1].X + worldPos.X, Y: colComp.getBaseCollider().aabb[1].Y + worldPos.Y},
 	}, nil
 }
 
 func (BaseColliderManager[T]) GetLocalPaddedAABB(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) ([2]utils.Vec2, error) {
+) ([2]utils.Vec2f, error) {
 	collider, err := getCollider[T](e, ecsContainer)
 	if err != nil {
-		return [2]utils.Vec2{
-			utils.Vec2{X: 0, Y: 0},
-			utils.Vec2{X: 0, Y: 0},
+		return [2]utils.Vec2f{
+			utils.Vec2f{X: 0, Y: 0},
+			utils.Vec2f{X: 0, Y: 0},
 		}, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
 
@@ -204,22 +204,22 @@ func (BaseColliderManager[T]) GetLocalPaddedAABB(
 func (BaseColliderManager[T]) GetWorldPaddedAABB(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) ([2]utils.Vec2, error) {
+) ([2]utils.Vec2f, error) {
 	tm := transformManager{}
 
 	colComp, err := getCollider[T](e, ecsContainer)
 	if err != nil {
-		return [2]utils.Vec2{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
+		return [2]utils.Vec2f{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
 	worldPos, err := tm.GetWorldPos(e, ecsContainer)
 	if err != nil {
-		return [2]utils.Vec2{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
+		return [2]utils.Vec2f{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
 
-	return [2]utils.Vec2{
-		utils.Vec2{X: colComp.getBaseCollider().paddedAabb[0].X + worldPos.X, Y: colComp.getBaseCollider().paddedAabb[0].Y + worldPos.Y},
-		utils.Vec2{X: colComp.getBaseCollider().paddedAabb[1].X + worldPos.X, Y: colComp.getBaseCollider().paddedAabb[1].Y + worldPos.Y},
+	return [2]utils.Vec2f{
+		utils.Vec2f{X: colComp.getBaseCollider().paddedAabb[0].X + worldPos.X, Y: colComp.getBaseCollider().paddedAabb[0].Y + worldPos.Y},
+		utils.Vec2f{X: colComp.getBaseCollider().paddedAabb[1].X + worldPos.X, Y: colComp.getBaseCollider().paddedAabb[1].Y + worldPos.Y},
 	}, nil
 }
 

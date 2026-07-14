@@ -23,7 +23,7 @@ type promotedTileDto struct {
 
 func (cc *ChunkContainer) chunkToDto(
 	c *chunk,
-	pos utils.CellKey,
+	pos utils.Vec2i,
 	ecsCont *ecs.ECSContainer,
 ) (chunkDto, error) {
 	promotedTiles := make([]promotedTileDto, 0, len(c.promotedTiles))
@@ -53,9 +53,9 @@ func (cc *ChunkContainer) chunkToDto(
 }
 
 func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
-	promotedTiles := make(map[utils.CellKey]promotedTile)
+	promotedTiles := make(map[utils.Vec2i]promotedTile)
 	for _, pDto := range dto.PromotedTiles {
-		promotedTiles[utils.CellKey{X: pDto.X, Y: pDto.Y}] = promotedTile{
+		promotedTiles[utils.Vec2i{X: pDto.X, Y: pDto.Y}] = promotedTile{
 			currentHealth: pDto.CurrentHealth,
 		}
 	}

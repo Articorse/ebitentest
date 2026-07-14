@@ -7,10 +7,10 @@ import (
 	"fmt"
 )
 
-func (cc *ChunkContainer) getEntityIdsInChunks(ecsCont *ecs.ECSContainer) (map[utils.CellKey][]common.EntityId, error) {
+func (cc *ChunkContainer) getEntityIdsInChunks(ecsCont *ecs.ECSContainer) (map[utils.Vec2i][]common.EntityId, error) {
 	tm := ecsCont.TransformManager
 
-	eIdsInChunks := make(map[utils.CellKey][]common.EntityId)
+	eIdsInChunks := make(map[utils.Vec2i][]common.EntityId)
 
 	for _, e := range ecsCont.Transforms.GetEntities() {
 		eWorldPos, err := tm.GetWorldPos(e, ecsCont)

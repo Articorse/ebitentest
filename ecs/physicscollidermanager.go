@@ -51,7 +51,7 @@ func (physicsColliderManager) SetEnabled(e common.EntityId, enabled bool, ecsCon
 	return ecsContainer.PhysicsColliderManager.BaseColliderManager.SetEnabled(e, enabled, ecsContainer)
 }
 
-func (physicsColliderManager) GetecsContainerPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+func (physicsColliderManager) GetecsContainerPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2f, error) {
 	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetWorldPaddedAABB(e, ecsContainer)
 }
 
@@ -59,15 +59,15 @@ func (physicsColliderManager) GetShapes(e common.EntityId, ecsContainer *ECSCont
 	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetShapes(e, ecsContainer)
 }
 
-func (physicsColliderManager) GetLocalAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+func (physicsColliderManager) GetLocalAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2f, error) {
 	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetLocalAABB(e, ecsContainer)
 }
 
-func (physicsColliderManager) GetLocalPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+func (physicsColliderManager) GetLocalPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2f, error) {
 	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetLocalPaddedAABB(e, ecsContainer)
 }
 
-func (physicsColliderManager) GetCenter(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2, error) {
+func (physicsColliderManager) GetCenter(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2f, error) {
 	return ecsContainer.PhysicsColliderManager.BaseColliderManager.GetCenter(e, ecsContainer)
 }
 

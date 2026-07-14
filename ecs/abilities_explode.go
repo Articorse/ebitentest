@@ -97,7 +97,7 @@ func ExplodeAbility(
 	}
 	hurtShapes := make([]shapes.Shape, len(explodeParams.Radii))
 	for i := range explodeParams.Radii {
-		hs, err := shapes.NewCircleShape(explodeParams.Radii[i], utils.Vec2{})
+		hs, err := shapes.NewCircleShape(explodeParams.Radii[i], utils.Vec2f{})
 		if err != nil {
 			return fmt.Errorf("error creating hurtbox shape for explode ability: %v", err)
 		}

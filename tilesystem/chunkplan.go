@@ -11,10 +11,10 @@ import (
 func (cc *ChunkContainer) ComputeChunkSets(
 	ecsCont *ecs.ECSContainer,
 ) (
-	required map[utils.CellKey]struct{},
-	toBeAdded []utils.CellKey,
-	toBeRemoved []utils.CellKey,
-	priority map[utils.CellKey]int,
+	required map[utils.Vec2i]struct{},
+	toBeAdded []utils.Vec2i,
+	toBeRemoved []utils.Vec2i,
+	priority map[utils.Vec2i]int,
 	err error,
 ) {
 	required, priority, berr := buildRequiredAndPriority(ecsCont)
@@ -49,15 +49,15 @@ func (cc *ChunkContainer) ComputeChunkSets(
 }
 
 func buildRequiredAndPriority(ecsCont *ecs.ECSContainer) (
-	required map[utils.CellKey]struct{},
-	priority map[utils.CellKey]int,
+	required map[utils.Vec2i]struct{},
+	priority map[utils.Vec2i]int,
 	err error,
 ) {
 	tm := ecsCont.TransformManager
 	clm := ecsCont.ChunkLoaderManager
 
-	required = make(map[utils.CellKey]struct{})
-	priority = make(map[utils.CellKey]int)
+	required = make(map[utils.Vec2i]struct{})
+	priority = make(map[utils.Vec2i]int)
 	loaders := ecsCont.ChunkLoaders.GetEntities()
 
 	for _, eId := range loaders {
@@ -77,7 +77,7 @@ func buildRequiredAndPriority(ecsCont *ecs.ECSContainer) (
 
 		for dy := -radius; dy <= radius; dy++ {
 			for dx := -radius; dx <= radius; dx++ {
-				pos := utils.CellKey{X: center.X + dx, Y: center.Y + dy}
+				pos := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
 				required[pos] = struct{}{}
 
 				d := dx*dx + dy*dy

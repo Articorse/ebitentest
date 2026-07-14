@@ -13,7 +13,7 @@ import (
 
 type ImageAsset struct {
 	Frames       []*ebiten.Image
-	FrameSize    utils.Vec2
+	FrameSize    utils.Vec2f
 	LayerYOffset uint16
 }
 

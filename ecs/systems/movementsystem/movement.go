@@ -37,7 +37,7 @@ func Tick(ecsContainer *ecs.ECSContainer) error {
 		cos := math.Cos(localRot)
 		sin := math.Sin(localRot)
 
-		movementVector := utils.Vec2{
+		movementVector := utils.Vec2f{
 			X: (localVelVec.X*cos - localVelVec.Y*sin),
 			Y: (localVelVec.X*sin + localVelVec.Y*cos),
 		}
@@ -52,7 +52,7 @@ func Tick(ecsContainer *ecs.ECSContainer) error {
 		}
 
 		if localVelVec.Length() < data.VelocityThreshold {
-			err = vm.SetLocalVector(e, utils.Vec2{X: 0, Y: 0}, ecsContainer)
+			err = vm.SetLocalVector(e, utils.Vec2f{X: 0, Y: 0}, ecsContainer)
 			if err != nil {
 				return fmt.Errorf("error setting local velocity vector of entity %d: %v", e, err)
 			}

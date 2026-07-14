@@ -92,23 +92,23 @@ func HumanInputSource(
 		mXint, mYint := ebiten.CursorPosition()
 		mX = float64(mXint) + ecsContainer.Camera.X
 		mY = float64(mYint) + ecsContainer.Camera.Y
-		is.FacingDir = utils.Vec2{X: float64(mX), Y: float64(mY)}
+		is.FacingDir = utils.Vec2f{X: float64(mX), Y: float64(mY)}
 
 	case Facing_Analog2:
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", e, err)
 			break
 		}
-		mVec := utils.Vec2{X: is.Analog2X, Y: is.Analog2Y}
+		mVec := utils.Vec2f{X: is.Analog2X, Y: is.Analog2Y}
 		if mVec.Length() > data.GamepadAimDeadzone {
-			err = im.SetLastFacingDir(e, utils.Vec2{X: is.Analog2X, Y: is.Analog2Y}, ecsContainer)
+			err = im.SetLastFacingDir(e, utils.Vec2f{X: is.Analog2X, Y: is.Analog2Y}, ecsContainer)
 			if err != nil {
 				log.Printf("Error setting last facing direction for entity %d: %v\n", e, err)
 			}
 		}
 		mX = lastFacingDir.X + worldPos.X
 		mY = lastFacingDir.Y + worldPos.Y
-		is.FacingDir = utils.Vec2{X: mX, Y: mY}
+		is.FacingDir = utils.Vec2f{X: mX, Y: mY}
 
 	default:
 		log.Printf("Unknown facing input %d for entity %d\n", facingInput, e)

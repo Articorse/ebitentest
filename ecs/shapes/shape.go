@@ -19,16 +19,16 @@ type ShapeParams interface {
 }
 
 type Shape interface {
-	GetAABB() [2]utils.Vec2
-	GetOffset() utils.Vec2
+	GetAABB() [2]utils.Vec2f
+	GetOffset() utils.Vec2f
 	Copy() Shape
-	GetRandomPoint(r *rand.Rand) utils.Vec2
-	GetRandomPointAroundShape(r *rand.Rand) utils.Vec2
+	GetRandomPoint(r *rand.Rand) utils.Vec2f
+	GetRandomPointAroundShape(r *rand.Rand) utils.Vec2f
 }
 
-func CalculateCenter(colShapes []Shape) utils.Vec2 {
+func CalculateCenter(colShapes []Shape) utils.Vec2f {
 	if len(colShapes) == 0 {
-		return utils.Vec2{X: 0, Y: 0}
+		return utils.Vec2f{X: 0, Y: 0}
 	}
 
 	var minX, minY, maxX, maxY float64
@@ -52,7 +52,7 @@ func CalculateCenter(colShapes []Shape) utils.Vec2 {
 		}
 	}
 
-	return utils.Vec2{X: (minX + maxX) / 2, Y: (minY + maxY) / 2}
+	return utils.Vec2f{X: (minX + maxX) / 2, Y: (minY + maxY) / 2}
 }
 
 type ShapeDto struct {

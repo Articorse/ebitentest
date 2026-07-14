@@ -25,7 +25,7 @@ type InputState struct {
 	OffHandEqAbility2  float64
 	Ability1           float64
 	Ability2           float64
-	FacingDir          utils.Vec2
+	FacingDir          utils.Vec2f
 }
 
 func NewInputComponent(config map[InputType]InputKey, inputType InputTypeEnum, params InputParams, facingInput FacingInputEnum) *input {
@@ -73,16 +73,16 @@ func (*inputManager) GetFacingInput(e common.EntityId, ecsContainer *ECSContaine
 	return inComp.facingInput, nil
 }
 
-func (*inputManager) GetLastFacingDir(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2, error) {
+func (*inputManager) GetLastFacingDir(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2f, error) {
 	inComp, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("could not get input of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("could not get input of entity %d: %v", e, err)
 	}
 
 	return inComp.lastFacingDir, nil
 }
 
-func (*inputManager) SetLastFacingDir(e common.EntityId, facingDir utils.Vec2, ecsContainer *ECSContainer) error {
+func (*inputManager) SetLastFacingDir(e common.EntityId, facingDir utils.Vec2f, ecsContainer *ECSContainer) error {
 	inComp, err := ecsContainer.Inputs.getComponent(e)
 	if err != nil {
 		return fmt.Errorf("could not get input of entity %d: %v", e, err)

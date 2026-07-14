@@ -5,7 +5,7 @@ import (
 )
 
 type velocity struct {
-	vector       utils.Vec2
+	vector       utils.Vec2f
 	acceleration float64
 	drag         float64
 }
@@ -21,7 +21,7 @@ func (x velocity) Copy() velocity {
 }
 
 type velocityDto struct {
-	Vector       utils.Vec2
+	Vector       utils.Vec2f
 	Acceleration float64
 	Drag         float64
 }

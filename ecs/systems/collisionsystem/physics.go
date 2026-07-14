@@ -110,7 +110,7 @@ func ResolvePhysicsCollisions(
 					continue
 				}
 
-				var staLocalVelVec utils.Vec2
+				var staLocalVelVec utils.Vec2f
 				if ecsContainer.Velocities.HasComponent(staE) {
 					staLocalVelVec, err = vm.GetLocalVector(staE, ecsContainer)
 					if err != nil {

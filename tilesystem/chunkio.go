@@ -20,17 +20,17 @@ type chunkLoadMeta struct {
 }
 
 type loadRequest struct {
-	pos utils.CellKey
+	pos utils.Vec2i
 	seq uint64
 }
 
 type saveRequest struct {
-	pos   utils.CellKey
+	pos   utils.Vec2i
 	chunk chunkDto
 }
 
 type loadResult struct {
-	pos   utils.CellKey
+	pos   utils.Vec2i
 	seq   uint64
 	chunk *chunk
 	ents  map[common.EntityId][]ecs.ComponentDto
@@ -38,7 +38,7 @@ type loadResult struct {
 }
 
 type saveResult struct {
-	pos utils.CellKey
+	pos utils.Vec2i
 	err error
 }
 
@@ -158,7 +158,7 @@ func (cc *ChunkContainer) enqueueLoadRequest(req loadRequest) bool {
 	}
 }
 
-func (cc *ChunkContainer) getOrCreateMeta(pos utils.CellKey) *chunkLoadMeta {
+func (cc *ChunkContainer) getOrCreateMeta(pos utils.Vec2i) *chunkLoadMeta {
 	meta, ok := cc.chunkMeta[pos]
 	if ok {
 		return meta

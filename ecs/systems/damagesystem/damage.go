@@ -69,7 +69,7 @@ func DealContactDamage(
 				continue
 			}
 
-			var dmgVelVector utils.Vec2
+			var dmgVelVector utils.Vec2f
 			if ecsCont.Velocities.HasComponent(dmgE) {
 				dmgVelVector, err = vm.GetWorldVector(dmgE, ecsCont)
 				if err != nil {
@@ -115,8 +115,8 @@ func DealContactDamage(
 			}
 
 			ftTraComp := ecs.NewTransformComponent(hitWorldPos, 1, 0)
-			ftFtComp := ecs.NewFloatingTextComponent(fmt.Sprintf("%d", damageTiers[shapeIdx]), utils.Vec2{}, 12, color.RGBA{R: 255, G: 0, B: 255, A: 255})
-			ftVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 0, Y: -1}, 1, 1)
+			ftFtComp := ecs.NewFloatingTextComponent(fmt.Sprintf("%d", damageTiers[shapeIdx]), utils.Vec2f{}, 12, color.RGBA{R: 255, G: 0, B: 255, A: 255})
+			ftVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{X: 0, Y: -1}, 1, 1)
 			ftTimerComp, err := ecs.NewTimerComponent(1000, 1, ecs.TimerFunc_Selfdestruct)
 			if err != nil {
 				log.Fatal("error creating floating text timer component: ", err)

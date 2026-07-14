@@ -34,7 +34,7 @@ func (platformColliderManager) SetEnabled(e common.EntityId, enabled bool, ecsCo
 	return platformColliderManager{}.BaseColliderManager.SetEnabled(e, enabled, ecsContainer)
 }
 
-func (platformColliderManager) GetecsContainerPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+func (platformColliderManager) GetecsContainerPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2f, error) {
 	return platformColliderManager{}.BaseColliderManager.GetWorldPaddedAABB(e, ecsContainer)
 }
 
@@ -42,15 +42,15 @@ func (platformColliderManager) GetShapes(e common.EntityId, ecsContainer *ECSCon
 	return platformColliderManager{}.BaseColliderManager.GetShapes(e, ecsContainer)
 }
 
-func (platformColliderManager) GetLocalAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+func (platformColliderManager) GetLocalAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2f, error) {
 	return platformColliderManager{}.BaseColliderManager.GetLocalAABB(e, ecsContainer)
 }
 
-func (platformColliderManager) GetLocalPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2, error) {
+func (platformColliderManager) GetLocalPaddedAABB(e common.EntityId, ecsContainer *ECSContainer) ([2]utils.Vec2f, error) {
 	return platformColliderManager{}.BaseColliderManager.GetLocalPaddedAABB(e, ecsContainer)
 }
 
-func (platformColliderManager) GetCenter(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2, error) {
+func (platformColliderManager) GetCenter(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2f, error) {
 	return platformColliderManager{}.BaseColliderManager.GetCenter(e, ecsContainer)
 }
 

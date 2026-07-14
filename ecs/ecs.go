@@ -19,7 +19,7 @@ type ECSContainer struct {
 	scheduledForDeletion []common.EntityId
 
 	InputLog     map[uint64]map[common.EntityId]InputState
-	Camera       utils.Vec2
+	Camera       utils.Vec2f
 	CameraFollow bool
 
 	Rng       *rand.Rand
@@ -248,7 +248,7 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 			return false
 		})
 
-		maps.DeleteFunc(x.TickState.CollisionGrid, func(k utils.CellKey, v []common.EntityId) bool {
+		maps.DeleteFunc(x.TickState.CollisionGrid, func(k utils.Vec2i, v []common.EntityId) bool {
 			for _, vE := range v {
 				if vE == e {
 					return true

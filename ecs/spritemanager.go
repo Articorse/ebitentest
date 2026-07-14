@@ -130,10 +130,10 @@ func (*spriteManager) SetSubImageIdx(
 func (*spriteManager) GetLocalOffsetPos(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) (utils.Vec2, error) {
+) (utils.Vec2f, error) {
 	sprite, err := ecsContainer.Sprites.getComponent(e)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	return sprite.offsetPos, nil
@@ -145,28 +145,28 @@ func (*spriteManager) GetLocalOffsetPos(
 func (*spriteManager) GetWorldOffsetPos(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) (utils.Vec2, error) {
+) (utils.Vec2f, error) {
 	sprComp, err := ecsContainer.Sprites.getComponent(e)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
 	tm := transformManager{}
 
 	pWorldPos, err := tm.GetWorldPos(e, ecsContainer)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
 
 	pWorldRot, err := tm.GetWorldRotation(e, ecsContainer)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
 	}
 
 	cos := math.Cos(pWorldRot)
 	sin := math.Sin(pWorldRot)
 
-	return utils.Vec2{
+	return utils.Vec2f{
 		X: pWorldPos.X + (sprComp.offsetPos.X*cos - sprComp.offsetPos.Y*sin),
 		Y: pWorldPos.Y + (sprComp.offsetPos.X*sin + sprComp.offsetPos.Y*cos),
 	}, nil
@@ -306,7 +306,7 @@ func (*spriteManager) GetLayer(
 
 func (*spriteManager) SetLocalOffsetPos(
 	e common.EntityId,
-	offset utils.Vec2,
+	offset utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
 	sprite, err := ecsContainer.Sprites.getComponent(e)

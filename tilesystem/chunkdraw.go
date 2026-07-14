@@ -10,7 +10,7 @@ import (
 
 func DrawChunks(
 	screen *ebiten.Image,
-	camera utils.Vec2,
+	camera utils.Vec2f,
 	chunkCont *ChunkContainer,
 ) error {
 	for ck, c := range chunkCont.chunks {

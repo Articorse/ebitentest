@@ -1,6 +1,6 @@
 package utils
 
-func DetectAABBCollision(a, b [2]Vec2) bool {
+func DetectAABBCollision(a, b [2]Vec2f) bool {
 	minAx := a[0].X
 	minAy := a[0].Y
 	maxAx := a[0].X
@@ -42,7 +42,7 @@ func DetectAABBCollision(a, b [2]Vec2) bool {
 	return minAx <= maxBx && maxAx >= minBx && minAy <= maxBy && maxAy >= minBy
 }
 
-func PointInAABB(p Vec2, aabb [2]Vec2) bool {
+func PointInAABB(p Vec2f, aabb [2]Vec2f) bool {
 	minAx := aabb[0].X
 	minAy := aabb[0].Y
 	maxAx := aabb[0].X

@@ -10,7 +10,7 @@ import (
 
 type chunk struct {
 	tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
-	promotedTiles map[utils.CellKey]promotedTile
+	promotedTiles map[utils.Vec2i]promotedTile
 
 	Image *ebiten.Image
 }
@@ -22,11 +22,11 @@ type chunkMeta struct {
 	retryAtTick  uint64
 }
 
-func (cc *ChunkContainer) newChunkData(pos utils.CellKey) (*chunk, error) {
+func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
 	r := rand.NewPCG(data.RngSeed1+uint64(pos.X), data.RngSeed2+uint64(pos.Y))
 
 	c := chunk{}
-	c.promotedTiles = make(map[utils.CellKey]promotedTile)
+	c.promotedTiles = make(map[utils.Vec2i]promotedTile)
 
 	for y := range data.ChunkSize {
 		for x := range data.ChunkSize {
@@ -38,7 +38,7 @@ func (cc *ChunkContainer) newChunkData(pos utils.CellKey) (*chunk, error) {
 	return &c, nil
 }
 
-func (x *chunk) getTileDefId(cellKey utils.CellKey) data.TileEnum {
+func (x *chunk) getTileDefId(cellKey utils.Vec2i) data.TileEnum {
 	localX := ((cellKey.X % data.ChunkSize) + data.ChunkSize) % data.ChunkSize
 	localY := ((cellKey.Y % data.ChunkSize) + data.ChunkSize) % data.ChunkSize
 	idx := localY*data.ChunkSize + localX
@@ -49,6 +49,6 @@ func (x *chunk) getTileDefId(cellKey utils.CellKey) data.TileEnum {
 	return x.tiles[idx]
 }
 
-func (x *chunk) getPromotedTiles() map[utils.CellKey]promotedTile {
+func (x *chunk) getPromotedTiles() map[utils.Vec2i]promotedTile {
 	return x.promotedTiles
 }

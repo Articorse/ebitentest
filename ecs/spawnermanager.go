@@ -11,7 +11,7 @@ import (
 type spawnerManager struct{}
 
 func NewSpawnerComponent(
-	offset utils.Vec2,
+	offset utils.Vec2f,
 	sType SpawnerType,
 	shape shapes.Shape,
 	components ...Component,
@@ -70,13 +70,13 @@ func (*spawnerManager) Spawn(
 		return -1, fmt.Errorf("error getting shape of spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	var finalOffset utils.Vec2
+	var finalOffset utils.Vec2f
 	switch sType {
 	case SpawnerType_Point:
 		cos := math.Cos(worldRot)
 		sin := math.Sin(worldRot)
 
-		rotatedOffset := utils.Vec2{
+		rotatedOffset := utils.Vec2f{
 			X: (spawnerOffset.X*cos - spawnerOffset.Y*sin),
 			Y: (spawnerOffset.X*sin + spawnerOffset.Y*cos),
 		}
@@ -106,10 +106,10 @@ func (*spawnerManager) Spawn(
 func (*spawnerManager) GetOffset(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) (utils.Vec2, error) {
+) (utils.Vec2f, error) {
 	spawnerComp, err := ecsContainer.Spawners.getComponent(e)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("could not get spawner of entity %d: %v", e, err)
 	}
 
 	return spawnerComp.offset, nil

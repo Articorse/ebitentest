@@ -15,7 +15,7 @@ const (
 )
 
 type spawner struct {
-	offset      utils.Vec2
+	offset      utils.Vec2f
 	spawnerType SpawnerType
 	shape       shapes.Shape
 	components  []Component
@@ -41,7 +41,7 @@ func (x spawner) Copy() spawner {
 }
 
 type spawnerDto struct {
-	Offset      utils.Vec2
+	Offset      utils.Vec2f
 	SpawnerType SpawnerType
 	Shape       shapes.ShapeDto
 	Components  []ComponentDto

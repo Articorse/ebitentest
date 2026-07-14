@@ -15,7 +15,7 @@ func NewDefaultVelocityComponent() *velocity {
 }
 
 func NewVelocityComponentWithParams(
-	vector utils.Vec2,
+	vector utils.Vec2f,
 	acceleration float64,
 	drag float64,
 ) *velocity {
@@ -25,10 +25,10 @@ func NewVelocityComponentWithParams(
 func (*velocityManager) GetLocalVector(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) (utils.Vec2, error) {
+) (utils.Vec2f, error) {
 	velComp, err := ecsContainer.Velocities.getComponent(e)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
 
 	return velComp.vector, nil
@@ -37,36 +37,36 @@ func (*velocityManager) GetLocalVector(
 func (*velocityManager) GetWorldVector(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) (utils.Vec2, error) {
+) (utils.Vec2f, error) {
 	pm := parentManager{}
 	tm := transformManager{}
 	vm := velocityManager{}
 
 	velComp, err := ecsContainer.Velocities.getComponent(e)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
 
-	parVelVectorOffset := utils.Vec2{}
+	parVelVectorOffset := utils.Vec2f{}
 
 	parEntity := pm.GetEntity(e, ecsContainer)
 	if parEntity != -1 {
 		var err error
 		parVelVectorOffset, err = vm.GetWorldVector(parEntity, ecsContainer)
 		if err != nil {
-			return utils.Vec2{}, fmt.Errorf("error getting world velocity vector of parent entity %d: %v", parEntity, err)
+			return utils.Vec2f{}, fmt.Errorf("error getting world velocity vector of parent entity %d: %v", parEntity, err)
 		}
 	}
 
 	worldRot, err := tm.GetWorldRotation(e, ecsContainer)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world rotation of entity %d: %v", parEntity, err)
+		return utils.Vec2f{}, fmt.Errorf("error getting world rotation of entity %d: %v", parEntity, err)
 	}
 
 	cos := math.Cos(worldRot)
 	sin := math.Sin(worldRot)
 
-	return utils.Vec2{
+	return utils.Vec2f{
 		X: parVelVectorOffset.X + (velComp.vector.X*cos - velComp.vector.Y*sin),
 		Y: parVelVectorOffset.Y + (velComp.vector.X*sin + velComp.vector.Y*cos),
 	}, nil
@@ -98,7 +98,7 @@ func (*velocityManager) GetDrag(
 
 func (*velocityManager) AddForce(
 	e common.EntityId,
-	force utils.Vec2,
+	force utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
 	valComp, err := ecsContainer.Velocities.getComponent(e)
@@ -112,7 +112,7 @@ func (*velocityManager) AddForce(
 
 func (*velocityManager) SetLocalVector(
 	e common.EntityId,
-	vector utils.Vec2,
+	vector utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
 	valComp, err := ecsContainer.Velocities.getComponent(e)
@@ -126,7 +126,7 @@ func (*velocityManager) SetLocalVector(
 
 func (*velocityManager) SetWorldVector(
 	e common.EntityId,
-	vector utils.Vec2,
+	vector utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
 	pm := parentManager{}
@@ -157,7 +157,7 @@ func (*velocityManager) SetWorldVector(
 	cos := math.Cos(pWorldRot)
 	sin := math.Sin(pWorldRot)
 
-	velComp.vector = utils.Vec2{
+	velComp.vector = utils.Vec2f{
 		X: (velComp.vector.X*cos - velComp.vector.Y*sin) - pWorldVector.X,
 		Y: (velComp.vector.X*sin + velComp.vector.Y*cos) - pWorldVector.Y,
 	}

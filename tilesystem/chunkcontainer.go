@@ -10,7 +10,7 @@ import (
 )
 
 type ChunkContainer struct {
-	chunks map[utils.CellKey]*chunk
+	chunks map[utils.Vec2i]*chunk
 	atlas  map[data.TileEnum]tileDef
 
 	saveChunkCh  chan saveRequest
@@ -18,15 +18,15 @@ type ChunkContainer struct {
 	loadResultCh chan loadResult
 	saveResultCh chan saveResult
 
-	chunkMeta map[utils.CellKey]*chunkLoadMeta
+	chunkMeta map[utils.Vec2i]*chunkLoadMeta
 
-	currentTickEIdsInChunks map[utils.CellKey][]common.EntityId
-	pendingEvictEntityIDs   map[utils.CellKey][]common.EntityId
+	currentTickEIdsInChunks map[utils.Vec2i][]common.EntityId
+	pendingEvictEntityIDs   map[utils.Vec2i][]common.EntityId
 }
 
 func NewChunkContainer() *ChunkContainer {
 	cc := &ChunkContainer{
-		chunks: make(map[utils.CellKey]*chunk),
+		chunks: make(map[utils.Vec2i]*chunk),
 
 		saveChunkCh: make(chan saveRequest, 128),
 		// Unbuffered on purpose: prevents stale load backlog when chunkloader moves quickly and remains deterministic.
@@ -34,8 +34,8 @@ func NewChunkContainer() *ChunkContainer {
 		loadResultCh: make(chan loadResult, 1024),
 		saveResultCh: make(chan saveResult, 128),
 
-		chunkMeta:             make(map[utils.CellKey]*chunkLoadMeta),
-		pendingEvictEntityIDs: make(map[utils.CellKey][]common.EntityId),
+		chunkMeta:             make(map[utils.Vec2i]*chunkLoadMeta),
+		pendingEvictEntityIDs: make(map[utils.Vec2i][]common.EntityId),
 	}
 
 	cc.StartIOThreads()

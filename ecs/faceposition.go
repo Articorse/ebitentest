@@ -4,7 +4,7 @@ import "ebittest/utils"
 
 type facePosition struct {
 	enabled bool
-	pos     utils.Vec2
+	pos     utils.Vec2f
 }
 
 func (facePosition) isComponent() {}
@@ -18,7 +18,7 @@ func (x facePosition) Copy() facePosition {
 
 type facePositionDto struct {
 	Enabled bool
-	Pos     utils.Vec2
+	Pos     utils.Vec2f
 }
 
 func (facePositionDto) isComponentDto() {}

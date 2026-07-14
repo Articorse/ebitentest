@@ -12,11 +12,11 @@ import (
 
 // calculateCentroid calculates the centroid of a PolygonShape.
 // This is for testing purposes and assumes the polygon is valid.
-func calculateCentroid(p *shapes.PolygonShape) utils.Vec2 {
+func calculateCentroid(p *shapes.PolygonShape) utils.Vec2f {
 	if len(p.GetVertices()) == 0 {
-		return utils.Vec2{}
+		return utils.Vec2f{}
 	}
-	sum := utils.Vec2{}
+	sum := utils.Vec2f{}
 	for _, v := range p.GetVertices() {
 		sum = sum.Add(v)
 	}
@@ -25,22 +25,22 @@ func calculateCentroid(p *shapes.PolygonShape) utils.Vec2 {
 
 func TestGetRandomPoint_DegeneratePolygon(t *testing.T) {
 	// Test polygon with less than 3 vertices
-	degenerateVertices := []utils.Vec2{{X: 0, Y: 0}, {X: 1, Y: 0}}
-	p, _ := shapes.NewPolygonShape(degenerateVertices, utils.Vec2{})
+	degenerateVertices := []utils.Vec2f{{X: 0, Y: 0}, {X: 1, Y: 0}}
+	p, _ := shapes.NewPolygonShape(degenerateVertices, utils.Vec2f{})
 	if p != nil {
-		if got := p.GetRandomPoint(rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), rand.Uint64()))); got != (utils.Vec2{}) {
-			t.Errorf("GetRandomPoint() for degenerate polygon (2 vertices) = %v, want %v", got, utils.Vec2{})
+		if got := p.GetRandomPoint(rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), rand.Uint64()))); got != (utils.Vec2f{}) {
+			t.Errorf("GetRandomPoint() for degenerate polygon (2 vertices) = %v, want %v", got, utils.Vec2f{})
 		}
 	} else {
 		t.Logf("NewPolygonShape correctly returned nil for 2 vertices.")
 	}
 
 	// Test polygon with zero area (e.g., collinear vertices)
-	collinearVertices := []utils.Vec2{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 2, Y: 0}}
-	pCollinear, _ := shapes.NewPolygonShape(collinearVertices, utils.Vec2{})
+	collinearVertices := []utils.Vec2f{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 2, Y: 0}}
+	pCollinear, _ := shapes.NewPolygonShape(collinearVertices, utils.Vec2f{})
 	if pCollinear != nil {
-		if got := pCollinear.GetRandomPoint(rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), rand.Uint64()))); got != (utils.Vec2{}) {
-			t.Errorf("GetRandomPoint() for zero-area polygon = %v, want %v", got, utils.Vec2{})
+		if got := pCollinear.GetRandomPoint(rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), rand.Uint64()))); got != (utils.Vec2f{}) {
+			t.Errorf("GetRandomPoint() for zero-area polygon = %v, want %v", got, utils.Vec2f{})
 		}
 	} else {
 		t.Logf("NewPolygonShape correctly returned nil for collinear vertices (zero area).")
@@ -48,8 +48,8 @@ func TestGetRandomPoint_DegeneratePolygon(t *testing.T) {
 }
 
 func TestGetRandomPoint_Triangle(t *testing.T) {
-	vertices := []utils.Vec2{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 5, Y: 10}}
-	offset := utils.Vec2{X: 1, Y: 1}
+	vertices := []utils.Vec2f{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 5, Y: 10}}
+	offset := utils.Vec2f{X: 1, Y: 1}
 	p, err := shapes.NewPolygonShape(vertices, offset)
 	if err != nil {
 		t.Fatalf("Failed to create polygon: %v", err)
@@ -69,8 +69,8 @@ func TestGetRandomPoint_Triangle(t *testing.T) {
 }
 
 func TestGetRandomPoint_RectanglePolygon(t *testing.T) {
-	vertices := []utils.Vec2{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 10, Y: 10}, {X: 0, Y: 10}}
-	offset := utils.Vec2{X: 5, Y: 5}
+	vertices := []utils.Vec2f{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 10, Y: 10}, {X: 0, Y: 10}}
+	offset := utils.Vec2f{X: 5, Y: 5}
 	p, err := shapes.NewPolygonShape(vertices, offset)
 	if err != nil {
 		t.Fatalf("Failed to create polygon: %v", err)
@@ -90,8 +90,8 @@ func TestGetRandomPoint_RectanglePolygon(t *testing.T) {
 }
 
 func TestGetRandomPoint_WithOffset(t *testing.T) {
-	vertices := []utils.Vec2{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 5, Y: 10}}
-	offset := utils.Vec2{X: 100, Y: 200}
+	vertices := []utils.Vec2f{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 5, Y: 10}}
+	offset := utils.Vec2f{X: 100, Y: 200}
 	p, err := shapes.NewPolygonShape(vertices, offset)
 	if err != nil {
 		t.Fatalf("Failed to create polygon: %v", err)
@@ -111,8 +111,8 @@ func TestGetRandomPoint_WithOffset(t *testing.T) {
 }
 
 func TestGetRandomPoint_UniformDistribution_CentroidApprox(t *testing.T) {
-	vertices := []utils.Vec2{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 10, Y: 10}, {X: 0, Y: 10}}
-	p, err := shapes.NewPolygonShape(vertices, utils.Vec2{})
+	vertices := []utils.Vec2f{{X: 0, Y: 0}, {X: 10, Y: 0}, {X: 10, Y: 10}, {X: 0, Y: 10}}
+	p, err := shapes.NewPolygonShape(vertices, utils.Vec2f{})
 	if err != nil {
 		t.Fatalf("Failed to create polygon: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestGetRandomPoint_UniformDistribution_CentroidApprox(t *testing.T) {
 
 	rng := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), rand.Uint64()))
 	numPoints := 100000 // Large number of points for approximation
-	sumPoints := utils.Vec2{}
+	sumPoints := utils.Vec2f{}
 
 	for range numPoints {
 		sumPoints = sumPoints.Add(p.GetRandomPoint(rng))

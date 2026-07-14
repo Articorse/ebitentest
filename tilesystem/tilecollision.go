@@ -12,7 +12,7 @@ import (
 )
 
 func ResolveTileCollisions(
-	collisions map[common.EntityId]utils.Vec2,
+	collisions map[common.EntityId]utils.Vec2f,
 	ecsContainer *ecs.ECSContainer,
 ) (collisionsResolved uint64, err error) {
 	tm := ecsContainer.TransformManager
@@ -52,11 +52,11 @@ func ResolveTileCollisions(
 }
 
 func GetCollisions(
-	potentialCollisions map[common.EntityId][]utils.CellKey,
+	potentialCollisions map[common.EntityId][]utils.Vec2i,
 	ecsContainer *ecs.ECSContainer,
-) (map[common.EntityId]utils.Vec2, error) {
+) (map[common.EntityId]utils.Vec2f, error) {
 	pcm := ecsContainer.PhysicsColliderManager
-	collisions := make(map[common.EntityId]utils.Vec2)
+	collisions := make(map[common.EntityId]utils.Vec2f)
 
 	for e, colTiles := range potentialCollisions {
 		for _, t := range colTiles {
@@ -69,7 +69,7 @@ func GetCollisions(
 			tShape, err := shapes.NewRectangleShape(
 				data.TileSize,
 				data.TileSize,
-				utils.Vec2{
+				utils.Vec2f{
 					X: float64(t.X) * data.TileSize,
 					Y: float64(t.Y) * data.TileSize,
 				},
@@ -80,7 +80,7 @@ func GetCollisions(
 			}
 
 			collisionFound := false
-			var collisionVector utils.Vec2
+			var collisionVector utils.Vec2f
 			for _, eColShape := range eColShapes {
 				if collisionFound {
 					break
@@ -117,11 +117,11 @@ func GetCollisions(
 }
 
 func GetAABBCollisions(
-	potentialCollisions map[common.EntityId][]utils.CellKey,
+	potentialCollisions map[common.EntityId][]utils.Vec2i,
 	ecsContainer *ecs.ECSContainer,
-) (map[common.EntityId][]utils.CellKey, error) {
+) (map[common.EntityId][]utils.Vec2i, error) {
 	pcm := ecsContainer.PhysicsColliderManager
-	collisions := make(map[common.EntityId][]utils.CellKey)
+	collisions := make(map[common.EntityId][]utils.Vec2i)
 
 	for e, colTiles := range potentialCollisions {
 		for _, t := range colTiles {
@@ -155,12 +155,12 @@ func GetAABBCollisions(
 				continue
 			}
 
-			tAABB := [2]utils.Vec2{
-				utils.Vec2{
+			tAABB := [2]utils.Vec2f{
+				utils.Vec2f{
 					X: float64(t.X) * data.TileSize,
 					Y: float64(t.Y) * data.TileSize,
 				},
-				utils.Vec2{
+				utils.Vec2f{
 					X: float64(t.X+1) * data.TileSize,
 					Y: float64(t.Y+1) * data.TileSize,
 				},
@@ -178,9 +178,9 @@ func GetAABBCollisions(
 func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 	ecsContainer *ecs.ECSContainer,
 	tileSize int,
-) (potentialCollisions map[common.EntityId][]utils.CellKey, err error) {
+) (potentialCollisions map[common.EntityId][]utils.Vec2i, err error) {
 	pcm := ecsContainer.PhysicsColliderManager
-	potentialCollisions = make(map[common.EntityId][]utils.CellKey)
+	potentialCollisions = make(map[common.EntityId][]utils.Vec2i)
 
 	for _, e := range ecsContainer.Transforms.GetEntities() {
 		if !pcm.HasCollider(e, ecsContainer) {
@@ -210,9 +210,9 @@ func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 
 		for tx := minTileX; tx <= maxTileX; tx++ {
 			for ty := minTileY; ty <= maxTileY; ty++ {
-				worldTilePos := utils.CellKey{X: tx, Y: ty}
-				chunkGridPos := utils.WorldPosToChunkGridPos(utils.Vec2{X: float64(worldTilePos.X * tileSize), Y: float64(worldTilePos.Y * tileSize)})
-				localTilePos := utils.CellKey{
+				worldTilePos := utils.Vec2i{X: tx, Y: ty}
+				chunkGridPos := utils.WorldPosToChunkGridPos(utils.Vec2f{X: float64(worldTilePos.X * tileSize), Y: float64(worldTilePos.Y * tileSize)})
+				localTilePos := utils.Vec2i{
 					X: ((worldTilePos.X % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
 					Y: ((worldTilePos.Y % int(data.ChunkSize)) + int(data.ChunkSize)) % int(data.ChunkSize),
 				}

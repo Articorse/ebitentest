@@ -69,7 +69,7 @@ func (*parentManager) Attach(
 	cos := math.Cos(pTraComp.rotation)
 	sin := math.Sin(pTraComp.rotation)
 
-	traComp.pos = utils.Vec2{
+	traComp.pos = utils.Vec2f{
 		X: (traComp.pos.X*cos - traComp.pos.Y*sin) - pWorldPos.X,
 		Y: (traComp.pos.X*sin + traComp.pos.Y*cos) - pWorldPos.Y,
 	}
@@ -113,7 +113,7 @@ func (*parentManager) Detach(
 	cos := math.Cos(pWorldRot)
 	sin := math.Sin(pWorldRot)
 
-	traComp.pos = utils.Vec2{
+	traComp.pos = utils.Vec2f{
 		X: pWorldPos.X + (traComp.pos.X*cos - traComp.pos.Y*sin),
 		Y: pWorldPos.Y + (traComp.pos.X*sin + traComp.pos.Y*cos),
 	}

@@ -7,21 +7,21 @@ import (
 )
 
 type triangle struct {
-	v1, v2, v3 utils.Vec2
+	v1, v2, v3 utils.Vec2f
 	area       float64
 }
 
 // PolygonShape represents a convex polygon defined by its vertices.
 type PolygonShape struct {
-	vertices []utils.Vec2
-	offset   utils.Vec2
-	aabb     [2]utils.Vec2
+	vertices []utils.Vec2f
+	offset   utils.Vec2f
+	aabb     [2]utils.Vec2f
 
 	cachedTriangles []triangle
 	cachedTotalArea float64
 }
 
-func NewPolygonShape(v []utils.Vec2, o utils.Vec2) (*PolygonShape, error) {
+func NewPolygonShape(v []utils.Vec2f, o utils.Vec2f) (*PolygonShape, error) {
 	if len(v) < 3 {
 		return nil, nil
 	}
@@ -35,7 +35,7 @@ func NewPolygonShape(v []utils.Vec2, o utils.Vec2) (*PolygonShape, error) {
 		maxY = math.Max(maxY, vert.Y)
 	}
 
-	aabb := [2]utils.Vec2{{X: minX + o.X, Y: minY + o.Y}, {X: maxX + o.X, Y: maxY + o.Y}}
+	aabb := [2]utils.Vec2f{{X: minX + o.X, Y: minY + o.Y}, {X: maxX + o.X, Y: maxY + o.Y}}
 
 	p := &PolygonShape{
 		vertices: v,
@@ -67,7 +67,7 @@ func NewPolygonShape(v []utils.Vec2, o utils.Vec2) (*PolygonShape, error) {
 }
 
 func (x *PolygonShape) Copy() Shape {
-	verticesCopy := make([]utils.Vec2, len(x.vertices))
+	verticesCopy := make([]utils.Vec2f, len(x.vertices))
 	copy(verticesCopy, x.vertices)
 
 	cachedTrianglesCopy := make([]triangle, len(x.cachedTriangles))
@@ -82,23 +82,23 @@ func (x *PolygonShape) Copy() Shape {
 	}
 }
 
-func (x *PolygonShape) GetVertices() []utils.Vec2 {
+func (x *PolygonShape) GetVertices() []utils.Vec2f {
 	return x.vertices
 }
 
-func (x *PolygonShape) GetOffset() utils.Vec2 {
+func (x *PolygonShape) GetOffset() utils.Vec2f {
 	return x.offset
 }
 
-func (x *PolygonShape) GetAABB() [2]utils.Vec2 {
+func (x *PolygonShape) GetAABB() [2]utils.Vec2f {
 	return x.aabb
 }
 
 // This implementation uses barycentric coordinates within a randomly selected triangle
 // to ensure uniform distribution within the convex polygon.
-func (x *PolygonShape) GetRandomPoint(r *rand.Rand) utils.Vec2 {
+func (x *PolygonShape) GetRandomPoint(r *rand.Rand) utils.Vec2f {
 	if len(x.vertices) < 3 || x.cachedTotalArea == 0 {
-		return utils.Vec2{} // Cannot generate a random point for degenerate polygon or zero area
+		return utils.Vec2f{} // Cannot generate a random point for degenerate polygon or zero area
 	}
 
 	// Randomly select a triangle weighted by area
@@ -115,7 +115,7 @@ func (x *PolygonShape) GetRandomPoint(r *rand.Rand) utils.Vec2 {
 
 	// Fallback if no triangle was selected (shouldn't happen with correct logic)
 	if selectedTriangle.area == 0 {
-		return utils.Vec2{}
+		return utils.Vec2f{}
 	}
 
 	s := r.Float64()
@@ -137,9 +137,9 @@ func (x *PolygonShape) GetRandomPoint(r *rand.Rand) utils.Vec2 {
 	return randomPoint.Add(x.offset)
 }
 
-func (x *PolygonShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
+func (x *PolygonShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2f {
 	if len(x.vertices) < 2 {
-		return utils.Vec2{} // Cannot generate a random point for degenerate polygon
+		return utils.Vec2f{} // Cannot generate a random point for degenerate polygon
 	}
 
 	// Calculate the total perimeter length
@@ -151,7 +151,7 @@ func (x *PolygonShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
 	}
 
 	if perimeter == 0 {
-		return utils.Vec2{} // Cannot generate a random point for zero perimeter
+		return utils.Vec2f{} // Cannot generate a random point for zero perimeter
 	}
 
 	// Randomly select a point along the perimeter
@@ -172,12 +172,12 @@ func (x *PolygonShape) GetRandomPointAroundShape(r *rand.Rand) utils.Vec2 {
 		currentLength += edgeLength
 	}
 
-	return utils.Vec2{} // Fallback, should not reach here
+	return utils.Vec2f{} // Fallback, should not reach here
 }
 
 type PolygonParams struct {
-	Vertices []utils.Vec2
-	Offset   utils.Vec2
+	Vertices []utils.Vec2f
+	Offset   utils.Vec2f
 }
 
 func (PolygonParams) isShapeParams() {}

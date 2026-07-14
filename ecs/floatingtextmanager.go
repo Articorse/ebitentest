@@ -8,7 +8,7 @@ import (
 
 type floatingTextManager struct{}
 
-func NewFloatingTextComponent(ptext string, pos utils.Vec2, size float64, color color.RGBA) *floatingText {
+func NewFloatingTextComponent(ptext string, pos utils.Vec2f, size float64, color color.RGBA) *floatingText {
 	return &floatingText{
 		text:   ptext,
 		offset: pos,
@@ -26,10 +26,10 @@ func (floatingTextManager) GetText(e common.EntityId, ecsContainer *ECSContainer
 	return textComp.text, nil
 }
 
-func (floatingTextManager) GetOffset(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2, error) {
+func (floatingTextManager) GetOffset(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2f, error) {
 	textComp, err := ecsContainer.FloatingTexts.getComponent(e)
 	if err != nil {
-		return utils.Vec2{}, err
+		return utils.Vec2f{}, err
 	}
 
 	return textComp.offset, nil

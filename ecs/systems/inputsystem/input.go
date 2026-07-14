@@ -22,7 +22,7 @@ type selfTrigger struct {
 }
 
 func HandleInputs(
-	camera utils.Vec2,
+	camera utils.Vec2f,
 	ecsContainer *ecs.ECSContainer,
 	allInputs map[common.EntityId]ecs.InputState,
 ) error {
@@ -105,7 +105,7 @@ func HandleInputs(
 		if ecsContainer.Velocities.HasComponent(e) {
 			vm := ecsContainer.VelocityManager
 
-			v := utils.Vec2{X: 0, Y: 0}
+			v := utils.Vec2f{X: 0, Y: 0}
 
 			v.X = input.Analog1X
 			v.Y = input.Analog1Y
@@ -144,7 +144,7 @@ func HandleInputs(
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := em.ActivateAbility(e, t.slot, nil, utils.Vec2{}, t.abiIdx, ecsContainer); err != nil {
+				if _, err := em.ActivateAbility(e, t.slot, nil, utils.Vec2f{}, t.abiIdx, ecsContainer); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}
@@ -161,7 +161,7 @@ func HandleInputs(
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := am.ActivateAbility(e, nil, utils.Vec2{}, t.abiIdx, ecsContainer); err != nil {
+				if _, err := am.ActivateAbility(e, nil, utils.Vec2f{}, t.abiIdx, ecsContainer); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}

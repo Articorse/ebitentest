@@ -7,7 +7,7 @@ import (
 
 type floatingText struct {
 	text   string
-	offset utils.Vec2
+	offset utils.Vec2f
 	size   float64
 	color  color.RGBA
 }
@@ -25,7 +25,7 @@ func (x floatingText) Copy() floatingText {
 
 type floatingTextDto struct {
 	Text   string
-	Offset utils.Vec2
+	Offset utils.Vec2f
 	Size   float64
 	Color  color.RGBA
 }

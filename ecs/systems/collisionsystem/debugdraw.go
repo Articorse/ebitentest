@@ -17,7 +17,7 @@ import (
 func DrawCollisions(
 	screen *ebiten.Image,
 	color color.RGBA,
-	camera utils.Vec2,
+	camera utils.Vec2f,
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	ecsContainer *ecs.ECSContainer,
 ) error {
@@ -57,7 +57,7 @@ func DrawColliders(
 	baseColor color.RGBA,
 	collidedColor color.RGBA,
 	screen *ebiten.Image,
-	camera utils.Vec2,
+	camera utils.Vec2f,
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	ecsContainer *ecs.ECSContainer,
 ) error {
@@ -70,9 +70,9 @@ func DrawColliders(
 			continue
 		}
 
-		drawWindow := [2]utils.Vec2{
-			utils.Vec2{X: 0 - data.SpatialHashGridCellSize, Y: 0 - data.SpatialHashGridCellSize},
-			utils.Vec2{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
+		drawWindow := [2]utils.Vec2f{
+			utils.Vec2f{X: 0 - data.SpatialHashGridCellSize, Y: 0 - data.SpatialHashGridCellSize},
+			utils.Vec2f{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
 		}
 
 		if worldPos.X < drawWindow[0].X ||
@@ -104,12 +104,12 @@ func DrawColliders(
 		for _, shape := range colShapes {
 			switch h := shape.(type) {
 			case *shapes.RectangleShape:
-				verts := []utils.Vec2{
-					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
-					utils.Vec2{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[0].Y},
-					utils.Vec2{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[1].Y},
-					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[1].Y},
-					utils.Vec2{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
+				verts := []utils.Vec2f{
+					utils.Vec2f{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
+					utils.Vec2f{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[0].Y},
+					utils.Vec2f{X: worldPos.X + h.GetAABB()[1].X, Y: worldPos.Y + h.GetAABB()[1].Y},
+					utils.Vec2f{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[1].Y},
+					utils.Vec2f{X: worldPos.X + h.GetAABB()[0].X, Y: worldPos.Y + h.GetAABB()[0].Y},
 				}
 				for i := range verts[:len(verts)-1] {
 					vector.StrokeLine(
@@ -124,7 +124,7 @@ func DrawColliders(
 					)
 				}
 			case *shapes.CircleShape:
-				center := utils.Vec2{X: worldPos.X + h.GetOffset().X, Y: worldPos.Y + h.GetOffset().Y}
+				center := utils.Vec2f{X: worldPos.X + h.GetOffset().X, Y: worldPos.Y + h.GetOffset().Y}
 				vector.StrokeCircle(
 					screen,
 					float32(center.X-camera.X),
@@ -135,9 +135,9 @@ func DrawColliders(
 					false,
 				)
 			case *shapes.PolygonShape:
-				var verts []utils.Vec2
+				var verts []utils.Vec2f
 				for _, v := range h.GetVertices() {
-					verts = append(verts, utils.Vec2{X: worldPos.X + v.X, Y: worldPos.Y + v.Y})
+					verts = append(verts, utils.Vec2f{X: worldPos.X + v.X, Y: worldPos.Y + v.Y})
 				}
 				for _, v := range verts[:len(verts)-1] {
 					vector.StrokeLine(
@@ -162,7 +162,7 @@ func DrawAABBs(
 	baseColor color.RGBA,
 	collidedColor color.RGBA,
 	screen *ebiten.Image,
-	camera utils.Vec2,
+	camera utils.Vec2f,
 	aabbcollisions map[common.EntityId][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) error {
@@ -175,9 +175,9 @@ func DrawAABBs(
 			continue
 		}
 
-		drawWindow := [2]utils.Vec2{
-			utils.Vec2{X: 0 - data.SpatialHashGridCellSize, Y: 0 - data.SpatialHashGridCellSize},
-			utils.Vec2{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
+		drawWindow := [2]utils.Vec2f{
+			utils.Vec2f{X: 0 - data.SpatialHashGridCellSize, Y: 0 - data.SpatialHashGridCellSize},
+			utils.Vec2f{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
 		}
 
 		if worldPos.X < drawWindow[0].X ||
@@ -211,12 +211,12 @@ func DrawAABBs(
 			continue
 		}
 
-		verts := []utils.Vec2{
-			utils.Vec2{X: aabb[0].X, Y: aabb[0].Y},
-			utils.Vec2{X: aabb[1].X, Y: aabb[0].Y},
-			utils.Vec2{X: aabb[1].X, Y: aabb[1].Y},
-			utils.Vec2{X: aabb[0].X, Y: aabb[1].Y},
-			utils.Vec2{X: aabb[0].X, Y: aabb[0].Y},
+		verts := []utils.Vec2f{
+			utils.Vec2f{X: aabb[0].X, Y: aabb[0].Y},
+			utils.Vec2f{X: aabb[1].X, Y: aabb[0].Y},
+			utils.Vec2f{X: aabb[1].X, Y: aabb[1].Y},
+			utils.Vec2f{X: aabb[0].X, Y: aabb[1].Y},
+			utils.Vec2f{X: aabb[0].X, Y: aabb[0].Y},
 		}
 
 		for i := 0; i < len(verts)-1; i++ {

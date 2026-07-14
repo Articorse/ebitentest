@@ -33,7 +33,7 @@ func canTransitionChunkState(from, to chunkState) bool {
 	}
 }
 
-func (cc *ChunkContainer) setState(pos utils.CellKey, next chunkState) {
+func (cc *ChunkContainer) setState(pos utils.Vec2i, next chunkState) {
 	meta, ok := cc.chunkMeta[pos]
 	if !ok {
 		meta = &chunkLoadMeta{state: ChunkState_Unloaded}

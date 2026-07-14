@@ -36,9 +36,9 @@ func (x *hurtboxCollider) getBaseCollider() *baseCollider { return &x.baseCollid
 type hurtboxColliderDto struct {
 	Enabled        bool
 	Shapes         []shapes.ShapeDto
-	Center         utils.Vec2
-	Aabb           [2]utils.Vec2
-	PaddedAabb     [2]utils.Vec2
+	Center         utils.Vec2f
+	Aabb           [2]utils.Vec2f
+	PaddedAabb     [2]utils.Vec2f
 	CollisionLayer LayerMask
 	CollisionMask  LayerMask
 }

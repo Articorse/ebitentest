@@ -19,8 +19,8 @@ import (
 // TODO: This could be optimized further by only ordering the drawing of sprites that overlap, possibly via AABBs?
 func DrawSprites(
 	screen *ebiten.Image,
-	camera utils.Vec2,
-	shg map[utils.CellKey][]common.EntityId,
+	camera utils.Vec2f,
+	shg map[utils.Vec2i][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 	assetManager *assetmanager.AssetManager,
 ) error {
@@ -31,9 +31,9 @@ func DrawSprites(
 	batches := make(map[uint8][][]common.EntityId)
 	visitedSprites := make(map[common.EntityId]struct{})
 	layerIdxMap := make(map[uint8]uint64)
-	drawWindow := [2]utils.Vec2{
-		utils.Vec2{X: camera.X - data.SpatialHashGridCellSize, Y: camera.Y - data.SpatialHashGridCellSize},
-		utils.Vec2{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
+	drawWindow := [2]utils.Vec2f{
+		utils.Vec2f{X: camera.X - data.SpatialHashGridCellSize, Y: camera.Y - data.SpatialHashGridCellSize},
+		utils.Vec2f{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
 	}
 
 	for _, e := range ecsContainer.Sprites.GetEntities() {
@@ -273,7 +273,7 @@ func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECSContainer) error {
 
 func getNeighborBatch(
 	eA common.EntityId,
-	shg map[utils.CellKey][]common.EntityId,
+	shg map[utils.Vec2i][]common.EntityId,
 	ecs *ecs.ECSContainer,
 ) ([]common.EntityId, error) {
 	if !ecs.Sprites.HasComponent(eA) {
@@ -291,7 +291,7 @@ func getNeighborBatch(
 
 func getNeighborsRecursive(
 	eA common.EntityId,
-	shg map[utils.CellKey][]common.EntityId,
+	shg map[utils.Vec2i][]common.EntityId,
 	visitedEntities map[common.EntityId]struct{},
 	ecs *ecs.ECSContainer,
 ) (neighbors []common.EntityId, _visited map[common.EntityId]struct{}, err error) {
@@ -319,7 +319,7 @@ func getNeighborsRecursive(
 
 	for dx := -1; dx <= 1; dx++ {
 		for dy := -1; dy <= 1; dy++ {
-			for _, eB := range shg[utils.CellKey{X: startCellX + dx, Y: startCellY + dy}] {
+			for _, eB := range shg[utils.Vec2i{X: startCellX + dx, Y: startCellY + dy}] {
 				if !ecs.Sprites.HasComponent(eB) {
 					return nil, nil, nil
 				}

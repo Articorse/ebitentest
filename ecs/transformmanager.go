@@ -9,17 +9,17 @@ import (
 
 type transformManager struct{}
 
-func NewTransformComponent(pos utils.Vec2, scale float64, rotation float64) *transform {
+func NewTransformComponent(pos utils.Vec2f, scale float64, rotation float64) *transform {
 	return &transform{pos: pos, scale: scale, rotation: rotation}
 }
 
 func (*transformManager) GetLocalPos(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) (utils.Vec2, error) {
+) (utils.Vec2f, error) {
 	traComp, err := ecsContainer.Transforms.getComponent(e)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
 	return traComp.pos, nil
@@ -28,13 +28,13 @@ func (*transformManager) GetLocalPos(
 func (*transformManager) GetWorldPos(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
-) (utils.Vec2, error) {
+) (utils.Vec2f, error) {
 	pm := parentManager{}
 	tm := transformManager{}
 
 	traComp, err := ecsContainer.Transforms.getComponent(e)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
+		return utils.Vec2f{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
 	parEntity := pm.GetEntity(e, ecsContainer)
@@ -44,18 +44,18 @@ func (*transformManager) GetWorldPos(
 
 	pWorldPos, err := tm.GetWorldPos(parEntity, ecsContainer)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, err)
+		return utils.Vec2f{}, fmt.Errorf("error getting world position of parent entity %d: %v", parEntity, err)
 	}
 
 	pWorldRot, err := tm.GetWorldRotation(parEntity, ecsContainer)
 	if err != nil {
-		return utils.Vec2{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
+		return utils.Vec2f{}, fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
 	cos := math.Cos(pWorldRot)
 	sin := math.Sin(pWorldRot)
 
-	return utils.Vec2{
+	return utils.Vec2f{
 		X: pWorldPos.X + (traComp.pos.X*cos - traComp.pos.Y*sin),
 		Y: pWorldPos.Y + (traComp.pos.X*sin + traComp.pos.Y*cos),
 	}, nil
@@ -137,7 +137,7 @@ func (*transformManager) GetWorldScale(
 
 func (*transformManager) SetLocalPos(
 	e common.EntityId,
-	pos utils.Vec2,
+	pos utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
 	traComp, err := ecsContainer.Transforms.getComponent(e)
@@ -151,7 +151,7 @@ func (*transformManager) SetLocalPos(
 
 func (*transformManager) AddLocalPos(
 	e common.EntityId,
-	pos utils.Vec2,
+	pos utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
 	traComp, err := ecsContainer.Transforms.getComponent(e)
@@ -165,7 +165,7 @@ func (*transformManager) AddLocalPos(
 
 func (*transformManager) SetWorldPos(
 	e common.EntityId,
-	pos utils.Vec2,
+	pos utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
 	pm := parentManager{}
@@ -195,7 +195,7 @@ func (*transformManager) SetWorldPos(
 	cos := math.Cos(pWorldRot)
 	sin := math.Sin(pWorldRot)
 
-	traComp.pos = utils.Vec2{
+	traComp.pos = utils.Vec2f{
 		X: (traComp.pos.X*cos - traComp.pos.Y*sin) - pWorldPos.X,
 		Y: (traComp.pos.X*sin + traComp.pos.Y*cos) - pWorldPos.Y,
 	}

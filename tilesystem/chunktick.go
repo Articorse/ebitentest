@@ -12,10 +12,10 @@ import (
 
 func (cc *ChunkContainer) Tick(
 	_ *rand.Rand,
-	toBeAdded []utils.CellKey,
-	toBeRemoved []utils.CellKey,
-	required map[utils.CellKey]struct{},
-	_ map[utils.CellKey]int,
+	toBeAdded []utils.Vec2i,
+	toBeRemoved []utils.Vec2i,
+	required map[utils.Vec2i]struct{},
+	_ map[utils.Vec2i]int,
 	ecsCont *ecs.ECSContainer,
 ) error {
 	var err error
@@ -92,7 +92,7 @@ func (cc *ChunkContainer) Tick(
 	return nil
 }
 
-func (cc *ChunkContainer) drainLoadResults(required map[utils.CellKey]struct{}, ecsCont *ecs.ECSContainer) {
+func (cc *ChunkContainer) drainLoadResults(required map[utils.Vec2i]struct{}, ecsCont *ecs.ECSContainer) {
 	for {
 		select {
 		case res := <-cc.loadResultCh:
@@ -176,7 +176,7 @@ func (cc *ChunkContainer) drainLoadResults(required map[utils.CellKey]struct{}, 
 	}
 }
 
-func (cc *ChunkContainer) drainSaveResults(required map[utils.CellKey]struct{}, ecsCont *ecs.ECSContainer) {
+func (cc *ChunkContainer) drainSaveResults(required map[utils.Vec2i]struct{}, ecsCont *ecs.ECSContainer) {
 	for {
 		select {
 		case res := <-cc.saveResultCh:
@@ -221,7 +221,7 @@ func (cc *ChunkContainer) drainSaveResults(required map[utils.CellKey]struct{}, 
 	}
 }
 
-func (cc *ChunkContainer) invalidateNonRequiredLoads(required map[utils.CellKey]struct{}) {
+func (cc *ChunkContainer) invalidateNonRequiredLoads(required map[utils.Vec2i]struct{}) {
 	for pos, meta := range cc.chunkMeta {
 		if _, ok := required[pos]; ok {
 			continue

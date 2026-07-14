@@ -129,7 +129,7 @@ type input struct {
 	inputType     InputTypeEnum
 	facingInput   FacingInputEnum
 	params        InputParams
-	lastFacingDir utils.Vec2
+	lastFacingDir utils.Vec2f
 }
 
 func (input) isComponent() {}
@@ -149,7 +149,7 @@ func (x input) Copy() input {
 		inputType:     x.inputType,
 		facingInput:   x.facingInput,
 		params:        x.params,
-		lastFacingDir: utils.Vec2{},
+		lastFacingDir: utils.Vec2f{},
 	}
 }
 
@@ -158,7 +158,7 @@ type inputDto struct {
 	InputType     InputTypeEnum
 	FacingInput   FacingInputEnum
 	Params        InputParams
-	LastFacingDir utils.Vec2
+	LastFacingDir utils.Vec2f
 }
 
 func (inputDto) isComponentDto() {}

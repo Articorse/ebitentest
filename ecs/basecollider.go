@@ -19,9 +19,9 @@ const (
 type baseCollider struct {
 	enabled        bool
 	shapes         []shapes.Shape
-	center         utils.Vec2
-	aabb           [2]utils.Vec2
-	paddedAabb     [2]utils.Vec2
+	center         utils.Vec2f
+	aabb           [2]utils.Vec2f
+	paddedAabb     [2]utils.Vec2f
 	collisionLayer LayerMask
 	collisionMask  LayerMask
 }

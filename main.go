@@ -35,7 +35,7 @@ var (
 
 	DEBUG_LEVEL                      = 0
 	max_vel                          = 0.0
-	prev_pos                         = utils.Vec2{}
+	prev_pos                         = utils.Vec2f{}
 	max_pos_diff                     = 0.0
 	resolvedPhysicsCollisions uint64 = 0
 
@@ -201,7 +201,7 @@ func (g *game) Update() error {
 			log.Println("error getting player ecs position for camera follow: ", err)
 		}
 
-		g.ecs.Camera = pWorldPos.Subtract(utils.Vec2{X: float64(data.CameraWidth) / 2, Y: float64(data.CameraHeight) / 2})
+		g.ecs.Camera = pWorldPos.Subtract(utils.Vec2f{X: float64(data.CameraWidth) / 2, Y: float64(data.CameraHeight) / 2})
 	}
 
 	// Replay
@@ -524,7 +524,7 @@ func main() {
 
 	// Player
 	pParComp := ecs.NewParentComponent()
-	pTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
+	pTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
 	pVelComp := ecs.NewDefaultVelocityComponent()
 	pSprComp, err := ecs.NewSpriteComponent(common.AssetSheetSlime, 20, false)
 	if err != nil {
@@ -547,7 +547,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	pPhyColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
+	pPhyColShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -561,7 +561,7 @@ func main() {
 		pPhyColShape,
 	)
 	pHpComp := ecs.NewHitpointsComponent(20, 1000)
-	pHitboxShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
+	pHitboxShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -698,7 +698,7 @@ func main() {
 
 	// Bazooka
 	bazookaParComp := ecs.NewParentComponent()
-	bazookaTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
+	bazookaTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
 	bazookaVelComp := ecs.NewDefaultVelocityComponent()
 	bazookaSprComp, err := ecs.NewSpriteComponent(common.AssetSheetBazooka, 20, true)
 	if err != nil {
@@ -715,10 +715,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	bazookaFPComp := ecs.NewFacePositionComponent(utils.Vec2{}, true)
+	bazookaFPComp := ecs.NewFacePositionComponent(utils.Vec2f{}, true)
 
-	rocketTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
-	rocketVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 3, Y: 0}, 0, 1)
+	rocketTraComp := ecs.NewTransformComponent(utils.Vec2f{}, 1, 0)
+	rocketVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{X: 3, Y: 0}, 0, 1)
 	rocketTimerComp, err := ecs.NewTimerComponent(2000, 1, ecs.TimerFunc_Selfdestruct)
 	if err != nil {
 		log.Fatal("error creating rocket timer component: ", err)
@@ -737,7 +737,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	rocketHurtboxShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
+	rocketHurtboxShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -778,7 +778,7 @@ func main() {
 	}
 
 	bazookaSpaComp, err := ecs.NewSpawnerComponent(
-		utils.Vec2{X: 13, Y: 0},
+		utils.Vec2f{X: 13, Y: 0},
 		ecs.SpawnerType_Point,
 		nil,
 		rocketTraComp, rocketSprComp, rocketVelComp, rocketCDComp, rocketHurtboxComp, rocketAniComp, rocketTimerComp, rocketDeathComp,
@@ -928,14 +928,14 @@ func main() {
 	// Tree
 	treeInpComp := ecs.NewInputComponent(nil, ecs.InputType_Dummy, nil, ecs.Facing_None)
 	treeParComp := ecs.NewParentComponent()
-	treeTraComp := ecs.NewTransformComponent(utils.Vec2{X: 200, Y: 200}, 1, 0)
+	treeTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 200, Y: 200}, 1, 0)
 	treeVelComp := ecs.NewDefaultVelocityComponent()
 	treeSprComp, err := ecs.NewSpriteComponent(common.AssetImageTree, 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	treeColShape, err := shapes.NewRectangleShape(10, 5, utils.Vec2{X: -1, Y: 9})
+	treeColShape, err := shapes.NewRectangleShape(10, 5, utils.Vec2f{X: -1, Y: 9})
 	// treeColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: -1, Y: 9})
 	if err != nil {
 		log.Fatal(err)
@@ -976,15 +976,15 @@ func main() {
 	platInput := ecs.NewInputComponent(nil, ecs.InputType_Loop, loopParams, ecs.Facing_None)
 
 	platParComp := ecs.NewParentComponent()
-	platTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 10}, 1, 0)
-	platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, 0.3, data.DefaultDrag)
+	platTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 10}, 1, 0)
+	platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{}, 0.3, data.DefaultDrag)
 
 	platSprComp, err := ecs.NewSpriteComponent(common.AssetImagePlatform, 10, true)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	platColShape, err := shapes.NewRectangleShape(28, 28, utils.Vec2{X: 0, Y: 0})
+	platColShape, err := shapes.NewRectangleShape(28, 28, utils.Vec2f{X: 0, Y: 0})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1023,14 +1023,14 @@ func (g *game) AddRandomEntity() {
 	x := g.ecs.Rng.IntN(10000)
 	y := g.ecs.Rng.IntN(10000)
 
-	traComp := ecs.NewTransformComponent(utils.Vec2{X: float64(x), Y: float64(y)}, 1, 0)
+	traComp := ecs.NewTransformComponent(utils.Vec2f{X: float64(x), Y: float64(y)}, 1, 0)
 	sprComp, err := ecs.NewSpriteComponent(common.AssetImageTree, 20, true)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	velComp := ecs.NewDefaultVelocityComponent()
-	shape, err := shapes.NewRectangleShape(10, 5, utils.Vec2{X: -1, Y: 9})
+	shape, err := shapes.NewRectangleShape(10, 5, utils.Vec2f{X: -1, Y: 9})
 	colComp := ecs.NewPhysicsColliderComponent(
 		ecs.Layer_Terrain,
 		ecs.Layer_Player|

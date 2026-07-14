@@ -18,7 +18,7 @@ type SpriteFlash struct {
 type sprite struct {
 	imageAssetTag  common.ImageAssetTag
 	subImageIdx    int
-	offsetPos      utils.Vec2
+	offsetPos      utils.Vec2f
 	offsetScale    float64
 	offsetRotation float64
 	layer          uint8
@@ -58,7 +58,7 @@ func (x sprite) Copy() sprite {
 type spriteDto struct {
 	ImageAssetTag  common.ImageAssetTag
 	SubImageIdx    int
-	OffsetPos      utils.Vec2
+	OffsetPos      utils.Vec2f
 	OffsetScale    float64
 	OffsetRotation float64
 	Layer          uint8

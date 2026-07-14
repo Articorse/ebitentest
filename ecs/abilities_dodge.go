@@ -65,7 +65,7 @@ func DodgeAbility(
 		return fmt.Errorf("error getting current tick inputs for entity %d: %v", self, err)
 	}
 
-	dir := utils.Vec2{X: is.Analog1X, Y: is.Analog1Y}.Normalized()
+	dir := utils.Vec2f{X: is.Analog1X, Y: is.Analog1Y}.Normalized()
 
 	err = vm.AddForce(self, dir.Multiply(dodgeParams.Force), ecsContainer)
 	if err != nil {

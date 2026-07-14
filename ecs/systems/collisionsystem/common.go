@@ -61,7 +61,7 @@ func GetCollisions(
 			}
 
 			collisionFound := false
-			var collisionVector utils.Vec2
+			var collisionVector utils.Vec2f
 			var aCollidedIdx int
 			var bCollidedIdx int
 

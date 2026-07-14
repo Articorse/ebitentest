@@ -5,7 +5,7 @@ import (
 )
 
 type transform struct {
-	pos      utils.Vec2
+	pos      utils.Vec2f
 	scale    float64
 	rotation float64
 }
@@ -21,7 +21,7 @@ func (x transform) Copy() transform {
 }
 
 type transformDto struct {
-	Pos      utils.Vec2
+	Pos      utils.Vec2f
 	Scale    float64
 	Rotation float64
 }
