@@ -47,6 +47,7 @@ type ECSContainer struct {
 	Deathrattles      Storage[deathrattle]
 	FloatingTexts     Storage[floatingText]
 	ChunkLoaders      Storage[chunkLoader]
+	Persistents       Storage[persistent]
 
 	InputManager            inputManager
 	ParentManager           parentManager
@@ -68,6 +69,7 @@ type ECSContainer struct {
 	DeathrattleManager      deathrattleManager
 	FloatingTextManager     floatingTextManager
 	ChunkLoaderManager      chunkLoaderManager
+	PersistentManager       persistentManager
 }
 
 func NewECSContainer() *ECSContainer {
@@ -92,6 +94,8 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&deathrattleDto{})
 	gob.Register(&floatingTextDto{})
 	gob.Register(&chunkLoaderDto{})
+	gob.Register(&persistentDto{})
+
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
 	gob.Register(&shapes.PolygonParams{})
@@ -132,6 +136,7 @@ func NewECSContainer() *ECSContainer {
 		Deathrattles:      Storage[deathrattle]{order: []common.EntityId{}, data: make(map[common.EntityId]*deathrattle)},
 		FloatingTexts:     Storage[floatingText]{order: []common.EntityId{}, data: make(map[common.EntityId]*floatingText)},
 		ChunkLoaders:      Storage[chunkLoader]{order: []common.EntityId{}, data: make(map[common.EntityId]*chunkLoader)},
+		Persistents:       Storage[persistent]{order: []common.EntityId{}, data: make(map[common.EntityId]*persistent)},
 
 		InputManager:            inputManager{},
 		ParentManager:           parentManager{},
@@ -153,6 +158,7 @@ func NewECSContainer() *ECSContainer {
 		DeathrattleManager:      deathrattleManager{},
 		FloatingTextManager:     floatingTextManager{},
 		ChunkLoaderManager:      chunkLoaderManager{},
+		PersistentManager:       persistentManager{},
 	}
 }
 
@@ -228,6 +234,7 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 		x.Deathrattles.deleteEntity(e)
 		x.FloatingTexts.deleteEntity(e)
 		x.ChunkLoaders.deleteEntity(e)
+		x.Persistents.deleteEntity(e)
 
 		pm := parentManager{}
 		err := pm.RemoveParentFromAllEntities(e, x)
@@ -326,6 +333,8 @@ func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
 		x.FloatingTexts.addComponent(e, c.Copy())
 	case *chunkLoader:
 		x.ChunkLoaders.addComponent(e, c.Copy())
+	case *persistent:
+		x.Persistents.addComponent(e, c.Copy())
 	default:
 		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in ECS.AddComponent\n", comp, e)
 	}
@@ -433,6 +442,10 @@ func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 		dto := c.ToDto()
 		comps = append(comps, dto)
 	}
+	if c, err := x.Persistents.getComponent(eId); err == nil {
+		dto := c.ToDto()
+		comps = append(comps, dto)
+	}
 
 	return comps
 }
@@ -500,6 +513,8 @@ func DtoToComponent[T ComponentDto](dto T) (Component, error) {
 	case *floatingTextDto:
 		return d.ToComponent(), nil
 	case *chunkLoaderDto:
+		return d.ToComponent(), nil
+	case *persistentDto:
 		return d.ToComponent(), nil
 	default:
 		return nil, fmt.Errorf("unknown component DTO type: %T", dto)
