@@ -7,19 +7,16 @@ import (
 	"ebittest/utils"
 	"fmt"
 	"log"
-	"math/rand/v2"
 )
 
 func (cc *ChunkContainer) Tick(
-	_ *rand.Rand,
 	toBeAdded []utils.Vec2i,
 	toBeRemoved []utils.Vec2i,
 	required map[utils.Vec2i]struct{},
-	_ map[utils.Vec2i]int,
 	ecsCont *ecs.ECSContainer,
 ) error {
 	var err error
-	cc.currentTickEIdsInChunks, err = cc.getEntityIdsInChunks(ecsCont)
+	cc.currentTickEIdsInChunks, cc.pendingUnloadEntityIDs, err = cc.getEntityIdsInChunks(ecsCont)
 	if err != nil {
 		return fmt.Errorf("failed to get entity IDs in chunks: %w", err)
 	}

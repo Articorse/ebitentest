@@ -11,10 +11,9 @@ import (
 func (cc *ChunkContainer) ComputeChunkSets(
 	ecsCont *ecs.ECSContainer,
 ) (
-	required map[utils.Vec2i]struct{},
 	toBeAdded []utils.Vec2i,
 	toBeRemoved []utils.Vec2i,
-	priority map[utils.Vec2i]int,
+	required map[utils.Vec2i]struct{},
 	err error,
 ) {
 	required, priority, berr := buildRequiredAndPriority(ecsCont)
@@ -45,7 +44,7 @@ func (cc *ChunkContainer) ComputeChunkSets(
 		return toBeAdded[i].Y < toBeAdded[j].Y
 	})
 
-	return required, toBeAdded, toBeRemoved, priority, err
+	return toBeAdded, toBeRemoved, required, err
 }
 
 func buildRequiredAndPriority(ecsCont *ecs.ECSContainer) (
