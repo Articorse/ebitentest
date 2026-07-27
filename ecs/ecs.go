@@ -188,7 +188,7 @@ func (x *ECSContainer) AddEmptyEntity() common.EntityId {
 	return x.nextEntity - 1
 }
 
-func (x *ECSContainer) AddEntity(comps ...Component) common.EntityId {
+func (x *ECSContainer) AddNewEntity(comps ...Component) common.EntityId {
 	e := x.AddEmptyEntity()
 
 	for _, comp := range comps {
@@ -196,6 +196,20 @@ func (x *ECSContainer) AddEntity(comps ...Component) common.EntityId {
 	}
 
 	return e
+}
+
+// FIXME: Add check if entity already exists
+func (x *ECSContainer) AddEntityWithId(eId common.EntityId, comps ...Component) error {
+	if eId >= x.nextEntity {
+		x.nextEntity = eId + 1
+		log.Printf("Warning: Adding entity with ID %d which is greater than nextEntity %d. Updating nextEntity to %d\n", eId, x.nextEntity-1, x.nextEntity)
+	}
+
+	for _, comp := range comps {
+		x.AddComponent(eId, comp)
+	}
+
+	return nil
 }
 
 func (x *ECSContainer) ScheduleRemoveEntity(e common.EntityId) {

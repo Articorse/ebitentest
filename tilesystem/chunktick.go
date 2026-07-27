@@ -131,6 +131,10 @@ func (cc *ChunkContainer) Tick(
 			for ck := range failedEntities {
 				for eId := range failedEntities[ck] {
 					if _, ok := cc.queuedUnloadEntityIDs[ck][eId]; !ok {
+						if _, ok := cc.queuedUnloadEntityIDs[ck]; !ok {
+							cc.queuedUnloadEntityIDs[ck] = make(map[common.EntityId][]ecs.ComponentDto)
+						}
+
 						cc.queuedUnloadEntityIDs[ck][eId] = failedEntities[ck][eId]
 					}
 				}
@@ -138,6 +142,8 @@ func (cc *ChunkContainer) Tick(
 			cc.queuedUnloadMtx.Unlock()
 		}
 	}
+
+	cc.autosaveCounterSec += float64(data.TickMs) / 1000
 
 	return nil
 }
@@ -199,7 +205,7 @@ func (cc *ChunkContainer) drainLoadResults(required map[utils.Vec2i]struct{}, ec
 				continue
 			}
 
-			for _, compDtos := range res.ents {
+			for eId, compDtos := range res.ents {
 				comps := make([]ecs.Component, 0, len(compDtos))
 				for _, compDto := range compDtos {
 					comp, err := ecs.DtoToComponent(compDto)
@@ -212,7 +218,10 @@ func (cc *ChunkContainer) drainLoadResults(required map[utils.Vec2i]struct{}, ec
 					}
 				}
 				if len(comps) > 0 {
-					ecsCont.AddEntity(comps...)
+					err := ecsCont.AddEntityWithId(eId, comps...)
+					if err != nil {
+						log.Printf("Failed to add entity %d with components: %v", eId, err)
+					}
 				}
 			}
 

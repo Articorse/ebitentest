@@ -588,7 +588,7 @@ func main() {
 	}
 	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
 	pCLComp := ecs.NewChunkLoaderComponent(3)
-	g.playerEntity = g.ecs.AddEntity(
+	g.playerEntity = g.ecs.AddNewEntity(
 		pParComp,
 		pTraComp,
 		pVelComp,
@@ -800,7 +800,7 @@ func main() {
 	}
 	bazookaEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, bazookaAbis)
 
-	bazooka := g.ecs.AddEntity(
+	bazooka := g.ecs.AddNewEntity(
 		bazookaParComp,
 		bazookaTraComp,
 		bazookaVelComp,
@@ -951,7 +951,7 @@ func main() {
 		treeColShape,
 	)
 
-	tree := g.ecs.AddEntity(
+	tree := g.ecs.AddNewEntity(
 		treeInpComp,
 		treeParComp,
 		treeTraComp,
@@ -998,7 +998,7 @@ func main() {
 		[]shapes.Shape{platColShape},
 	)
 
-	_ = g.ecs.AddEntity(
+	_ = g.ecs.AddNewEntity(
 		platInput,
 		platParComp,
 		platTraComp,
@@ -1042,7 +1042,7 @@ func (g *game) AddRandomEntity() {
 		shape,
 	)
 
-	_ = g.ecs.AddEntity(
+	_ = g.ecs.AddNewEntity(
 		traComp,
 		velComp,
 		sprComp,

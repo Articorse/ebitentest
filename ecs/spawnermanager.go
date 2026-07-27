@@ -44,7 +44,7 @@ func (*spawnerManager) Spawn(
 		return -1, fmt.Errorf("error getting components to spawn for spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	newEntity := ecsContainer.AddEntity(
+	newEntity := ecsContainer.AddNewEntity(
 		comps...,
 	)
 

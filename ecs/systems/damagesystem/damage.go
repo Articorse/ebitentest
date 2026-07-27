@@ -121,7 +121,7 @@ func DealContactDamage(
 			if err != nil {
 				log.Fatal("error creating floating text timer component: ", err)
 			}
-			_ = ecsCont.AddEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp)
+			_ = ecsCont.AddNewEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp)
 
 			dieOnContact, err := cdm.GetDieOnContact(dmgE, ecsCont)
 			if err != nil {

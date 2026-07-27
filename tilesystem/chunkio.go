@@ -201,7 +201,15 @@ func (cc *ChunkContainer) saveQueuedEntitiesToGob(
 			}
 		}
 
-		cDto.Entities = queuedEntities[ck]
+		for eId := range queuedEntities[ck] {
+			if cDto.Entities == nil {
+				cDto.Entities = make(map[common.EntityId][]ecs.ComponentDto)
+			}
+
+			if _, ok := cDto.Entities[eId]; !ok {
+				cDto.Entities[eId] = queuedEntities[ck][eId]
+			}
+		}
 
 		err = saveChunkGob(ck, cDto)
 		if err != nil {
