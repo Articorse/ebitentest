@@ -24,6 +24,7 @@ const (
 	ChunkDataFilePathTemplate          = "chunkdata/chunk_%d_%d.gob"
 	ChunkReloadRetries                 = 3
 	MaxChunkLoadDispatchPerTick        = 4
+	AutosavePeriodSec                  = 5
 	RngSeed1                    uint64 = 0b1111110001111110011111000111000010001001001111111000101110001110
 	RngSeed2                    uint64 = 0b0101100110101000111000010000011001000001011000011001100101101001
 )

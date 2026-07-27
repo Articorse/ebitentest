@@ -29,7 +29,7 @@ func (*transformManager) GetWorldPos(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
 ) (utils.Vec2f, error) {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 	tm := transformManager{}
 
 	traComp, err := ecsContainer.Transforms.getComponent(e)
@@ -37,7 +37,7 @@ func (*transformManager) GetWorldPos(
 		return utils.Vec2f{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		return traComp.pos, nil
 	}
@@ -77,7 +77,7 @@ func (*transformManager) GetWorldRotation(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
 ) (float64, error) {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 	tm := transformManager{}
 
 	traComp, err := ecsContainer.Transforms.getComponent(e)
@@ -85,7 +85,7 @@ func (*transformManager) GetWorldRotation(
 		return 0, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		return traComp.rotation, nil
 	}
@@ -114,7 +114,7 @@ func (*transformManager) GetWorldScale(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
 ) (float64, error) {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 	tm := transformManager{}
 
 	traComp, err := ecsContainer.Transforms.getComponent(e)
@@ -122,7 +122,7 @@ func (*transformManager) GetWorldScale(
 		return 0, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		return traComp.scale, nil
 	}
@@ -168,7 +168,7 @@ func (*transformManager) SetWorldPos(
 	pos utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 	tm := transformManager{}
 
 	traComp, err := ecsContainer.Transforms.getComponent(e)
@@ -176,7 +176,7 @@ func (*transformManager) SetWorldPos(
 		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		traComp.pos = pos
 		return nil
@@ -236,7 +236,7 @@ func (*transformManager) SetWorldRotation(
 	rot float64,
 	ecsContainer *ECSContainer,
 ) error {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 	tm := transformManager{}
 
 	traComp, err := ecsContainer.Transforms.getComponent(e)
@@ -244,7 +244,7 @@ func (*transformManager) SetWorldRotation(
 		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		traComp.rotation = rot
 		return nil
@@ -279,7 +279,7 @@ func (*transformManager) SetWorldScale(
 	scale float64,
 	ecsContainer *ECSContainer,
 ) error {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 	tm := transformManager{}
 
 	traComp, err := ecsContainer.Transforms.getComponent(e)
@@ -287,7 +287,7 @@ func (*transformManager) SetWorldScale(
 		return fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		traComp.scale = scale
 		return nil

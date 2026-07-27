@@ -219,14 +219,14 @@ func (*spriteManager) GetWorldOffsetScale(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
 ) (float64, error) {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 
 	sprComp, err := ecsContainer.Sprites.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		return sprComp.offsetScale, nil
 	}

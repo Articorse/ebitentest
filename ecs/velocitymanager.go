@@ -38,7 +38,7 @@ func (*velocityManager) GetWorldVector(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
 ) (utils.Vec2f, error) {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 	tm := transformManager{}
 	vm := velocityManager{}
 
@@ -49,7 +49,7 @@ func (*velocityManager) GetWorldVector(
 
 	parVelVectorOffset := utils.Vec2f{}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity != -1 {
 		var err error
 		parVelVectorOffset, err = vm.GetWorldVector(parEntity, ecsContainer)
@@ -129,7 +129,7 @@ func (*velocityManager) SetWorldVector(
 	vector utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 	tm := transformManager{}
 	vm := velocityManager{}
 
@@ -138,7 +138,7 @@ func (*velocityManager) SetWorldVector(
 		return fmt.Errorf("could not get velocity component of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		velComp.vector = vector
 		return nil

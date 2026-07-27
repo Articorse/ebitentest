@@ -58,14 +58,14 @@ func (*facePositionManager) GetLocalPos(e common.EntityId, ecsContainer *ECSCont
 
 func (*facePositionManager) GetWorldPos(e common.EntityId, ecsContainer *ECSContainer) (utils.Vec2f, error) {
 	tm := transformManager{}
-	pm := parentManager{}
+	pm := hierarchyManager{}
 
 	fpComp, err := ecsContainer.FacePositions.getComponent(e)
 	if err != nil {
 		return utils.Vec2f{}, fmt.Errorf("could not get face position component of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		return fpComp.pos, nil
 	}
@@ -105,7 +105,7 @@ func (*facePositionManager) SetWorldPos(
 	pos utils.Vec2f,
 	ecsContainer *ECSContainer,
 ) error {
-	pm := parentManager{}
+	pm := hierarchyManager{}
 	tm := transformManager{}
 
 	fpComp, err := ecsContainer.FacePositions.getComponent(e)
@@ -113,7 +113,7 @@ func (*facePositionManager) SetWorldPos(
 		return fmt.Errorf("could not get facePosition of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetEntity(e, ecsContainer)
+	parEntity := pm.GetParent(e, ecsContainer)
 	if parEntity == -1 {
 		fpComp.pos = pos
 		return nil

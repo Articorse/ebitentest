@@ -7,6 +7,7 @@ import (
 	"ebittest/utils"
 	"fmt"
 	"log"
+	"maps"
 )
 
 func (cc *ChunkContainer) Tick(
@@ -16,10 +17,31 @@ func (cc *ChunkContainer) Tick(
 	ecsCont *ecs.ECSContainer,
 ) error {
 	var err error
+
 	cc.currentTickEIdsInChunks, cc.pendingUnloadEntityIDs, err = cc.getEntityIdsInChunks(ecsCont)
 	if err != nil {
 		return fmt.Errorf("failed to get entity IDs in chunks: %w", err)
 	}
+
+	cc.queuedUnloadMtx.Lock()
+	for ck := range cc.pendingUnloadEntityIDs {
+		if _, ok := cc.queuedUnloadEntityIDs[ck]; !ok {
+			cc.queuedUnloadEntityIDs[ck] = make(map[common.EntityId][]ecs.ComponentDto)
+		}
+
+		for _, eId := range cc.pendingUnloadEntityIDs[ck] {
+			if _, ok := cc.queuedUnloadEntityIDs[ck][eId]; ok {
+				continue
+			}
+
+			compDtos := ecsCont.GetEntityComponents(eId)
+			cc.queuedUnloadEntityIDs[ck][eId] = compDtos
+			if eId != 0 { // FIXME: Add initial chunk loading step before instantiating player entity
+				ecsCont.ScheduleRemoveEntity(eId)
+			}
+		}
+	}
+	cc.queuedUnloadMtx.Unlock()
 
 	cc.drainLoadResults(required, ecsCont)
 	cc.drainSaveResults(required, ecsCont)
@@ -84,6 +106,37 @@ func (cc *ChunkContainer) Tick(
 
 		cc.setState(cPos, ChunkState_Loading)
 		dispatched++
+	}
+
+	// TODO: If chunk gets loaded before autosave fires, we need to check cc.queuedUnloadEntityIDs and load entities
+	// from it.
+	// FIXME: Platform is not being saved or loaded or something
+	if cc.autosaveCounterSec > data.AutosavePeriodSec {
+		cc.autosaveCounterSec = 0
+
+		cc.queuedUnloadMtx.Lock()
+		queuedUnloadCopy := make(map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto)
+		maps.Copy(queuedUnloadCopy, cc.queuedUnloadEntityIDs)
+		cc.queuedUnloadEntityIDs = make(map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto)
+		cc.queuedUnloadMtx.Unlock()
+
+		failedEntities, err := cc.saveQueuedEntitiesToGob(queuedUnloadCopy, ecsCont)
+		if err != nil {
+			return fmt.Errorf("failed to save queued entities to gob: %w", err)
+		}
+
+		// TODO: Add retry limit
+		if len(failedEntities) > 0 {
+			cc.queuedUnloadMtx.Lock()
+			for ck := range failedEntities {
+				for eId := range failedEntities[ck] {
+					if _, ok := cc.queuedUnloadEntityIDs[ck][eId]; !ok {
+						cc.queuedUnloadEntityIDs[ck][eId] = failedEntities[ck][eId]
+					}
+				}
+			}
+			cc.queuedUnloadMtx.Unlock()
+		}
 	}
 
 	return nil

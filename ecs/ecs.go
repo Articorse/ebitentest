@@ -27,7 +27,7 @@ type ECSContainer struct {
 	TickState common.TickState
 
 	Inputs            Storage[input]
-	Parents           Storage[parent]
+	Hierarchies       Storage[hierarchy]
 	Transforms        Storage[transform]
 	Velocities        Storage[velocity]
 	Sprites           Storage[sprite]
@@ -50,7 +50,7 @@ type ECSContainer struct {
 	Persistents       Storage[persistent]
 
 	InputManager            inputManager
-	ParentManager           parentManager
+	HierarchyManager        hierarchyManager
 	TransformManager        transformManager
 	VelocityManager         velocityManager
 	SpriteManager           spriteManager
@@ -74,7 +74,7 @@ type ECSContainer struct {
 
 func NewECSContainer() *ECSContainer {
 	gob.Register(&inputDto{})
-	gob.Register(&parentDto{})
+	gob.Register(&hierarchyDto{})
 	gob.Register(&transformDto{})
 	gob.Register(&velocityDto{})
 	gob.Register(&spriteDto{})
@@ -116,7 +116,7 @@ func NewECSContainer() *ECSContainer {
 		TickState: common.TickState{},
 
 		Inputs:            Storage[input]{order: []common.EntityId{}, data: make(map[common.EntityId]*input)},
-		Parents:           Storage[parent]{order: []common.EntityId{}, data: make(map[common.EntityId]*parent)},
+		Hierarchies:       Storage[hierarchy]{order: []common.EntityId{}, data: make(map[common.EntityId]*hierarchy)},
 		Transforms:        Storage[transform]{order: []common.EntityId{}, data: make(map[common.EntityId]*transform)},
 		Velocities:        Storage[velocity]{order: []common.EntityId{}, data: make(map[common.EntityId]*velocity)},
 		Sprites:           Storage[sprite]{order: []common.EntityId{}, data: make(map[common.EntityId]*sprite)},
@@ -139,7 +139,7 @@ func NewECSContainer() *ECSContainer {
 		Persistents:       Storage[persistent]{order: []common.EntityId{}, data: make(map[common.EntityId]*persistent)},
 
 		InputManager:            inputManager{},
-		ParentManager:           parentManager{},
+		HierarchyManager:        hierarchyManager{},
 		TransformManager:        transformManager{},
 		VelocityManager:         velocityManager{},
 		SpriteManager:           spriteManager{},
@@ -205,7 +205,15 @@ func (x *ECSContainer) ScheduleRemoveEntity(e common.EntityId) {
 }
 
 func (x *ECSContainer) RemoveScheduledEntities() error {
-	for _, e := range slices.Clone(x.scheduledForDeletion) {
+	err := x.removeEntitiesImmediate(x.scheduledForDeletion)
+	if err != nil {
+		return fmt.Errorf("error removing scheduled entities: %v", err)
+	}
+	return nil
+}
+
+func (x *ECSContainer) removeEntitiesImmediate(entities []common.EntityId) error {
+	for _, e := range slices.Clone(entities) {
 		if x.Deathrattles.HasComponent(e) {
 			err := x.DeathrattleManager.Effect(e, x)
 			if err != nil {
@@ -213,7 +221,7 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 			}
 		}
 
-		x.Parents.deleteEntity(e)
+		x.Hierarchies.deleteEntity(e)
 		x.Transforms.deleteEntity(e)
 		x.Velocities.deleteEntity(e)
 		x.Sprites.deleteEntity(e)
@@ -236,10 +244,16 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 		x.ChunkLoaders.deleteEntity(e)
 		x.Persistents.deleteEntity(e)
 
-		pm := parentManager{}
-		err := pm.RemoveParentFromAllEntities(e, x)
+		hm := hierarchyManager{}
+		children, err := hm.GetChildrenDFS(e, x)
 		if err != nil {
-			log.Printf("error removing entity %d from parent component of all entities: %v", e, err)
+			log.Printf("error getting children of entity %d: %v", e, err)
+			continue
+		}
+
+		err = x.removeEntitiesImmediate(children)
+		if err != nil {
+			log.Printf("error removing children of entity %d: %v", e, err)
 			continue
 		}
 
@@ -291,8 +305,8 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 
 func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
 	switch c := comp.(type) {
-	case *parent:
-		x.Parents.addComponent(e, c.Copy())
+	case *hierarchy:
+		x.Hierarchies.addComponent(e, c.Copy())
 	case *transform:
 		x.Transforms.addComponent(e, c.Copy())
 	case *velocity:
@@ -343,7 +357,7 @@ func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
 func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 	var comps []ComponentDto
 
-	if c, err := x.Parents.getComponent(eId); err == nil {
+	if c, err := x.Hierarchies.getComponent(eId); err == nil {
 		dto := c.ToDto()
 		comps = append(comps, dto)
 	}
@@ -452,7 +466,7 @@ func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 
 func DtoToComponent[T ComponentDto](dto T) (Component, error) {
 	switch d := any(dto).(type) {
-	case *parentDto:
+	case *hierarchyDto:
 		return d.ToComponent(), nil
 	case *transformDto:
 		return d.ToComponent(), nil

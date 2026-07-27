@@ -25,7 +25,7 @@ func DrawSprites(
 	assetManager *assetmanager.AssetManager,
 ) error {
 	sm := ecsContainer.SpriteManager
-	pm := ecsContainer.ParentManager
+	pm := ecsContainer.HierarchyManager
 	tm := ecsContainer.TransformManager
 
 	batches := make(map[uint8][][]common.EntityId)

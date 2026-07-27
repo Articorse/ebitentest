@@ -2,11 +2,13 @@ package tilesystem
 
 import (
 	"ebittest/data"
+	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 )
 
 type ChunkContainer struct {
@@ -22,6 +24,12 @@ type ChunkContainer struct {
 
 	currentTickEIdsInChunks map[utils.Vec2i][]common.EntityId
 	pendingEvictEntityIDs   map[utils.Vec2i][]common.EntityId
+	pendingUnloadEntityIDs  map[utils.Vec2i][]common.EntityId
+
+	queuedUnloadMtx       sync.Mutex
+	queuedUnloadEntityIDs map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto
+
+	autosaveCounterSec float64
 }
 
 func NewChunkContainer() *ChunkContainer {
@@ -34,8 +42,12 @@ func NewChunkContainer() *ChunkContainer {
 		loadResultCh: make(chan loadResult, 1024),
 		saveResultCh: make(chan saveResult, 128),
 
-		chunkMeta:             make(map[utils.Vec2i]*chunkLoadMeta),
-		pendingEvictEntityIDs: make(map[utils.Vec2i][]common.EntityId),
+		chunkMeta:              make(map[utils.Vec2i]*chunkLoadMeta),
+		pendingEvictEntityIDs:  make(map[utils.Vec2i][]common.EntityId),
+		pendingUnloadEntityIDs: make(map[utils.Vec2i][]common.EntityId),
+		queuedUnloadEntityIDs:  make(map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto),
+
+		autosaveCounterSec: 0,
 	}
 
 	cc.StartIOThreads()

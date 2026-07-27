@@ -14,7 +14,7 @@ func Tick(
 ) error {
 	tm := ecsContainer.TransformManager
 	pcm := ecsContainer.PlatformColliderManager
-	pm := ecsContainer.ParentManager
+	pm := ecsContainer.HierarchyManager
 	phcm := ecsContainer.PhysicsColliderManager
 
 	for _, eA := range ecsContainer.PlatformColliders.GetEntities() {
@@ -86,7 +86,7 @@ func Tick(
 						continue
 					}
 
-					pEnt := pm.GetEntity(eB, ecsContainer)
+					pEnt := pm.GetParent(eB, ecsContainer)
 
 					if pEnt == eA {
 						err := pm.Detach(eB, ecsContainer)

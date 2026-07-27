@@ -40,7 +40,7 @@ var (
 	resolvedPhysicsCollisions uint64 = 0
 
 	tm     = g.ecs.TransformManager
-	pm     = g.ecs.ParentManager
+	hm     = g.ecs.HierarchyManager
 	vm     = g.ecs.VelocityManager
 	im     = g.ecs.InputManager
 	pcm    = g.ecs.PhysicsColliderManager
@@ -108,12 +108,12 @@ func (g *game) Update() error {
 		gamepadFound = true
 	}
 
-	required, toBeAdded, toBeRemoved, priority, err := g.chunkContainer.ComputeChunkSets(g.ecs)
+	toBeAdded, toBeRemoved, required, err := g.chunkContainer.ComputeChunkSets(g.ecs)
 	if err != nil {
 		log.Println("error computing chunk sets:", err)
 	}
 
-	err = g.chunkContainer.Tick(g.ecs.Rng, toBeAdded, toBeRemoved, required, priority, g.ecs)
+	err = g.chunkContainer.Tick(toBeAdded, toBeRemoved, required, g.ecs)
 	if err != nil {
 		log.Println("error ticking chunk container:", err)
 	}
@@ -234,15 +234,15 @@ func (g *game) Update() error {
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
-		parEnt := pm.GetEntity(common.EntityId(1), g.ecs)
+		parEnt := hm.GetParent(common.EntityId(1), g.ecs)
 
 		if parEnt > -1 {
-			err = pm.Detach(common.EntityId(1), g.ecs)
+			err = hm.Detach(common.EntityId(1), g.ecs)
 			if err != nil {
 				log.Println("error detaching gun: ", err)
 			}
 		} else {
-			err = pm.Attach(common.EntityId(1), g.playerEntity, g.ecs)
+			err = hm.Attach(common.EntityId(1), g.playerEntity, g.ecs)
 			if err != nil {
 				log.Println("error attaching gun to player: ", err)
 			}
@@ -523,7 +523,7 @@ func main() {
 	g.ecs.TickState = *common.NewTickState()
 
 	// Player
-	pParComp := ecs.NewParentComponent()
+	pParComp := ecs.NewHierarchyComponent()
 	pTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
 	pVelComp := ecs.NewDefaultVelocityComponent()
 	pSprComp, err := ecs.NewSpriteComponent(common.AssetSheetSlime, 20, false)
@@ -697,7 +697,7 @@ func main() {
 	// }
 
 	// Bazooka
-	bazookaParComp := ecs.NewParentComponent()
+	bazookaParComp := ecs.NewHierarchyComponent()
 	bazookaTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
 	bazookaVelComp := ecs.NewDefaultVelocityComponent()
 	bazookaSprComp, err := ecs.NewSpriteComponent(common.AssetSheetBazooka, 20, true)
@@ -817,14 +817,14 @@ func main() {
 
 	g.ecs.AddComponent(g.playerEntity, pEquipperComp)
 
-	err = pm.Attach(bazooka, g.playerEntity, g.ecs)
+	err = hm.Attach(bazooka, g.playerEntity, g.ecs)
 	if err != nil {
 		log.Fatal("error attaching bazooka to player: ", err)
 	}
 
 	// // Enemy spawner
-	// enemyTraComp := ecs.NewTransformComponent(utils.Vec2{X: 300, Y: 150}, 1, 0)
-	// enemyVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{}, data.DefaultAcceleration*0.25, data.DefaultDrag)
+	// enemyTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 300, Y: 150}, 1, 0)
+	// enemyVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{}, data.DefaultAcceleration*0.25, data.DefaultDrag)
 	// enemyParComp := ecs.NewParentComponent()
 	// enemySprComp, err := ecs.NewSpriteComponent(common.AssetSheetEvilSlime, 20, true)
 	// if err != nil {
@@ -849,7 +849,7 @@ func main() {
 	// 	log.Fatal(err)
 	// }
 	// enemyHpComp := ecs.NewHitpointsComponent(20, 100)
-	// enemyPhyColShape, err := shapes.NewCircleShape(7, utils.Vec2{X: 0, Y: 0})
+	// enemyPhyColShape, err := shapes.NewCircleShape(7, utils.Vec2f{X: 0, Y: 0})
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
@@ -863,7 +863,7 @@ func main() {
 	// 	ecs.Collider_Mob,
 	// 	enemyPhyColShape,
 	// )
-	// enemyHitboxColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: 0, Y: 0})
+	// enemyHitboxColShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
@@ -875,7 +875,7 @@ func main() {
 	// 		ecs.Layer_Terrain,
 	// 	enemyHitboxColShape,
 	// )
-	// enemyHurtboxColShape, err := shapes.NewCircleShape(7, utils.Vec2{X: 0, Y: 0})
+	// enemyHurtboxColShape, err := shapes.NewCircleShape(7, utils.Vec2f{X: 0, Y: 0})
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
@@ -897,12 +897,12 @@ func main() {
 	// if err != nil {
 	// 	log.Fatal("error creating enemy spawner timer component: ", err)
 	// }
-	// enemySpawnerShape, err := shapes.NewRectangleShape(data.CameraWidth+100, data.CameraHeight+100, utils.Vec2{})
+	// enemySpawnerShape, err := shapes.NewRectangleShape(data.CameraWidth+100, data.CameraHeight+100, utils.Vec2f{})
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
 	// enemySpawnerComp, err := ecs.NewSpawnerComponent(
-	// 	utils.Vec2{
+	// 	utils.Vec2f{
 	// 		X: g.ecs.Camera.X + (data.CameraWidth / 2),
 	// 		Y: g.ecs.Camera.Y + (data.CameraHeight / 2),
 	// 	},
@@ -927,7 +927,7 @@ func main() {
 
 	// Tree
 	treeInpComp := ecs.NewInputComponent(nil, ecs.InputType_Dummy, nil, ecs.Facing_None)
-	treeParComp := ecs.NewParentComponent()
+	treeParComp := ecs.NewHierarchyComponent()
 	treeTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 200, Y: 200}, 1, 0)
 	treeVelComp := ecs.NewDefaultVelocityComponent()
 	treeSprComp, err := ecs.NewSpriteComponent(common.AssetImageTree, 20, true)
@@ -975,7 +975,7 @@ func main() {
 	}
 	platInput := ecs.NewInputComponent(nil, ecs.InputType_Loop, loopParams, ecs.Facing_None)
 
-	platParComp := ecs.NewParentComponent()
+	platParComp := ecs.NewHierarchyComponent()
 	platTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 10}, 1, 0)
 	platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{}, 0.3, data.DefaultDrag)
 

@@ -8,6 +8,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -45,7 +46,7 @@ type saveResult struct {
 func (cc *ChunkContainer) StartIOThreads() {
 	go func() {
 		for req := range cc.saveChunkCh {
-			err := saveChunkGob(fmt.Sprintf(data.ChunkDataFilePathTemplate, req.pos.X, req.pos.Y), req.chunk)
+			err := saveChunkGob(req.pos, req.chunk)
 			cc.saveResultCh <- saveResult{
 				pos: req.pos,
 				err: err,
@@ -55,7 +56,7 @@ func (cc *ChunkContainer) StartIOThreads() {
 
 	go func() {
 		for req := range cc.loadReqCh {
-			cDto, exists, err := loadChunkGob(fmt.Sprintf(data.ChunkDataFilePathTemplate, req.pos.X, req.pos.Y))
+			cDto, exists, err := loadChunkGob(req.pos)
 			if err != nil {
 				cc.loadResultCh <- loadResult{
 					pos: req.pos,
@@ -93,7 +94,8 @@ func (cc *ChunkContainer) StartIOThreads() {
 	}()
 }
 
-func saveChunkGob(filePath string, data chunkDto) (err error) {
+func saveChunkGob(cellKey utils.Vec2i, chunkData chunkDto) (err error) {
+	filePath := fmt.Sprintf(data.ChunkDataFilePathTemplate, cellKey.X, cellKey.Y)
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return fmt.Errorf("error creating directory %s: %w", dir, err)
@@ -110,15 +112,15 @@ func saveChunkGob(filePath string, data chunkDto) (err error) {
 	}()
 
 	encoder := gob.NewEncoder(file)
-	if err := encoder.Encode(data); err != nil {
+	if err := encoder.Encode(chunkData); err != nil {
 		return fmt.Errorf("error encoding data: %w", err)
 	}
 
 	return nil
 }
 
-func loadChunkGob(filePath string) (cDto chunkDto, exists bool, err error) {
-	file, err := os.Open(filePath)
+func loadChunkGob(cellKey utils.Vec2i) (cDto chunkDto, exists bool, err error) {
+	file, err := os.Open(fmt.Sprintf(data.ChunkDataFilePathTemplate, cellKey.X, cellKey.Y))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return chunkDto{}, false, nil
@@ -167,4 +169,47 @@ func (cc *ChunkContainer) getOrCreateMeta(pos utils.Vec2i) *chunkLoadMeta {
 	meta = &chunkLoadMeta{state: ChunkState_Unloaded}
 	cc.chunkMeta[pos] = meta
 	return meta
+}
+
+func (cc *ChunkContainer) saveQueuedEntitiesToGob(
+	queuedEntities map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto,
+	ecsCont *ecs.ECSContainer,
+) (failedEntities map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto, err error) {
+	failedEntities = make(map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto)
+
+	for ck := range queuedEntities {
+		cDto, exists, err := loadChunkGob(ck)
+		if err != nil {
+			failedEntities[ck] = queuedEntities[ck]
+			log.Printf("Failed to load chunk for saving queued entities: %v", err)
+			continue
+		}
+
+		if !exists {
+			newChunk, err := cc.newChunkData(ck)
+			if err != nil {
+				failedEntities[ck] = queuedEntities[ck]
+				log.Printf("Failed to create new chunk for saving queued entities: %v", err)
+				continue
+			}
+
+			cDto, err = cc.chunkToDto(newChunk, ck, ecsCont)
+			if err != nil {
+				failedEntities[ck] = queuedEntities[ck]
+				log.Printf("Failed to convert new chunk to DTO for saving queued entities: %v", err)
+				continue
+			}
+		}
+
+		cDto.Entities = queuedEntities[ck]
+
+		err = saveChunkGob(ck, cDto)
+		if err != nil {
+			failedEntities[ck] = queuedEntities[ck]
+			log.Printf("Failed to save chunk with queued entities: %v", err)
+			continue
+		}
+	}
+
+	return failedEntities, nil
 }
