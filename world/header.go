@@ -11,22 +11,30 @@ import (
 	"path/filepath"
 )
 
-type header struct {
+type Header struct {
+	Generation   uint64
 	NextEntity   common.EntityId
 	TickIdx      uint64
 	PlayerEntity common.EntityId
+	RngState     []byte
 	Entities     map[common.EntityId][]ecs.ComponentDto
 }
 
 // Chunkloaders and their hierarchies are stored here rather than in chunks,
 // since the chunks they would be stored in can't be loaded without them.
-func Save(playerEntity common.EntityId, ecsCont *ecs.ECSContainer) error {
+func Snapshot(playerEntity common.EntityId, ecsCont *ecs.ECSContainer) (Header, error) {
 	hm := ecsCont.HierarchyManager
 
-	h := header{
+	rngState, err := ecsCont.RngState()
+	if err != nil {
+		return Header{}, fmt.Errorf("error getting RNG state: %w", err)
+	}
+
+	h := Header{
 		NextEntity:   ecsCont.NextEntity(),
 		TickIdx:      ecsCont.TickIdx,
 		PlayerEntity: playerEntity,
+		RngState:     rngState,
 		Entities:     make(map[common.EntityId][]ecs.ComponentDto),
 	}
 
@@ -35,7 +43,7 @@ func Save(playerEntity common.EntityId, ecsCont *ecs.ECSContainer) error {
 
 		children, err := hm.GetChildrenDFS(root, ecsCont)
 		if err != nil {
-			return fmt.Errorf("error getting children of chunkloader entity %d: %w", root, err)
+			return Header{}, fmt.Errorf("error getting children of chunkloader entity %d: %w", root, err)
 		}
 
 		for _, e := range append([]common.EntityId{root}, children...) {
@@ -43,34 +51,41 @@ func Save(playerEntity common.EntityId, ecsCont *ecs.ECSContainer) error {
 		}
 	}
 
-	return writeHeader(h)
+	return h, nil
 }
 
-func Load(ecsCont *ecs.ECSContainer) (playerEntity common.EntityId, exists bool, err error) {
-	h, exists, err := readHeader()
+func Load(ecsCont *ecs.ECSContainer) (h Header, exists bool, err error) {
+	h, exists, err = readHeader()
 	if err != nil || !exists {
-		return -1, exists, err
+		return h, exists, err
 	}
 
 	ecsCont.SetNextEntity(h.NextEntity)
 	ecsCont.TickIdx = h.TickIdx
+
+	// Headers saved before RNG state was stored have none, in which case the seeded state is kept
+	if len(h.RngState) > 0 {
+		if err := ecsCont.SetRngState(h.RngState); err != nil {
+			return h, true, fmt.Errorf("error restoring RNG state: %w", err)
+		}
+	}
 
 	for e, compDtos := range h.Entities {
 		comps := make([]ecs.Component, 0, len(compDtos))
 		for _, compDto := range compDtos {
 			comp, err := ecs.DtoToComponent(compDto)
 			if err != nil {
-				return -1, true, fmt.Errorf("error converting component of entity %d: %w", e, err)
+				return h, true, fmt.Errorf("error converting component of entity %d: %w", e, err)
 			}
 			comps = append(comps, comp)
 		}
 
 		if err := ecsCont.AddEntityWithId(e, comps...); err != nil {
-			return -1, true, fmt.Errorf("error adding entity %d: %w", e, err)
+			return h, true, fmt.Errorf("error adding entity %d: %w", e, err)
 		}
 	}
 
-	return h.PlayerEntity, true, nil
+	return h, true, nil
 }
 
 func Reset() error {
@@ -81,7 +96,8 @@ func Reset() error {
 	return nil
 }
 
-func writeHeader(h header) error {
+// Replacing the header is the point at which a world save is committed
+func WriteHeader(h Header) error {
 	dir := filepath.Dir(data.WorldHeaderFilePath)
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return fmt.Errorf("error creating directory %s: %w", dir, err)
@@ -98,6 +114,12 @@ func writeHeader(h header) error {
 		return fmt.Errorf("error encoding world header: %w", err)
 	}
 
+	if err := file.Sync(); err != nil {
+		file.Close()
+		os.Remove(file.Name())
+		return fmt.Errorf("error syncing temporary file: %w", err)
+	}
+
 	if err := file.Close(); err != nil {
 		os.Remove(file.Name())
 		return fmt.Errorf("error closing temporary file: %w", err)
@@ -111,13 +133,13 @@ func writeHeader(h header) error {
 	return nil
 }
 
-func readHeader() (h header, exists bool, err error) {
+func readHeader() (h Header, exists bool, err error) {
 	file, err := os.Open(data.WorldHeaderFilePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return header{}, false, nil
+			return Header{}, false, nil
 		}
-		return header{}, false, fmt.Errorf("error opening world header: %w", err)
+		return Header{}, false, fmt.Errorf("error opening world header: %w", err)
 	}
 	defer func() {
 		if cerr := file.Close(); cerr != nil {
@@ -126,7 +148,7 @@ func readHeader() (h header, exists bool, err error) {
 	}()
 
 	if err := gob.NewDecoder(file).Decode(&h); err != nil {
-		return header{}, true, fmt.Errorf("error decoding world header: %w", err)
+		return Header{}, true, fmt.Errorf("error decoding world header: %w", err)
 	}
 
 	return h, true, nil

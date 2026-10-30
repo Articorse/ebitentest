@@ -11,7 +11,6 @@ const (
 	ChunkState_Unloaded chunkState = iota
 	ChunkState_Loading
 	ChunkState_Active
-	ChunkState_Evicting
 )
 
 func canTransitionChunkState(from, to chunkState) bool {
@@ -21,13 +20,11 @@ func canTransitionChunkState(from, to chunkState) bool {
 
 	switch from {
 	case ChunkState_Unloaded:
-		return to == ChunkState_Loading
+		return to == ChunkState_Loading || to == ChunkState_Active
 	case ChunkState_Loading:
 		return to == ChunkState_Unloaded || to == ChunkState_Active
 	case ChunkState_Active:
-		return to == ChunkState_Evicting || to == ChunkState_Unloaded
-	case ChunkState_Evicting:
-		return to == ChunkState_Unloaded || to == ChunkState_Active
+		return to == ChunkState_Unloaded
 	default:
 		return false
 	}

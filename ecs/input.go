@@ -5,7 +5,9 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -148,7 +150,7 @@ func (x input) Copy() input {
 		config:        x.config,
 		inputType:     x.inputType,
 		facingInput:   x.facingInput,
-		params:        x.params,
+		params:        copyInputParams(x.params),
 		lastFacingDir: utils.Vec2f{},
 	}
 }
@@ -165,12 +167,65 @@ func (inputDto) isComponentDto() {}
 
 func (x input) ToDto() inputDto {
 	return inputDto{
-		Config:        x.config,
+		Config:        maps.Clone(x.config),
 		InputType:     x.inputType,
 		FacingInput:   x.facingInput,
-		Params:        x.params,
+		Params:        copyInputParams(x.params),
 		LastFacingDir: x.lastFacingDir,
 	}
+}
+
+func copyInputParams(params InputParams) InputParams {
+	switch p := params.(type) {
+	case InputDemoParams:
+		return InputDemoParams{Log: copyInputLog(p.Log)}
+	case *InputDemoParams:
+		if p == nil {
+			return p
+		}
+		return &InputDemoParams{Log: copyInputLog(p.Log)}
+	case InputLoopParams:
+		p.LoopInputs = slices.Clone(p.LoopInputs)
+		return p
+	case *InputLoopParams:
+		if p == nil {
+			return p
+		}
+		c := *p
+		c.LoopInputs = slices.Clone(p.LoopInputs)
+		return &c
+	case InputReplayParams:
+		p.ReplayInputs = maps.Clone(p.ReplayInputs)
+		return p
+	case *InputReplayParams:
+		if p == nil {
+			return p
+		}
+		c := *p
+		c.ReplayInputs = maps.Clone(p.ReplayInputs)
+		return &c
+	case *InputFollowParams:
+		if p == nil {
+			return p
+		}
+		c := *p
+		return &c
+	default:
+		return params
+	}
+}
+
+func copyInputLog(inputLog map[uint64]map[common.EntityId]InputState) map[uint64]map[common.EntityId]InputState {
+	if inputLog == nil {
+		return nil
+	}
+
+	c := make(map[uint64]map[common.EntityId]InputState, len(inputLog))
+	for tick, inputs := range inputLog {
+		c[tick] = maps.Clone(inputs)
+	}
+
+	return c
 }
 
 func (x *inputDto) ToComponent() *input {

@@ -405,9 +405,30 @@ func (g *game) Update() error {
 	g.ecs.TickState.AABBCollisions = physicsAABBCollisions
 	g.ecs.TickState.Collisions = physicsCollisions
 
+	if g.ecs.TickIdx%(data.WorldSavePeriodSec*data.TPS) == 0 {
+		g.startWorldSave()
+	}
+
 	g.ecs.TickIdx++
 
 	return nil
+}
+
+func (g *game) startWorldSave() {
+	if g.chunkContainer.IsCommitting() {
+		log.Println("skipping world save, the previous one is still being written")
+		return
+	}
+
+	header, err := world.Snapshot(g.playerEntity, g.ecs)
+	if err != nil {
+		log.Println("error taking world snapshot: ", err)
+		return
+	}
+
+	if err := g.chunkContainer.StartCommit(header, g.ecs); err != nil {
+		log.Println("error starting world save: ", err)
+	}
 }
 
 func (g *game) saveAndExit() error {
@@ -416,12 +437,14 @@ func (g *game) saveAndExit() error {
 		return ebiten.Termination
 	}
 
-	if err := g.chunkContainer.SaveAllAndWait(g.ecs); err != nil {
-		log.Println("error saving chunks: ", err)
+	header, err := world.Snapshot(g.playerEntity, g.ecs)
+	if err != nil {
+		log.Println("error taking world snapshot: ", err)
+		return ebiten.Termination
 	}
 
-	if err := world.Save(g.playerEntity, g.ecs); err != nil {
-		log.Println("error saving world header: ", err)
+	if err := g.chunkContainer.CommitAndWait(header, g.ecs); err != nil {
+		log.Println("error saving world: ", err)
 	}
 
 	return ebiten.Termination
@@ -560,13 +583,17 @@ func main() {
 
 	g.ecs.TickState = *common.NewTickState()
 
-	playerEntity, worldExists, err := world.Load(g.ecs)
+	header, worldExists, err := world.Load(g.ecs)
 	if err != nil {
 		log.Fatal("error loading world: ", err)
 	}
 
 	if worldExists {
-		g.playerEntity = playerEntity
+		if err := tilesystem.RecoverChunkFiles(header.Generation); err != nil {
+			log.Fatal("error recovering chunk files: ", err)
+		}
+		g.chunkContainer.SetGeneration(header.Generation)
+		g.playerEntity = header.PlayerEntity
 	} else {
 		if err := world.Reset(); err != nil {
 			log.Fatal("error resetting world: ", err)

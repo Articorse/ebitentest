@@ -1,6 +1,9 @@
 package ecs
 
-import "ebittest/ecs/common"
+import (
+	"ebittest/ecs/common"
+	"slices"
+)
 
 type hierarchy struct {
 	parent   common.EntityId
@@ -12,7 +15,7 @@ func (hierarchy) isComponent() {}
 func (x hierarchy) Copy() hierarchy {
 	return hierarchy{
 		parent:   x.parent,
-		children: x.children,
+		children: slices.Clone(x.children),
 	}
 }
 
@@ -26,7 +29,7 @@ func (hierarchyDto) isComponentDto() {}
 func (x hierarchy) ToDto() hierarchyDto {
 	return hierarchyDto{
 		Parent:   x.parent,
-		Children: x.children,
+		Children: slices.Clone(x.children),
 	}
 }
 

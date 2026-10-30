@@ -65,7 +65,7 @@ func ShapeToDto[T Shape](s T) (ShapeDto, error) {
 	case *CircleShape:
 		return ShapeDto{
 			Type: Shape_Circle,
-			Params: CircleParams{
+			Params: &CircleParams{
 				Radius: shape.radius,
 				Offset: shape.offset,
 			},
@@ -73,7 +73,7 @@ func ShapeToDto[T Shape](s T) (ShapeDto, error) {
 	case *RectangleShape:
 		return ShapeDto{
 			Type: Shape_Rectangle,
-			Params: RectangleParams{
+			Params: &RectangleParams{
 				TopLeft:     shape.topLeft,
 				BottomRight: shape.bottomRight,
 				Offset:      shape.offset,
@@ -82,7 +82,7 @@ func ShapeToDto[T Shape](s T) (ShapeDto, error) {
 	case *PolygonShape:
 		return ShapeDto{
 			Type: Shape_Polygon,
-			Params: PolygonParams{
+			Params: &PolygonParams{
 				Vertices: shape.vertices,
 				Offset:   shape.offset,
 			},

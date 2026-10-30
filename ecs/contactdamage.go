@@ -36,6 +36,8 @@ type contactDamageDto struct {
 func (contactDamageDto) isComponentDto() {}
 
 func (x contactDamage) ToDto() contactDamageDto {
+	x = x.Copy()
+
 	return contactDamageDto{
 		Source:       x.source,
 		Knockback:    x.knockback,

@@ -2,53 +2,50 @@ package tilesystem
 
 import (
 	"ebittest/data"
-	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"encoding/json"
 	"fmt"
 	"os"
-	"sync"
 )
 
 type ChunkContainer struct {
 	chunks map[utils.Vec2i]*chunk
 	atlas  map[data.TileEnum]tileDef
 
-	saveChunkCh  chan saveRequest
-	loadReqCh    chan loadRequest
-	loadResultCh chan loadResult
-	saveResultCh chan saveResult
-	pendingSaves int
+	loadReqCh      chan loadRequest
+	loadResultCh   chan loadResult
+	commitReqCh    chan commitRequest
+	commitResultCh chan commitResult
 
 	chunkMeta map[utils.Vec2i]*chunkLoadMeta
 
 	currentTickEIdsInChunks map[utils.Vec2i][]common.EntityId
-	pendingEvictEntityIDs   map[utils.Vec2i][]common.EntityId
-	pendingUnloadEntityIDs  map[utils.Vec2i][]common.EntityId
 
-	queuedUnloadMtx       sync.Mutex
-	queuedUnloadEntityIDs map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto
+	// Chunks and entities that left the simulation are kept here until a commit writes them to disk,
+	// so that the files on disk always match the world as of the last commit.
+	evictedChunks  map[utils.Vec2i]pendingChunk
+	queuedEntities map[utils.Vec2i]map[common.EntityId]pendingEntity
+	pendingVersion uint64
 
-	autosaveCounterSec float64
+	generation     uint64
+	commitInFlight *inFlightCommit
 }
 
 func NewChunkContainer() *ChunkContainer {
 	cc := &ChunkContainer{
 		chunks: make(map[utils.Vec2i]*chunk),
 
-		saveChunkCh: make(chan saveRequest, 128),
 		// Unbuffered on purpose: prevents stale load backlog when chunkloader moves quickly and remains deterministic.
 		loadReqCh:    make(chan loadRequest),
 		loadResultCh: make(chan loadResult, 1024),
-		saveResultCh: make(chan saveResult, 128),
+		// Only one commit is ever in flight, so neither side can block
+		commitReqCh:    make(chan commitRequest, 1),
+		commitResultCh: make(chan commitResult, 1),
 
-		chunkMeta:              make(map[utils.Vec2i]*chunkLoadMeta),
-		pendingEvictEntityIDs:  make(map[utils.Vec2i][]common.EntityId),
-		pendingUnloadEntityIDs: make(map[utils.Vec2i][]common.EntityId),
-		queuedUnloadEntityIDs:  make(map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto),
-
-		autosaveCounterSec: 0,
+		chunkMeta:      make(map[utils.Vec2i]*chunkLoadMeta),
+		evictedChunks:  make(map[utils.Vec2i]pendingChunk),
+		queuedEntities: make(map[utils.Vec2i]map[common.EntityId]pendingEntity),
 	}
 
 	cc.StartIOThreads()

@@ -20,6 +20,11 @@ func (x *Storage[T]) HasComponent(e common.EntityId) bool {
 	return ok
 }
 
+func (x *Storage[T]) tryGetComponent(e common.EntityId) (*T, bool) {
+	c, ok := x.data[e]
+	return c, ok
+}
+
 func (x *Storage[T]) getData() map[common.EntityId]*T {
 	return x.data
 }

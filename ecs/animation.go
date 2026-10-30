@@ -61,6 +61,8 @@ type animationDto struct {
 func (animationDto) isComponentDto() {}
 
 func (x animation) ToDto() animationDto {
+	x = x.Copy()
+
 	return animationDto{
 		SheetAssetTag: x.sheetAssetTag,
 		StateFrames:   x.stateFrames,

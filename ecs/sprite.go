@@ -69,6 +69,8 @@ type spriteDto struct {
 func (spriteDto) isComponentDto() {}
 
 func (x sprite) ToDto() spriteDto {
+	x = x.Copy()
+
 	return spriteDto{
 		ImageAssetTag:  x.imageAssetTag,
 		SubImageIdx:    x.subImageIdx,

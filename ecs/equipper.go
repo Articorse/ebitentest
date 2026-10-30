@@ -37,6 +37,8 @@ type equipperDto struct {
 func (equipperDto) isComponentDto() {}
 
 func (x equipper) ToDto() equipperDto {
+	x = x.Copy()
+
 	return equipperDto{
 		Equipment: x.equipment,
 	}
