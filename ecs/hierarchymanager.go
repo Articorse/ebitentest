@@ -57,6 +57,12 @@ func (*hierarchyManager) Attach(
 		return fmt.Errorf("could not get hierarchy of parent entity %d: %v", p, err)
 	}
 
+	for a := p; a != -1; a = hm.GetParent(a, ecsContainer) {
+		if a == c {
+			return fmt.Errorf("cannot attach entity %d to entity %d, as it would create a cycle", c, p)
+		}
+	}
+
 	if err := hm.Detach(c, ecsContainer); err != nil {
 		return fmt.Errorf("error during detach: %v", err)
 	}
@@ -123,15 +129,25 @@ func (*hierarchyManager) Detach(
 		}
 	}
 
-	if pHierComp, err := ecsContainer.Hierarchies.getComponent(cHierComp.parent); err == nil {
-		pHierComp.children = slices.DeleteFunc(pHierComp.children, func(c common.EntityId) bool {
-			return c == e
-		})
-	}
-
+	removeChild(cHierComp.parent, e, ecsContainer)
 	cHierComp.parent = -1
 
 	return nil
+}
+
+func removeChild(
+	p common.EntityId,
+	c common.EntityId,
+	ecsContainer *ECSContainer,
+) {
+	pHierComp, err := ecsContainer.Hierarchies.getComponent(p)
+	if err != nil {
+		return
+	}
+
+	pHierComp.children = slices.DeleteFunc(pHierComp.children, func(child common.EntityId) bool {
+		return child == c
+	})
 }
 
 func detachTransform(

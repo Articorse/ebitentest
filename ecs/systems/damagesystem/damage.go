@@ -130,7 +130,7 @@ func DealContactDamage(
 			}
 
 			if dieOnContact {
-				ecsCont.ScheduleRemoveEntity(dmgE)
+				ecsCont.ScheduleKillEntity(dmgE)
 			}
 
 			singleTick, err := cdm.GetSingleTick(dmgE, ecsCont)
@@ -145,7 +145,7 @@ func DealContactDamage(
 
 			if dead {
 				entitiesKilled++
-				ecsCont.ScheduleRemoveEntity(hitE)
+				ecsCont.ScheduleKillEntity(hitE)
 			}
 		}
 

@@ -17,6 +17,7 @@ import (
 type ECSContainer struct {
 	nextEntity           common.EntityId
 	scheduledForDeletion []common.EntityId
+	scheduledForDeath    []common.EntityId
 
 	InputLog     map[uint64]map[common.EntityId]InputState
 	Camera       utils.Vec2f
@@ -218,7 +219,26 @@ func (x *ECSContainer) ScheduleRemoveEntity(e common.EntityId) {
 	}
 }
 
+func (x *ECSContainer) ScheduleKillEntity(e common.EntityId) {
+	x.ScheduleRemoveEntity(e)
+	if !slices.Contains(x.scheduledForDeath, e) {
+		x.scheduledForDeath = append(x.scheduledForDeath, e)
+	}
+}
+
 func (x *ECSContainer) RemoveScheduledEntities() error {
+	// Indexed loop, since death effects may schedule further deaths
+	for i := 0; i < len(x.scheduledForDeath); i++ {
+		e := x.scheduledForDeath[i]
+		if x.Deathrattles.HasComponent(e) {
+			err := x.DeathrattleManager.Effect(e, x)
+			if err != nil {
+				log.Printf("Error executing deathrattle for entity %d: %v\n", e, err)
+			}
+		}
+	}
+	x.scheduledForDeath = x.scheduledForDeath[:0]
+
 	err := x.removeEntitiesImmediate(x.scheduledForDeletion)
 	if err != nil {
 		return fmt.Errorf("error removing scheduled entities: %v", err)
@@ -228,19 +248,14 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 
 func (x *ECSContainer) removeEntitiesImmediate(entities []common.EntityId) error {
 	for _, e := range slices.Clone(entities) {
-		if x.Deathrattles.HasComponent(e) {
-			err := x.DeathrattleManager.Effect(e, x)
-			if err != nil {
-				log.Printf("Error executing deathrattle for entity %d: %v\n", e, err)
-			}
-		}
-
 		hm := hierarchyManager{}
 		children, err := hm.GetChildrenDFS(e, x)
 		if err != nil {
 			log.Printf("error getting children of entity %d: %v", e, err)
 			continue
 		}
+
+		removeChild(hm.GetParent(e, x), e, x)
 
 		x.Hierarchies.deleteEntity(e)
 		x.Transforms.deleteEntity(e)
