@@ -264,6 +264,9 @@ func (cc *ChunkContainer) drainSaveResults(required map[utils.Vec2i]struct{}, ec
 				continue
 			}
 
+			if c, ok := cc.chunks[res.pos]; ok {
+				c.freeImage()
+			}
 			delete(cc.chunks, res.pos)
 
 			if eIds, ok := cc.pendingEvictEntityIDs[res.pos]; ok {

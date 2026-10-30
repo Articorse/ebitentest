@@ -144,8 +144,10 @@ func loadChunkGob(cellKey utils.Vec2i) (cDto chunkDto, exists bool, err error) {
 }
 
 func postLoadChunk(c *chunk, atlas map[data.TileEnum]tileDef) error {
-	if err := c.generateChunkImage(atlas); err != nil {
-		return fmt.Errorf("failed to generate chunk image: %w", err)
+	for _, tEnum := range c.tiles {
+		if _, ok := atlas[tEnum]; !ok {
+			return fmt.Errorf("tile enum %d not found in atlas", tEnum)
+		}
 	}
 
 	return nil
