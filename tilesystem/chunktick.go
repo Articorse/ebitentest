@@ -7,61 +7,166 @@ import (
 	"ebittest/utils"
 	"fmt"
 	"log"
+	"maps"
+	"slices"
 )
 
-func (cc *ChunkContainer) Tick(
-	toBeAdded []utils.Vec2i,
-	toBeRemoved []utils.Vec2i,
-	required map[utils.Vec2i]struct{},
-	ecsCont *ecs.ECSContainer,
-) error {
+// Every decision here depends only on loader positions, never on when IO finishes,
+// so that the simulation sees the same chunks on the same ticks every run.
+func (cc *ChunkContainer) Tick(ecsCont *ecs.ECSContainer) error {
+	plan, err := buildChunkPlan(ecsCont)
+	if err != nil {
+		log.Printf("error building chunk plan: %v", err)
+	}
+
+	cc.drainIOResults()
+
+	for _, pos := range plan.activate {
+		if _, ok := cc.chunks[pos]; ok {
+			continue
+		}
+
+		if err := cc.waitUntilAvailable(pos); err != nil {
+			return fmt.Errorf("failed to activate chunk at %v: %w", pos, err)
+		}
+
+		if err := cc.activateChunk(pos, ecsCont); err != nil {
+			return fmt.Errorf("failed to activate chunk at %v: %w", pos, err)
+		}
+	}
+
 	eIdsInChunks, toBeUnloaded, err := cc.getEntityIdsInChunks(ecsCont)
 	if err != nil {
 		return fmt.Errorf("failed to get entity IDs in chunks: %w", err)
 	}
 	cc.currentTickEIdsInChunks = eIdsInChunks
 
-	for ck, eIds := range toBeUnloaded {
-		for _, eId := range eIds {
-			cc.queueEntity(ck, eId, ecsCont.GetEntityComponents(eId))
+	for _, pos := range slices.SortedFunc(maps.Keys(toBeUnloaded), compareChunkPos) {
+		for _, eId := range toBeUnloaded[pos] {
+			cc.queueEntity(pos, eId, ecsCont.GetEntityComponents(eId))
 			ecsCont.ScheduleRemoveEntity(eId)
 		}
 	}
 
-	cc.drainLoadResults(required, ecsCont)
-	cc.drainCommitResults()
-	cc.invalidateNonRequiredLoads(required)
+	for _, pos := range slices.SortedFunc(maps.Keys(cc.chunks), compareChunkPos) {
+		if _, ok := plan.keepActive[pos]; ok {
+			continue
+		}
 
-	for _, cPos := range toBeRemoved {
-		if err := cc.evictChunk(cPos, ecsCont); err != nil {
-			return fmt.Errorf("failed to evict chunk at %v: %w", cPos, err)
+		if err := cc.deactivateChunk(pos, ecsCont); err != nil {
+			return fmt.Errorf("failed to deactivate chunk at %v: %w", pos, err)
 		}
 	}
 
-	cc.dispatchLoads(toBeAdded, required, ecsCont)
+	cc.prefetch(plan)
 
 	return nil
 }
 
-func (cc *ChunkContainer) TickLoading(
-	toBeAdded []utils.Vec2i,
-	required map[utils.Vec2i]struct{},
-	ecsCont *ecs.ECSContainer,
-) (loaded bool) {
-	cc.drainLoadResults(required, ecsCont)
-	cc.invalidateNonRequiredLoads(required)
-	cc.dispatchLoads(toBeAdded, required, ecsCont)
-
-	for pos := range required {
-		if _, ok := cc.chunks[pos]; !ok {
-			return false
-		}
+// Loads the chunks that will be activated on the first tick, without activating them.
+// Returns true once all of them are available, so the first tick doesn't have to wait.
+func (cc *ChunkContainer) Prepare(ecsCont *ecs.ECSContainer) (ready bool, err error) {
+	plan, err := buildChunkPlan(ecsCont)
+	if err != nil {
+		return false, fmt.Errorf("error building chunk plan: %w", err)
 	}
 
-	return true
+	cc.drainIOResults()
+
+	ready = true
+	for _, pos := range plan.activate {
+		if _, ok := cc.chunks[pos]; ok {
+			continue
+		}
+
+		if cc.isAvailable(pos) {
+			continue
+		}
+		ready = false
+
+		if _, ok := cc.loadsInFlight[pos]; !ok && cc.loadFailures[pos] >= data.ChunkReloadRetries {
+			return false, fmt.Errorf("failed to load chunk at %v after %d attempts", pos, cc.loadFailures[pos])
+		}
+
+		cc.requestLoad(pos)
+	}
+
+	cc.prefetch(plan)
+
+	return ready, nil
 }
 
-func (cc *ChunkContainer) evictChunk(pos utils.Vec2i, ecsCont *ecs.ECSContainer) error {
+func (cc *ChunkContainer) prefetch(plan chunkPlan) {
+	requested := 0
+	for _, pos := range plan.prefetch {
+		if requested >= data.MaxChunkLoadDispatchPerTick {
+			break
+		}
+
+		if _, ok := cc.chunks[pos]; ok {
+			continue
+		}
+		if _, ok := cc.loadsInFlight[pos]; ok {
+			continue
+		}
+		if cc.isAvailable(pos) {
+			continue
+		}
+		if cc.loadFailures[pos] >= data.ChunkReloadRetries {
+			continue
+		}
+
+		cc.requestLoad(pos)
+		requested++
+	}
+
+	for pos := range cc.resident {
+		if _, ok := plan.resident[pos]; !ok {
+			delete(cc.resident, pos)
+		}
+	}
+}
+
+func (cc *ChunkContainer) activateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContainer) error {
+	var c *chunk
+	var ents map[common.EntityId][]ecs.ComponentDto
+
+	// An evicted copy is newer than anything on disk, since it's only written by the next commit
+	if evicted, ok := cc.evictedChunks[pos]; ok {
+		c = cc.dtoToChunkData(evicted.dto)
+		ents = evicted.dto.Entities
+		delete(cc.evictedChunks, pos)
+	} else {
+		r := cc.resident[pos]
+		c = r.chunk
+		ents = r.ents
+	}
+	delete(cc.resident, pos)
+
+	if err := postLoadChunk(c, cc.atlas); err != nil {
+		return fmt.Errorf("failed post-load of chunk: %w", err)
+	}
+
+	// Insertion order decides the order systems iterate over entities, so it must not depend on map order
+	for _, eId := range slices.Sorted(maps.Keys(ents)) {
+		instantiateEntity(eId, ents[eId], ecsCont)
+	}
+
+	// The queued entities may already have been committed into the file this chunk was loaded from
+	queued := cc.queuedEntities[pos]
+	for _, eId := range slices.Sorted(maps.Keys(queued)) {
+		if !ecsCont.HasEntity(eId) {
+			instantiateEntity(eId, queued[eId].dtos, ecsCont)
+		}
+	}
+	delete(cc.queuedEntities, pos)
+
+	cc.chunks[pos] = c
+
+	return nil
+}
+
+func (cc *ChunkContainer) deactivateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContainer) error {
 	c, ok := cc.chunks[pos]
 	if !ok {
 		return nil
@@ -72,7 +177,7 @@ func (cc *ChunkContainer) evictChunk(pos utils.Vec2i, ecsCont *ecs.ECSContainer)
 		return fmt.Errorf("failed to convert chunk to DTO: %w", err)
 	}
 
-	for eId := range cDto.Entities {
+	for _, eId := range slices.Sorted(maps.Keys(cDto.Entities)) {
 		ecsCont.ScheduleRemoveEntity(eId)
 	}
 
@@ -81,35 +186,6 @@ func (cc *ChunkContainer) evictChunk(pos utils.Vec2i, ecsCont *ecs.ECSContainer)
 
 	c.freeImage()
 	delete(cc.chunks, pos)
-	cc.setState(pos, ChunkState_Unloaded)
-
-	return nil
-}
-
-func (cc *ChunkContainer) activateChunk(
-	pos utils.Vec2i,
-	c *chunk,
-	ents map[common.EntityId][]ecs.ComponentDto,
-	ecsCont *ecs.ECSContainer,
-) error {
-	if err := postLoadChunk(c, cc.atlas); err != nil {
-		return fmt.Errorf("failed post-load of chunk: %w", err)
-	}
-
-	for eId, compDtos := range ents {
-		instantiateEntity(eId, compDtos, ecsCont)
-	}
-
-	// The queued entities may already have been committed into the file this chunk was loaded from
-	for eId, queued := range cc.queuedEntities[pos] {
-		if !ecsCont.HasEntity(eId) {
-			instantiateEntity(eId, queued.dtos, ecsCont)
-		}
-	}
-	delete(cc.queuedEntities, pos)
-
-	cc.chunks[pos] = c
-	cc.setState(pos, ChunkState_Active)
 
 	return nil
 }
@@ -134,126 +210,9 @@ func instantiateEntity(eId common.EntityId, compDtos []ecs.ComponentDto, ecsCont
 	}
 }
 
-func (cc *ChunkContainer) drainLoadResults(required map[utils.Vec2i]struct{}, ecsCont *ecs.ECSContainer) {
-	for {
-		select {
-		case res := <-cc.loadResultCh:
-			meta, ok := cc.chunkMeta[res.pos]
-			if !ok {
-				continue
-			}
-
-			if res.seq != meta.seq {
-				continue
-			}
-
-			if res.err != nil {
-				meta.lastErr = res.err
-				meta.retries++
-
-				log.Printf("Failed to load chunk at %v (retry %d): %v", res.pos, meta.retries, res.err)
-
-				if meta.retries < data.ChunkReloadRetries {
-					meta.seq++
-					retrySeq := meta.seq
-					if cc.enqueueLoadRequest(loadRequest{pos: res.pos, seq: retrySeq}) {
-						cc.setState(res.pos, ChunkState_Loading)
-					} else {
-						cc.setState(res.pos, ChunkState_Unloaded)
-					}
-				} else {
-					cc.setState(res.pos, ChunkState_Unloaded)
-				}
-				continue
-			}
-
-			if res.chunk == nil {
-				log.Printf("Loaded chunk at %v is nil", res.pos)
-				cc.setState(res.pos, ChunkState_Unloaded)
-				continue
-			}
-
-			if _, ok := required[res.pos]; !ok {
-				cc.setState(res.pos, ChunkState_Unloaded)
-				continue
-			}
-
-			if _, exists := cc.chunks[res.pos]; exists {
-				cc.setState(res.pos, ChunkState_Active)
-				meta.lastErr = nil
-				meta.retries = 0
-				continue
-			}
-
-			if err := cc.activateChunk(res.pos, res.chunk, res.ents, ecsCont); err != nil {
-				log.Printf("Failed to activate chunk at %v: %v", res.pos, err)
-				cc.setState(res.pos, ChunkState_Unloaded)
-				continue
-			}
-
-			meta.lastErr = nil
-			meta.retries = 0
-		default:
-			return
-		}
+func compareChunkPos(a, b utils.Vec2i) int {
+	if a.X != b.X {
+		return a.X - b.X
 	}
-}
-
-func (cc *ChunkContainer) invalidateNonRequiredLoads(required map[utils.Vec2i]struct{}) {
-	for pos, meta := range cc.chunkMeta {
-		if _, ok := required[pos]; ok {
-			continue
-		}
-
-		if meta.state == ChunkState_Loading {
-			meta.seq++
-			cc.setState(pos, ChunkState_Unloaded)
-		}
-	}
-}
-
-func (cc *ChunkContainer) dispatchLoads(
-	toBeAdded []utils.Vec2i,
-	required map[utils.Vec2i]struct{},
-	ecsCont *ecs.ECSContainer,
-) {
-	dispatched := 0
-	for _, cPos := range toBeAdded {
-		if dispatched >= data.MaxChunkLoadDispatchPerTick {
-			break
-		}
-
-		if _, loaded := cc.chunks[cPos]; loaded {
-			cc.setState(cPos, ChunkState_Active)
-			continue
-		}
-
-		if _, ok := required[cPos]; !ok {
-			continue
-		}
-
-		// The file on disk is older than the evicted copy, which is only written by the next commit
-		if evicted, ok := cc.evictedChunks[cPos]; ok {
-			delete(cc.evictedChunks, cPos)
-			if err := cc.activateChunk(cPos, cc.dtoToChunkData(evicted.dto), evicted.dto.Entities, ecsCont); err != nil {
-				log.Printf("Failed to activate evicted chunk at %v: %v", cPos, err)
-			}
-			continue
-		}
-
-		meta := cc.getOrCreateMeta(cPos)
-		if meta.state == ChunkState_Loading {
-			continue
-		}
-
-		meta.seq++
-		seq := meta.seq
-
-		if !cc.enqueueLoadRequest(loadRequest{pos: cPos, seq: seq}) {
-			break
-		}
-
-		cc.setState(cPos, ChunkState_Loading)
-		dispatched++
-	}
+	return a.Y - b.Y
 }

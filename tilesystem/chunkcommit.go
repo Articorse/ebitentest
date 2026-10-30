@@ -102,35 +102,30 @@ func (cc *ChunkContainer) StartCommit(header world.Header, ecsCont *ecs.ECSConta
 	req.header = header
 
 	cc.commitInFlight = inFlight
-	cc.commitReqCh <- req
+	cc.ioRequests.push(ioRequest{commit: &req})
 
 	return nil
 }
 
 func (cc *ChunkContainer) CommitAndWait(header world.Header, ecsCont *ecs.ECSContainer) error {
-	if cc.commitInFlight != nil {
-		cc.finishCommit(<-cc.commitResultCh)
+	for cc.commitInFlight != nil {
+		cc.handleIOResult(<-cc.ioResults)
 	}
 
 	if err := cc.StartCommit(header, ecsCont); err != nil {
 		return err
 	}
 
-	res := <-cc.commitResultCh
-	cc.finishCommit(res)
-
-	return res.err
-}
-
-func (cc *ChunkContainer) drainCommitResults() {
-	for {
-		select {
-		case res := <-cc.commitResultCh:
-			cc.finishCommit(res)
-		default:
-			return
-		}
+	generation := cc.commitInFlight.generation
+	for cc.commitInFlight != nil {
+		cc.handleIOResult(<-cc.ioResults)
 	}
+
+	if cc.generation != generation {
+		return fmt.Errorf("commit of generation %d failed", generation)
+	}
+
+	return nil
 }
 
 func (cc *ChunkContainer) finishCommit(res commitResult) {
@@ -146,6 +141,14 @@ func (cc *ChunkContainer) finishCommit(res commitResult) {
 	}
 
 	cc.generation = inFlight.generation
+
+	// Resident copies of these chunks were loaded from files this commit has since replaced
+	for pos := range inFlight.chunkVersions {
+		delete(cc.resident, pos)
+	}
+	for pos := range inFlight.entityVersions {
+		delete(cc.resident, pos)
+	}
 
 	// Entries replaced since the commit started hold newer data, so only the committed versions are dropped
 	for pos, version := range inFlight.chunkVersions {

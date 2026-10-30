@@ -1,72 +1,38 @@
 package tilesystem
 
 import (
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/utils"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 )
 
-func (cc *ChunkContainer) ComputeChunkSets(
-	ecsCont *ecs.ECSContainer,
-) (
-	toBeAdded []utils.Vec2i,
-	toBeRemoved []utils.Vec2i,
-	required map[utils.Vec2i]struct{},
-	err error,
-) {
-	required, priority, berr := buildRequiredAndPriority(ecsCont)
-	if berr != nil {
-		err = fmt.Errorf("failed to build required and priority sets: %w", berr)
-	}
-
-	for pos := range required {
-		if _, ok := cc.chunks[pos]; !ok {
-			toBeAdded = append(toBeAdded, pos)
-		}
-	}
-
-	for pos := range cc.chunks {
-		if _, ok := required[pos]; !ok {
-			toBeRemoved = append(toBeRemoved, pos)
-		}
-	}
-
-	sort.Slice(toBeAdded, func(i, j int) bool {
-		pi, pj := priority[toBeAdded[i]], priority[toBeAdded[j]]
-		if pi != pj {
-			return pi < pj
-		}
-		if toBeAdded[i].X != toBeAdded[j].X {
-			return toBeAdded[i].X < toBeAdded[j].X
-		}
-		return toBeAdded[i].Y < toBeAdded[j].Y
-	})
-
-	return toBeAdded, toBeRemoved, required, err
+type chunkPlan struct {
+	// Chunks within a loader's radius, which must be active
+	activate []utils.Vec2i
+	// Active chunks outside this set are deactivated, which leaves a margin against flip-flopping on borders
+	keepActive map[utils.Vec2i]struct{}
+	// Chunks loaded ahead of time so that activation rarely has to wait, in loading order
+	prefetch []utils.Vec2i
+	resident map[utils.Vec2i]struct{}
 }
 
-func buildRequiredAndPriority(ecsCont *ecs.ECSContainer) (
-	required map[utils.Vec2i]struct{},
-	priority map[utils.Vec2i]int,
-	err error,
-) {
+func buildChunkPlan(ecsCont *ecs.ECSContainer) (plan chunkPlan, err error) {
 	tm := ecsCont.TransformManager
 	clm := ecsCont.ChunkLoaderManager
 
-	required = make(map[utils.Vec2i]struct{})
-	priority = make(map[utils.Vec2i]int)
-	loaders := ecsCont.ChunkLoaders.GetEntities()
+	activate := make(map[utils.Vec2i]int)
+	plan.keepActive = make(map[utils.Vec2i]struct{})
+	prefetch := make(map[utils.Vec2i]int)
 
-	for _, eId := range loaders {
+	for _, eId := range ecsCont.ChunkLoaders.GetEntities() {
 		worldPos, ierr := tm.GetWorldPos(eId, ecsCont)
 		if ierr != nil {
 			err = errors.Join(err, fmt.Errorf("error getting world position of entity %d: %v", eId, ierr))
 			continue
 		}
-
-		center := utils.WorldPosToChunkGridPos(worldPos)
 
 		radius, ierr := clm.GetRadius(eId, ecsCont)
 		if ierr != nil {
@@ -74,18 +40,57 @@ func buildRequiredAndPriority(ecsCont *ecs.ECSContainer) (
 			continue
 		}
 
-		for dy := -radius; dy <= radius; dy++ {
-			for dx := -radius; dx <= radius; dx++ {
-				pos := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
-				required[pos] = struct{}{}
+		center := utils.WorldPosToChunkGridPos(worldPos)
+		outer := radius + data.ChunkPrefetchMargin
 
+		for dy := -outer; dy <= outer; dy++ {
+			for dx := -outer; dx <= outer; dx++ {
+				pos := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
+				ring := max(utils.AbsInt(dx), utils.AbsInt(dy))
 				d := dx*dx + dy*dy
-				if old, ok := priority[pos]; !ok || d < old {
-					priority[pos] = d
+
+				if ring <= radius {
+					addWithPriority(activate, pos, d)
 				}
+				if ring <= radius+data.ChunkDeactivateMargin {
+					plan.keepActive[pos] = struct{}{}
+				}
+				addWithPriority(prefetch, pos, d)
 			}
 		}
 	}
 
-	return required, priority, err
+	plan.activate = sortedByPriority(activate)
+	plan.prefetch = sortedByPriority(prefetch)
+	plan.resident = make(map[utils.Vec2i]struct{}, len(prefetch))
+	for pos := range prefetch {
+		plan.resident[pos] = struct{}{}
+	}
+
+	return plan, err
+}
+
+func addWithPriority(priorities map[utils.Vec2i]int, pos utils.Vec2i, priority int) {
+	if old, ok := priorities[pos]; !ok || priority < old {
+		priorities[pos] = priority
+	}
+}
+
+func sortedByPriority(priorities map[utils.Vec2i]int) []utils.Vec2i {
+	positions := make([]utils.Vec2i, 0, len(priorities))
+	for pos := range priorities {
+		positions = append(positions, pos)
+	}
+
+	slices.SortFunc(positions, func(a, b utils.Vec2i) int {
+		if priorities[a] != priorities[b] {
+			return priorities[a] - priorities[b]
+		}
+		if a.X != b.X {
+			return a.X - b.X
+		}
+		return a.Y - b.Y
+	})
+
+	return positions
 }

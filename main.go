@@ -78,12 +78,12 @@ func (g *game) Update() error {
 	}
 
 	if g.loading {
-		toBeAdded, _, required, err := g.chunkContainer.ComputeChunkSets(g.ecs)
+		ready, err := g.chunkContainer.Prepare(g.ecs)
 		if err != nil {
-			log.Println("error computing chunk sets:", err)
+			log.Println("error preparing chunks:", err)
 		}
 
-		g.loading = !g.chunkContainer.TickLoading(toBeAdded, required, g.ecs)
+		g.loading = !ready
 		return nil
 	}
 
@@ -124,12 +124,7 @@ func (g *game) Update() error {
 		gamepadFound = true
 	}
 
-	toBeAdded, toBeRemoved, required, err := g.chunkContainer.ComputeChunkSets(g.ecs)
-	if err != nil {
-		log.Println("error computing chunk sets:", err)
-	}
-
-	err = g.chunkContainer.Tick(toBeAdded, toBeRemoved, required, g.ecs)
+	err = g.chunkContainer.Tick(g.ecs)
 	if err != nil {
 		log.Println("error ticking chunk container:", err)
 	}

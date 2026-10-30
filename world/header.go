@@ -7,8 +7,10 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 type Header struct {
@@ -70,7 +72,9 @@ func Load(ecsCont *ecs.ECSContainer) (h Header, exists bool, err error) {
 		}
 	}
 
-	for e, compDtos := range h.Entities {
+	// Insertion order decides the order systems iterate over entities, so it must not depend on map order
+	for _, e := range slices.Sorted(maps.Keys(h.Entities)) {
+		compDtos := h.Entities[e]
 		comps := make([]ecs.Component, 0, len(compDtos))
 		for _, compDto := range compDtos {
 			comp, err := ecs.DtoToComponent(compDto)

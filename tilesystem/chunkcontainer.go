@@ -10,15 +10,16 @@ import (
 )
 
 type ChunkContainer struct {
+	// Active chunks, the only ones the simulation sees
 	chunks map[utils.Vec2i]*chunk
 	atlas  map[data.TileEnum]tileDef
 
-	loadReqCh      chan loadRequest
-	loadResultCh   chan loadResult
-	commitReqCh    chan commitRequest
-	commitResultCh chan commitResult
+	ioRequests *ioQueue
+	ioResults  chan ioResult
 
-	chunkMeta map[utils.Vec2i]*chunkLoadMeta
+	resident      map[utils.Vec2i]residentChunk
+	loadsInFlight map[utils.Vec2i]struct{}
+	loadFailures  map[utils.Vec2i]int
 
 	currentTickEIdsInChunks map[utils.Vec2i][]common.EntityId
 
@@ -36,19 +37,17 @@ func NewChunkContainer() *ChunkContainer {
 	cc := &ChunkContainer{
 		chunks: make(map[utils.Vec2i]*chunk),
 
-		// Unbuffered on purpose: prevents stale load backlog when chunkloader moves quickly and remains deterministic.
-		loadReqCh:    make(chan loadRequest),
-		loadResultCh: make(chan loadResult, 1024),
-		// Only one commit is ever in flight, so neither side can block
-		commitReqCh:    make(chan commitRequest, 1),
-		commitResultCh: make(chan commitResult, 1),
+		ioRequests: newIOQueue(),
+		ioResults:  make(chan ioResult, 1024),
 
-		chunkMeta:      make(map[utils.Vec2i]*chunkLoadMeta),
+		resident:       make(map[utils.Vec2i]residentChunk),
+		loadsInFlight:  make(map[utils.Vec2i]struct{}),
+		loadFailures:   make(map[utils.Vec2i]int),
 		evictedChunks:  make(map[utils.Vec2i]pendingChunk),
 		queuedEntities: make(map[utils.Vec2i]map[common.EntityId]pendingEntity),
 	}
 
-	cc.StartIOThreads()
+	cc.StartIOThread()
 
 	return cc
 }

@@ -15,13 +15,6 @@ type chunk struct {
 	Image *ebiten.Image
 }
 
-type chunkMeta struct {
-	state        chunkState
-	dirty        bool
-	saveInFlight bool
-	retryAtTick  uint64
-}
-
 func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
 	r := rand.NewPCG(data.RngSeed1+uint64(pos.X), data.RngSeed2+uint64(pos.Y))
 
