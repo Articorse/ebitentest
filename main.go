@@ -18,6 +18,7 @@ import (
 	"ebittest/ecs/systems/timersystem"
 	"ebittest/tilesystem"
 	"ebittest/utils"
+	"ebittest/world"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,6 +56,7 @@ type game struct {
 	playerEntity common.EntityId
 
 	chunkContainer *tilesystem.ChunkContainer
+	loading        bool
 
 	assetmanager *assetmanager.AssetManager
 
@@ -70,6 +72,20 @@ type game struct {
 
 func (g *game) Update() error {
 	var err error
+
+	if ebiten.IsWindowBeingClosed() {
+		return g.saveAndExit()
+	}
+
+	if g.loading {
+		toBeAdded, _, required, err := g.chunkContainer.ComputeChunkSets(g.ecs)
+		if err != nil {
+			log.Println("error computing chunk sets:", err)
+		}
+
+		g.loading = !g.chunkContainer.TickLoading(toBeAdded, required, g.ecs)
+		return nil
+	}
 
 	// HACK: Add gamepad here because ebiten.AppendGamepadIDs needs to be called after ebiten.RunGame
 	// if !gamepadFound {
@@ -394,8 +410,30 @@ func (g *game) Update() error {
 	return nil
 }
 
+func (g *game) saveAndExit() error {
+	// Nothing has been simulated yet, so the saved state is still up to date
+	if g.loading {
+		return ebiten.Termination
+	}
+
+	if err := g.chunkContainer.SaveAllAndWait(g.ecs); err != nil {
+		log.Println("error saving chunks: ", err)
+	}
+
+	if err := world.Save(g.playerEntity, g.ecs); err != nil {
+		log.Println("error saving world header: ", err)
+	}
+
+	return ebiten.Termination
+}
+
 func (g *game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
+
+	if g.loading {
+		ebitenutil.DebugPrint(screen, "Loading...")
+		return
+	}
 
 	if err := tilesystem.DrawChunks(screen, g.ecs.Camera, g.chunkContainer); err != nil {
 		log.Println("error while drawing chunks: ", err)
@@ -522,6 +560,32 @@ func main() {
 
 	g.ecs.TickState = *common.NewTickState()
 
+	playerEntity, worldExists, err := world.Load(g.ecs)
+	if err != nil {
+		log.Fatal("error loading world: ", err)
+	}
+
+	if worldExists {
+		g.playerEntity = playerEntity
+	} else {
+		if err := world.Reset(); err != nil {
+			log.Fatal("error resetting world: ", err)
+		}
+		g.spawnPlayer()
+	}
+
+	g.loading = true
+
+	ebiten.SetWindowSize(1920, 1080)
+	ebiten.SetWindowTitle("ebittest")
+	ebiten.SetWindowClosingHandled(true)
+
+	if err := ebiten.RunGame(&g); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (g *game) spawnPlayer() {
 	// Player
 	pParComp := ecs.NewHierarchyComponent()
 	pTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
@@ -821,231 +885,4 @@ func main() {
 	if err != nil {
 		log.Fatal("error attaching bazooka to player: ", err)
 	}
-
-	// // Enemy spawner
-	// enemyTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 300, Y: 150}, 1, 0)
-	// enemyVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{}, data.DefaultAcceleration*0.25, data.DefaultDrag)
-	// enemyParComp := ecs.NewParentComponent()
-	// enemySprComp, err := ecs.NewSpriteComponent(common.AssetSheetEvilSlime, 20, true)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// enemyAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	// enemyAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-	// 	{FrameIdx: 0, DurationMs: 2000},
-	// 	{FrameIdx: 1, DurationMs: 100},
-	// 	{FrameIdx: 2, DurationMs: 100},
-	// 	{FrameIdx: 3, DurationMs: 100},
-	// 	{FrameIdx: 4, DurationMs: 100},
-	// 	{FrameIdx: 3, DurationMs: 100},
-	// 	{FrameIdx: 2, DurationMs: 100},
-	// 	{FrameIdx: 1, DurationMs: 100},
-	// }
-	// enemyAniComp, err := ecs.NewAnimationComponent(
-	// 	common.AssetSheetEvilSlime,
-	// 	enemyAniStateFrames,
-	// )
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// enemyHpComp := ecs.NewHitpointsComponent(20, 100)
-	// enemyPhyColShape, err := shapes.NewCircleShape(7, utils.Vec2f{X: 0, Y: 0})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// enemyPhyColComp := ecs.NewPhysicsColliderComponent(
-	// 	ecs.Layer_Enemy,
-	// 	ecs.Layer_Player|
-	// 		ecs.Layer_FriendlyProjectile|
-	// 		ecs.Layer_Platform|
-	// 		ecs.Layer_Enemy|
-	// 		ecs.Layer_Terrain,
-	// 	ecs.Collider_Mob,
-	// 	enemyPhyColShape,
-	// )
-	// enemyHitboxColShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// enemyHitboxComp := ecs.NewHitboxColliderComponent(
-	// 	ecs.Layer_Enemy,
-	// 	ecs.Layer_Player|
-	// 		ecs.Layer_FriendlyProjectile|
-	// 		ecs.Layer_Platform|
-	// 		ecs.Layer_Terrain,
-	// 	enemyHitboxColShape,
-	// )
-	// enemyHurtboxColShape, err := shapes.NewCircleShape(7, utils.Vec2f{X: 0, Y: 0})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// enemyHurtboxComp := ecs.NewHurtboxColliderComponent(
-	// 	ecs.Layer_Enemy,
-	// 	ecs.Layer_Player|
-	// 		ecs.Layer_FriendlyProjectile|
-	// 		ecs.Layer_Platform|
-	// 		ecs.Layer_Terrain,
-	// 	enemyHurtboxColShape,
-	// )
-	// enemyCDmgComp := ecs.NewContactDamageComponent(-1, 20, false, false, 1)
-	// enemyFollowInputParams := ecs.InputFollowParams{
-	// 	FollowEntity: g.playerEntity,
-	// }
-	// enemyInputComp := ecs.NewInputComponent(nil, ecs.InputType_Follow, enemyFollowInputParams, ecs.Facing_None)
-	//
-	// enemySpawnerTimerComp, err := ecs.NewTimerComponent(1000, -1, ecs.TimerFunc_Spawn)
-	// if err != nil {
-	// 	log.Fatal("error creating enemy spawner timer component: ", err)
-	// }
-	// enemySpawnerShape, err := shapes.NewRectangleShape(data.CameraWidth+100, data.CameraHeight+100, utils.Vec2f{})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// enemySpawnerComp, err := ecs.NewSpawnerComponent(
-	// 	utils.Vec2f{
-	// 		X: g.ecs.Camera.X + (data.CameraWidth / 2),
-	// 		Y: g.ecs.Camera.Y + (data.CameraHeight / 2),
-	// 	},
-	// 	ecs.SpawnerType_Perimeter,
-	// 	enemySpawnerShape,
-	// 	enemyParComp,
-	// 	enemyTraComp,
-	// 	enemyVelComp,
-	// 	enemySprComp,
-	// 	enemyAniComp,
-	// 	enemyHpComp,
-	// 	enemyPhyColComp,
-	// 	enemyHitboxComp,
-	// 	enemyHurtboxComp,
-	// 	enemyCDmgComp,
-	// 	enemyInputComp,
-	// )
-	// if err != nil {
-	// 	log.Fatal("error creating enemy spawner component: ", err)
-	// }
-	// g.ecs.AddEntity(enemySpawnerTimerComp, enemySpawnerComp)
-
-	// Tree
-	treeInpComp := ecs.NewInputComponent(nil, ecs.InputType_Dummy, nil, ecs.Facing_None)
-	treeParComp := ecs.NewHierarchyComponent()
-	treeTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 200, Y: 200}, 1, 0)
-	treeVelComp := ecs.NewDefaultVelocityComponent()
-	treeSprComp, err := ecs.NewSpriteComponent(common.AssetImageTree, 20, true)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	treeColShape, err := shapes.NewRectangleShape(10, 5, utils.Vec2f{X: -1, Y: 9})
-	// treeColShape, err := shapes.NewCircleShape(5, utils.Vec2{X: -1, Y: 9})
-	if err != nil {
-		log.Fatal(err)
-	}
-	treeColComp := ecs.NewPhysicsColliderComponent(
-		ecs.Layer_Terrain,
-		ecs.Layer_Player|
-			ecs.Layer_Enemy|
-			ecs.Layer_EnemyProjectile|
-			ecs.Layer_FriendlyProjectile|
-			ecs.Layer_Platform,
-		ecs.Collider_Static,
-		treeColShape,
-	)
-
-	tree := g.ecs.AddNewEntity(
-		treeInpComp,
-		treeParComp,
-		treeTraComp,
-		treeVelComp,
-		treeSprComp,
-		treeColComp,
-	)
-
-	g.replayEntity = tree
-
-	// Platform
-	var inputLoop []ecs.InputState
-	for range 100 {
-		inputLoop = append(inputLoop, ecs.InputState{Analog1X: -1})
-	}
-	for range 100 {
-		inputLoop = append(inputLoop, ecs.InputState{Analog1X: 1})
-	}
-	loopParams := &ecs.InputLoopParams{
-		LoopInputs: inputLoop,
-	}
-	platInput := ecs.NewInputComponent(nil, ecs.InputType_Loop, loopParams, ecs.Facing_None)
-
-	platParComp := ecs.NewHierarchyComponent()
-	platTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 10}, 1, 0)
-	platVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{}, 0.3, data.DefaultDrag)
-
-	platSprComp, err := ecs.NewSpriteComponent(common.AssetImagePlatform, 10, true)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	platColShape, err := shapes.NewRectangleShape(28, 28, utils.Vec2f{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-	platColComp := ecs.NewPlatformColliderComponent(
-		ecs.Layer_Platform,
-		ecs.Layer_Player|
-			ecs.Layer_Enemy|
-			ecs.Layer_EnemyProjectile|
-			ecs.Layer_FriendlyProjectile|
-			ecs.Layer_Terrain,
-		[]shapes.Shape{platColShape},
-	)
-
-	_ = g.ecs.AddNewEntity(
-		platInput,
-		platParComp,
-		platTraComp,
-		platVelComp,
-		platSprComp,
-		platColComp,
-	)
-
-	// for _ = range 500 {
-	// 	g.AddRandomEntity()
-	// }
-
-	ebiten.SetWindowSize(1920, 1080)
-	ebiten.SetWindowTitle("ebittest")
-
-	if err := ebiten.RunGame(&g); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func (g *game) AddRandomEntity() {
-	x := g.ecs.Rng.IntN(10000)
-	y := g.ecs.Rng.IntN(10000)
-
-	traComp := ecs.NewTransformComponent(utils.Vec2f{X: float64(x), Y: float64(y)}, 1, 0)
-	sprComp, err := ecs.NewSpriteComponent(common.AssetImageTree, 20, true)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	velComp := ecs.NewDefaultVelocityComponent()
-	shape, err := shapes.NewRectangleShape(10, 5, utils.Vec2f{X: -1, Y: 9})
-	colComp := ecs.NewPhysicsColliderComponent(
-		ecs.Layer_Terrain,
-		ecs.Layer_Player|
-			ecs.Layer_Enemy|
-			ecs.Layer_EnemyProjectile|
-			ecs.Layer_FriendlyProjectile|
-			ecs.Layer_Platform,
-		ecs.Collider_Static,
-		shape,
-	)
-
-	_ = g.ecs.AddNewEntity(
-		traComp,
-		velComp,
-		sprComp,
-		colComp,
-	)
 }

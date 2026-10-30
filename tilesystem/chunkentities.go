@@ -30,11 +30,15 @@ func (cc *ChunkContainer) getEntityIdsInChunks(ecsCont *ecs.ECSContainer) (
 		if _, ok := cc.chunks[eChunkPos]; !ok {
 			// Don't queue unload for entities that have a parent,
 			// they should be unloaded when the parent is.
-			if pm.GetParent(e, ecsCont) == -1 {
+			if pm.GetParent(e, ecsCont) == -1 && !ecsCont.ChunkLoaders.HasComponent(e) {
 				toBeUnloaded[eChunkPos] = append(toBeUnloaded[eChunkPos], e)
 			}
 		}
 	}
 
 	return eIdsInChunks, toBeUnloaded, nil
+}
+
+func isInLoaderHierarchy(e common.EntityId, ecsCont *ecs.ECSContainer) bool {
+	return ecsCont.ChunkLoaders.HasComponent(ecsCont.HierarchyManager.GetRoot(e, ecsCont))
 }

@@ -184,6 +184,14 @@ func (x *ECSContainer) SetTickInputs(tick uint64, inputs map[common.EntityId]Inp
 	x.InputLog[tick] = inputs
 }
 
+func (x *ECSContainer) NextEntity() common.EntityId {
+	return x.nextEntity
+}
+
+func (x *ECSContainer) SetNextEntity(e common.EntityId) {
+	x.nextEntity = e
+}
+
 func (x *ECSContainer) AddEmptyEntity() common.EntityId {
 	x.nextEntity++
 	return x.nextEntity - 1
@@ -199,8 +207,11 @@ func (x *ECSContainer) AddNewEntity(comps ...Component) common.EntityId {
 	return e
 }
 
-// FIXME: Add check if entity already exists
 func (x *ECSContainer) AddEntityWithId(eId common.EntityId, comps ...Component) error {
+	if len(x.GetEntityComponents(eId)) > 0 {
+		return fmt.Errorf("entity %d already exists", eId)
+	}
+
 	if eId >= x.nextEntity {
 		x.nextEntity = eId + 1
 		log.Printf("Warning: Adding entity with ID %d which is greater than nextEntity %d. Updating nextEntity to %d\n", eId, x.nextEntity-1, x.nextEntity)
@@ -561,5 +572,76 @@ func DtoToComponent[T ComponentDto](dto T) (Component, error) {
 		return d.ToComponent(), nil
 	default:
 		return nil, fmt.Errorf("unknown component DTO type: %T", dto)
+	}
+}
+
+func ComponentToDto(comp Component) (ComponentDto, error) {
+	switch c := comp.(type) {
+	case *hierarchy:
+		return c.ToDto(), nil
+	case *transform:
+		return c.ToDto(), nil
+	case *velocity:
+		return c.ToDto(), nil
+	case *sprite:
+		return c.ToDto(), nil
+	case *animation:
+		return c.ToDto(), nil
+	case *physicsCollider:
+		dto, err := c.ToDto()
+		if err != nil {
+			return nil, fmt.Errorf("error converting physics collider component to DTO: %v", err)
+		}
+		return dto, nil
+	case *platformCollider:
+		dto, err := c.ToDto()
+		if err != nil {
+			return nil, fmt.Errorf("error converting platform collider component to DTO: %v", err)
+		}
+		return dto, nil
+	case *hitboxCollider:
+		dto, err := c.ToDto()
+		if err != nil {
+			return nil, fmt.Errorf("error converting hitbox collider component to DTO: %v", err)
+		}
+		return dto, nil
+	case *hurtboxCollider:
+		dto, err := c.ToDto()
+		if err != nil {
+			return nil, fmt.Errorf("error converting hurtbox collider component to DTO: %v", err)
+		}
+		return dto, nil
+	case *spawner:
+		dto, err := c.ToDto()
+		if err != nil {
+			return nil, fmt.Errorf("error converting spawner component to DTO: %v", err)
+		}
+		return dto, nil
+	case *timer:
+		return c.ToDto(), nil
+	case *hitpoints:
+		return c.ToDto(), nil
+	case *contactDamage:
+		return c.ToDto(), nil
+	case *input:
+		return c.ToDto(), nil
+	case *abilities:
+		return c.ToDto(), nil
+	case *facePosition:
+		return c.ToDto(), nil
+	case *equipment:
+		return c.ToDto(), nil
+	case *equipper:
+		return c.ToDto(), nil
+	case *deathrattle:
+		return c.ToDto(), nil
+	case *floatingText:
+		return c.ToDto(), nil
+	case *chunkLoader:
+		return c.ToDto(), nil
+	case *persistent:
+		return c.ToDto(), nil
+	default:
+		return nil, fmt.Errorf("unknown component type: %T", comp)
 	}
 }

@@ -39,6 +39,9 @@ func (cc *ChunkContainer) chunkToDto(
 	eIds, ok := cc.currentTickEIdsInChunks[pos]
 	if ok {
 		for _, e := range eIds {
+			if isInLoaderHierarchy(e, ecsCont) {
+				continue
+			}
 			entitiesWithComps[e] = ecsCont.GetEntityComponents(e)
 		}
 	}

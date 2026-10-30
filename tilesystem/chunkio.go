@@ -223,3 +223,60 @@ func (cc *ChunkContainer) saveQueuedEntitiesToGob(
 
 	return failedEntities, nil
 }
+
+func (cc *ChunkContainer) SaveAllAndWait(ecsCont *ecs.ECSContainer) error {
+	var errs error
+
+	eIdsInChunks, _, err := cc.getEntityIdsInChunks(ecsCont)
+	if err != nil {
+		return fmt.Errorf("failed to get entity IDs in chunks: %w", err)
+	}
+	cc.currentTickEIdsInChunks = eIdsInChunks
+
+	receiveSaveResult := func(res saveResult) {
+		cc.pendingSaves--
+		if res.err != nil {
+			errs = errors.Join(errs, fmt.Errorf("failed to save chunk at %v: %w", res.pos, res.err))
+		}
+	}
+
+	for cPos, c := range cc.chunks {
+		cDto, err := cc.chunkToDto(c, cPos, ecsCont)
+		if err != nil {
+			errs = errors.Join(errs, fmt.Errorf("failed to convert chunk at %v to DTO: %w", cPos, err))
+			continue
+		}
+
+		req := saveRequest{pos: cPos, chunk: cDto}
+
+		// Results are received while sending, since the IO thread blocks once the result channel is full
+		for sent := false; !sent; {
+			select {
+			case cc.saveChunkCh <- req:
+				cc.pendingSaves++
+				sent = true
+			case res := <-cc.saveResultCh:
+				receiveSaveResult(res)
+			}
+		}
+	}
+
+	for cc.pendingSaves > 0 {
+		receiveSaveResult(<-cc.saveResultCh)
+	}
+
+	cc.queuedUnloadMtx.Lock()
+	queuedUnload := cc.queuedUnloadEntityIDs
+	cc.queuedUnloadEntityIDs = make(map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto)
+	cc.queuedUnloadMtx.Unlock()
+
+	failedEntities, err := cc.saveQueuedEntitiesToGob(queuedUnload, ecsCont)
+	if err != nil {
+		errs = errors.Join(errs, fmt.Errorf("failed to save queued entities: %w", err))
+	}
+	if len(failedEntities) > 0 {
+		errs = errors.Join(errs, fmt.Errorf("failed to save queued entities of %d chunks", len(failedEntities)))
+	}
+
+	return errs
+}

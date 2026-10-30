@@ -39,6 +39,19 @@ func (*hierarchyManager) GetChildren(
 	return hierComp.children
 }
 
+func (*hierarchyManager) GetRoot(
+	e common.EntityId,
+	ecsContainer *ECSContainer,
+) common.EntityId {
+	hm := hierarchyManager{}
+
+	for p := hm.GetParent(e, ecsContainer); p != -1; p = hm.GetParent(e, ecsContainer) {
+		e = p
+	}
+
+	return e
+}
+
 func (*hierarchyManager) Attach(
 	c common.EntityId,
 	p common.EntityId,

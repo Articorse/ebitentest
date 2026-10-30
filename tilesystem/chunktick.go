@@ -36,9 +36,7 @@ func (cc *ChunkContainer) Tick(
 
 			compDtos := ecsCont.GetEntityComponents(eId)
 			cc.queuedUnloadEntityIDs[ck][eId] = compDtos
-			if eId != 0 { // FIXME: Add initial chunk loading step before instantiating player entity
-				ecsCont.ScheduleRemoveEntity(eId)
-			}
+			ecsCont.ScheduleRemoveEntity(eId)
 		}
 	}
 	cc.queuedUnloadMtx.Unlock()
@@ -74,43 +72,13 @@ func (cc *ChunkContainer) Tick(
 			pos:   cPos,
 			chunk: cDto,
 		}
+		cc.pendingSaves++
 	}
 
-	dispatched := 0
-	for _, cPos := range toBeAdded {
-		if dispatched >= data.MaxChunkLoadDispatchPerTick {
-			break
-		}
-
-		if _, loaded := cc.chunks[cPos]; loaded {
-			cc.setState(cPos, ChunkState_Active)
-			delete(cc.pendingEvictEntityIDs, cPos)
-			continue
-		}
-
-		if _, ok := required[cPos]; !ok {
-			continue
-		}
-
-		meta := cc.getOrCreateMeta(cPos)
-		if meta.state == ChunkState_Loading {
-			continue
-		}
-
-		meta.seq++
-		seq := meta.seq
-
-		if !cc.enqueueLoadRequest(loadRequest{pos: cPos, seq: seq}) {
-			break
-		}
-
-		cc.setState(cPos, ChunkState_Loading)
-		dispatched++
-	}
+	cc.dispatchLoads(toBeAdded, required)
 
 	// TODO: If chunk gets loaded before autosave fires, we need to check cc.queuedUnloadEntityIDs and load entities
 	// from it.
-	// FIXME: Platform is not being saved or loaded or something
 	if cc.autosaveCounterSec > data.AutosavePeriodSec {
 		cc.autosaveCounterSec = 0
 
@@ -239,6 +207,8 @@ func (cc *ChunkContainer) drainSaveResults(required map[utils.Vec2i]struct{}, ec
 	for {
 		select {
 		case res := <-cc.saveResultCh:
+			cc.pendingSaves--
+
 			meta, ok := cc.chunkMeta[res.pos]
 			if !ok {
 				delete(cc.pendingEvictEntityIDs, res.pos)
@@ -294,4 +264,56 @@ func (cc *ChunkContainer) invalidateNonRequiredLoads(required map[utils.Vec2i]st
 			cc.setState(pos, ChunkState_Unloaded)
 		}
 	}
+}
+
+func (cc *ChunkContainer) dispatchLoads(toBeAdded []utils.Vec2i, required map[utils.Vec2i]struct{}) {
+	dispatched := 0
+	for _, cPos := range toBeAdded {
+		if dispatched >= data.MaxChunkLoadDispatchPerTick {
+			break
+		}
+
+		if _, loaded := cc.chunks[cPos]; loaded {
+			cc.setState(cPos, ChunkState_Active)
+			delete(cc.pendingEvictEntityIDs, cPos)
+			continue
+		}
+
+		if _, ok := required[cPos]; !ok {
+			continue
+		}
+
+		meta := cc.getOrCreateMeta(cPos)
+		if meta.state == ChunkState_Loading {
+			continue
+		}
+
+		meta.seq++
+		seq := meta.seq
+
+		if !cc.enqueueLoadRequest(loadRequest{pos: cPos, seq: seq}) {
+			break
+		}
+
+		cc.setState(cPos, ChunkState_Loading)
+		dispatched++
+	}
+}
+
+func (cc *ChunkContainer) TickLoading(
+	toBeAdded []utils.Vec2i,
+	required map[utils.Vec2i]struct{},
+	ecsCont *ecs.ECSContainer,
+) (loaded bool) {
+	cc.drainLoadResults(required, ecsCont)
+	cc.invalidateNonRequiredLoads(required)
+	cc.dispatchLoads(toBeAdded, required)
+
+	for pos := range required {
+		if _, ok := cc.chunks[pos]; !ok {
+			return false
+		}
+	}
+
+	return true
 }

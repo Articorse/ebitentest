@@ -19,6 +19,7 @@ type ChunkContainer struct {
 	loadReqCh    chan loadRequest
 	loadResultCh chan loadResult
 	saveResultCh chan saveResult
+	pendingSaves int
 
 	chunkMeta map[utils.Vec2i]*chunkLoadMeta
 

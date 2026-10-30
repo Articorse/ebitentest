@@ -26,9 +26,17 @@ func ExplodeAbility(
 		return fmt.Errorf("explode ability params cannot be nil")
 	}
 
-	explodeParams, ok := params.(ExplodeParams)
-	if !ok {
-		return fmt.Errorf("invalid explode ability params type")
+	var explodeParams ExplodeParams
+	switch p := params.(type) {
+	case ExplodeParams:
+		explodeParams = p
+	case *ExplodeParams:
+		if p == nil {
+			return fmt.Errorf("explode ability params cannot be nil")
+		}
+		explodeParams = *p
+	default:
+		return fmt.Errorf("invalid explode ability params type: %T", params)
 	}
 
 	var totalDuration uint64

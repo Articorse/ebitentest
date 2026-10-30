@@ -60,39 +60,6 @@ type ShapeDto struct {
 	Params ShapeParams
 }
 
-func (x ShapeDto) ToShape() (Shape, error) {
-	switch x.Type {
-	case Shape_Circle:
-		if params, ok := x.Params.(CircleParams); ok {
-			r, err := NewCircleShape(params.Radius, params.Offset)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create circle shape: %w", err)
-			}
-			return r, nil
-		}
-	case Shape_Rectangle:
-		if params, ok := x.Params.(RectangleParams); ok {
-			r, err := NewRectangleShapeFromCoords(params.TopLeft, params.BottomRight, params.Offset)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create rectangle shape: %w", err)
-			}
-			return r, nil
-		}
-	case Shape_Polygon:
-		if params, ok := x.Params.(PolygonParams); ok {
-			r, err := NewPolygonShape(params.Vertices, params.Offset)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create polygon shape: %w", err)
-			}
-			return r, nil
-		}
-	default:
-		return nil, fmt.Errorf("unsupported shape type: %v", x.Type)
-	}
-
-	return nil, fmt.Errorf("invalid shape parameters for type: %v", x.Type)
-}
-
 func ShapeToDto[T Shape](s T) (ShapeDto, error) {
 	switch shape := any(s).(type) {
 	case *CircleShape:

@@ -41,6 +41,8 @@ func (x *Storage[T]) deleteEntity(e common.EntityId) {
 }
 
 func (x *Storage[T]) addComponent(e common.EntityId, c T) {
-	x.order = append(x.order, e)
+	if _, ok := x.data[e]; !ok {
+		x.order = append(x.order, e)
+	}
 	x.data[e] = &c
 }

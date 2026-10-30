@@ -22,8 +22,16 @@ func DodgeAbility(
 		return fmt.Errorf("dodge ability called with nil params")
 	}
 
-	dodgeParams, ok := params.(DodgeParams)
-	if !ok {
+	var dodgeParams DodgeParams
+	switch p := params.(type) {
+	case DodgeParams:
+		dodgeParams = p
+	case *DodgeParams:
+		if p == nil {
+			return fmt.Errorf("dodge ability called with nil params")
+		}
+		dodgeParams = *p
+	default:
 		return fmt.Errorf("dodge ability called with invalid params type: %T", params)
 	}
 

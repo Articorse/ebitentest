@@ -43,7 +43,7 @@ func (x spawner) Copy() spawner {
 type spawnerDto struct {
 	Offset      utils.Vec2f
 	SpawnerType SpawnerType
-	Shape       shapes.ShapeDto
+	Shape       *shapes.ShapeDto
 	Components  []ComponentDto
 }
 
@@ -52,18 +52,20 @@ func (spawnerDto) isComponentDto() {}
 func (x spawner) ToDto() (spawnerDto, error) {
 	componentsDto := make([]ComponentDto, len(x.components))
 	for i, c := range x.components {
-		if dto, ok := c.(ComponentDto); ok {
-			componentsDto[i] = dto
+		dto, err := ComponentToDto(c)
+		if err != nil {
+			return spawnerDto{}, fmt.Errorf("failed to convert component to dto: %w", err)
 		}
+		componentsDto[i] = dto
 	}
 
-	var shapeDto shapes.ShapeDto
+	var shapeDto *shapes.ShapeDto
 	if x.shape != nil {
-		var err error
-		shapeDto, err = shapes.ShapeToDto(x.shape)
+		dto, err := shapes.ShapeToDto(x.shape)
 		if err != nil {
 			return spawnerDto{}, fmt.Errorf("failed to convert shape to dto: %w", err)
 		}
+		shapeDto = &dto
 	}
 
 	return spawnerDto{
@@ -76,15 +78,21 @@ func (x spawner) ToDto() (spawnerDto, error) {
 
 func (x *spawnerDto) ToComponent() (*spawner, error) {
 	components := make([]Component, len(x.Components))
-	for i, c := range x.Components {
-		if comp, ok := c.(Component); ok {
-			components[i] = comp
+	for i, dto := range x.Components {
+		comp, err := DtoToComponent(dto)
+		if err != nil {
+			return &spawner{}, fmt.Errorf("failed to convert component dto to component: %w", err)
 		}
+		components[i] = comp
 	}
 
-	shape, err := x.Shape.ToShape()
-	if err != nil {
-		return &spawner{}, fmt.Errorf("failed to convert shape dto to shape: %w", err)
+	var shape shapes.Shape
+	if x.Shape != nil {
+		var err error
+		shape, err = shapes.DtoToShape(*x.Shape)
+		if err != nil {
+			return &spawner{}, fmt.Errorf("failed to convert shape dto to shape: %w", err)
+		}
 	}
 
 	return &spawner{

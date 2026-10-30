@@ -21,7 +21,9 @@ const (
 	GamepadAimDeadzone                 = 0.5
 	TileSize                           = 16
 	ChunkSize                          = 4
+	ChunkDataDir                       = "chunkdata"
 	ChunkDataFilePathTemplate          = "chunkdata/chunk_%d_%d.gob"
+	WorldHeaderFilePath                = "chunkdata/world.gob"
 	ChunkReloadRetries                 = 3
 	MaxChunkLoadDispatchPerTick        = 4
 	ChunkImageBakeMarginPx             = 100
