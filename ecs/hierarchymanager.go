@@ -48,17 +48,17 @@ func (*hierarchyManager) Attach(
 	hm := hierarchyManager{}
 
 	cHierComp, err := ecsContainer.Hierarchies.getComponent(c)
-	if err == nil {
-		if err := hm.Detach(c, ecsContainer); err != nil {
-			return fmt.Errorf("error during detach: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("could not get hierarchy of child entity %d: %v", c, err)
 	}
 
 	pHierComp, err := ecsContainer.Hierarchies.getComponent(p)
-	if err == nil {
-		if err := hm.Detach(c, ecsContainer); err != nil {
-			return fmt.Errorf("error during detach: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("could not get hierarchy of parent entity %d: %v", p, err)
+	}
+
+	if err := hm.Detach(c, ecsContainer); err != nil {
+		return fmt.Errorf("error during detach: %v", err)
 	}
 
 	cHierComp.parent = p
@@ -86,12 +86,13 @@ func (*hierarchyManager) Attach(
 		return fmt.Errorf("error getting world scale of parent entity %d: %v", cHierComp.parent, err)
 	}
 
-	cos := math.Cos(pTraComp.rotation)
-	sin := math.Sin(pTraComp.rotation)
+	cos := math.Cos(-pWorldRot)
+	sin := math.Sin(-pWorldRot)
+	relPos := traComp.pos.Subtract(pWorldPos)
 
 	traComp.pos = utils.Vec2f{
-		X: (traComp.pos.X*cos - traComp.pos.Y*sin) - pWorldPos.X,
-		Y: (traComp.pos.X*sin + traComp.pos.Y*cos) - pWorldPos.Y,
+		X: relPos.X*cos - relPos.Y*sin,
+		Y: relPos.X*sin + relPos.Y*cos,
 	}
 	traComp.scale = traComp.scale / pWorldScale
 	traComp.rotation = traComp.rotation - pWorldRot
@@ -104,8 +105,6 @@ func (*hierarchyManager) Detach(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
 ) error {
-	tm := transformManager{}
-
 	cHierComp, err := ecsContainer.Hierarchies.getComponent(e)
 	if err != nil {
 		return nil
@@ -115,19 +114,42 @@ func (*hierarchyManager) Detach(
 		return nil
 	}
 
-	traComp, err := ecsContainer.Transforms.getComponent(e)
-	if err != nil {
-		return nil
+	traComp, _ := ecsContainer.Transforms.getComponent(e)
+	pTraComp, _ := ecsContainer.Transforms.getComponent(cHierComp.parent)
+
+	if traComp != nil && pTraComp != nil {
+		if err := detachTransform(e, cHierComp.parent, traComp, ecsContainer); err != nil {
+			return err
+		}
 	}
 
-	pWorldPos, err := tm.GetWorldPos(cHierComp.parent, ecsContainer)
-	if err != nil {
-		return fmt.Errorf("error getting world position of parent entity %d: %v", cHierComp.parent, err)
+	if pHierComp, err := ecsContainer.Hierarchies.getComponent(cHierComp.parent); err == nil {
+		pHierComp.children = slices.DeleteFunc(pHierComp.children, func(c common.EntityId) bool {
+			return c == e
+		})
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(cHierComp.parent, ecsContainer)
+	cHierComp.parent = -1
+
+	return nil
+}
+
+func detachTransform(
+	e common.EntityId,
+	p common.EntityId,
+	traComp *transform,
+	ecsContainer *ECSContainer,
+) error {
+	tm := transformManager{}
+
+	pWorldPos, err := tm.GetWorldPos(p, ecsContainer)
 	if err != nil {
-		return fmt.Errorf("error getting world rotation of parent entity %d: %v", cHierComp.parent, err)
+		return fmt.Errorf("error getting world position of parent entity %d: %v", p, err)
+	}
+
+	pWorldRot, err := tm.GetWorldRotation(p, ecsContainer)
+	if err != nil {
+		return fmt.Errorf("error getting world rotation of parent entity %d: %v", p, err)
 	}
 
 	cos := math.Cos(pWorldRot)
@@ -150,17 +172,6 @@ func (*hierarchyManager) Detach(
 
 	traComp.scale = eWorldScale
 	traComp.rotation = eWorldRot
-
-	pHierComp, err := ecsContainer.Hierarchies.getComponent(cHierComp.parent)
-	if err != nil {
-		return nil
-	}
-
-	pHierComp.children = slices.DeleteFunc(pHierComp.children, func(c common.EntityId) bool {
-		return c == cHierComp.parent
-	})
-
-	cHierComp.parent = -1
 
 	return nil
 }
@@ -303,6 +314,7 @@ func getChildrenRecursiveDFS(
 	curChildren := hm.GetChildren(e, ecsContainer)
 
 	for _, c := range curChildren {
+		children = append(children, c)
 		children, err = getChildrenRecursiveDFS(c, children, ecsContainer)
 		if err != nil {
 			return []common.EntityId{}, fmt.Errorf("error getting recursive children of child entity %d: %v", c, err)

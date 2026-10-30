@@ -15,15 +15,15 @@ func tickAbilityState(owner common.EntityId, abi *EntityAbility, ecsContainer *E
 		if abi.Status.DurationCounterMs <= 0 {
 			abi.Status.State = AbiAct_OnCooldown
 
-			postEffect, err := ecsContainer.AbilitiesManager.GetAbilityFunc(abi.Def.AbilityId)
+			postEffect, err := ecsContainer.AbilitiesManager.GetAbilityFunc(abi.Def.PostAbilityId)
 			if err != nil {
-				return fmt.Errorf("error getting post effect of ability %v of entity %d: %v", abi.Def.AbilityId, owner, err)
+				return fmt.Errorf("error getting post effect of ability %v of entity %d: %v", abi.Def.PostAbilityId, owner, err)
 			}
 
 			if postEffect != nil {
 				err := postEffect(owner, abi.Params, ecsContainer)
 				if err != nil {
-					return fmt.Errorf("error executing post effect of ability %v of entity %d: %v", abi.Def.AbilityId, owner, err)
+					return fmt.Errorf("error executing post effect of ability %v of entity %d: %v", abi.Def.PostAbilityId, owner, err)
 				}
 			}
 		}

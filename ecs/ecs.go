@@ -235,6 +235,13 @@ func (x *ECSContainer) removeEntitiesImmediate(entities []common.EntityId) error
 			}
 		}
 
+		hm := hierarchyManager{}
+		children, err := hm.GetChildrenDFS(e, x)
+		if err != nil {
+			log.Printf("error getting children of entity %d: %v", e, err)
+			continue
+		}
+
 		x.Hierarchies.deleteEntity(e)
 		x.Transforms.deleteEntity(e)
 		x.Velocities.deleteEntity(e)
@@ -257,13 +264,6 @@ func (x *ECSContainer) removeEntitiesImmediate(entities []common.EntityId) error
 		x.FloatingTexts.deleteEntity(e)
 		x.ChunkLoaders.deleteEntity(e)
 		x.Persistents.deleteEntity(e)
-
-		hm := hierarchyManager{}
-		children, err := hm.GetChildrenDFS(e, x)
-		if err != nil {
-			log.Printf("error getting children of entity %d: %v", e, err)
-			continue
-		}
 
 		err = x.removeEntitiesImmediate(children)
 		if err != nil {

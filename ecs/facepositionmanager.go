@@ -129,12 +129,13 @@ func (*facePositionManager) SetWorldPos(
 		return fmt.Errorf("error getting world rotation of parent entity %d: %v", parEntity, err)
 	}
 
-	cos := math.Cos(pWorldRot)
-	sin := math.Sin(pWorldRot)
+	cos := math.Cos(-pWorldRot)
+	sin := math.Sin(-pWorldRot)
+	relPos := pos.Subtract(pWorldPos)
 
 	fpComp.pos = utils.Vec2f{
-		X: (fpComp.pos.X*cos - fpComp.pos.Y*sin) - pWorldPos.X,
-		Y: (fpComp.pos.X*sin + fpComp.pos.Y*cos) - pWorldPos.Y,
+		X: relPos.X*cos - relPos.Y*sin,
+		Y: relPos.X*sin + relPos.Y*cos,
 	}
 
 	return nil
