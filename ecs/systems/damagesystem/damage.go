@@ -36,7 +36,6 @@ func DealContactDamage(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	ecsCont *ecs.ECSContainer,
 ) (entitiesKilled uint64, err error) {
-	vm := ecsCont.VelocityManager
 	cdm := ecsCont.ContactDamageManager
 	hpm := ecsCont.HitpointsManager
 
@@ -72,7 +71,7 @@ func DealContactDamage(
 
 			var dmgVelVector utils.Vec2f
 			if ecsCont.Velocities.HasComponent(dmgE) {
-				dmgVelVector, err = vm.GetWorldVector(dmgE, ecsCont)
+				dmgVelVector, err = ecsCont.WorldVector(dmgE)
 				if err != nil {
 					log.Printf("Error getting ecs velocity vector for entity %d: %v\n", dmgE, err)
 					continue
@@ -83,11 +82,12 @@ func DealContactDamage(
 			colForceNorm := c.Vector.Normalized()
 			finalForceNorm := dmgEForceNorm.Multiply(0.5).Add(colForceNorm.Multiply(0.5))
 
-			err = vm.AddForce(hitE, finalForceNorm.Multiply(knockback), ecsCont)
-			if err != nil {
-				log.Printf("Error applying knockback to entity %d: %v\n", hitE, err)
+			hitVel, ok := ecsCont.Velocities.Get(hitE)
+			if !ok {
+				log.Printf("Error applying knockback to entity %d: it has no velocity\n", hitE)
 				continue
 			}
+			hitVel.AddForce(finalForceNorm.Multiply(knockback))
 
 			// TODO: Implement source
 			// source, err := cdm.GetSource(dmgE, ecs.ContactDamages)
@@ -109,7 +109,7 @@ func DealContactDamage(
 				continue
 			}
 
-			hitWorldPos, err := ecsCont.TransformManager.GetWorldPos(hitE, ecsCont)
+			hitWorldPos, err := ecsCont.WorldPos(hitE)
 			if err != nil {
 				log.Printf("Error getting ecs position for entity %d: %v\n", hitE, err)
 				continue

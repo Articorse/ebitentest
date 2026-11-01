@@ -29,7 +29,7 @@ func TestPointSpawnerPlacesAtRotatedOffset(t *testing.T) {
 		if got := testutil.WorldPos(t, x, e); !testutil.ApproxEqual(got, want) {
 			t.Fatalf("spawned at %v, want %v", got, want)
 		}
-		rot, err := x.TransformManager.GetWorldRotation(e, x)
+		rot, err := x.WorldRotation(e)
 		if err != nil {
 			t.Fatal(err)
 		}

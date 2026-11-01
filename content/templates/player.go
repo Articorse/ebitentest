@@ -320,7 +320,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 
 	ecsContainer.AddComponent(player, pEquipperComp)
 
-	err = ecsContainer.HierarchyManager.Attach(bazooka, player, ecs.Link_Held, ecsContainer)
+	err = ecsContainer.Attach(bazooka, player, ecs.Link_Held)
 	if err != nil {
 		return fmt.Errorf("error attaching bazooka to player: %w", err)
 	}

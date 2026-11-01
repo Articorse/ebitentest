@@ -22,12 +22,12 @@ func TestConsistencyCheck(t *testing.T) {
 		t.Fatalf("fresh player reported inconsistent: %v", err)
 	}
 
-	children := x.HierarchyManager.GetChildren(p, x)
+	children := x.Children(p)
 	if len(children) != 1 {
 		t.Fatalf("player children %v, want the starting equipment", children)
 	}
 	equipment := children[0]
-	if err := x.HierarchyManager.Detach(equipment, x); err != nil {
+	if err := x.Detach(equipment); err != nil {
 		t.Fatal(err)
 	}
 	testutil.AddMovable(t, x, utils.Vec2f{}, true, ecs.NewTetherComponent(9999))

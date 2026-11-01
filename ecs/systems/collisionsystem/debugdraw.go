@@ -22,14 +22,13 @@ func DrawCollisions(
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	for eA, cols := range collisions {
-		tm := ecsContainer.TransformManager
 
 		if !ecsContainer.Transforms.HasComponent(eA) {
 			log.Printf("Entity %d in collisions does not have a transform component\n", eA)
 			continue
 		}
 
-		aWorldPos, err := tm.GetWorldPos(eA, ecsContainer)
+		aWorldPos, err := ecsContainer.WorldPos(eA)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", eA, err)
 			continue
@@ -62,9 +61,8 @@ func DrawColliders(
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	for _, e := range colManager.EntityIds(ecsContainer) {
-		tm := ecsContainer.TransformManager
 
-		worldPos, err := tm.GetWorldPos(e, ecsContainer)
+		worldPos, err := ecsContainer.WorldPos(e)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", e, err)
 			continue
@@ -167,9 +165,8 @@ func DrawAABBs(
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	for _, e := range colManager.EntityIds(ecsContainer) {
-		tm := ecsContainer.TransformManager
 
-		worldPos, err := tm.GetWorldPos(e, ecsContainer)
+		worldPos, err := ecsContainer.WorldPos(e)
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", e, err)
 			continue

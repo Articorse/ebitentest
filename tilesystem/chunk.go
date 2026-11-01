@@ -9,8 +9,8 @@ import (
 )
 
 type chunk struct {
-	tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
-	promotedTiles map[utils.Vec2i]promotedTile
+	tiles           [data.ChunkSize * data.ChunkSize]data.TileEnum
+	promotedTiles   map[utils.Vec2i]promotedTile
 	terrainModified bool
 
 	Image *ebiten.Image

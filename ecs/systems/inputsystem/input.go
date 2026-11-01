@@ -28,10 +28,9 @@ func HandleInputs(
 ) error {
 	for e, input := range allInputs {
 		if ecsContainer.Transforms.HasComponent(e) {
-			tm := ecsContainer.TransformManager
 			fpm := ecsContainer.FacePositionManager
 
-			eWorldPos, err := tm.GetWorldPos(e, ecsContainer)
+			eWorldPos, err := ecsContainer.WorldPos(e)
 			if err != nil {
 				log.Printf("Error getting world position for entity %d: %v\n", e, err)
 				continue
@@ -55,9 +54,10 @@ func HandleInputs(
 						dY := mY - eWorldPos.Y
 						r := math.Atan2(dY, dX)
 
-						err = tm.SetLocalRotation(e, r, ecsContainer)
-						if err != nil {
-							log.Printf("Error setting world rotation for entity %d: %v\n", e, err)
+						if t, ok := ecsContainer.Transforms.Get(e); ok {
+							t.SetLocalRotation(r)
+						} else {
+							log.Printf("Error setting rotation for entity %d: it has no transform\n", e)
 						}
 					}
 				}
@@ -91,9 +91,10 @@ func HandleInputs(
 								dY := mY - eWorldPos.Y
 								r := math.Atan2(dY, dX)
 
-								err = tm.SetLocalRotation(eqE, r, ecsContainer)
-								if err != nil {
-									log.Printf("Error setting world rotation for entity %d: %v\n", eqE, err)
+								if t, ok := ecsContainer.Transforms.Get(eqE); ok {
+									t.SetLocalRotation(r)
+								} else {
+									log.Printf("Error setting rotation for entity %d: it has no transform\n", eqE)
 								}
 							}
 						}
@@ -102,33 +103,9 @@ func HandleInputs(
 			}
 		}
 
-		if ecsContainer.Velocities.HasComponent(e) {
-			vm := ecsContainer.VelocityManager
-
-			v := utils.Vec2f{X: 0, Y: 0}
-
-			v.X = input.Analog1X
-			v.Y = input.Analog1Y
-
-			v = v.Normalized()
-
-			pLocalVelVec, err := vm.GetLocalVector(e, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting local velocity vector for entity %d: %v\n", e, err)
-				continue
-			}
-
-			pAccel, err := vm.GetAcceleration(e, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting acceleration for entity %d: %v\n", e, err)
-				continue
-			}
-
-			err = vm.SetLocalVector(e, pLocalVelVec.Add(v.Multiply(pAccel)), ecsContainer)
-			if err != nil {
-				log.Printf("Error setting local velocity vector for entity %d: %v\n", e, err)
-				continue
-			}
+		if vel, ok := ecsContainer.Velocities.Get(e); ok {
+			dir := utils.Vec2f{X: input.Analog1X, Y: input.Analog1Y}.Normalized()
+			vel.AddForce(dir.Multiply(vel.Acceleration()))
 		}
 
 		equipTriggers := []equipTrigger{

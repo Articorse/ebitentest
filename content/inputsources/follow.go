@@ -38,15 +38,14 @@ func FollowInputSource(
 		return ecs.InputState{}, fmt.Errorf("input params are nil")
 	}
 
-	tm := ecsContainer.TransformManager
 	is := ecs.InputState{}
 
-	selfWorldPos, err := tm.GetWorldPos(entityId, ecsContainer)
+	selfWorldPos, err := ecsContainer.WorldPos(entityId)
 	if err != nil {
 		return is, fmt.Errorf("error getting world position for self entity %d: %v", entityId, err)
 	}
 
-	targetWorldPos, err := tm.GetWorldPos(followParams.FollowEntity, ecsContainer)
+	targetWorldPos, err := ecsContainer.WorldPos(followParams.FollowEntity)
 	if err != nil {
 		return is, fmt.Errorf("error getting world position for follow entity %d: %v", followParams.FollowEntity, err)
 	}

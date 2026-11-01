@@ -40,9 +40,6 @@ var (
 	max_pos_diff                     = 0.0
 	resolvedPhysicsCollisions uint64 = 0
 
-	tm     = g.ecs.TransformManager
-	hm     = g.ecs.HierarchyManager
-	vm     = g.ecs.VelocityManager
 	im     = g.ecs.InputManager
 	pcm    = g.ecs.PhysicsColliderManager
 	hurtcm = g.ecs.HurtboxColliderManager
@@ -195,7 +192,7 @@ func (g *game) Update() error {
 		g.ecs.CameraFollow = !g.ecs.CameraFollow
 	}
 	if g.ecs.CameraFollow {
-		pWorldPos, err := tm.GetWorldPos(g.playerEntity, g.ecs)
+		pWorldPos, err := g.ecs.WorldPos(g.playerEntity)
 		if err != nil {
 			log.Println("error getting player ecs position for camera follow: ", err)
 		}
@@ -217,22 +214,22 @@ func (g *game) Update() error {
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
-		parEnt := hm.GetParent(common.EntityId(1), g.ecs)
+		parEnt := g.ecs.Parent(common.EntityId(1))
 
 		if parEnt > -1 {
-			err = hm.Detach(common.EntityId(1), g.ecs)
+			err = g.ecs.Detach(common.EntityId(1))
 			if err != nil {
 				log.Println("error detaching gun: ", err)
 			}
 		} else {
-			err = hm.Attach(common.EntityId(1), g.playerEntity, ecs.Link_Held, g.ecs)
+			err = g.ecs.Attach(common.EntityId(1), g.playerEntity, ecs.Link_Held)
 			if err != nil {
 				log.Println("error attaching gun to player: ", err)
 			}
 		}
 	}
 
-	pWorldPos, err := tm.GetWorldPos(g.playerEntity, g.ecs)
+	pWorldPos, err := g.ecs.WorldPos(g.playerEntity)
 	if err != nil {
 		log.Println("error getting player ecs position for debug: ", err)
 	} else {
@@ -533,10 +530,11 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			}
 		}
 
-		pLocalVelVec, err := vm.GetLocalVector(g.playerEntity, g.ecs)
-		if err != nil {
-			log.Fatalf("error getting player local velocity for debug: %v", err)
+		pVel, ok := g.ecs.Velocities.Get(g.playerEntity)
+		if !ok {
+			log.Fatalf("player %d has no velocity to show for debug", g.playerEntity)
 		}
+		pLocalVelVec := pVel.LocalVector()
 
 		vel := pLocalVelVec.Length()
 		if vel > max_vel {

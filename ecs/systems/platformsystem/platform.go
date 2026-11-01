@@ -12,9 +12,7 @@ func Tick(
 	shg map[utils.Vec2i][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) error {
-	tm := ecsContainer.TransformManager
 	pcm := ecsContainer.PlatformColliderManager
-	pm := ecsContainer.HierarchyManager
 	phcm := ecsContainer.PhysicsColliderManager
 
 	for _, eA := range ecsContainer.PlatformColliders.GetEntities() {
@@ -24,7 +22,7 @@ func Tick(
 			continue
 		}
 
-		aWorldPos, err := tm.GetWorldPos(eA, ecsContainer)
+		aWorldPos, err := ecsContainer.WorldPos(eA)
 		if err != nil {
 			log.Printf("error getting world position of entity %d: %v", eA, err)
 			continue
@@ -72,24 +70,24 @@ func Tick(
 						continue
 					}
 
-					bWorldPos, err := tm.GetWorldPos(eB, ecsContainer)
+					bWorldPos, err := ecsContainer.WorldPos(eB)
 					if err != nil {
 						log.Printf("error getting world position of entity %d: %v", eB, err)
 						continue
 					}
 
 					if utils.PointInAABB(bWorldPos, aAABB) {
-						err := pm.Attach(eB, eA, ecs.Link_Attached, ecsContainer)
+						err := ecsContainer.Attach(eB, eA, ecs.Link_Attached)
 						if err != nil {
 							log.Printf("error attaching entity %d to platform entity %d: %v", eB, eA, err)
 						}
 						continue
 					}
 
-					pEnt := pm.GetParent(eB, ecsContainer)
+					pEnt := ecsContainer.Parent(eB)
 
 					if pEnt == eA {
-						err := pm.Detach(eB, ecsContainer)
+						err := ecsContainer.Detach(eB)
 						if err != nil {
 							log.Printf("error detaching entity %d to platform entity %d: %v", eB, eA, err)
 						}

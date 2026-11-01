@@ -33,7 +33,7 @@ func TestDtosShareNoMemoryWithLiveComponents(t *testing.T) {
 	dtos := x.GetEntityComponents(p)
 	before := encode(t, dtos)
 
-	if err := x.HierarchyManager.Detach(c1, x); err != nil {
+	if err := x.Detach(c1); err != nil {
 		t.Fatal(err)
 	}
 	params, err := x.InputManager.GetParams(p, x)

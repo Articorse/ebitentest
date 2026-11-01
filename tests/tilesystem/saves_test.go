@@ -107,7 +107,7 @@ func TestResumedWorldMatchesSavedOne(t *testing.T) {
 	if !y.HasEntity(rock) {
 		t.Fatal("rock wasn't restored")
 	}
-	if y.HierarchyManager.GetParent(item, y) != r.Player || y.HierarchyManager.GetLinkKind(item, y) != ecs.Link_Held {
+	if y.Parent(item) != r.Player || y.LinkKind(item) != ecs.Link_Held {
 		t.Fatal("held item isn't held by the player any more")
 	}
 	if err := y.CheckConsistency(); err != nil {

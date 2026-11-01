@@ -14,10 +14,9 @@ func PopulateSpatialHashGrid(
 	cellSize int,
 ) (map[utils.Vec2i][]common.EntityId, error) {
 	grid := make(map[utils.Vec2i][]common.EntityId)
-	tm := ecsContainer.TransformManager
 
 	for _, e := range ecsContainer.Transforms.GetEntities() {
-		worldPos, err := tm.GetWorldPos(e, ecsContainer)
+		worldPos, err := ecsContainer.WorldPos(e)
 		if err != nil {
 			log.Printf("error getting world position of entity %d: %v", e, err)
 			continue
@@ -38,8 +37,7 @@ func GetSHGProximities(
 	proximateEntities := make(map[common.EntityId][]common.EntityId)
 
 	for _, eA := range ecsContainer.Transforms.GetEntities() {
-		tm := ecsContainer.TransformManager
-		worldPosA, err := tm.GetWorldPos(eA, ecsContainer)
+		worldPosA, err := ecsContainer.WorldPos(eA)
 		if err != nil {
 			log.Printf("error getting world position of entity %d: %v", eA, err)
 			continue

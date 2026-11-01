@@ -151,14 +151,12 @@ func (*spriteManager) GetWorldOffsetPos(
 		return utils.Vec2f{}, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	tm := transformManager{}
-
-	pWorldPos, err := tm.GetWorldPos(e, ecsContainer)
+	pWorldPos, err := ecsContainer.WorldPos(e)
 	if err != nil {
 		return utils.Vec2f{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(e, ecsContainer)
+	pWorldRot, err := ecsContainer.WorldRotation(e)
 	if err != nil {
 		return utils.Vec2f{}, fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
 	}
@@ -193,9 +191,7 @@ func (*spriteManager) GetWorldOffsetRotation(
 		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	tm := transformManager{}
-
-	WorldRot, err := tm.GetWorldRotation(e, ecsContainer)
+	WorldRot, err := ecsContainer.WorldRotation(e)
 	if err != nil {
 		return 0, fmt.Errorf("error getting world rotation of parent entity %d: %v", e, err)
 	}
@@ -219,21 +215,17 @@ func (*spriteManager) GetWorldOffsetScale(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
 ) (float64, error) {
-	pm := hierarchyManager{}
-
 	sprComp, err := ecsContainer.Sprites.getComponent(e)
 	if err != nil {
 		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	parEntity := pm.GetParent(e, ecsContainer)
+	parEntity := ecsContainer.Parent(e)
 	if parEntity == -1 {
 		return sprComp.offsetScale, nil
 	}
 
-	tm := transformManager{}
-
-	pWorldSca, err := tm.GetWorldScale(parEntity, ecsContainer)
+	pWorldSca, err := ecsContainer.WorldScale(parEntity)
 	if err != nil {
 		return 0, fmt.Errorf("error getting world scale of parent entity %d: %v", parEntity, err)
 	}
@@ -269,14 +261,12 @@ func (*spriteManager) GetWorldLayerYOffset(
 		return 0, fmt.Errorf("could not get sprite of entity %d: %v", e, err)
 	}
 
-	tm := transformManager{}
-
-	pWorldPos, err := tm.GetWorldPos(e, ecsContainer)
+	pWorldPos, err := ecsContainer.WorldPos(e)
 	if err != nil {
 		return 0, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
 
-	pWorldRot, err := tm.GetWorldRotation(e, ecsContainer)
+	pWorldRot, err := ecsContainer.WorldRotation(e)
 	if err != nil {
 		return 0, fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
 	}

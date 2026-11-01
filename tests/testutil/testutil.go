@@ -66,7 +66,7 @@ func AddMovable(t testing.TB, x *ecs.ECSContainer, pos utils.Vec2f, persistent b
 func Attach(t testing.TB, x *ecs.ECSContainer, child, parent common.EntityId, linkKind ecs.LinkKindEnum) {
 	t.Helper()
 
-	if err := x.HierarchyManager.Attach(child, parent, linkKind, x); err != nil {
+	if err := x.Attach(child, parent, linkKind); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -74,15 +74,17 @@ func Attach(t testing.TB, x *ecs.ECSContainer, child, parent common.EntityId, li
 func SetPos(t testing.TB, x *ecs.ECSContainer, e common.EntityId, pos utils.Vec2f) {
 	t.Helper()
 
-	if err := x.TransformManager.SetLocalPos(e, pos, x); err != nil {
-		t.Fatal(err)
+	tr, ok := x.Transforms.Get(e)
+	if !ok {
+		t.Fatalf("entity %d has no transform", e)
 	}
+	tr.SetLocalPos(pos)
 }
 
 func WorldPos(t testing.TB, x *ecs.ECSContainer, e common.EntityId) utils.Vec2f {
 	t.Helper()
 
-	pos, err := x.TransformManager.GetWorldPos(e, x)
+	pos, err := x.WorldPos(e)
 	if err != nil {
 		t.Fatal(err)
 	}

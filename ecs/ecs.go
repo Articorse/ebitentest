@@ -39,9 +39,9 @@ type ECSContainer struct {
 	inputSourceFuncs map[InputTypeEnum]InputSourceFunc
 
 	Inputs            Storage[input]
-	Hierarchies       Storage[hierarchy]
-	Transforms        Storage[transform]
-	Velocities        Storage[velocity]
+	Hierarchies       Storage[Hierarchy]
+	Transforms        Storage[Transform]
+	Velocities        Storage[Velocity]
 	Sprites           Storage[sprite]
 	Animations        Storage[animation]
 	PhysicsColliders  Storage[physicsCollider]
@@ -63,9 +63,6 @@ type ECSContainer struct {
 	Tethers           Storage[tether]
 
 	InputManager            inputManager
-	HierarchyManager        hierarchyManager
-	TransformManager        transformManager
-	VelocityManager         velocityManager
 	SpriteManager           spriteManager
 	AnimationManager        animationManager
 	PhysicsColliderManager  physicsColliderManager
@@ -131,9 +128,9 @@ func NewECSContainer() *ECSContainer {
 		TickState: common.TickState{},
 
 		Inputs:            newStorage[input](),
-		Hierarchies:       newStorage[hierarchy](),
-		Transforms:        newStorage[transform](),
-		Velocities:        newStorage[velocity](),
+		Hierarchies:       newStorage[Hierarchy](),
+		Transforms:        newStorage[Transform](),
+		Velocities:        newStorage[Velocity](),
 		Sprites:           newStorage[sprite](),
 		Animations:        newStorage[animation](),
 		PhysicsColliders:  newStorage[physicsCollider](),
@@ -155,9 +152,6 @@ func NewECSContainer() *ECSContainer {
 		Tethers:           newStorage[tether](),
 
 		InputManager:            inputManager{},
-		HierarchyManager:        hierarchyManager{},
-		TransformManager:        transformManager{},
-		VelocityManager:         velocityManager{},
 		SpriteManager:           spriteManager{},
 		AnimationManager:        animationManager{},
 		PhysicsColliderManager:  physicsColliderManager{},
@@ -279,12 +273,12 @@ func (x *ECSContainer) checkSpawnPos(comps []Component) error {
 		return nil
 	}
 
-	var t *transform
+	var t *Transform
 	for _, comp := range comps {
 		switch c := comp.(type) {
 		case *chunkLoader:
 			return nil
-		case *transform:
+		case *Transform:
 			t = c
 		}
 	}
@@ -354,15 +348,13 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 }
 
 func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
-	hm := hierarchyManager{}
-
 	// Children are resolved before this entity is deleted, since dropping what they hold needs their ancestors' world
 	// transforms
-	for _, c := range hm.GetChildren(e, x) {
-		linkKind := hm.GetLinkKind(c, x)
+	for _, c := range x.Children(e) {
+		linkKind := x.LinkKind(c)
 
 		if linkKind == Link_Attached || (linkKind == Link_Held && dropHeld) {
-			if err := hm.Detach(c, x); err != nil {
+			if err := x.Detach(c); err != nil {
 				log.Printf("error detaching entity %d from removed entity %d: %v", c, e, err)
 			}
 			continue
@@ -372,7 +364,7 @@ func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 		x.removeEntity(c, dropHeld && linkKind == Link_Part)
 	}
 
-	removeChild(hm.GetParent(e, x), e, x)
+	x.removeChild(x.Parent(e), e)
 
 	for _, s := range x.storages {
 		s.deleteEntity(e)
@@ -456,13 +448,10 @@ func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 // Returns the DTOs of root, its held entities and its persistent parts, which is the unit that gets stored.
 // Links to entities outside the unit are cut, and root's transform becomes a world transform if it was attached.
 func (x *ECSContainer) GetCompositionComponents(root common.EntityId) (map[common.EntityId][]ComponentDto, error) {
-	hm := hierarchyManager{}
-	tm := transformManager{}
-
 	members := make(map[common.EntityId][]ComponentDto)
 	x.collectComposition(root, members)
 
-	rootIsAttached := hm.GetParent(root, x) != -1
+	rootIsAttached := x.Parent(root) != -1
 
 	for e, dtos := range members {
 		for _, dto := range dtos {
@@ -487,13 +476,13 @@ func (x *ECSContainer) GetCompositionComponents(root common.EntityId) (map[commo
 				}
 
 				var err error
-				if d.Pos, err = tm.GetWorldPos(e, x); err != nil {
+				if d.Pos, err = x.WorldPos(e); err != nil {
 					return nil, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 				}
-				if d.Rotation, err = tm.GetWorldRotation(e, x); err != nil {
+				if d.Rotation, err = x.WorldRotation(e); err != nil {
 					return nil, fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
 				}
-				if d.Scale, err = tm.GetWorldScale(e, x); err != nil {
+				if d.Scale, err = x.WorldScale(e); err != nil {
 					return nil, fmt.Errorf("error getting world scale of entity %d: %v", e, err)
 				}
 			}
@@ -504,12 +493,10 @@ func (x *ECSContainer) GetCompositionComponents(root common.EntityId) (map[commo
 }
 
 func (x *ECSContainer) collectComposition(e common.EntityId, members map[common.EntityId][]ComponentDto) {
-	hm := hierarchyManager{}
-
 	members[e] = x.GetEntityComponents(e)
 
-	for _, c := range hm.GetChildren(e, x) {
-		switch hm.GetLinkKind(c, x) {
+	for _, c := range x.Children(e) {
+		switch x.LinkKind(c) {
 		case Link_Attached:
 			continue
 		case Link_Part:

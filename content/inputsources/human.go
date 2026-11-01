@@ -71,8 +71,6 @@ func HumanInputSource(
 		log.Printf("Error getting ability 2 input for entity %d: %v\n", e, err)
 	}
 
-	tm := ecsContainer.TransformManager
-
 	facingInput, err := im.GetFacingInput(e, ecsContainer)
 	if err != nil {
 		log.Printf("Error getting facing input for entity %d: %v\n", e, err)
@@ -83,7 +81,7 @@ func HumanInputSource(
 		log.Printf("Error getting last facing direction for entity %d: %v\n", e, err)
 	}
 
-	worldPos, err := tm.GetWorldPos(e, ecsContainer)
+	worldPos, err := ecsContainer.WorldPos(e)
 
 	var mX, mY float64
 	switch facingInput {

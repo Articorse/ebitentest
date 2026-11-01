@@ -16,16 +16,12 @@ func (cc *ChunkContainer) relocateTethered(e common.EntityId, ecsCont *ecs.ECSCo
 		return false
 	}
 
-	tm := ecsCont.TransformManager
-	vm := ecsCont.VelocityManager
-	hm := ecsCont.HierarchyManager
-
 	anchor, err := ecsCont.TetherManager.GetAnchor(e, ecsCont)
 	if err != nil || !ecsCont.ChunkLoaders.HasComponent(anchor) {
 		return false
 	}
 
-	anchorPos, err := tm.GetWorldPos(anchor, ecsCont)
+	anchorPos, err := ecsCont.WorldPos(anchor)
 	if err != nil {
 		log.Printf("error getting world position of anchor %d of entity %d: %v", anchor, e, err)
 		return false
@@ -37,7 +33,7 @@ func (cc *ChunkContainer) relocateTethered(e common.EntityId, ecsCont *ecs.ECSCo
 		return false
 	}
 
-	ePos, err := tm.GetWorldPos(e, ecsCont)
+	ePos, err := ecsCont.WorldPos(e)
 	if err != nil {
 		log.Printf("error getting world position of tethered entity %d: %v", e, err)
 		return false
@@ -64,19 +60,17 @@ func (cc *ChunkContainer) relocateTethered(e common.EntityId, ecsCont *ecs.ECSCo
 		targetPos = tilePosToWorldPos(tile)
 	}
 
-	if err := hm.Detach(e, ecsCont); err != nil {
+	if err := ecsCont.Detach(e); err != nil {
 		log.Printf("error detaching tethered entity %d: %v", e, err)
 	}
 
-	if err := tm.SetWorldPos(e, targetPos, ecsCont); err != nil {
+	if err := ecsCont.SetWorldPos(e, targetPos); err != nil {
 		log.Printf("error moving tethered entity %d: %v", e, err)
 		return false
 	}
 
-	if ecsCont.Velocities.HasComponent(e) {
-		if err := vm.SetLocalVector(e, utils.Vec2f{}, ecsCont); err != nil {
-			log.Printf("error resetting velocity of tethered entity %d: %v", e, err)
-		}
+	if v, ok := ecsCont.Velocities.Get(e); ok {
+		v.SetLocalVector(utils.Vec2f{})
 	}
 
 	return true

@@ -12,8 +12,6 @@ func ResolvePhysicsCollisions(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	ecsContainer *ecs.ECSContainer,
 ) (collisionsResolved uint64, err error) {
-	tm := ecsContainer.TransformManager
-	vm := ecsContainer.VelocityManager
 	cm := ecsContainer.PhysicsColliderManager
 
 	for eA, cols := range collisions {
@@ -36,46 +34,28 @@ func ResolvePhysicsCollisions(
 
 			// Mob-Mob
 			if aColType == ecs.Collider_Mob && bColType == ecs.Collider_Mob {
-				aLocalVelVec, err := vm.GetLocalVector(eA, ecsContainer)
-				if err != nil {
-					log.Printf("Error getting local velocity vector for entity %d: %v\n", eA, err)
-					continue
-				}
-				bLocalVelVec, err := vm.GetLocalVector(eB, ecsContainer)
-				if err != nil {
-					log.Printf("Error getting local velocity vector for entity %d: %v\n", eB, err)
+				aTra, aTraOk := ecsContainer.Transforms.Get(eA)
+				bTra, bTraOk := ecsContainer.Transforms.Get(eB)
+				aVel, aVelOk := ecsContainer.Velocities.Get(eA)
+				bVel, bVelOk := ecsContainer.Velocities.Get(eB)
+				if !aTraOk || !bTraOk || !aVelOk || !bVelOk {
+					log.Printf("Error resolving collision of mobs %d and %d: both need a transform and a velocity\n", eA, eB)
 					continue
 				}
 
-				err = tm.AddLocalPos(eA, c.Vector.Multiply(-0.5), ecsContainer)
-				if err != nil {
-					log.Printf("Error adding local position for entity %d: %v\n", eA, err)
-					continue
-				}
-				err = tm.AddLocalPos(eB, c.Vector.Multiply(0.5), ecsContainer)
-				if err != nil {
-					log.Printf("Error adding local position for entity %d: %v\n", eB, err)
-					continue
-				}
+				aTra.AddLocalPos(c.Vector.Multiply(-0.5))
+				bTra.AddLocalPos(c.Vector.Multiply(0.5))
 
 				normal := c.Vector.Normalized()
-				relativeVelocity := aLocalVelVec.Subtract(bLocalVelVec)
+				relativeVelocity := aVel.LocalVector().Subtract(bVel.LocalVector())
 				velocityAlongNormal := relativeVelocity.Dot(normal)
 
 				if velocityAlongNormal < 0 {
 					restitution := data.Bounciness
 					impulseMagnitude := -(1 + restitution) * velocityAlongNormal
 					impulse := normal.Multiply(impulseMagnitude)
-					err = vm.AddForce(eA, impulse.Multiply(-0.5), ecsContainer)
-					if err != nil {
-						log.Printf("Error adding force to entity %d: %v\n", eA, err)
-						continue
-					}
-					err = vm.AddForce(eB, impulse.Multiply(0.5), ecsContainer)
-					if err != nil {
-						log.Printf("Error adding force to entity %d: %v\n", eB, err)
-						continue
-					}
+					aVel.AddForce(impulse.Multiply(-0.5))
+					bVel.AddForce(impulse.Multiply(0.5))
 				}
 
 				collisionsResolved++
@@ -99,42 +79,27 @@ func ResolvePhysicsCollisions(
 					staE = eA
 				}
 
-				mobLocalPos, err := tm.GetLocalPos(mobE, ecsContainer)
-				if err != nil {
-					log.Printf("Error getting local position for entity %d: %v\n", mobE, err)
+				mobTra, traOk := ecsContainer.Transforms.Get(mobE)
+				mobVel, velOk := ecsContainer.Velocities.Get(mobE)
+				if !traOk || !velOk {
+					log.Printf("Error resolving collision of mob %d: it needs a transform and a velocity\n", mobE)
 					continue
 				}
-				mobLocalVelVec, err := vm.GetLocalVector(mobE, ecsContainer)
-				if err != nil {
-					log.Printf("Error getting local velocity vector for entity %d: %v\n", mobE, err)
-					continue
-				}
+				mobLocalVelVec := mobVel.LocalVector()
 
 				var staLocalVelVec utils.Vec2f
-				if ecsContainer.Velocities.HasComponent(staE) {
-					staLocalVelVec, err = vm.GetLocalVector(staE, ecsContainer)
-					if err != nil {
-						log.Printf("Error getting local velocity vector for entity %d: %v\n", staE, err)
-						continue
-					}
+				if staVel, ok := ecsContainer.Velocities.Get(staE); ok {
+					staLocalVelVec = staVel.LocalVector()
 				}
 
-				err = tm.SetLocalPos(mobE, mobLocalPos.Add(c.Vector), ecsContainer)
-				if err != nil {
-					log.Printf("Error setting local position for entity %d: %v\n", mobE, err)
-					continue
-				}
+				mobTra.AddLocalPos(c.Vector)
 
 				normal := c.Vector.Normalized()
 				relativeVelocity := mobLocalVelVec.Subtract(staLocalVelVec)
 
 				impulse := utils.CalculateImpulse(relativeVelocity, normal, data.Bounciness)
 				if impulse.Length() > 0 {
-					err = vm.SetLocalVector(mobE, mobLocalVelVec.Add(impulse), ecsContainer)
-					if err != nil {
-						log.Printf("Error setting local velocity vector for entity %d: %v\n", mobE, err)
-						continue
-					}
+					mobVel.SetLocalVector(mobLocalVelVec.Add(impulse))
 
 					collisionsResolved++
 				}

@@ -41,7 +41,6 @@ func DodgeAbility(
 
 	am := ecsContainer.AnimationManager
 	hpm := ecsContainer.HitpointsManager
-	vm := ecsContainer.VelocityManager
 	sm := ecsContainer.SpriteManager
 
 	err := am.SetState(self, ecs.Anim_Jump, ecsContainer)
@@ -79,10 +78,11 @@ func DodgeAbility(
 
 	dir := utils.Vec2f{X: is.Analog1X, Y: is.Analog1Y}.Normalized()
 
-	err = vm.AddForce(self, dir.Multiply(dodgeParams.Force), ecsContainer)
-	if err != nil {
-		return fmt.Errorf("error adding force to entity %d: %v", self, err)
+	v, ok := ecsContainer.Velocities.Get(self)
+	if !ok {
+		return fmt.Errorf("entity %d has no velocity to dodge with", self)
 	}
+	v.AddForce(dir.Multiply(dodgeParams.Force))
 
 	return nil
 }

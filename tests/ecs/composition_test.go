@@ -44,7 +44,7 @@ func TestCompositionMembers(t *testing.T) {
 	if err := y.CheckConsistency(); err != nil {
 		t.Fatalf("restored composition is inconsistent: %v", err)
 	}
-	if children := y.HierarchyManager.GetChildren(crab, y); len(children) != 1 || children[0] != claw {
+	if children := y.Children(crab); len(children) != 1 || children[0] != claw {
 		t.Fatalf("restored crab's children %v, want [%d]", children, claw)
 	}
 }
@@ -66,7 +66,7 @@ func TestAttachedRootStoredWithWorldTransform(t *testing.T) {
 	}
 
 	y := testutil.Restore(t, members)
-	if parent := y.HierarchyManager.GetParent(rider, y); parent != -1 {
+	if parent := y.Parent(rider); parent != -1 {
 		t.Fatalf("restored rider has parent %d", parent)
 	}
 	if got := testutil.WorldPos(t, y, rider); !testutil.ApproxEqual(got, want) {

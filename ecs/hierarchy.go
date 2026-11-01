@@ -18,21 +18,39 @@ const (
 	Link_Attached
 )
 
-type hierarchy struct {
+// Links are only changed through ECSContainer.Attach and Detach, which keep both ends and the transforms in step
+type Hierarchy struct {
 	parent   common.EntityId
 	linkKind LinkKindEnum
 	children []common.EntityId
 }
 
-func (x hierarchy) Copy() hierarchy {
-	return hierarchy{
+func NewHierarchyComponent() *Hierarchy {
+	return &Hierarchy{parent: -1}
+}
+
+func (x *Hierarchy) Parent() common.EntityId {
+	return x.parent
+}
+
+func (x *Hierarchy) LinkKind() LinkKindEnum {
+	return x.linkKind
+}
+
+// A copy, since the children change as entities are attached and detached while callers still hold the result
+func (x *Hierarchy) Children() []common.EntityId {
+	return slices.Clone(x.children)
+}
+
+func (x Hierarchy) Copy() Hierarchy {
+	return Hierarchy{
 		parent:   x.parent,
 		linkKind: x.linkKind,
 		children: slices.Clone(x.children),
 	}
 }
 
-func (x hierarchy) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+func (x Hierarchy) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.Hierarchies.addComponent(e, x.Copy())
 }
 
@@ -42,7 +60,7 @@ type hierarchyDto struct {
 	Children []common.EntityId
 }
 
-func (x hierarchy) toDto() (ComponentDto, error) {
+func (x Hierarchy) toDto() (ComponentDto, error) {
 	return &hierarchyDto{
 		Parent:   x.parent,
 		LinkKind: x.linkKind,
@@ -51,7 +69,7 @@ func (x hierarchy) toDto() (ComponentDto, error) {
 }
 
 func (x hierarchyDto) toComponent() (Component, error) {
-	return &hierarchy{
+	return &Hierarchy{
 		parent:   x.Parent,
 		linkKind: x.LinkKind,
 		children: x.Children,

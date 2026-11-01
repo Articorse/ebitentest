@@ -20,7 +20,6 @@ type chunkPlan struct {
 }
 
 func buildChunkPlan(ecsCont *ecs.ECSContainer) (plan chunkPlan, err error) {
-	tm := ecsCont.TransformManager
 	clm := ecsCont.ChunkLoaderManager
 
 	activate := make(map[utils.Vec2i]int)
@@ -28,7 +27,7 @@ func buildChunkPlan(ecsCont *ecs.ECSContainer) (plan chunkPlan, err error) {
 	prefetch := make(map[utils.Vec2i]int)
 
 	for _, eId := range ecsCont.ChunkLoaders.GetEntities() {
-		worldPos, ierr := tm.GetWorldPos(eId, ecsCont)
+		worldPos, ierr := ecsCont.WorldPos(eId)
 		if ierr != nil {
 			err = errors.Join(err, fmt.Errorf("error getting world position of entity %d: %v", eId, ierr))
 			continue

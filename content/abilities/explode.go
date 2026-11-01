@@ -59,17 +59,17 @@ func ExplodeAbility(
 		totalDuration += f.DurationMs
 	}
 
-	exWorldPos, err := ecsContainer.TransformManager.GetWorldPos(self, ecsContainer)
+	exWorldPos, err := ecsContainer.WorldPos(self)
 	if err != nil {
 		return fmt.Errorf("error getting world position of entity %d for explode ability: %v", self, err)
 	}
 
-	exWorldRot, err := ecsContainer.TransformManager.GetWorldRotation(self, ecsContainer)
+	exWorldRot, err := ecsContainer.WorldRotation(self)
 	if err != nil {
 		return fmt.Errorf("error getting world rotation of entity %d for explode ability: %v", self, err)
 	}
 
-	exWorldScale, err := ecsContainer.TransformManager.GetWorldScale(self, ecsContainer)
+	exWorldScale, err := ecsContainer.WorldScale(self)
 	if err != nil {
 		return fmt.Errorf("error getting world scale of entity %d for explode ability: %v", self, err)
 	}

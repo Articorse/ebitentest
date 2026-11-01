@@ -15,34 +15,19 @@ func ResolveTileCollisions(
 	collisions map[common.EntityId]utils.Vec2f,
 	ecsContainer *ecs.ECSContainer,
 ) (collisionsResolved uint64, err error) {
-	tm := ecsContainer.TransformManager
-	vm := ecsContainer.VelocityManager
-
 	for e, c := range collisions {
-		mobLocalPos, err := tm.GetLocalPos(e, ecsContainer)
-		if err != nil {
-			log.Printf("Error getting local position for entity %d: %v\n", e, err)
-			continue
-		}
-		mobLocalVelVec, err := vm.GetLocalVector(e, ecsContainer)
-		if err != nil {
-			log.Printf("Error getting local velocity vector for entity %d: %v\n", e, err)
+		t, traOk := ecsContainer.Transforms.Get(e)
+		v, velOk := ecsContainer.Velocities.Get(e)
+		if !traOk || !velOk {
+			log.Printf("Error resolving tile collision of entity %d: it needs a transform and a velocity\n", e)
 			continue
 		}
 
-		err = tm.SetLocalPos(e, mobLocalPos.Add(c), ecsContainer)
-		if err != nil {
-			log.Printf("Error setting local position for entity %d: %v\n", e, err)
-			continue
-		}
+		t.AddLocalPos(c)
 
-		impulse := utils.CalculateImpulse(mobLocalVelVec, c.Normalized(), data.Bounciness)
+		impulse := utils.CalculateImpulse(v.LocalVector(), c.Normalized(), data.Bounciness)
 		if impulse.Length() > 0 {
-			err = vm.SetLocalVector(e, mobLocalVelVec.Add(impulse), ecsContainer)
-			if err != nil {
-				log.Printf("Error setting local velocity vector for entity %d: %v\n", e, err)
-				continue
-			}
+			v.SetLocalVector(v.LocalVector().Add(impulse))
 
 			collisionsResolved++
 		}

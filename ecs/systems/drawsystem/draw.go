@@ -25,8 +25,6 @@ func DrawSprites(
 	assetManager *assetmanager.AssetManager,
 ) error {
 	sm := ecsContainer.SpriteManager
-	pm := ecsContainer.HierarchyManager
-	tm := ecsContainer.TransformManager
 
 	batches := make(map[uint8][][]common.EntityId)
 	visitedSprites := make(map[common.EntityId]struct{})
@@ -37,7 +35,7 @@ func DrawSprites(
 	}
 
 	for _, e := range ecsContainer.Sprites.GetEntities() {
-		eWorldPos, err := tm.GetWorldPos(e, ecsContainer)
+		eWorldPos, err := ecsContainer.WorldPos(e)
 		if err != nil {
 			return fmt.Errorf("error getting ecs position of entity %d: %v", e, err)
 		}
@@ -104,7 +102,7 @@ func DrawSprites(
 		if len(batches[layer][i]) > 1 {
 			var err error
 
-			hierarchies, err := pm.GetOrderedHierarchies(batches[layer][i], ecsContainer)
+			hierarchies, err := ecsContainer.OrderedHierarchies(batches[layer][i])
 			if err != nil {
 				return fmt.Errorf("error getting ordered hierarchies for batch in layer %d: %v", layer, err)
 			}
@@ -216,11 +214,10 @@ func DrawSprites(
 }
 
 func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECSContainer) error {
-	tm := ecs.TransformManager
 	ftm := ecs.FloatingTextManager
 
 	for _, e := range ecs.FloatingTexts.GetEntities() {
-		ecsPos, err := tm.GetWorldPos(e, ecs)
+		ecsPos, err := ecs.WorldPos(e)
 		if err != nil {
 			return fmt.Errorf("error getting ecs position of floating text entity %d: %v", e, err)
 		}
@@ -295,7 +292,6 @@ func getNeighborsRecursive(
 	visitedEntities map[common.EntityId]struct{},
 	ecs *ecs.ECSContainer,
 ) (neighbors []common.EntityId, _visited map[common.EntityId]struct{}, err error) {
-	tm := ecs.TransformManager
 	sm := ecs.SpriteManager
 
 	if !ecs.Sprites.HasComponent(eA) {
@@ -304,7 +300,7 @@ func getNeighborsRecursive(
 
 	visitedEntities[eA] = struct{}{}
 
-	aWorldPos, err := tm.GetWorldPos(eA, ecs)
+	aWorldPos, err := ecs.WorldPos(eA)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting ecs position of entity %d: %v", eA, err)
 	}

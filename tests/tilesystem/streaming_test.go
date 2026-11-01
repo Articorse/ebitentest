@@ -69,7 +69,6 @@ func TestCompositionStoredAndRestoredAsUnit(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	x := s.ECS
-	hm := x.HierarchyManager
 	crab := testutil.AddMovable(t, x, nearPlayer, true)
 	claw := testutil.AddMovable(t, x, nearPlayer, true)
 	fire := testutil.AddMovable(t, x, nearPlayer, false)
@@ -103,17 +102,17 @@ func TestCompositionStoredAndRestoredAsUnit(t *testing.T) {
 	if x.HasEntity(fire) || x.HasEntity(platform) {
 		t.Fatalf("non-persistent fire %v or platform %v came back", x.HasEntity(fire), x.HasEntity(platform))
 	}
-	if hm.GetParent(claw, x) != crab || hm.GetLinkKind(claw, x) != ecs.Link_Part {
-		t.Fatalf("claw linked to %d as %d, want part of %d", hm.GetParent(claw, x), hm.GetLinkKind(claw, x), crab)
+	if x.Parent(claw) != crab || x.LinkKind(claw) != ecs.Link_Part {
+		t.Fatalf("claw linked to %d as %d, want part of %d", x.Parent(claw), x.LinkKind(claw), crab)
 	}
-	if hm.GetParent(item, x) != claw || hm.GetLinkKind(item, x) != ecs.Link_Held {
-		t.Fatalf("item linked to %d as %d, want held by %d", hm.GetParent(item, x), hm.GetLinkKind(item, x), claw)
+	if x.Parent(item) != claw || x.LinkKind(item) != ecs.Link_Held {
+		t.Fatalf("item linked to %d as %d, want held by %d", x.Parent(item), x.LinkKind(item), claw)
 	}
 	if got := testutil.WorldPos(t, x, claw); got != clawPos {
 		t.Fatalf("claw at %v, want %v", got, clawPos)
 	}
-	if !x.HasEntity(rider) || hm.GetParent(rider, x) != -1 {
-		t.Fatalf("rider alive %v with parent %d, want stored on its own", x.HasEntity(rider), hm.GetParent(rider, x))
+	if !x.HasEntity(rider) || x.Parent(rider) != -1 {
+		t.Fatalf("rider alive %v with parent %d, want stored on its own", x.HasEntity(rider), x.Parent(rider))
 	}
 	if got := testutil.WorldPos(t, x, rider); got != riderPos {
 		t.Fatalf("rider at %v, want %v", got, riderPos)
@@ -125,9 +124,11 @@ func TestTetheredEntityKeptInAnchorArea(t *testing.T) {
 	s := testutil.StartSession(t)
 	x := s.ECS
 	colonist := testutil.AddMovable(t, x, testutil.PlayerStart.Add(utils.Vec2f{X: 20}), true, ecs.NewTetherComponent(s.Player))
-	if err := x.VelocityManager.SetLocalVector(colonist, utils.Vec2f{X: 3}, x); err != nil {
-		t.Fatal(err)
+	vel, ok := x.Velocities.Get(colonist)
+	if !ok {
+		t.Fatal("colonist has no velocity")
 	}
+	vel.SetLocalVector(utils.Vec2f{X: 3})
 	s.Tick(2)
 
 	s.MovePlayer(utils.Vec2f{X: 1000, Y: 100})
@@ -141,12 +142,8 @@ func TestTetheredEntityKeptInAnchorArea(t *testing.T) {
 	if abs(colonistChunk.X-playerChunk.X) > testutil.PlayerLoaderRadius || abs(colonistChunk.Y-playerChunk.Y) > testutil.PlayerLoaderRadius {
 		t.Fatalf("colonist in chunk %v, outside the active chunks around %v", colonistChunk, playerChunk)
 	}
-	vel, err := x.VelocityManager.GetLocalVector(colonist, x)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if vel != (utils.Vec2f{}) {
-		t.Fatalf("relocated colonist kept moving at %v", vel)
+	if vel, _ = x.Velocities.Get(colonist); vel.LocalVector() != (utils.Vec2f{}) {
+		t.Fatalf("relocated colonist kept moving at %v", vel.LocalVector())
 	}
 }
 

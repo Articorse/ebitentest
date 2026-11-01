@@ -38,7 +38,6 @@ func (*spawnerManager) Spawn(
 	ecsContainer *ECSContainer,
 ) (common.EntityId, error) {
 	sm := spawnerManager{}
-	tm := transformManager{}
 
 	comps, err := sm.GetComponents(spawnerEntity, ecsContainer)
 	if err != nil {
@@ -46,8 +45,8 @@ func (*spawnerManager) Spawn(
 	}
 
 	// If there is no Transform, then both of these are zero, which is fine if spawning based on camera or other entity
-	worldPos, _ := tm.GetWorldPos(spawnerEntity, ecsContainer)
-	worldRot, _ := tm.GetWorldRotation(spawnerEntity, ecsContainer)
+	worldPos, _ := ecsContainer.WorldPos(spawnerEntity)
+	worldRot, _ := ecsContainer.WorldRotation(spawnerEntity)
 
 	spawnerOffset, err := sm.GetOffset(spawnerEntity, ecsContainer)
 	if err != nil {
@@ -86,13 +85,13 @@ func (*spawnerManager) Spawn(
 	// The spawner's components are shared by every spawn, so its transform is replaced rather than modified.
 	comps = slices.Clone(comps)
 	tIdx := slices.IndexFunc(comps, func(c Component) bool {
-		_, ok := c.(*transform)
+		_, ok := c.(*Transform)
 		return ok
 	})
 	if tIdx < 0 {
 		return -1, fmt.Errorf("components of spawner entity %d have no transform", spawnerEntity)
 	}
-	t := comps[tIdx].(*transform).Copy()
+	t := comps[tIdx].(*Transform).Copy()
 	t.pos = worldPos.Add(finalOffset)
 	t.rotation = worldRot
 	comps[tIdx] = &t

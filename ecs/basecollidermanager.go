@@ -168,14 +168,12 @@ func (BaseColliderManager[T]) GetWorldAABB(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
 ) ([2]utils.Vec2f, error) {
-	tm := transformManager{}
-
 	colComp, err := getCollider[T](e, ecsContainer)
 	if err != nil {
 		return [2]utils.Vec2f{}, fmt.Errorf("could not get collider of entity %d: %v", e, err)
 	}
 
-	worldPos, err := tm.GetWorldPos(e, ecsContainer)
+	worldPos, err := ecsContainer.WorldPos(e)
 	if err != nil {
 		return [2]utils.Vec2f{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
@@ -205,14 +203,12 @@ func (BaseColliderManager[T]) GetWorldPaddedAABB(
 	e common.EntityId,
 	ecsContainer *ECSContainer,
 ) ([2]utils.Vec2f, error) {
-	tm := transformManager{}
-
 	colComp, err := getCollider[T](e, ecsContainer)
 	if err != nil {
 		return [2]utils.Vec2f{}, fmt.Errorf("could not get transform of entity %d: %v", e, err)
 	}
 
-	worldPos, err := tm.GetWorldPos(e, ecsContainer)
+	worldPos, err := ecsContainer.WorldPos(e)
 	if err != nil {
 		return [2]utils.Vec2f{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
