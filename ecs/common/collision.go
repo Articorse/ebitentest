@@ -14,3 +14,11 @@ type Collision struct {
 	AShapeIdx int
 	BShapeIdx int
 }
+
+// One of an entity's collider shapes overlapping one tile
+type TileCollision struct {
+	E        EntityId
+	Tile     utils.Vec2i
+	Vector   utils.Vec2f
+	ShapeIdx int
+}

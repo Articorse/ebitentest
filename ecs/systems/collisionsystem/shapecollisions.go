@@ -41,6 +41,10 @@ func GetRectangleCircleCollision(
 	rectMin := utils.Vec2f{X: rWorldPos.X + rHit.GetAABB()[0].X, Y: rWorldPos.Y + rHit.GetAABB()[0].Y}
 	rectMax := utils.Vec2f{X: rWorldPos.X + rHit.GetAABB()[1].X, Y: rWorldPos.Y + rHit.GetAABB()[1].Y}
 
+	if v, inside := circleCenterInRectangle(circleStart, cHit.GetRadius(), rectMin, rectMax); inside {
+		return v
+	}
+
 	cVel := localVelocity(cEnt, ecsContainer)
 	rVel := localVelocity(rEnt, ecsContainer)
 
@@ -128,6 +132,30 @@ func GetRectangleCircleCollision(
 		}
 	}
 	return utils.Vec2f{X: 0, Y: 0}
+}
+
+// The closest point on the rectangle is the center itself then, so the distance can't tell which way is out; the
+// circle leaves through the nearest edge instead
+func circleCenterInRectangle(center utils.Vec2f, radius float64, rectMin, rectMax utils.Vec2f) (utils.Vec2f, bool) {
+	if center.X <= rectMin.X || center.X >= rectMax.X || center.Y <= rectMin.Y || center.Y >= rectMax.Y {
+		return utils.Vec2f{}, false
+	}
+
+	exits := []utils.Vec2f{
+		{X: -(center.X - rectMin.X)},
+		{X: rectMax.X - center.X},
+		{Y: -(center.Y - rectMin.Y)},
+		{Y: rectMax.Y - center.Y},
+	}
+
+	nearest := exits[0]
+	for _, e := range exits[1:] {
+		if e.Length() < nearest.Length() {
+			nearest = e
+		}
+	}
+
+	return nearest.Add(nearest.Normalized().Multiply(radius)), true
 }
 
 // Pass -1 in case of collision without entity

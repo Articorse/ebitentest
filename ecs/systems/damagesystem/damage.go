@@ -127,3 +127,17 @@ func DealContactDamage(
 
 	return entitiesKilled, nil
 }
+
+// Only kills what dies on contact, for now; tiles will take damage once they can be damaged
+func DealTerrainContactDamage(collisions []common.TileCollision, ecsCont *ecs.ECSContainer) {
+	for _, c := range collisions {
+		cd, ok := ecsCont.ContactDamages.Get(c.E)
+		if !ok {
+			continue
+		}
+
+		if cd.DieOnContact() {
+			ecsCont.ScheduleKillEntity(c.E)
+		}
+	}
+}

@@ -282,17 +282,17 @@ func (g *game) Update() error {
 		log.Println("error during collision resolution: ", err)
 	}
 
-	potentialCollisionTiles, err := g.chunkContainer.GetTilesWithPotentialCollisions(g.ecs, data.TileSize)
+	potentialCollisionTiles, err := g.chunkContainer.GetTilesWithPotentialPhysicsCollisions(g.ecs)
 	if err != nil {
 		log.Println("error during getting tiles with potential collisions: ", err)
 	}
 
-	tileAABBCollisions, err := tilesystem.GetAABBCollisions(potentialCollisionTiles, g.ecs)
+	tileAABBCollisions, err := tilesystem.GetAABBCollisions(physicsColliders, potentialCollisionTiles, g.ecs)
 	if err != nil {
 		log.Println("error during tile AABB collision checking: ", err)
 	}
 
-	tileCollisions, err := tilesystem.GetCollisions(tileAABBCollisions, g.ecs)
+	tileCollisions, err := tilesystem.GetCollisions(physicsColliders, tileAABBCollisions, g.ecs)
 	if err != nil {
 		log.Println("error during tile collision checking: ", err)
 	}
@@ -316,6 +316,12 @@ func (g *game) Update() error {
 	if err != nil {
 		log.Println("error during dealing contact damage: ", err)
 	}
+
+	terrainDamageCollisions, err := g.chunkContainer.GetHurtboxTileCollisions(g.ecs)
+	if err != nil {
+		log.Println("error during terrain damage collision checking: ", err)
+	}
+	damagesystem.DealTerrainContactDamage(terrainDamageCollisions, g.ecs)
 
 	err = platformsystem.Tick(g.ecs.TickState.CollisionGrid, g.ecs)
 	if err != nil {
