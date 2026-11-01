@@ -57,7 +57,7 @@ func (cc *ChunkContainer) StartCommit(header world.Header, ecsCont *ecs.ECSConta
 		return fmt.Errorf("commit of generation %d still in flight", cc.commitInFlight.generation)
 	}
 
-	eIdsInChunks, _, err := cc.getEntityIdsInChunks(ecsCont)
+	eIdsInChunks, err := cc.getEntityIdsInChunks(ecsCont)
 	if err != nil {
 		return fmt.Errorf("failed to get entity IDs in chunks: %w", err)
 	}

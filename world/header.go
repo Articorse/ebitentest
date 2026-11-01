@@ -22,11 +22,9 @@ type Header struct {
 	Entities     map[common.EntityId][]ecs.ComponentDto
 }
 
-// Chunkloaders and their hierarchies are stored here rather than in chunks,
+// Chunkloaders and their compositions are stored here rather than in chunks,
 // since the chunks they would be stored in can't be loaded without them.
 func Snapshot(playerEntity common.EntityId, ecsCont *ecs.ECSContainer) (Header, error) {
-	hm := ecsCont.HierarchyManager
-
 	rngState, err := ecsCont.RngState()
 	if err != nil {
 		return Header{}, fmt.Errorf("error getting RNG state: %w", err)
@@ -41,16 +39,11 @@ func Snapshot(playerEntity common.EntityId, ecsCont *ecs.ECSContainer) (Header, 
 	}
 
 	for _, loader := range ecsCont.ChunkLoaders.GetEntities() {
-		root := hm.GetRoot(loader, ecsCont)
-
-		children, err := hm.GetChildrenDFS(root, ecsCont)
+		members, err := ecsCont.GetCompositionComponents(loader)
 		if err != nil {
-			return Header{}, fmt.Errorf("error getting children of chunkloader entity %d: %w", root, err)
+			return Header{}, fmt.Errorf("error getting composition of chunkloader entity %d: %w", loader, err)
 		}
-
-		for _, e := range append([]common.EntityId{root}, children...) {
-			h.Entities[e] = ecsCont.GetEntityComponents(e)
-		}
+		maps.Copy(h.Entities, members)
 	}
 
 	return h, nil

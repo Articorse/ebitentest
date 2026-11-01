@@ -7,38 +7,27 @@ import (
 	"fmt"
 )
 
-func (cc *ChunkContainer) getEntityIdsInChunks(ecsCont *ecs.ECSContainer) (
-	eIdsInChunks map[utils.Vec2i][]common.EntityId,
-	toBeUnloaded map[utils.Vec2i][]common.EntityId,
-	err error,
-) {
+// Returns the composition roots standing in each chunk, since compositions are stored and resolved as a unit.
+// Chunkloaders are left out, since they're stored in the world header and never unloaded.
+func (cc *ChunkContainer) getEntityIdsInChunks(ecsCont *ecs.ECSContainer) (map[utils.Vec2i][]common.EntityId, error) {
 	tm := ecsCont.TransformManager
-	pm := ecsCont.HierarchyManager
+	hm := ecsCont.HierarchyManager
 
-	eIdsInChunks = make(map[utils.Vec2i][]common.EntityId)
-	toBeUnloaded = make(map[utils.Vec2i][]common.EntityId)
+	eIdsInChunks := make(map[utils.Vec2i][]common.EntityId)
 
 	for _, e := range ecsCont.Transforms.GetEntities() {
+		if hm.GetCompositionRoot(e, ecsCont) != e || ecsCont.ChunkLoaders.HasComponent(e) {
+			continue
+		}
+
 		eWorldPos, err := tm.GetWorldPos(e, ecsCont)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error getting world position of entity %d: %v", e, err)
+			return nil, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 		}
 
 		eChunkPos := utils.WorldPosToChunkGridPos(eWorldPos)
 		eIdsInChunks[eChunkPos] = append(eIdsInChunks[eChunkPos], e)
-
-		if _, ok := cc.chunks[eChunkPos]; !ok {
-			// Don't queue unload for entities that have a parent,
-			// they should be unloaded when the parent is.
-			if pm.GetParent(e, ecsCont) == -1 && !ecsCont.ChunkLoaders.HasComponent(e) {
-				toBeUnloaded[eChunkPos] = append(toBeUnloaded[eChunkPos], e)
-			}
-		}
 	}
 
-	return eIdsInChunks, toBeUnloaded, nil
-}
-
-func isInLoaderHierarchy(e common.EntityId, ecsCont *ecs.ECSContainer) bool {
-	return ecsCont.ChunkLoaders.HasComponent(ecsCont.HierarchyManager.GetRoot(e, ecsCont))
+	return eIdsInChunks, nil
 }

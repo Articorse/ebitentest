@@ -52,9 +52,38 @@ func (*hierarchyManager) GetRoot(
 	return e
 }
 
+func (*hierarchyManager) GetLinkKind(
+	e common.EntityId,
+	ecsContainer *ECSContainer,
+) LinkKindEnum {
+	hierComp, err := ecsContainer.Hierarchies.getComponent(e)
+	if err != nil {
+		return Link_Part
+	}
+
+	return hierComp.linkKind
+}
+
+// The root of the composition e belongs to: the nearest ancestor reached without crossing an attached link
+func (*hierarchyManager) GetCompositionRoot(
+	e common.EntityId,
+	ecsContainer *ECSContainer,
+) common.EntityId {
+	hm := hierarchyManager{}
+
+	for {
+		p := hm.GetParent(e, ecsContainer)
+		if p == -1 || hm.GetLinkKind(e, ecsContainer) == Link_Attached {
+			return e
+		}
+		e = p
+	}
+}
+
 func (*hierarchyManager) Attach(
 	c common.EntityId,
 	p common.EntityId,
+	linkKind LinkKindEnum,
 	ecsContainer *ECSContainer,
 ) error {
 	tm := transformManager{}
@@ -81,6 +110,7 @@ func (*hierarchyManager) Attach(
 	}
 
 	cHierComp.parent = p
+	cHierComp.linkKind = linkKind
 	pHierComp.children = append(pHierComp.children, c)
 
 	traComp, _ := ecsContainer.Transforms.getComponent(c)

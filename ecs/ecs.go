@@ -50,6 +50,7 @@ type ECSContainer struct {
 	FloatingTexts     Storage[floatingText]
 	ChunkLoaders      Storage[chunkLoader]
 	Persistents       Storage[persistent]
+	Tethers           Storage[tether]
 
 	InputManager            inputManager
 	HierarchyManager        hierarchyManager
@@ -72,6 +73,7 @@ type ECSContainer struct {
 	FloatingTextManager     floatingTextManager
 	ChunkLoaderManager      chunkLoaderManager
 	PersistentManager       persistentManager
+	TetherManager           tetherManager
 }
 
 func NewECSContainer() *ECSContainer {
@@ -97,6 +99,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&floatingTextDto{})
 	gob.Register(&chunkLoaderDto{})
 	gob.Register(&persistentDto{})
+	gob.Register(&tetherDto{})
 
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
@@ -142,6 +145,7 @@ func NewECSContainer() *ECSContainer {
 		FloatingTexts:     Storage[floatingText]{order: []common.EntityId{}, data: make(map[common.EntityId]*floatingText)},
 		ChunkLoaders:      Storage[chunkLoader]{order: []common.EntityId{}, data: make(map[common.EntityId]*chunkLoader)},
 		Persistents:       Storage[persistent]{order: []common.EntityId{}, data: make(map[common.EntityId]*persistent)},
+		Tethers:           Storage[tether]{order: []common.EntityId{}, data: make(map[common.EntityId]*tether)},
 
 		InputManager:            inputManager{},
 		HierarchyManager:        hierarchyManager{},
@@ -164,6 +168,7 @@ func NewECSContainer() *ECSContainer {
 		FloatingTextManager:     floatingTextManager{},
 		ChunkLoaderManager:      chunkLoaderManager{},
 		PersistentManager:       persistentManager{},
+		TetherManager:           tetherManager{},
 	}
 }
 
@@ -260,99 +265,116 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 			}
 		}
 	}
+
+	killed := make(map[common.EntityId]struct{}, len(x.scheduledForDeath))
+	for _, e := range x.scheduledForDeath {
+		killed[e] = struct{}{}
+	}
 	x.scheduledForDeath = x.scheduledForDeath[:0]
 
-	err := x.removeEntitiesImmediate(x.scheduledForDeletion)
-	if err != nil {
-		return fmt.Errorf("error removing scheduled entities: %v", err)
+	for _, e := range slices.Clone(x.scheduledForDeletion) {
+		_, wasKilled := killed[e]
+		x.removeEntity(e, wasKilled)
 	}
+
 	return nil
 }
 
-func (x *ECSContainer) removeEntitiesImmediate(entities []common.EntityId) error {
-	for _, e := range slices.Clone(entities) {
-		hm := hierarchyManager{}
-		children, err := hm.GetChildrenDFS(e, x)
-		if err != nil {
-			log.Printf("error getting children of entity %d: %v", e, err)
+func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
+	hm := hierarchyManager{}
+
+	type childRemoval struct {
+		e        common.EntityId
+		dropHeld bool
+	}
+	var childRemovals []childRemoval
+
+	for _, c := range slices.Clone(hm.GetChildren(e, x)) {
+		linkKind := hm.GetLinkKind(c, x)
+
+		if linkKind == Link_Attached || (linkKind == Link_Held && dropHeld) {
+			if err := hm.Detach(c, x); err != nil {
+				log.Printf("error detaching entity %d from removed entity %d: %v", c, e, err)
+			}
 			continue
 		}
 
-		removeChild(hm.GetParent(e, x), e, x)
+		// Parts of a killed entity are removed rather than killed, but still drop what they hold
+		childRemovals = append(childRemovals, childRemoval{e: c, dropHeld: dropHeld && linkKind == Link_Part})
+	}
 
-		x.Hierarchies.deleteEntity(e)
-		x.Transforms.deleteEntity(e)
-		x.Velocities.deleteEntity(e)
-		x.Sprites.deleteEntity(e)
-		x.Animations.deleteEntity(e)
-		x.PhysicsColliders.deleteEntity(e)
-		x.PlatformColliders.deleteEntity(e)
-		x.HitboxColliders.deleteEntity(e)
-		x.HurtboxColliders.deleteEntity(e)
-		x.Spawners.deleteEntity(e)
-		x.Timers.deleteEntity(e)
-		x.Hitpoints.deleteEntity(e)
-		x.ContactDamages.deleteEntity(e)
-		x.Inputs.deleteEntity(e)
-		x.Abilities.deleteEntity(e)
-		x.FacePositions.deleteEntity(e)
-		x.Equipments.deleteEntity(e)
-		x.Equippers.deleteEntity(e)
-		x.Deathrattles.deleteEntity(e)
-		x.FloatingTexts.deleteEntity(e)
-		x.ChunkLoaders.deleteEntity(e)
-		x.Persistents.deleteEntity(e)
+	removeChild(hm.GetParent(e, x), e, x)
 
-		err = x.removeEntitiesImmediate(children)
-		if err != nil {
-			log.Printf("error removing children of entity %d: %v", e, err)
-			continue
+	x.Hierarchies.deleteEntity(e)
+	x.Transforms.deleteEntity(e)
+	x.Velocities.deleteEntity(e)
+	x.Sprites.deleteEntity(e)
+	x.Animations.deleteEntity(e)
+	x.PhysicsColliders.deleteEntity(e)
+	x.PlatformColliders.deleteEntity(e)
+	x.HitboxColliders.deleteEntity(e)
+	x.HurtboxColliders.deleteEntity(e)
+	x.Spawners.deleteEntity(e)
+	x.Timers.deleteEntity(e)
+	x.Hitpoints.deleteEntity(e)
+	x.ContactDamages.deleteEntity(e)
+	x.Inputs.deleteEntity(e)
+	x.Abilities.deleteEntity(e)
+	x.FacePositions.deleteEntity(e)
+	x.Equipments.deleteEntity(e)
+	x.Equippers.deleteEntity(e)
+	x.Deathrattles.deleteEntity(e)
+	x.FloatingTexts.deleteEntity(e)
+	x.ChunkLoaders.deleteEntity(e)
+	x.Persistents.deleteEntity(e)
+	x.Tethers.deleteEntity(e)
+
+	for _, c := range childRemovals {
+		x.removeEntity(c.e, c.dropHeld)
+	}
+
+	maps.DeleteFunc(x.TickState.AABBCollisions, func(k common.EntityId, v []common.EntityId) bool {
+		if k == e {
+			return true
 		}
-
-		maps.DeleteFunc(x.TickState.AABBCollisions, func(k common.EntityId, v []common.EntityId) bool {
-			if k == e {
+		for _, vE := range v {
+			if vE == e {
 				return true
 			}
-			for _, vE := range v {
-				if vE == e {
-					return true
-				}
-			}
-			return false
-		})
+		}
+		return false
+	})
 
-		maps.DeleteFunc(x.TickState.CollisionGrid, func(k utils.Vec2i, v []common.EntityId) bool {
-			for _, vE := range v {
-				if vE == e {
-					return true
-				}
+	maps.DeleteFunc(x.TickState.CollisionGrid, func(k utils.Vec2i, v []common.EntityId) bool {
+		for _, vE := range v {
+			if vE == e {
+				return true
 			}
-			return false
-		})
+		}
+		return false
+	})
 
-		maps.DeleteFunc(x.TickState.Collisions, func(k common.EntityId, v map[common.EntityId]common.Collision) bool {
-			for vE := range v {
-				if vE == e {
-					return true
-				}
+	maps.DeleteFunc(x.TickState.Collisions, func(k common.EntityId, v map[common.EntityId]common.Collision) bool {
+		for vE := range v {
+			if vE == e {
+				return true
 			}
-			return false
-		})
+		}
+		return false
+	})
 
-		maps.DeleteFunc(x.TickState.ProximateEntities, func(k common.EntityId, v []common.EntityId) bool {
-			for _, vE := range v {
-				if vE == e {
-					return true
-				}
+	maps.DeleteFunc(x.TickState.ProximateEntities, func(k common.EntityId, v []common.EntityId) bool {
+		for _, vE := range v {
+			if vE == e {
+				return true
 			}
-			return false
-		})
+		}
+		return false
+	})
 
-		x.scheduledForDeletion = slices.DeleteFunc(x.scheduledForDeletion, func(v common.EntityId) bool {
-			return v == e
-		})
-	}
-	return nil
+	x.scheduledForDeletion = slices.DeleteFunc(x.scheduledForDeletion, func(v common.EntityId) bool {
+		return v == e
+	})
 }
 
 func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
@@ -401,6 +423,8 @@ func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
 		x.ChunkLoaders.addComponent(e, c.Copy())
 	case *persistent:
 		x.Persistents.addComponent(e, c.Copy())
+	case *tether:
+		x.Tethers.addComponent(e, c.Copy())
 	default:
 		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in ECS.AddComponent\n", comp, e)
 	}
@@ -428,7 +452,8 @@ func (x *ECSContainer) HasEntity(e common.EntityId) bool {
 		x.Deathrattles.HasComponent(e) ||
 		x.FloatingTexts.HasComponent(e) ||
 		x.ChunkLoaders.HasComponent(e) ||
-		x.Persistents.HasComponent(e)
+		x.Persistents.HasComponent(e) ||
+		x.Tethers.HasComponent(e)
 }
 
 func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
@@ -537,8 +562,69 @@ func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 		dto := c.ToDto()
 		comps = append(comps, &dto)
 	}
+	if c, ok := x.Tethers.tryGetComponent(eId); ok {
+		dto := c.ToDto()
+		comps = append(comps, &dto)
+	}
 
 	return comps
+}
+
+// Returns the DTOs of root and of every persistent part and held entity under it, which is the unit that gets stored.
+// Links to entities outside the unit are cut, and root's transform becomes a world transform if it was attached.
+func (x *ECSContainer) GetCompositionComponents(root common.EntityId) (map[common.EntityId][]ComponentDto, error) {
+	hm := hierarchyManager{}
+	tm := transformManager{}
+
+	members := make(map[common.EntityId][]ComponentDto)
+	x.collectComposition(root, members)
+
+	rootIsAttached := hm.GetParent(root, x) != -1
+
+	for e, dtos := range members {
+		for _, dto := range dtos {
+			switch d := dto.(type) {
+			case *hierarchyDto:
+				d.Children = slices.DeleteFunc(d.Children, func(c common.EntityId) bool {
+					_, ok := members[c]
+					return !ok
+				})
+				if e == root {
+					d.Parent = -1
+				}
+			case *transformDto:
+				if e != root || !rootIsAttached {
+					continue
+				}
+
+				var err error
+				if d.Pos, err = tm.GetWorldPos(e, x); err != nil {
+					return nil, fmt.Errorf("error getting world position of entity %d: %v", e, err)
+				}
+				if d.Rotation, err = tm.GetWorldRotation(e, x); err != nil {
+					return nil, fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
+				}
+				if d.Scale, err = tm.GetWorldScale(e, x); err != nil {
+					return nil, fmt.Errorf("error getting world scale of entity %d: %v", e, err)
+				}
+			}
+		}
+	}
+
+	return members, nil
+}
+
+func (x *ECSContainer) collectComposition(e common.EntityId, members map[common.EntityId][]ComponentDto) {
+	hm := hierarchyManager{}
+
+	members[e] = x.GetEntityComponents(e)
+
+	for _, c := range hm.GetChildren(e, x) {
+		if hm.GetLinkKind(c, x) == Link_Attached || !x.Persistents.HasComponent(c) {
+			continue
+		}
+		x.collectComposition(c, members)
+	}
 }
 
 func DtoToComponent[T ComponentDto](dto T) (Component, error) {
@@ -606,6 +692,8 @@ func DtoToComponent[T ComponentDto](dto T) (Component, error) {
 	case *chunkLoaderDto:
 		return d.ToComponent(), nil
 	case *persistentDto:
+		return d.ToComponent(), nil
+	case *tetherDto:
 		return d.ToComponent(), nil
 	default:
 		return nil, fmt.Errorf("unknown component DTO type: %T", dto)
@@ -693,6 +781,9 @@ func ComponentToDto(comp Component) (ComponentDto, error) {
 		dto := c.ToDto()
 		return &dto, nil
 	case *persistent:
+		dto := c.ToDto()
+		return &dto, nil
+	case *tether:
 		dto := c.ToDto()
 		return &dto, nil
 	default:

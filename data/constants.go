@@ -28,6 +28,8 @@ const (
 	MaxChunkLoadDispatchPerTick        = 4
 	ChunkDeactivateMargin              = 1
 	ChunkPrefetchMargin                = 2
+	TetherBorderTiles                  = 1
+	TetherSearchRadiusTiles            = 16
 	ChunkImageBakeMarginPx             = 100
 	ChunkImageFreeMarginPx             = 300
 	MaxChunkImageBakesPerFrame         = 1

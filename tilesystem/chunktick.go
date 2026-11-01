@@ -35,24 +35,18 @@ func (cc *ChunkContainer) Tick(ecsCont *ecs.ECSContainer) error {
 		}
 	}
 
-	eIdsInChunks, toBeUnloaded, err := cc.getEntityIdsInChunks(ecsCont)
-	if err != nil {
-		return fmt.Errorf("failed to get entity IDs in chunks: %w", err)
-	}
-	cc.currentTickEIdsInChunks = eIdsInChunks
-
-	for _, pos := range slices.SortedFunc(maps.Keys(toBeUnloaded), compareChunkPos) {
-		for _, eId := range toBeUnloaded[pos] {
-			cc.queueEntity(pos, eId, ecsCont.GetEntityComponents(eId))
-			ecsCont.ScheduleRemoveEntity(eId)
-		}
-	}
-
+	var deactivating []utils.Vec2i
 	for _, pos := range slices.SortedFunc(maps.Keys(cc.chunks), compareChunkPos) {
-		if _, ok := plan.keepActive[pos]; ok {
-			continue
+		if _, ok := plan.keepActive[pos]; !ok {
+			deactivating = append(deactivating, pos)
 		}
+	}
 
+	if err := cc.resolveEntitiesLeavingSimulation(deactivating, ecsCont); err != nil {
+		return err
+	}
+
+	for _, pos := range deactivating {
 		if err := cc.deactivateChunk(pos, ecsCont); err != nil {
 			return fmt.Errorf("failed to deactivate chunk at %v: %w", pos, err)
 		}
@@ -166,6 +160,54 @@ func (cc *ChunkContainer) activateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContain
 	return nil
 }
 
+// Resolves every composition outside the active chunks, including those in chunks about to be deactivated:
+// tethered ones move back, persistent ones are stored and everything else is despawned.
+func (cc *ChunkContainer) resolveEntitiesLeavingSimulation(deactivating []utils.Vec2i, ecsCont *ecs.ECSContainer) error {
+	eIdsInChunks, err := cc.getEntityIdsInChunks(ecsCont)
+	if err != nil {
+		return fmt.Errorf("failed to get entity IDs in chunks: %w", err)
+	}
+
+	for _, pos := range slices.SortedFunc(maps.Keys(eIdsInChunks), compareChunkPos) {
+		_, active := cc.chunks[pos]
+		leaving := slices.Contains(deactivating, pos)
+		if active && !leaving {
+			continue
+		}
+
+		for _, root := range eIdsInChunks[pos] {
+			if cc.relocateTethered(root, ecsCont) {
+				continue
+			}
+
+			// Stored with the chunk's own snapshot when it's deactivated
+			if leaving {
+				continue
+			}
+
+			if ecsCont.Persistents.HasComponent(root) {
+				members, err := ecsCont.GetCompositionComponents(root)
+				if err != nil {
+					return fmt.Errorf("failed to get composition of entity %d: %w", root, err)
+				}
+				for _, e := range slices.Sorted(maps.Keys(members)) {
+					cc.queueEntity(pos, e, members[e])
+				}
+			}
+
+			ecsCont.ScheduleRemoveEntity(root)
+		}
+	}
+
+	// Relocated entities have moved, so this is recomputed for the chunk snapshots that follow
+	cc.currentTickEIdsInChunks, err = cc.getEntityIdsInChunks(ecsCont)
+	if err != nil {
+		return fmt.Errorf("failed to get entity IDs in chunks: %w", err)
+	}
+
+	return nil
+}
+
 func (cc *ChunkContainer) deactivateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContainer) error {
 	c, ok := cc.chunks[pos]
 	if !ok {
@@ -177,8 +219,8 @@ func (cc *ChunkContainer) deactivateChunk(pos utils.Vec2i, ecsCont *ecs.ECSConta
 		return fmt.Errorf("failed to convert chunk to DTO: %w", err)
 	}
 
-	for _, eId := range slices.Sorted(maps.Keys(cDto.Entities)) {
-		ecsCont.ScheduleRemoveEntity(eId)
+	for _, root := range cc.currentTickEIdsInChunks[pos] {
+		ecsCont.ScheduleRemoveEntity(root)
 	}
 
 	cc.pendingVersion++

@@ -5,6 +5,8 @@ import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
+	"fmt"
+	"maps"
 )
 
 type chunkDto struct {
@@ -36,14 +38,16 @@ func (cc *ChunkContainer) chunkToDto(
 	}
 
 	entitiesWithComps := make(map[common.EntityId][]ecs.ComponentDto)
-	eIds, ok := cc.currentTickEIdsInChunks[pos]
-	if ok {
-		for _, e := range eIds {
-			if isInLoaderHierarchy(e, ecsCont) {
-				continue
-			}
-			entitiesWithComps[e] = ecsCont.GetEntityComponents(e)
+	for _, root := range cc.currentTickEIdsInChunks[pos] {
+		if !ecsCont.Persistents.HasComponent(root) {
+			continue
 		}
+
+		members, err := ecsCont.GetCompositionComponents(root)
+		if err != nil {
+			return chunkDto{}, fmt.Errorf("failed to get composition of entity %d: %w", root, err)
+		}
+		maps.Copy(entitiesWithComps, members)
 	}
 
 	return chunkDto{

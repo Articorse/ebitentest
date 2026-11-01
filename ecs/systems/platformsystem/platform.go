@@ -79,7 +79,7 @@ func Tick(
 					}
 
 					if utils.PointInAABB(bWorldPos, aAABB) {
-						err := pm.Attach(eB, eA, ecsContainer)
+						err := pm.Attach(eB, eA, ecs.Link_Attached, ecsContainer)
 						if err != nil {
 							log.Printf("error attaching entity %d to platform entity %d: %v", eB, eA, err)
 						}

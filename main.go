@@ -253,7 +253,7 @@ func (g *game) Update() error {
 				log.Println("error detaching gun: ", err)
 			}
 		} else {
-			err = hm.Attach(common.EntityId(1), g.playerEntity, g.ecs)
+			err = hm.Attach(common.EntityId(1), g.playerEntity, ecs.Link_Held, g.ecs)
 			if err != nil {
 				log.Println("error attaching gun to player: ", err)
 			}
@@ -685,6 +685,7 @@ func (g *game) spawnPlayer() {
 		pHitboxComp,
 		pAbiComp,
 		pCLComp,
+		ecs.NewPersistentComponent(),
 	)
 
 	// // Gun
@@ -895,6 +896,7 @@ func (g *game) spawnPlayer() {
 		bazookaSpaComp,
 		bazookaFPComp,
 		bazookaEquipmentComp,
+		ecs.NewPersistentComponent(),
 	)
 
 	pEquipperComp := ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{
@@ -903,7 +905,7 @@ func (g *game) spawnPlayer() {
 
 	g.ecs.AddComponent(g.playerEntity, pEquipperComp)
 
-	err = hm.Attach(bazooka, g.playerEntity, g.ecs)
+	err = hm.Attach(bazooka, g.playerEntity, ecs.Link_Held, g.ecs)
 	if err != nil {
 		log.Fatal("error attaching bazooka to player: ", err)
 	}
