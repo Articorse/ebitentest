@@ -323,6 +323,11 @@ func (g *game) Update() error {
 	}
 
 	visionsystem.Tick(g.ecs, g.chunkContainer.IsOpaqueTile)
+	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
+		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
+			g.chunkContainer.RememberSeenTiles(pos, vision)
+		}
+	}
 
 	if err := g.ecs.RemoveScheduledEntities(); err != nil {
 		log.Println("error while removing scheduled entities: ", err)
@@ -423,7 +428,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
 		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
-			g.visionOverlay.Draw(screen, g.ecs.Camera, pos, vision)
+			g.visionOverlay.Draw(screen, g.ecs.Camera, pos, vision, g.chunkContainer.DrawMemory)
 		}
 	}
 
@@ -553,6 +558,9 @@ func main() {
 		}
 		g.chunkContainer.SetGeneration(header.Generation)
 		g.chunkContainer.SetSeed(header.Seed)
+		if err := g.chunkContainer.LoadMemory(); err != nil {
+			log.Fatal("error loading memory: ", err)
+		}
 		g.playerEntity = header.PlayerEntity
 	} else {
 		if err := world.Reset(); err != nil {

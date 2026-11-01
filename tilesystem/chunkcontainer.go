@@ -32,7 +32,8 @@ type ChunkContainer struct {
 	generation     uint64
 	commitInFlight *inFlightCommit
 
-	seed uint64
+	seed   uint64
+	memory memory
 }
 
 func NewChunkContainer() *ChunkContainer {
@@ -47,6 +48,7 @@ func NewChunkContainer() *ChunkContainer {
 		loadFailures:   make(map[utils.Vec2i]int),
 		evictedChunks:  make(map[utils.Vec2i]pendingChunk),
 		queuedEntities: make(map[utils.Vec2i]map[common.EntityId]pendingEntity),
+		memory:         newMemory(),
 	}
 
 	cc.StartIOThread()

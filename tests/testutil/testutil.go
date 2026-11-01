@@ -200,6 +200,9 @@ func StartSession(t testing.TB) *Session {
 		}
 		cc.SetGeneration(h.Generation)
 		cc.SetSeed(h.Seed)
+		if err := cc.LoadMemory(); err != nil {
+			t.Fatal(err)
+		}
 		s.Player = h.PlayerEntity
 	} else {
 		if err := world.Reset(); err != nil {
@@ -259,11 +262,26 @@ func (s *Session) MovePlayer(pos utils.Vec2f) {
 func (s *Session) Commit() {
 	s.t.Helper()
 
+	if err := s.Chunks.CommitAndWait(s.snapshot(), s.ECS); err != nil {
+		s.t.Fatal(err)
+	}
+}
+
+// Leaves the commit running on the I/O thread, as the game's periodic saves do
+func (s *Session) StartCommit() {
+	s.t.Helper()
+
+	if err := s.Chunks.StartCommit(s.snapshot(), s.ECS); err != nil {
+		s.t.Fatal(err)
+	}
+}
+
+func (s *Session) snapshot() world.Header {
+	s.t.Helper()
+
 	h, err := world.Snapshot(s.Chunks.Seed(), s.Player, s.ECS)
 	if err != nil {
 		s.t.Fatal(err)
 	}
-	if err := s.Chunks.CommitAndWait(h, s.ECS); err != nil {
-		s.t.Fatal(err)
-	}
+	return h
 }

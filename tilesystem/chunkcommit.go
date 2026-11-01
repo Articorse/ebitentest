@@ -32,6 +32,7 @@ type commitRequest struct {
 	chunks  map[utils.Vec2i]chunkDto
 	appends map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto
 	deletes []utils.Vec2i
+	memory  map[utils.Vec2i]memoryRegionDto
 }
 
 type commitResult struct {
@@ -44,6 +45,7 @@ type inFlightCommit struct {
 	chunkVersions  map[utils.Vec2i]uint64
 	entityVersions map[utils.Vec2i]map[common.EntityId]uint64
 	deletes        []utils.Vec2i
+	memoryVersions map[utils.Vec2i]uint64
 }
 
 func (cc *ChunkContainer) SetGeneration(generation uint64) {
@@ -77,11 +79,22 @@ func (cc *ChunkContainer) StartCommit(header world.Header, ecsCont *ecs.ECSConta
 	req := commitRequest{
 		chunks:  make(map[utils.Vec2i]chunkDto, len(cc.chunks)+len(cc.evictedChunks)),
 		appends: make(map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto, len(cc.queuedEntities)),
+		memory:  make(map[utils.Vec2i]memoryRegionDto),
 	}
 	inFlight := &inFlightCommit{
 		generation:     cc.generation + 1,
 		chunkVersions:  make(map[utils.Vec2i]uint64, len(cc.evictedChunks)),
 		entityVersions: make(map[utils.Vec2i]map[common.EntityId]uint64, len(cc.queuedEntities)),
+		memoryVersions: make(map[utils.Vec2i]uint64),
+	}
+
+	for pos, r := range cc.memory.regions {
+		if !r.dirty {
+			continue
+		}
+		// Copied, since the main thread keeps remembering while the commit is written
+		req.memory[pos] = memoryRegionDto{X: pos.X, Y: pos.Y, Tiles: append([]data.TileEnum(nil), r.tiles[:]...)}
+		inFlight.memoryVersions[pos] = r.version
 	}
 
 	for pos, c := range cc.chunks {
@@ -165,6 +178,13 @@ func (cc *ChunkContainer) finishCommit(res commitResult) {
 
 	cc.generation = inFlight.generation
 
+	// A region remembered more since the commit started still needs saving
+	for pos, version := range inFlight.memoryVersions {
+		if r, ok := cc.memory.regions[pos]; ok && r.version == version {
+			r.dirty = false
+		}
+	}
+
 	// Resident copies of these chunks were loaded from files this commit has since replaced
 	for pos := range inFlight.chunkVersions {
 		delete(cc.resident, pos)
@@ -234,7 +254,7 @@ func (cc *ChunkContainer) commit(req commitRequest) (committed bool, err error) 
 
 	writeTmp := func(pos utils.Vec2i, cDto chunkDto) error {
 		p := chunkTmpFilePath(pos, generation)
-		if err := writeChunkFile(p, cDto); err != nil {
+		if err := writeGobFile(p, cDto); err != nil {
 			return err
 		}
 		tmpPaths = append(tmpPaths, p)
@@ -273,6 +293,15 @@ func (cc *ChunkContainer) commit(req commitRequest) (committed bool, err error) 
 			discard()
 			return false, fmt.Errorf("failed to write chunk at %v: %w", pos, err)
 		}
+	}
+
+	for pos, mDto := range req.memory {
+		p := memoryTmpFilePath(pos, generation)
+		if err := writeGobFile(p, mDto); err != nil {
+			discard()
+			return false, fmt.Errorf("failed to write memory region at %v: %w", pos, err)
+		}
+		tmpPaths = append(tmpPaths, p)
 	}
 
 	for _, pos := range req.deletes {
@@ -406,7 +435,7 @@ func cutLast(s string, sep string) (before string, after string, found bool) {
 	return s[:i], s[i+len(sep):], true
 }
 
-func writeChunkFile(filePath string, cDto chunkDto) (err error) {
+func writeGobFile(filePath string, v any) (err error) {
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return fmt.Errorf("error creating directory %s: %w", dir, err)
@@ -422,7 +451,7 @@ func writeChunkFile(filePath string, cDto chunkDto) (err error) {
 		}
 	}()
 
-	if err := gob.NewEncoder(file).Encode(cDto); err != nil {
+	if err := gob.NewEncoder(file).Encode(v); err != nil {
 		return fmt.Errorf("error encoding data: %w", err)
 	}
 

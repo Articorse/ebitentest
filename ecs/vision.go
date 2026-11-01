@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/fov"
 	"ebittest/utils"
@@ -41,6 +42,13 @@ func (x *Vision) Update(origin utils.Vec2i, isOpaque func(utils.Vec2i) bool) {
 	fov.Compute(origin, x.radius, isOpaque, func(t utils.Vec2i) {
 		x.visible[x.index(t)] = true
 	})
+}
+
+// In pixels, around the viewer's exact position: fully clear within clearRadius, fading out up to outer. Kept far enough
+// inside the computed radius that the circle only shows computed tiles, wherever in its tile the viewer stands.
+func (x *Vision) CircleRadii() (clearRadius, outer float64) {
+	outer = max(float64(x.visibleRadius)-data.VisionCircleMarginTiles, data.VisionCircleFadeTiles) * data.TileSize
+	return outer - data.VisionCircleFadeTiles*data.TileSize, outer
 }
 
 func (x *Vision) CanSee(t utils.Vec2i) bool {
