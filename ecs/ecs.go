@@ -8,7 +8,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"log"
-	"maps"
 	"math/rand/v2"
 	"slices"
 )
@@ -337,14 +336,11 @@ func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 		return c.A == e || c.B == e
 	})
 
-	maps.DeleteFunc(x.TickState.CollisionGrid, func(k utils.Vec2i, v []common.EntityId) bool {
-		for _, vE := range v {
-			if vE == e {
-				return true
-			}
+	for cell, entities := range x.TickState.CollisionGrid {
+		if i := slices.Index(entities, e); i != -1 {
+			x.TickState.CollisionGrid[cell] = slices.Delete(entities, i, i+1)
 		}
-		return false
-	})
+	}
 
 	x.scheduledForDeletion = slices.DeleteFunc(x.scheduledForDeletion, func(v common.EntityId) bool {
 		return v == e

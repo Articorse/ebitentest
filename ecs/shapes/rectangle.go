@@ -26,8 +26,8 @@ func NewRectangleShape(w float64, h float64, o utils.Vec2f) (*RectangleShape, er
 	}
 
 	return &RectangleShape{
-		topLeft:     utils.Vec2f{X: -w/2 + o.X, Y: -h/2 + o.Y},
-		bottomRight: utils.Vec2f{X: w/2 + o.X, Y: h/2 + o.Y},
+		topLeft:     utils.Vec2f{X: -w / 2, Y: -h / 2},
+		bottomRight: utils.Vec2f{X: w / 2, Y: h / 2},
 		offset:      o,
 	}, nil
 }
@@ -45,7 +45,7 @@ func NewRectangleShapeFromCoords(topLeft utils.Vec2f, bottomRight utils.Vec2f, o
 }
 
 func (x *RectangleShape) GetAABB() [2]utils.Vec2f {
-	return [2]utils.Vec2f{x.topLeft, x.bottomRight}
+	return [2]utils.Vec2f{x.topLeft.Add(x.offset), x.bottomRight.Add(x.offset)}
 }
 
 func (x *RectangleShape) GetOffset() utils.Vec2f {
