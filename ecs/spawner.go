@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"fmt"
@@ -21,8 +22,6 @@ type spawner struct {
 	components  []Component
 }
 
-func (spawner) isComponent() {}
-
 // TODO: Might require a deep copy
 func (x spawner) Copy() spawner {
 	componentsCopy := make([]Component, len(x.components))
@@ -40,6 +39,10 @@ func (x spawner) Copy() spawner {
 	}
 }
 
+func (x spawner) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Spawners.addComponent(e, x.Copy())
+}
+
 type spawnerDto struct {
 	Offset      utils.Vec2f
 	SpawnerType SpawnerType
@@ -47,14 +50,12 @@ type spawnerDto struct {
 	Components  []ComponentDto
 }
 
-func (spawnerDto) isComponentDto() {}
-
-func (x spawner) ToDto() (spawnerDto, error) {
+func (x spawner) toDto() (ComponentDto, error) {
 	componentsDto := make([]ComponentDto, len(x.components))
 	for i, c := range x.components {
 		dto, err := ComponentToDto(c)
 		if err != nil {
-			return spawnerDto{}, fmt.Errorf("failed to convert component to dto: %w", err)
+			return nil, fmt.Errorf("failed to convert component to dto: %w", err)
 		}
 		componentsDto[i] = dto
 	}
@@ -63,12 +64,12 @@ func (x spawner) ToDto() (spawnerDto, error) {
 	if x.shape != nil {
 		dto, err := shapes.ShapeToDto(x.shape)
 		if err != nil {
-			return spawnerDto{}, fmt.Errorf("failed to convert shape to dto: %w", err)
+			return nil, fmt.Errorf("failed to convert shape to dto: %w", err)
 		}
 		shapeDto = &dto
 	}
 
-	return spawnerDto{
+	return &spawnerDto{
 		Offset:      x.offset,
 		SpawnerType: x.spawnerType,
 		Shape:       shapeDto,
@@ -76,12 +77,12 @@ func (x spawner) ToDto() (spawnerDto, error) {
 	}, nil
 }
 
-func (x *spawnerDto) ToComponent() (*spawner, error) {
+func (x *spawnerDto) toComponent() (Component, error) {
 	components := make([]Component, len(x.Components))
 	for i, dto := range x.Components {
 		comp, err := DtoToComponent(dto)
 		if err != nil {
-			return &spawner{}, fmt.Errorf("failed to convert component dto to component: %w", err)
+			return nil, fmt.Errorf("failed to convert component dto to component: %w", err)
 		}
 		components[i] = comp
 	}
@@ -91,7 +92,7 @@ func (x *spawnerDto) ToComponent() (*spawner, error) {
 		var err error
 		shape, err = shapes.DtoToShape(*x.Shape)
 		if err != nil {
-			return &spawner{}, fmt.Errorf("failed to convert shape dto to shape: %w", err)
+			return nil, fmt.Errorf("failed to convert shape dto to shape: %w", err)
 		}
 	}
 

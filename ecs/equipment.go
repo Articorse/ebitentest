@@ -1,6 +1,9 @@
 package ecs
 
-import "ebittest/data"
+import (
+	"ebittest/data"
+	"ebittest/ecs/common"
+)
 
 type EquipableSlotEnum uint8
 
@@ -18,11 +21,13 @@ type equipment struct {
 	abilities [data.MaxEquipmentAbilitySlots]EntityAbility
 }
 
-func (equipment) isComponent() {}
-
 func (x equipment) Copy() equipment {
 	copyAbilityParams(x.abilities[:])
 	return x
+}
+
+func (x equipment) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Equipments.addComponent(e, x.Copy())
 }
 
 type equipmentDto struct {
@@ -30,20 +35,18 @@ type equipmentDto struct {
 	Abilities [data.MaxEquipmentAbilitySlots]EntityAbility
 }
 
-func (equipmentDto) isComponentDto() {}
-
-func (x equipment) ToDto() equipmentDto {
+func (x equipment) toDto() (ComponentDto, error) {
 	copyAbilityParams(x.abilities[:])
-	return equipmentDto{
+	return &equipmentDto{
 		Slot:      x.slot,
 		Abilities: x.abilities,
-	}
+	}, nil
 }
 
-func (x equipmentDto) ToComponent() *equipment {
+func (x equipmentDto) toComponent() (Component, error) {
 	copyAbilityParams(x.Abilities[:])
 	return &equipment{
 		slot:      x.Slot,
 		abilities: x.Abilities,
-	}
+	}, nil
 }

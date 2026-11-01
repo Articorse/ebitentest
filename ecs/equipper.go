@@ -17,8 +17,6 @@ type equipper struct {
 	equipment map[EquipSlotEnum]common.EntityId
 }
 
-func (equipper) isComponent() {}
-
 func (x equipper) Copy() equipper {
 	equipmentCopy := make(map[EquipSlotEnum]common.EntityId)
 	for slot, entityId := range x.equipment {
@@ -30,22 +28,24 @@ func (x equipper) Copy() equipper {
 	}
 }
 
+func (x equipper) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Equippers.addComponent(e, x.Copy())
+}
+
 type equipperDto struct {
 	Equipment map[EquipSlotEnum]common.EntityId
 }
 
-func (equipperDto) isComponentDto() {}
-
-func (x equipper) ToDto() equipperDto {
+func (x equipper) toDto() (ComponentDto, error) {
 	x = x.Copy()
 
-	return equipperDto{
+	return &equipperDto{
 		Equipment: x.equipment,
-	}
+	}, nil
 }
 
-func (x *equipperDto) ToComponent() *equipper {
+func (x *equipperDto) toComponent() (Component, error) {
 	return &equipper{
 		equipment: x.Equipment,
-	}
+	}, nil
 }

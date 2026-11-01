@@ -1,10 +1,10 @@
 package ecs
 
+import "ebittest/ecs/common"
+
 type chunkLoader struct {
 	radius int
 }
-
-func (chunkLoader) isComponent() {}
 
 func (x *chunkLoader) Copy() chunkLoader {
 	return chunkLoader{
@@ -12,20 +12,22 @@ func (x *chunkLoader) Copy() chunkLoader {
 	}
 }
 
+func (x chunkLoader) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.ChunkLoaders.addComponent(e, x.Copy())
+}
+
 type chunkLoaderDto struct {
 	Radius int
 }
 
-func (chunkLoaderDto) isComponentDto() {}
-
-func (x chunkLoader) ToDto() chunkLoaderDto {
-	return chunkLoaderDto{
+func (x chunkLoader) toDto() (ComponentDto, error) {
+	return &chunkLoaderDto{
 		Radius: x.radius,
-	}
+	}, nil
 }
 
-func (x chunkLoaderDto) ToComponent() *chunkLoader {
+func (x chunkLoaderDto) toComponent() (Component, error) {
 	return &chunkLoader{
 		radius: x.Radius,
-	}
+	}, nil
 }

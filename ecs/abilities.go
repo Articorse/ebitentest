@@ -53,11 +53,13 @@ type abilities struct {
 	abilities [data.MaxAbilitySlots]EntityAbility
 }
 
-func (abilities) isComponent() {}
-
 func (x abilities) Copy() abilities {
 	copyAbilityParams(x.abilities[:])
 	return x
+}
+
+func (x abilities) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Abilities.addComponent(e, x.Copy())
 }
 
 func (x EntityAbility) copy() EntityAbility {
@@ -77,18 +79,16 @@ type abilitiesDto struct {
 	Abilities [data.MaxAbilitySlots]EntityAbility
 }
 
-func (abilitiesDto) isComponentDto() {}
-
-func (x abilities) ToDto() abilitiesDto {
+func (x abilities) toDto() (ComponentDto, error) {
 	copyAbilityParams(x.abilities[:])
-	return abilitiesDto{
+	return &abilitiesDto{
 		Abilities: x.abilities,
-	}
+	}, nil
 }
 
-func (x abilitiesDto) ToComponent() *abilities {
+func (x abilitiesDto) toComponent() (Component, error) {
 	copyAbilityParams(x.Abilities[:])
 	return &abilities{
 		abilities: x.Abilities,
-	}
+	}, nil
 }

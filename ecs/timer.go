@@ -16,8 +16,6 @@ type timer struct {
 	timerFunc         TimerFuncEnum
 }
 
-func (timer) isComponent() {}
-
 func (x timer) Copy() timer {
 	return timer{
 		counterMs:         x.counterMs,
@@ -27,6 +25,10 @@ func (x timer) Copy() timer {
 	}
 }
 
+func (x timer) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Timers.addComponent(e, x.Copy())
+}
+
 type timerDto struct {
 	CounterMs         int
 	MaxTimeMs         int
@@ -34,22 +36,20 @@ type timerDto struct {
 	TimerFunc         TimerFuncEnum
 }
 
-func (timerDto) isComponentDto() {}
-
-func (x timer) ToDto() timerDto {
-	return timerDto{
+func (x timer) toDto() (ComponentDto, error) {
+	return &timerDto{
 		CounterMs:         x.counterMs,
 		MaxTimeMs:         x.maxTimeMs,
 		RemainingTriggers: x.remainingTriggers,
 		TimerFunc:         x.timerFunc,
-	}
+	}, nil
 }
 
-func (x timerDto) ToComponent() *timer {
+func (x timerDto) toComponent() (Component, error) {
 	return &timer{
 		counterMs:         x.CounterMs,
 		maxTimeMs:         x.MaxTimeMs,
 		remainingTriggers: x.RemainingTriggers,
 		timerFunc:         x.TimerFunc,
-	}
+	}, nil
 }

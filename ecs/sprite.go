@@ -26,8 +26,6 @@ type sprite struct {
 	flash          *SpriteFlash
 }
 
-func (sprite) isComponent() {}
-
 func (x sprite) Copy() sprite {
 	var flashCopy *SpriteFlash
 	if x.flash != nil {
@@ -55,6 +53,10 @@ func (x sprite) Copy() sprite {
 	}
 }
 
+func (x sprite) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Sprites.addComponent(e, x.Copy())
+}
+
 type spriteDto struct {
 	ImageAssetTag  common.ImageAssetTag
 	SubImageIdx    int
@@ -66,12 +68,10 @@ type spriteDto struct {
 	Flash          *SpriteFlash
 }
 
-func (spriteDto) isComponentDto() {}
-
-func (x sprite) ToDto() spriteDto {
+func (x sprite) toDto() (ComponentDto, error) {
 	x = x.Copy()
 
-	return spriteDto{
+	return &spriteDto{
 		ImageAssetTag:  x.imageAssetTag,
 		SubImageIdx:    x.subImageIdx,
 		OffsetPos:      x.offsetPos,
@@ -80,10 +80,10 @@ func (x sprite) ToDto() spriteDto {
 		Layer:          x.layer,
 		AllowRotation:  x.allowRotation,
 		Flash:          x.flash,
-	}
+	}, nil
 }
 
-func (x *spriteDto) ToComponent() *sprite {
+func (x *spriteDto) toComponent() (Component, error) {
 	return &sprite{
 		imageAssetTag:  x.ImageAssetTag,
 		subImageIdx:    x.SubImageIdx,
@@ -93,5 +93,5 @@ func (x *spriteDto) ToComponent() *sprite {
 		layer:          x.Layer,
 		allowRotation:  x.AllowRotation,
 		flash:          x.Flash,
-	}
+	}, nil
 }

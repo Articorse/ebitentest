@@ -6,28 +6,28 @@ type tether struct {
 	anchor common.EntityId
 }
 
-func (tether) isComponent() {}
-
 func (x tether) Copy() tether {
 	return tether{
 		anchor: x.anchor,
 	}
 }
 
+func (x tether) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Tethers.addComponent(e, x.Copy())
+}
+
 type tetherDto struct {
 	Anchor common.EntityId
 }
 
-func (tetherDto) isComponentDto() {}
-
-func (x tether) ToDto() tetherDto {
-	return tetherDto{
+func (x tether) toDto() (ComponentDto, error) {
+	return &tetherDto{
 		Anchor: x.anchor,
-	}
+	}, nil
 }
 
-func (x tetherDto) ToComponent() *tether {
+func (x tetherDto) toComponent() (Component, error) {
 	return &tether{
 		anchor: x.Anchor,
-	}
+	}, nil
 }

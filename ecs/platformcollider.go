@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"fmt"
@@ -11,8 +12,6 @@ type platformCollider struct {
 }
 
 func (x *platformCollider) getBaseCollider() *baseCollider { return &x.baseCollider }
-
-func (platformCollider) isComponent() {}
 
 func (x platformCollider) Copy() platformCollider {
 	colShapesCopy := make([]shapes.Shape, len(x.shapes))
@@ -33,6 +32,10 @@ func (x platformCollider) Copy() platformCollider {
 	}
 }
 
+func (x platformCollider) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.PlatformColliders.addComponent(e, x.Copy())
+}
+
 type platformColliderDto struct {
 	Enabled        bool
 	Shapes         []shapes.ShapeDto
@@ -43,19 +46,17 @@ type platformColliderDto struct {
 	CollisionMask  LayerMask
 }
 
-func (platformColliderDto) isComponentDto() {}
-
-func (x platformCollider) ToDto() (platformColliderDto, error) {
+func (x platformCollider) toDto() (ComponentDto, error) {
 	shapesDto := make([]shapes.ShapeDto, len(x.shapes))
 	for i, shape := range x.shapes {
 		shapeDto, err := shapes.ShapeToDto(shape)
 		if err != nil {
-			return platformColliderDto{}, fmt.Errorf("failed to convert shape to DTO: %w", err)
+			return nil, fmt.Errorf("failed to convert shape to DTO: %w", err)
 		}
 		shapesDto[i] = shapeDto
 	}
 
-	return platformColliderDto{
+	return &platformColliderDto{
 		Enabled:        x.enabled,
 		Shapes:         shapesDto,
 		Center:         x.center,
@@ -66,12 +67,12 @@ func (x platformCollider) ToDto() (platformColliderDto, error) {
 	}, nil
 }
 
-func (x *platformColliderDto) ToComponent() (*platformCollider, error) {
+func (x *platformColliderDto) toComponent() (Component, error) {
 	shapesList := make([]shapes.Shape, len(x.Shapes))
 	for i, shapeDto := range x.Shapes {
 		shape, err := shapes.DtoToShape(shapeDto)
 		if err != nil {
-			return &platformCollider{}, fmt.Errorf("failed to convert shape DTO to component: %w", err)
+			return nil, fmt.Errorf("failed to convert shape DTO to component: %w", err)
 		}
 		shapesList[i] = shape
 	}

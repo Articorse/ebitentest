@@ -14,7 +14,7 @@ func (x *ECSContainer) CheckConsistency() error {
 	var errs error
 
 	for _, e := range x.Equippers.GetEntities() {
-		equipperComp, _ := x.Equippers.tryGetComponent(e)
+		equipperComp, _ := x.Equippers.Get(e)
 
 		for _, slot := range slices.Sorted(maps.Keys(equipperComp.equipment)) {
 			eq := equipperComp.equipment[slot]
@@ -49,7 +49,7 @@ func (x *ECSContainer) CheckConsistency() error {
 	}
 
 	for _, e := range x.Tethers.GetEntities() {
-		tetherComp, _ := x.Tethers.tryGetComponent(e)
+		tetherComp, _ := x.Tethers.Get(e)
 		if !x.HasEntity(tetherComp.anchor) {
 			errs = errors.Join(errs, fmt.Errorf("entity %d is tethered to missing entity %d", e, tetherComp.anchor))
 		} else if !x.ChunkLoaders.HasComponent(tetherComp.anchor) {

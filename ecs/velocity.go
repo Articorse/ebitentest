@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/ecs/common"
 	"ebittest/utils"
 )
 
@@ -10,8 +11,6 @@ type velocity struct {
 	drag         float64
 }
 
-func (velocity) isComponent() {}
-
 func (x velocity) Copy() velocity {
 	return velocity{
 		vector:       x.vector,
@@ -20,26 +19,28 @@ func (x velocity) Copy() velocity {
 	}
 }
 
+func (x velocity) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Velocities.addComponent(e, x.Copy())
+}
+
 type velocityDto struct {
 	Vector       utils.Vec2f
 	Acceleration float64
 	Drag         float64
 }
 
-func (velocityDto) isComponentDto() {}
-
-func (x velocity) ToDto() velocityDto {
-	return velocityDto{
+func (x velocity) toDto() (ComponentDto, error) {
+	return &velocityDto{
 		Vector:       x.vector,
 		Acceleration: x.acceleration,
 		Drag:         x.drag,
-	}
+	}, nil
 }
 
-func (x *velocityDto) ToComponent() *velocity {
+func (x *velocityDto) toComponent() (Component, error) {
 	return &velocity{
 		vector:       x.Vector,
 		acceleration: x.Acceleration,
 		drag:         x.Drag,
-	}
+	}, nil
 }

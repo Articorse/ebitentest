@@ -10,8 +10,6 @@ type contactDamage struct {
 	damageTiers  []int
 }
 
-func (contactDamage) isComponent() {}
-
 func (x contactDamage) Copy() contactDamage {
 	dTiersCopy := make([]int, len(x.damageTiers))
 	copy(dTiersCopy, x.damageTiers)
@@ -25,6 +23,10 @@ func (x contactDamage) Copy() contactDamage {
 	}
 }
 
+func (x contactDamage) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.ContactDamages.addComponent(e, x.Copy())
+}
+
 type contactDamageDto struct {
 	Source       common.EntityId
 	Knockback    float64
@@ -33,26 +35,24 @@ type contactDamageDto struct {
 	DamageTiers  []int
 }
 
-func (contactDamageDto) isComponentDto() {}
-
-func (x contactDamage) ToDto() contactDamageDto {
+func (x contactDamage) toDto() (ComponentDto, error) {
 	x = x.Copy()
 
-	return contactDamageDto{
+	return &contactDamageDto{
 		Source:       x.source,
 		Knockback:    x.knockback,
 		DieOnContact: x.dieOnContact,
 		SingleTick:   x.singleTick,
 		DamageTiers:  x.damageTiers,
-	}
+	}, nil
 }
 
-func (x contactDamageDto) ToComponent() *contactDamage {
+func (x contactDamageDto) toComponent() (Component, error) {
 	return &contactDamage{
 		source:       x.Source,
 		knockback:    x.Knockback,
 		dieOnContact: x.DieOnContact,
 		singleTick:   x.SingleTick,
 		damageTiers:  x.DamageTiers,
-	}
+	}, nil
 }

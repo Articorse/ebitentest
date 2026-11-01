@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"fmt"
@@ -9,8 +10,6 @@ import (
 type hitboxCollider struct {
 	baseCollider
 }
-
-func (hitboxCollider) isComponent() {}
 
 func (x hitboxCollider) Copy() hitboxCollider {
 	colShapesCopy := make([]shapes.Shape, len(x.shapes))
@@ -31,6 +30,10 @@ func (x hitboxCollider) Copy() hitboxCollider {
 	}
 }
 
+func (x hitboxCollider) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.HitboxColliders.addComponent(e, x.Copy())
+}
+
 func (x *hitboxCollider) getBaseCollider() *baseCollider { return &x.baseCollider }
 
 type hitboxColliderDto struct {
@@ -43,19 +46,17 @@ type hitboxColliderDto struct {
 	CollisionMask  LayerMask
 }
 
-func (hitboxColliderDto) isComponentDto() {}
-
-func (x hitboxCollider) ToDto() (hitboxColliderDto, error) {
+func (x hitboxCollider) toDto() (ComponentDto, error) {
 	shapesDto := make([]shapes.ShapeDto, len(x.shapes))
 	for i, shape := range x.shapes {
 		shapeDto, err := shapes.ShapeToDto(shape)
 		if err != nil {
-			return hitboxColliderDto{}, fmt.Errorf("failed to convert shape to DTO: %w", err)
+			return nil, fmt.Errorf("failed to convert shape to DTO: %w", err)
 		}
 		shapesDto[i] = shapeDto
 	}
 
-	return hitboxColliderDto{
+	return &hitboxColliderDto{
 		Enabled:        x.enabled,
 		Shapes:         shapesDto,
 		Center:         x.center,
@@ -66,12 +67,12 @@ func (x hitboxCollider) ToDto() (hitboxColliderDto, error) {
 	}, nil
 }
 
-func (x *hitboxColliderDto) ToComponent() (*hitboxCollider, error) {
+func (x *hitboxColliderDto) toComponent() (Component, error) {
 	shapesList := make([]shapes.Shape, len(x.Shapes))
 	for i, shapeDto := range x.Shapes {
 		shape, err := shapes.DtoToShape(shapeDto)
 		if err != nil {
-			return &hitboxCollider{}, fmt.Errorf("failed to convert shape DTO to component: %w", err)
+			return nil, fmt.Errorf("failed to convert shape DTO to component: %w", err)
 		}
 		shapesList[i] = shape
 	}

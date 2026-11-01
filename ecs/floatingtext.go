@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/ecs/common"
 	"ebittest/utils"
 	"image/color"
 )
@@ -12,8 +13,6 @@ type floatingText struct {
 	color  color.RGBA
 }
 
-func (floatingText) isComponent() {}
-
 func (x floatingText) Copy() floatingText {
 	return floatingText{
 		text:   x.text,
@@ -23,6 +22,10 @@ func (x floatingText) Copy() floatingText {
 	}
 }
 
+func (x floatingText) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.FloatingTexts.addComponent(e, x.Copy())
+}
+
 type floatingTextDto struct {
 	Text   string
 	Offset utils.Vec2f
@@ -30,22 +33,20 @@ type floatingTextDto struct {
 	Color  color.RGBA
 }
 
-func (floatingTextDto) isComponentDto() {}
-
-func (x floatingText) ToDto() floatingTextDto {
-	return floatingTextDto{
+func (x floatingText) toDto() (ComponentDto, error) {
+	return &floatingTextDto{
 		Text:   x.text,
 		Offset: x.offset,
 		Size:   x.size,
 		Color:  x.color,
-	}
+	}, nil
 }
 
-func (x floatingTextDto) ToComponent() *floatingText {
+func (x floatingTextDto) toComponent() (Component, error) {
 	return &floatingText{
 		text:   x.Text,
 		offset: x.Offset,
 		size:   x.Size,
 		color:  x.Color,
-	}
+	}, nil
 }

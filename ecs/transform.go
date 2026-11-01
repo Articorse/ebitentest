@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/ecs/common"
 	"ebittest/utils"
 )
 
@@ -10,8 +11,6 @@ type transform struct {
 	rotation float64
 }
 
-func (transform) isComponent() {}
-
 func (x transform) Copy() transform {
 	return transform{
 		pos:      x.pos,
@@ -20,26 +19,28 @@ func (x transform) Copy() transform {
 	}
 }
 
+func (x transform) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Transforms.addComponent(e, x.Copy())
+}
+
 type transformDto struct {
 	Pos      utils.Vec2f
 	Scale    float64
 	Rotation float64
 }
 
-func (transformDto) isComponentDto() {}
-
-func (x transform) ToDto() transformDto {
-	return transformDto{
+func (x transform) toDto() (ComponentDto, error) {
+	return &transformDto{
 		Pos:      x.pos,
 		Scale:    x.scale,
 		Rotation: x.rotation,
-	}
+	}, nil
 }
 
-func (x transformDto) ToComponent() *transform {
+func (x transformDto) toComponent() (Component, error) {
 	return &transform{
 		pos:      x.Pos,
 		scale:    x.Scale,
 		rotation: x.Rotation,
-	}
+	}, nil
 }

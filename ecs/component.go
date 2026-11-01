@@ -1,9 +1,12 @@
 package ecs
 
+import "ebittest/ecs/common"
+
 type Component interface {
-	isComponent()
+	addTo(ecsContainer *ECSContainer, e common.EntityId)
+	toDto() (ComponentDto, error)
 }
 
 type ComponentDto interface {
-	isComponentDto()
+	toComponent() (Component, error)
 }

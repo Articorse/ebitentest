@@ -32,6 +32,8 @@ type ECSContainer struct {
 
 	isSimulatedPos func(worldPos utils.Vec2f) bool
 
+	storages []componentStorage
+
 	abilityFuncs     map[AbilityEnum]AbilityFunc
 	timerFuncs       map[TimerFuncEnum]TimerFunc
 	inputSourceFuncs map[InputTypeEnum]InputSourceFunc
@@ -115,7 +117,7 @@ func NewECSContainer() *ECSContainer {
 
 	rngSource := rand.NewPCG(data.RngSeed1, data.RngSeed2)
 
-	return &ECSContainer{
+	x := &ECSContainer{
 		nextEntity: 0,
 
 		abilityFuncs:     make(map[AbilityEnum]AbilityFunc),
@@ -128,29 +130,29 @@ func NewECSContainer() *ECSContainer {
 		TickIdx:   0,
 		TickState: common.TickState{},
 
-		Inputs:            Storage[input]{order: []common.EntityId{}, data: make(map[common.EntityId]*input)},
-		Hierarchies:       Storage[hierarchy]{order: []common.EntityId{}, data: make(map[common.EntityId]*hierarchy)},
-		Transforms:        Storage[transform]{order: []common.EntityId{}, data: make(map[common.EntityId]*transform)},
-		Velocities:        Storage[velocity]{order: []common.EntityId{}, data: make(map[common.EntityId]*velocity)},
-		Sprites:           Storage[sprite]{order: []common.EntityId{}, data: make(map[common.EntityId]*sprite)},
-		Animations:        Storage[animation]{order: []common.EntityId{}, data: make(map[common.EntityId]*animation)},
-		PhysicsColliders:  Storage[physicsCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*physicsCollider)},
-		PlatformColliders: Storage[platformCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*platformCollider)},
-		HitboxColliders:   Storage[hitboxCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*hitboxCollider)},
-		HurtboxColliders:  Storage[hurtboxCollider]{order: []common.EntityId{}, data: make(map[common.EntityId]*hurtboxCollider)},
-		Spawners:          Storage[spawner]{order: []common.EntityId{}, data: make(map[common.EntityId]*spawner)},
-		Timers:            Storage[timer]{order: []common.EntityId{}, data: make(map[common.EntityId]*timer)},
-		Hitpoints:         Storage[hitpoints]{order: []common.EntityId{}, data: make(map[common.EntityId]*hitpoints)},
-		ContactDamages:    Storage[contactDamage]{order: []common.EntityId{}, data: make(map[common.EntityId]*contactDamage)},
-		Abilities:         Storage[abilities]{order: []common.EntityId{}, data: make(map[common.EntityId]*abilities)},
-		FacePositions:     Storage[facePosition]{order: []common.EntityId{}, data: make(map[common.EntityId]*facePosition)},
-		Equipments:        Storage[equipment]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipment)},
-		Equippers:         Storage[equipper]{order: []common.EntityId{}, data: make(map[common.EntityId]*equipper)},
-		Deathrattles:      Storage[deathrattle]{order: []common.EntityId{}, data: make(map[common.EntityId]*deathrattle)},
-		FloatingTexts:     Storage[floatingText]{order: []common.EntityId{}, data: make(map[common.EntityId]*floatingText)},
-		ChunkLoaders:      Storage[chunkLoader]{order: []common.EntityId{}, data: make(map[common.EntityId]*chunkLoader)},
-		Persistents:       Storage[persistent]{order: []common.EntityId{}, data: make(map[common.EntityId]*persistent)},
-		Tethers:           Storage[tether]{order: []common.EntityId{}, data: make(map[common.EntityId]*tether)},
+		Inputs:            newStorage[input](),
+		Hierarchies:       newStorage[hierarchy](),
+		Transforms:        newStorage[transform](),
+		Velocities:        newStorage[velocity](),
+		Sprites:           newStorage[sprite](),
+		Animations:        newStorage[animation](),
+		PhysicsColliders:  newStorage[physicsCollider](),
+		PlatformColliders: newStorage[platformCollider](),
+		HitboxColliders:   newStorage[hitboxCollider](),
+		HurtboxColliders:  newStorage[hurtboxCollider](),
+		Spawners:          newStorage[spawner](),
+		Timers:            newStorage[timer](),
+		Hitpoints:         newStorage[hitpoints](),
+		ContactDamages:    newStorage[contactDamage](),
+		Abilities:         newStorage[abilities](),
+		FacePositions:     newStorage[facePosition](),
+		Equipments:        newStorage[equipment](),
+		Equippers:         newStorage[equipper](),
+		Deathrattles:      newStorage[deathrattle](),
+		FloatingTexts:     newStorage[floatingText](),
+		ChunkLoaders:      newStorage[chunkLoader](),
+		Persistents:       newStorage[persistent](),
+		Tethers:           newStorage[tether](),
 
 		InputManager:            inputManager{},
 		HierarchyManager:        hierarchyManager{},
@@ -175,6 +177,35 @@ func NewECSContainer() *ECSContainer {
 		PersistentManager:       persistentManager{},
 		TetherManager:           tetherManager{},
 	}
+
+	// The order decides the order of an entity's components in saved data
+	x.storages = []componentStorage{
+		&x.Hierarchies,
+		&x.Transforms,
+		&x.Velocities,
+		&x.Sprites,
+		&x.Animations,
+		&x.PhysicsColliders,
+		&x.PlatformColliders,
+		&x.HitboxColliders,
+		&x.HurtboxColliders,
+		&x.Spawners,
+		&x.Timers,
+		&x.Hitpoints,
+		&x.ContactDamages,
+		&x.Inputs,
+		&x.Abilities,
+		&x.FacePositions,
+		&x.Equipments,
+		&x.Equippers,
+		&x.Deathrattles,
+		&x.FloatingTexts,
+		&x.ChunkLoaders,
+		&x.Persistents,
+		&x.Tethers,
+	}
+
+	return x
 }
 
 func (x *ECSContainer) GetCurrentTickInputs() (map[common.EntityId]InputState, error) {
@@ -343,29 +374,9 @@ func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 
 	removeChild(hm.GetParent(e, x), e, x)
 
-	x.Hierarchies.deleteEntity(e)
-	x.Transforms.deleteEntity(e)
-	x.Velocities.deleteEntity(e)
-	x.Sprites.deleteEntity(e)
-	x.Animations.deleteEntity(e)
-	x.PhysicsColliders.deleteEntity(e)
-	x.PlatformColliders.deleteEntity(e)
-	x.HitboxColliders.deleteEntity(e)
-	x.HurtboxColliders.deleteEntity(e)
-	x.Spawners.deleteEntity(e)
-	x.Timers.deleteEntity(e)
-	x.Hitpoints.deleteEntity(e)
-	x.ContactDamages.deleteEntity(e)
-	x.Inputs.deleteEntity(e)
-	x.Abilities.deleteEntity(e)
-	x.FacePositions.deleteEntity(e)
-	x.Equipments.deleteEntity(e)
-	x.Equippers.deleteEntity(e)
-	x.Deathrattles.deleteEntity(e)
-	x.FloatingTexts.deleteEntity(e)
-	x.ChunkLoaders.deleteEntity(e)
-	x.Persistents.deleteEntity(e)
-	x.Tethers.deleteEntity(e)
+	for _, s := range x.storages {
+		s.deleteEntity(e)
+	}
 
 	maps.DeleteFunc(x.TickState.AABBCollisions, func(k common.EntityId, v []common.EntityId) bool {
 		if k == e {
@@ -412,193 +423,31 @@ func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 }
 
 func (x *ECSContainer) AddComponent(e common.EntityId, comp Component) {
-	switch c := comp.(type) {
-	case *hierarchy:
-		x.Hierarchies.addComponent(e, c.Copy())
-	case *transform:
-		x.Transforms.addComponent(e, c.Copy())
-	case *velocity:
-		x.Velocities.addComponent(e, c.Copy())
-	case *sprite:
-		x.Sprites.addComponent(e, c.Copy())
-	case *animation:
-		x.Animations.addComponent(e, c.Copy())
-	case *physicsCollider:
-		x.PhysicsColliders.addComponent(e, c.Copy())
-	case *platformCollider:
-		x.PlatformColliders.addComponent(e, c.Copy())
-	case *hitboxCollider:
-		x.HitboxColliders.addComponent(e, c.Copy())
-	case *hurtboxCollider:
-		x.HurtboxColliders.addComponent(e, c.Copy())
-	case *spawner:
-		x.Spawners.addComponent(e, c.Copy())
-	case *timer:
-		x.Timers.addComponent(e, c.Copy())
-	case *hitpoints:
-		x.Hitpoints.addComponent(e, c.Copy())
-	case *contactDamage:
-		x.ContactDamages.addComponent(e, c.Copy())
-	case *input:
-		x.Inputs.addComponent(e, c.Copy())
-	case *abilities:
-		x.Abilities.addComponent(e, c.Copy())
-	case *facePosition:
-		x.FacePositions.addComponent(e, c.Copy())
-	case *equipment:
-		x.Equipments.addComponent(e, c.Copy())
-	case *equipper:
-		x.Equippers.addComponent(e, c.Copy())
-	case *deathrattle:
-		x.Deathrattles.addComponent(e, c.Copy())
-	case *floatingText:
-		x.FloatingTexts.addComponent(e, c.Copy())
-	case *chunkLoader:
-		x.ChunkLoaders.addComponent(e, c.Copy())
-	case *persistent:
-		x.Persistents.addComponent(e, c.Copy())
-	case *tether:
-		x.Tethers.addComponent(e, c.Copy())
-	default:
-		log.Printf("warning: attempted to add component of type %T to entity %d, but no case for that component type exists in ECS.AddComponent\n", comp, e)
-	}
+	comp.addTo(x, e)
 }
 
 func (x *ECSContainer) HasEntity(e common.EntityId) bool {
-	return x.Inputs.HasComponent(e) ||
-		x.Hierarchies.HasComponent(e) ||
-		x.Transforms.HasComponent(e) ||
-		x.Velocities.HasComponent(e) ||
-		x.Sprites.HasComponent(e) ||
-		x.Animations.HasComponent(e) ||
-		x.PhysicsColliders.HasComponent(e) ||
-		x.PlatformColliders.HasComponent(e) ||
-		x.HitboxColliders.HasComponent(e) ||
-		x.HurtboxColliders.HasComponent(e) ||
-		x.Spawners.HasComponent(e) ||
-		x.Timers.HasComponent(e) ||
-		x.Hitpoints.HasComponent(e) ||
-		x.ContactDamages.HasComponent(e) ||
-		x.Abilities.HasComponent(e) ||
-		x.FacePositions.HasComponent(e) ||
-		x.Equipments.HasComponent(e) ||
-		x.Equippers.HasComponent(e) ||
-		x.Deathrattles.HasComponent(e) ||
-		x.FloatingTexts.HasComponent(e) ||
-		x.ChunkLoaders.HasComponent(e) ||
-		x.Persistents.HasComponent(e) ||
-		x.Tethers.HasComponent(e)
+	for _, s := range x.storages {
+		if s.HasComponent(e) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 	var comps []ComponentDto
 
-	if c, ok := x.Hierarchies.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Transforms.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Velocities.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Sprites.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Animations.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.PhysicsColliders.tryGetComponent(eId); ok {
-		dto, err := c.ToDto()
+	for _, s := range x.storages {
+		dto, ok, err := s.toDto(eId)
 		if err != nil {
-			log.Printf("error converting physics collider component of entity %d to DTO: %v", eId, err)
+			log.Printf("error converting component of entity %d to DTO: %v", eId, err)
+			continue
 		}
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.PlatformColliders.tryGetComponent(eId); ok {
-		dto, err := c.ToDto()
-		if err != nil {
-			log.Printf("error converting platform collider component of entity %d to DTO: %v", eId, err)
+		if ok {
+			comps = append(comps, dto)
 		}
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.HitboxColliders.tryGetComponent(eId); ok {
-		dto, err := c.ToDto()
-		if err != nil {
-			log.Printf("error converting hitbox collider component of entity %d to DTO: %v", eId, err)
-		}
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.HurtboxColliders.tryGetComponent(eId); ok {
-		dto, err := c.ToDto()
-		if err != nil {
-			log.Printf("error converting hurtbox collider component of entity %d to DTO: %v", eId, err)
-		}
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Spawners.tryGetComponent(eId); ok {
-		dto, err := c.ToDto()
-		if err != nil {
-			log.Printf("error converting spawner component of entity %d to DTO: %v", eId, err)
-		}
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Timers.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Hitpoints.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.ContactDamages.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Inputs.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Abilities.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.FacePositions.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Equipments.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Equippers.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Deathrattles.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.FloatingTexts.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.ChunkLoaders.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Persistents.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
-	}
-	if c, ok := x.Tethers.tryGetComponent(eId); ok {
-		dto := c.ToDto()
-		comps = append(comps, &dto)
 	}
 
 	return comps
@@ -672,166 +521,10 @@ func (x *ECSContainer) collectComposition(e common.EntityId, members map[common.
 	}
 }
 
-func DtoToComponent[T ComponentDto](dto T) (Component, error) {
-	switch d := any(dto).(type) {
-	case *hierarchyDto:
-		return d.ToComponent(), nil
-	case *transformDto:
-		return d.ToComponent(), nil
-	case *velocityDto:
-		return d.ToComponent(), nil
-	case *spriteDto:
-		return d.ToComponent(), nil
-	case *animationDto:
-		return d.ToComponent(), nil
-	case *physicsColliderDto:
-		dto, err := d.ToComponent()
-		if err != nil {
-			return nil, fmt.Errorf("error converting physics collider DTO to component: %v", err)
-		}
-		return dto, nil
-	case *platformColliderDto:
-		dto, err := d.ToComponent()
-		if err != nil {
-			return nil, fmt.Errorf("error converting platform collider DTO to component: %v", err)
-		}
-		return dto, nil
-	case *hitboxColliderDto:
-		dto, err := d.ToComponent()
-		if err != nil {
-			return nil, fmt.Errorf("error converting hitbox collider DTO to component: %v", err)
-		}
-		return dto, nil
-	case *hurtboxColliderDto:
-		dto, err := d.ToComponent()
-		if err != nil {
-			return nil, fmt.Errorf("error converting hurtbox collider DTO to component: %v", err)
-		}
-		return dto, nil
-	case *spawnerDto:
-		dto, err := d.ToComponent()
-		if err != nil {
-			return nil, fmt.Errorf("error converting spawner DTO to component: %v", err)
-		}
-		return dto, nil
-	case *timerDto:
-		return d.ToComponent(), nil
-	case *hitpointsDto:
-		return d.ToComponent(), nil
-	case *contactDamageDto:
-		return d.ToComponent(), nil
-	case *inputDto:
-		return d.ToComponent(), nil
-	case *abilitiesDto:
-		return d.ToComponent(), nil
-	case *facePositionDto:
-		return d.ToComponent(), nil
-	case *equipmentDto:
-		return d.ToComponent(), nil
-	case *equipperDto:
-		return d.ToComponent(), nil
-	case *deathrattleDto:
-		return d.ToComponent(), nil
-	case *floatingTextDto:
-		return d.ToComponent(), nil
-	case *chunkLoaderDto:
-		return d.ToComponent(), nil
-	case *persistentDto:
-		return d.ToComponent(), nil
-	case *tetherDto:
-		return d.ToComponent(), nil
-	default:
-		return nil, fmt.Errorf("unknown component DTO type: %T", dto)
-	}
+func DtoToComponent(dto ComponentDto) (Component, error) {
+	return dto.toComponent()
 }
 
 func ComponentToDto(comp Component) (ComponentDto, error) {
-	switch c := comp.(type) {
-	case *hierarchy:
-		dto := c.ToDto()
-		return &dto, nil
-	case *transform:
-		dto := c.ToDto()
-		return &dto, nil
-	case *velocity:
-		dto := c.ToDto()
-		return &dto, nil
-	case *sprite:
-		dto := c.ToDto()
-		return &dto, nil
-	case *animation:
-		dto := c.ToDto()
-		return &dto, nil
-	case *physicsCollider:
-		dto, err := c.ToDto()
-		if err != nil {
-			return nil, fmt.Errorf("error converting physics collider component to DTO: %v", err)
-		}
-		return &dto, nil
-	case *platformCollider:
-		dto, err := c.ToDto()
-		if err != nil {
-			return nil, fmt.Errorf("error converting platform collider component to DTO: %v", err)
-		}
-		return &dto, nil
-	case *hitboxCollider:
-		dto, err := c.ToDto()
-		if err != nil {
-			return nil, fmt.Errorf("error converting hitbox collider component to DTO: %v", err)
-		}
-		return &dto, nil
-	case *hurtboxCollider:
-		dto, err := c.ToDto()
-		if err != nil {
-			return nil, fmt.Errorf("error converting hurtbox collider component to DTO: %v", err)
-		}
-		return &dto, nil
-	case *spawner:
-		dto, err := c.ToDto()
-		if err != nil {
-			return nil, fmt.Errorf("error converting spawner component to DTO: %v", err)
-		}
-		return &dto, nil
-	case *timer:
-		dto := c.ToDto()
-		return &dto, nil
-	case *hitpoints:
-		dto := c.ToDto()
-		return &dto, nil
-	case *contactDamage:
-		dto := c.ToDto()
-		return &dto, nil
-	case *input:
-		dto := c.ToDto()
-		return &dto, nil
-	case *abilities:
-		dto := c.ToDto()
-		return &dto, nil
-	case *facePosition:
-		dto := c.ToDto()
-		return &dto, nil
-	case *equipment:
-		dto := c.ToDto()
-		return &dto, nil
-	case *equipper:
-		dto := c.ToDto()
-		return &dto, nil
-	case *deathrattle:
-		dto := c.ToDto()
-		return &dto, nil
-	case *floatingText:
-		dto := c.ToDto()
-		return &dto, nil
-	case *chunkLoader:
-		dto := c.ToDto()
-		return &dto, nil
-	case *persistent:
-		dto := c.ToDto()
-		return &dto, nil
-	case *tether:
-		dto := c.ToDto()
-		return &dto, nil
-	default:
-		return nil, fmt.Errorf("unknown component type: %T", comp)
-	}
+	return comp.toDto()
 }

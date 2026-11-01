@@ -24,8 +24,6 @@ type hierarchy struct {
 	children []common.EntityId
 }
 
-func (hierarchy) isComponent() {}
-
 func (x hierarchy) Copy() hierarchy {
 	return hierarchy{
 		parent:   x.parent,
@@ -34,26 +32,28 @@ func (x hierarchy) Copy() hierarchy {
 	}
 }
 
+func (x hierarchy) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Hierarchies.addComponent(e, x.Copy())
+}
+
 type hierarchyDto struct {
 	Parent   common.EntityId
 	LinkKind LinkKindEnum
 	Children []common.EntityId
 }
 
-func (hierarchyDto) isComponentDto() {}
-
-func (x hierarchy) ToDto() hierarchyDto {
-	return hierarchyDto{
+func (x hierarchy) toDto() (ComponentDto, error) {
+	return &hierarchyDto{
 		Parent:   x.parent,
 		LinkKind: x.linkKind,
 		Children: slices.Clone(x.children),
-	}
+	}, nil
 }
 
-func (x hierarchyDto) ToComponent() *hierarchy {
+func (x hierarchyDto) toComponent() (Component, error) {
 	return &hierarchy{
 		parent:   x.Parent,
 		linkKind: x.LinkKind,
 		children: x.Children,
-	}
+	}, nil
 }

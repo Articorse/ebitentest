@@ -1,10 +1,10 @@
 package ecs
 
+import "ebittest/ecs/common"
+
 type deathrattle struct {
 	ability EntityAbility
 }
-
-func (deathrattle) isComponent() {}
 
 func (x deathrattle) Copy() deathrattle {
 	return deathrattle{
@@ -12,20 +12,22 @@ func (x deathrattle) Copy() deathrattle {
 	}
 }
 
+func (x deathrattle) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Deathrattles.addComponent(e, x.Copy())
+}
+
 type deathrattleDto struct {
 	Ability EntityAbility
 }
 
-func (deathrattleDto) isComponentDto() {}
-
-func (x deathrattle) ToDto() deathrattleDto {
-	return deathrattleDto{
+func (x deathrattle) toDto() (ComponentDto, error) {
+	return &deathrattleDto{
 		Ability: x.ability.copy(),
-	}
+	}, nil
 }
 
-func (x deathrattleDto) ToComponent() *deathrattle {
+func (x deathrattleDto) toComponent() (Component, error) {
 	return &deathrattle{
 		ability: x.Ability.copy(),
-	}
+	}, nil
 }

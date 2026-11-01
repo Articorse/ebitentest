@@ -125,8 +125,6 @@ type input struct {
 	lastFacingDir utils.Vec2f
 }
 
-func (input) isComponent() {}
-
 func newUnsetInputKey() InputKey {
 	return InputKey{
 		KeyboardKey: [2]ebiten.Key{-1, -1},
@@ -146,6 +144,10 @@ func (x input) Copy() input {
 	}
 }
 
+func (x input) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Inputs.addComponent(e, x.Copy())
+}
+
 type inputDto struct {
 	Config        map[InputType]InputKey
 	InputType     InputTypeEnum
@@ -154,16 +156,14 @@ type inputDto struct {
 	LastFacingDir utils.Vec2f
 }
 
-func (inputDto) isComponentDto() {}
-
-func (x input) ToDto() inputDto {
-	return inputDto{
+func (x input) toDto() (ComponentDto, error) {
+	return &inputDto{
 		Config:        maps.Clone(x.config),
 		InputType:     x.inputType,
 		FacingInput:   x.facingInput,
 		Params:        copyInputParams(x.params),
 		LastFacingDir: x.lastFacingDir,
-	}
+	}, nil
 }
 
 func copyInputParams(params InputParams) InputParams {
@@ -173,12 +173,12 @@ func copyInputParams(params InputParams) InputParams {
 	return params.Copy()
 }
 
-func (x *inputDto) ToComponent() *input {
+func (x *inputDto) toComponent() (Component, error) {
 	return &input{
 		config:        x.Config,
 		inputType:     x.InputType,
 		facingInput:   x.FacingInput,
 		params:        x.Params,
 		lastFacingDir: x.LastFacingDir,
-	}
+	}, nil
 }

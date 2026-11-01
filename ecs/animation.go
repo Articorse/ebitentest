@@ -28,8 +28,6 @@ type animation struct {
 	queuedState   *AnimationState
 }
 
-func (animation) isComponent() {}
-
 func (x animation) Copy() animation {
 	sFrames := make(map[AnimationState][]AnimationFrame)
 	for k, v := range x.stateFrames {
@@ -51,6 +49,10 @@ func (x animation) Copy() animation {
 	}
 }
 
+func (x animation) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.Animations.addComponent(e, x.Copy())
+}
+
 type animationDto struct {
 	SheetAssetTag common.ImageAssetTag
 	StateFrames   map[AnimationState][]AnimationFrame
@@ -58,24 +60,22 @@ type animationDto struct {
 	QueuedState   *AnimationState
 }
 
-func (animationDto) isComponentDto() {}
-
-func (x animation) ToDto() animationDto {
+func (x animation) toDto() (ComponentDto, error) {
 	x = x.Copy()
 
-	return animationDto{
+	return &animationDto{
 		SheetAssetTag: x.sheetAssetTag,
 		StateFrames:   x.stateFrames,
 		FrameState:    x.frameState,
 		QueuedState:   x.queuedState,
-	}
+	}, nil
 }
 
-func (x *animationDto) ToComponent() *animation {
+func (x *animationDto) toComponent() (Component, error) {
 	return &animation{
 		sheetAssetTag: x.SheetAssetTag,
 		stateFrames:   x.StateFrames,
 		frameState:    x.FrameState,
 		queuedState:   x.QueuedState,
-	}
+	}, nil
 }

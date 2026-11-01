@@ -22,7 +22,11 @@ func (x *Storage[T]) HasComponent(e common.EntityId) bool {
 	return ok
 }
 
-func (x *Storage[T]) tryGetComponent(e common.EntityId) (*T, bool) {
+func newStorage[T Component]() Storage[T] {
+	return Storage[T]{order: []common.EntityId{}, data: make(map[common.EntityId]*T)}
+}
+
+func (x *Storage[T]) Get(e common.EntityId) (*T, bool) {
 	c, ok := x.data[e]
 	return c, ok
 }
@@ -64,4 +68,21 @@ func (x *Storage[T]) insertOrdered(e common.EntityId) {
 	}
 
 	x.order = slices.Concat(x.order[:i], []common.EntityId{e}, x.order[i:])
+}
+
+type componentStorage interface {
+	GetEntities() []common.EntityId
+	HasComponent(e common.EntityId) bool
+	deleteEntity(e common.EntityId)
+	toDto(e common.EntityId) (dto ComponentDto, ok bool, err error)
+}
+
+func (x *Storage[T]) toDto(e common.EntityId) (ComponentDto, bool, error) {
+	c, ok := x.data[e]
+	if !ok {
+		return nil, false, nil
+	}
+
+	dto, err := (*c).toDto()
+	return dto, true, err
 }

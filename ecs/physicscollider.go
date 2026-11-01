@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"fmt"
@@ -19,8 +20,6 @@ type physicsCollider struct {
 
 	colliderType PhysicsColliderType
 }
-
-func (physicsCollider) isComponent() {}
 
 func (x physicsCollider) Copy() physicsCollider {
 	colShapesCopy := make([]shapes.Shape, len(x.shapes))
@@ -42,6 +41,10 @@ func (x physicsCollider) Copy() physicsCollider {
 	}
 }
 
+func (x physicsCollider) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+	ecsContainer.PhysicsColliders.addComponent(e, x.Copy())
+}
+
 func (x *physicsCollider) getBaseCollider() *baseCollider { return &x.baseCollider }
 
 type physicsColliderDto struct {
@@ -55,19 +58,17 @@ type physicsColliderDto struct {
 	CollisionMask  LayerMask
 }
 
-func (physicsColliderDto) isComponentDto() {}
-
-func (x physicsCollider) ToDto() (physicsColliderDto, error) {
+func (x physicsCollider) toDto() (ComponentDto, error) {
 	shapesDto := make([]shapes.ShapeDto, len(x.shapes))
 	for i, shape := range x.shapes {
 		shapeDto, err := shapes.ShapeToDto(shape)
 		if err != nil {
-			return physicsColliderDto{}, fmt.Errorf("failed to convert shape to DTO: %w", err)
+			return nil, fmt.Errorf("failed to convert shape to DTO: %w", err)
 		}
 		shapesDto[i] = shapeDto
 	}
 
-	return physicsColliderDto{
+	return &physicsColliderDto{
 		ColliderType:   x.colliderType,
 		Enabled:        x.enabled,
 		Shapes:         shapesDto,
@@ -79,12 +80,12 @@ func (x physicsCollider) ToDto() (physicsColliderDto, error) {
 	}, nil
 }
 
-func (x *physicsColliderDto) ToComponent() (*physicsCollider, error) {
+func (x *physicsColliderDto) toComponent() (Component, error) {
 	shapesList := make([]shapes.Shape, len(x.Shapes))
 	for i, shapeDto := range x.Shapes {
 		shape, err := shapes.DtoToShape(shapeDto)
 		if err != nil {
-			return &physicsCollider{}, fmt.Errorf("failed to convert shape DTO to component: %w", err)
+			return nil, fmt.Errorf("failed to convert shape DTO to component: %w", err)
 		}
 		shapesList[i] = shape
 	}
