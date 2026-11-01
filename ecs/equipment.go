@@ -21,19 +21,8 @@ type equipment struct {
 func (equipment) isComponent() {}
 
 func (x equipment) Copy() equipment {
-	abilitiesCopy := [data.MaxEquipmentAbilitySlots]EntityAbility{}
-
-	for i, abi := range x.abilities {
-		abilitiesCopy[i] = EntityAbility{
-			Def:    abi.Def,
-			Status: abi.Status,
-		}
-	}
-
-	return equipment{
-		slot:      x.slot,
-		abilities: abilitiesCopy,
-	}
+	copyAbilityParams(x.abilities[:])
+	return x
 }
 
 type equipmentDto struct {
@@ -44,6 +33,7 @@ type equipmentDto struct {
 func (equipmentDto) isComponentDto() {}
 
 func (x equipment) ToDto() equipmentDto {
+	copyAbilityParams(x.abilities[:])
 	return equipmentDto{
 		Slot:      x.slot,
 		Abilities: x.abilities,
@@ -51,6 +41,7 @@ func (x equipment) ToDto() equipmentDto {
 }
 
 func (x equipmentDto) ToComponent() *equipment {
+	copyAbilityParams(x.Abilities[:])
 	return &equipment{
 		slot:      x.Slot,
 		abilities: x.Abilities,

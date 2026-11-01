@@ -16,6 +16,7 @@ func NewEquipmentComponent(slot EquipableSlotEnum, abilities [data.MaxEquipmentA
 		abis[i] = EntityAbility{
 			Def:    abi.Def,
 			Status: AbilityStatus{State: AbiAct_Ready},
+			Params: abi.Params,
 		}
 	}
 

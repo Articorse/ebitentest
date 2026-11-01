@@ -56,9 +56,8 @@ type abilities struct {
 func (abilities) isComponent() {}
 
 func (x abilities) Copy() abilities {
-	return abilities{
-		abilities: copyEntityAbilities(x.abilities),
-	}
+	copyAbilityParams(x.abilities[:])
+	return x
 }
 
 func (x EntityAbility) copy() EntityAbility {
@@ -68,11 +67,10 @@ func (x EntityAbility) copy() EntityAbility {
 	return x
 }
 
-func copyEntityAbilities(abis [data.MaxAbilitySlots]EntityAbility) [data.MaxAbilitySlots]EntityAbility {
+func copyAbilityParams(abis []EntityAbility) {
 	for i, abi := range abis {
 		abis[i] = abi.copy()
 	}
-	return abis
 }
 
 type abilitiesDto struct {
@@ -82,13 +80,15 @@ type abilitiesDto struct {
 func (abilitiesDto) isComponentDto() {}
 
 func (x abilities) ToDto() abilitiesDto {
+	copyAbilityParams(x.abilities[:])
 	return abilitiesDto{
-		Abilities: copyEntityAbilities(x.abilities),
+		Abilities: x.abilities,
 	}
 }
 
 func (x abilitiesDto) ToComponent() *abilities {
+	copyAbilityParams(x.Abilities[:])
 	return &abilities{
-		abilities: copyEntityAbilities(x.Abilities),
+		abilities: x.Abilities,
 	}
 }

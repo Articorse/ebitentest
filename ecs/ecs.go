@@ -267,8 +267,8 @@ func (x *ECSContainer) AddEntityWithId(eId common.EntityId, comps ...Component) 
 	}
 
 	if eId >= x.nextEntity {
+		log.Printf("Warning: Adding entity with ID %d, which isn't below nextEntity %d. Updating nextEntity to %d\n", eId, x.nextEntity, eId+1)
 		x.nextEntity = eId + 1
-		log.Printf("Warning: Adding entity with ID %d which is greater than nextEntity %d. Updating nextEntity to %d\n", eId, x.nextEntity-1, x.nextEntity)
 	}
 
 	for _, comp := range comps {
@@ -320,13 +320,9 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 	hm := hierarchyManager{}
 
-	type childRemoval struct {
-		e        common.EntityId
-		dropHeld bool
-	}
-	var childRemovals []childRemoval
-
-	for _, c := range slices.Clone(hm.GetChildren(e, x)) {
+	// Children are resolved before this entity is deleted, since dropping what they hold needs their ancestors' world
+	// transforms
+	for _, c := range hm.GetChildren(e, x) {
 		linkKind := hm.GetLinkKind(c, x)
 
 		if linkKind == Link_Attached || (linkKind == Link_Held && dropHeld) {
@@ -337,7 +333,7 @@ func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 		}
 
 		// Parts of a killed entity are removed rather than killed, but still drop what they hold
-		childRemovals = append(childRemovals, childRemoval{e: c, dropHeld: dropHeld && linkKind == Link_Part})
+		x.removeEntity(c, dropHeld && linkKind == Link_Part)
 	}
 
 	removeChild(hm.GetParent(e, x), e, x)
@@ -365,10 +361,6 @@ func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 	x.ChunkLoaders.deleteEntity(e)
 	x.Persistents.deleteEntity(e)
 	x.Tethers.deleteEntity(e)
-
-	for _, c := range childRemovals {
-		x.removeEntity(c.e, c.dropHeld)
-	}
 
 	maps.DeleteFunc(x.TickState.AABBCollisions, func(k common.EntityId, v []common.EntityId) bool {
 		if k == e {

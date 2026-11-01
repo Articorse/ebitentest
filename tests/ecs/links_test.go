@@ -59,6 +59,29 @@ func TestReattachingKeepsOneChildEntry(t *testing.T) {
 	}
 }
 
+func TestChildrenHeldByCallerUnaffectedByLaterChanges(t *testing.T) {
+	x := testutil.NewECS(t)
+	hm := x.HierarchyManager
+	p := testutil.AddMovable(t, x, utils.Vec2f{}, false)
+	a := testutil.AddMovable(t, x, utils.Vec2f{}, false)
+	b := testutil.AddMovable(t, x, utils.Vec2f{}, false)
+	testutil.Attach(t, x, a, p, ecs.Link_Held)
+	testutil.Attach(t, x, b, p, ecs.Link_Held)
+
+	children := hm.GetChildren(p, x)
+	if err := hm.Detach(a, x); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(children, []common.EntityId{a, b}) {
+		t.Fatalf("children held by the caller changed to %v", children)
+	}
+
+	children[0] = p
+	if got := hm.GetChildren(p, x); !slices.Equal(got, []common.EntityId{b}) {
+		t.Fatalf("changing the returned children changed the hierarchy to %v", got)
+	}
+}
+
 func TestRemovingChildUnlinksItFromParent(t *testing.T) {
 	x := testutil.NewECS(t)
 	p := testutil.AddMovable(t, x, utils.Vec2f{}, false)
@@ -104,6 +127,34 @@ func TestKillingByLinkKind(t *testing.T) {
 	}
 	if got := testutil.WorldPos(t, x, rider); !testutil.ApproxEqual(got, riderPos) {
 		t.Fatalf("detached rider moved from %v to %v", riderPos, got)
+	}
+}
+
+func TestKillingDropsItemsHeldByParts(t *testing.T) {
+	x := testutil.NewECS(t)
+	hm := x.HierarchyManager
+	crab := testutil.AddMovable(t, x, utils.Vec2f{X: 10, Y: 10}, true)
+	claw := testutil.AddMovable(t, x, utils.Vec2f{X: 15, Y: 10}, true)
+	item := testutil.AddMovable(t, x, utils.Vec2f{X: 20, Y: 10}, true)
+	testutil.Attach(t, x, claw, crab, ecs.Link_Part)
+	testutil.Attach(t, x, item, claw, ecs.Link_Held)
+	testutil.SetPos(t, x, crab, utils.Vec2f{X: 40, Y: 40})
+	itemPos := testutil.WorldPos(t, x, item)
+
+	x.ScheduleKillEntity(crab)
+	testutil.RemoveScheduled(t, x)
+
+	if x.HasEntity(claw) {
+		t.Fatal("part survived its parent being killed")
+	}
+	if !x.HasEntity(item) || hm.GetParent(item, x) != -1 {
+		t.Fatalf("item held by the part not dropped: alive %v, parent %d", x.HasEntity(item), hm.GetParent(item, x))
+	}
+	if got := testutil.WorldPos(t, x, item); !testutil.ApproxEqual(got, itemPos) {
+		t.Fatalf("dropped item moved from %v to %v", itemPos, got)
+	}
+	if err := x.CheckConsistency(); err != nil {
+		t.Fatal(err)
 	}
 }
 

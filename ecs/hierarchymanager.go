@@ -36,7 +36,8 @@ func (*hierarchyManager) GetChildren(
 		return []common.EntityId{}
 	}
 
-	return hierComp.children
+	// A copy, since the children change as entities are attached and detached while callers still hold the result
+	return slices.Clone(hierComp.children)
 }
 
 func (*hierarchyManager) GetRoot(

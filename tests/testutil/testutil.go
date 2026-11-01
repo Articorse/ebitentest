@@ -8,9 +8,11 @@ import (
 	"ebittest/tilesystem"
 	"ebittest/utils"
 	"ebittest/world"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -101,6 +103,7 @@ func Restore(t testing.TB, members map[common.EntityId][]ecs.ComponentDto) *ecs.
 	t.Helper()
 
 	y := NewECS(t)
+	y.SetNextEntity(slices.Max(slices.Collect(maps.Keys(members))) + 1)
 	for e, dtos := range members {
 		comps := make([]ecs.Component, 0, len(dtos))
 		for _, dto := range dtos {

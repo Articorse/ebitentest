@@ -89,6 +89,42 @@ func TestSpawnAbilitySpawnsOncePerActivation(t *testing.T) {
 	}
 }
 
+func TestEquipmentAbilityKeepsParams(t *testing.T) {
+	x := testutil.NewECS(t)
+	hurtShape, err := shapes.NewCircleShape(5, utils.Vec2f{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	abis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{{
+		Def: ecs.NewAbilityDef(abilities.Ability_Explode, ecs.Ability_None, 0, 0),
+		Params: &abilities.ExplodeParams{
+			Radii:           []float64{10},
+			DmgTiers:        []int{1},
+			Animationframes: []ecs.AnimationFrame{{FrameIdx: 0, DurationMs: 50}},
+		},
+	}}
+	grenade := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0),
+		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Enemy, hurtShape),
+		ecs.NewEquipmentComponent(ecs.Equipable_MainHand, abis))
+	holder := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0),
+		ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{ecs.Equip_MainHand: grenade}))
+	testutil.Attach(t, x, grenade, holder, ecs.Link_Held)
+
+	members, err := x.GetCompositionComponents(holder)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for name, y := range map[string]*ecs.ECSContainer{"live": x, "restored": testutil.Restore(t, members)} {
+		if _, err := y.EquipManager.ActivateAbility(holder, ecs.Equip_MainHand, nil, utils.Vec2f{}, 0, y); err != nil {
+			t.Fatalf("%s equipment: %v", name, err)
+		}
+		if explosions := len(y.Timers.GetEntities()); explosions != 1 {
+			t.Fatalf("%s equipment caused %d explosions, want 1", name, explosions)
+		}
+	}
+}
+
 func newRocket(t *testing.T, x *ecs.ECSContainer) common.EntityId {
 	t.Helper()
 
