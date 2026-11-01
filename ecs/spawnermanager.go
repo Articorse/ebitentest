@@ -77,9 +77,9 @@ func (*spawnerManager) Spawn(
 
 		finalOffset = rotatedOffset
 	case SpawnerType_Inside:
-		finalOffset = shape.GetRandomPoint(ecsContainer.Rng).Add(worldPos).Add(spawnerOffset)
+		finalOffset = shape.GetRandomPoint(ecsContainer.Rng).Add(spawnerOffset)
 	case SpawnerType_Perimeter:
-		finalOffset = shape.GetRandomPointAroundShape(ecsContainer.Rng).Add(worldPos).Add(spawnerOffset)
+		finalOffset = shape.GetRandomPointAroundShape(ecsContainer.Rng).Add(spawnerOffset)
 	}
 
 	// Placed before spawning, since the spawn position decides whether spawning is allowed.
