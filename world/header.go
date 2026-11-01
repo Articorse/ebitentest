@@ -13,13 +13,12 @@ import (
 )
 
 type Header struct {
-	FormatVersion int
-	Generation    uint64
-	NextEntity    common.EntityId
-	TickIdx       uint64
-	PlayerEntity  common.EntityId
-	RngState      []byte
-	Entities      map[common.EntityId][]ecs.ComponentDto
+	Generation   uint64
+	NextEntity   common.EntityId
+	TickIdx      uint64
+	PlayerEntity common.EntityId
+	RngState     []byte
+	Entities     map[common.EntityId][]ecs.ComponentDto
 }
 
 // Chunkloaders and their compositions are stored here rather than in chunks,
@@ -31,12 +30,11 @@ func Snapshot(playerEntity common.EntityId, ecsCont *ecs.ECSContainer) (Header, 
 	}
 
 	h := Header{
-		FormatVersion: data.WorldFormatVersion,
-		NextEntity:    ecsCont.NextEntity(),
-		TickIdx:       ecsCont.TickIdx,
-		PlayerEntity:  playerEntity,
-		RngState:      rngState,
-		Entities:      make(map[common.EntityId][]ecs.ComponentDto),
+		NextEntity:   ecsCont.NextEntity(),
+		TickIdx:      ecsCont.TickIdx,
+		PlayerEntity: playerEntity,
+		RngState:     rngState,
+		Entities:     make(map[common.EntityId][]ecs.ComponentDto),
 	}
 
 	for _, loader := range ecsCont.ChunkLoaders.GetEntities() {
@@ -54,13 +52,6 @@ func Load(ecsCont *ecs.ECSContainer) (h Header, exists bool, err error) {
 	h, exists, err = readHeader()
 	if err != nil || !exists {
 		return h, exists, err
-	}
-
-	if h.FormatVersion != data.WorldFormatVersion {
-		return h, true, fmt.Errorf(
-			"world was saved in format version %d, but this build only reads version %d; delete %s to start a new world",
-			h.FormatVersion, data.WorldFormatVersion, data.ChunkDataDir,
-		)
 	}
 
 	ecsCont.SetNextEntity(h.NextEntity)
@@ -111,7 +102,14 @@ func WriteHeader(h Header) error {
 		return fmt.Errorf("error creating temporary file: %w", err)
 	}
 
-	if err := gob.NewEncoder(file).Encode(h); err != nil {
+	enc := gob.NewEncoder(file)
+	if err := enc.Encode(data.WorldFormatVersion); err != nil {
+		file.Close()
+		os.Remove(file.Name())
+		return fmt.Errorf("error encoding world format version: %w", err)
+	}
+
+	if err := enc.Encode(h); err != nil {
 		file.Close()
 		os.Remove(file.Name())
 		return fmt.Errorf("error encoding world header: %w", err)
@@ -150,7 +148,22 @@ func readHeader() (h Header, exists bool, err error) {
 		}
 	}()
 
-	if err := gob.NewDecoder(file).Decode(&h); err != nil {
+	// The version is stored as its own value ahead of the header, so it can be checked even when the header is in a
+	// format this build can't decode
+	dec := gob.NewDecoder(file)
+	var version int
+	if err := dec.Decode(&version); err != nil {
+		return Header{}, true, fmt.Errorf("error decoding world format version: %w", err)
+	}
+
+	if version != data.WorldFormatVersion {
+		return Header{}, true, fmt.Errorf(
+			"world was saved in format version %d, but this build only reads version %d; delete %s to start a new world",
+			version, data.WorldFormatVersion, data.ChunkDataDir,
+		)
+	}
+
+	if err := dec.Decode(&h); err != nil {
 		return Header{}, true, fmt.Errorf("error decoding world header: %w", err)
 	}
 

@@ -4,24 +4,14 @@ import (
 	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/utils"
-	"fmt"
 	"maps"
 	"math"
-	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+// The IDs are defined by the content that registers them
 type InputTypeEnum uint8
-
-const (
-	InputType_Dummy InputTypeEnum = iota
-	InputType_Demo
-	InputType_Follow
-	InputType_Human
-	InputType_Loop
-	InputType_Replay
-)
 
 type InputType uint64
 
@@ -46,7 +36,8 @@ type InputSourceFunc func(
 ) (InputState, error)
 
 type InputParams interface {
-	isInputParams()
+	IsInputParams()
+	Copy() InputParams
 }
 
 type InputKey struct {
@@ -176,56 +167,10 @@ func (x input) ToDto() inputDto {
 }
 
 func copyInputParams(params InputParams) InputParams {
-	switch p := params.(type) {
-	case InputDemoParams:
-		return InputDemoParams{Log: copyInputLog(p.Log)}
-	case *InputDemoParams:
-		if p == nil {
-			return p
-		}
-		return &InputDemoParams{Log: copyInputLog(p.Log)}
-	case InputLoopParams:
-		p.LoopInputs = slices.Clone(p.LoopInputs)
-		return p
-	case *InputLoopParams:
-		if p == nil {
-			return p
-		}
-		c := *p
-		c.LoopInputs = slices.Clone(p.LoopInputs)
-		return &c
-	case InputReplayParams:
-		p.ReplayInputs = maps.Clone(p.ReplayInputs)
-		return p
-	case *InputReplayParams:
-		if p == nil {
-			return p
-		}
-		c := *p
-		c.ReplayInputs = maps.Clone(p.ReplayInputs)
-		return &c
-	case *InputFollowParams:
-		if p == nil {
-			return p
-		}
-		c := *p
-		return &c
-	default:
-		return params
-	}
-}
-
-func copyInputLog(inputLog map[uint64]map[common.EntityId]InputState) map[uint64]map[common.EntityId]InputState {
-	if inputLog == nil {
+	if params == nil {
 		return nil
 	}
-
-	c := make(map[uint64]map[common.EntityId]InputState, len(inputLog))
-	for tick, inputs := range inputLog {
-		c[tick] = maps.Clone(inputs)
-	}
-
-	return c
+	return params.Copy()
 }
 
 func (x *inputDto) ToComponent() *input {
@@ -235,24 +180,5 @@ func (x *inputDto) ToComponent() *input {
 		facingInput:   x.FacingInput,
 		params:        x.Params,
 		lastFacingDir: x.LastFacingDir,
-	}
-}
-
-func GetInputSourceFunc(inputType InputTypeEnum) (InputSourceFunc, error) {
-	switch inputType {
-	case InputType_Dummy:
-		return DummyInputSource, nil
-	case InputType_Demo:
-		return DemoInputSource, nil
-	case InputType_Follow:
-		return FollowInputSource, nil
-	case InputType_Human:
-		return HumanInputSource, nil
-	case InputType_Loop:
-		return LoopInputSource, nil
-	case InputType_Replay:
-		return ReplayInputSource, nil
-	default:
-		return nil, fmt.Errorf("invalid input type: %v", inputType)
 	}
 }

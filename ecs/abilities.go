@@ -7,13 +7,8 @@ import (
 
 type AbilityEnum uint64
 
-const (
-	Ability_None AbilityEnum = iota
-	Ability_Spawn
-	Ability_Dodge
-	Ability_Dodge_Post
-	Ability_Explode
-)
+// The other IDs are defined by the content that registers them
+const Ability_None AbilityEnum = 0
 
 type AbilityActivityEnum uint8
 
@@ -26,6 +21,7 @@ const (
 
 type AbilityParams interface {
 	IsAbilityParams()
+	Copy() AbilityParams
 }
 
 type AbilityFunc func(
@@ -60,17 +56,23 @@ type abilities struct {
 func (abilities) isComponent() {}
 
 func (x abilities) Copy() abilities {
-	abisCopy := abilities{}
-
-	for i, abi := range x.abilities {
-		abisCopy.abilities[i] = EntityAbility{
-			Def:    abi.Def,
-			Status: abi.Status,
-			Params: abi.Params,
-		}
+	return abilities{
+		abilities: copyEntityAbilities(x.abilities),
 	}
+}
 
-	return abisCopy
+func (x EntityAbility) copy() EntityAbility {
+	if x.Params != nil {
+		x.Params = x.Params.Copy()
+	}
+	return x
+}
+
+func copyEntityAbilities(abis [data.MaxAbilitySlots]EntityAbility) [data.MaxAbilitySlots]EntityAbility {
+	for i, abi := range abis {
+		abis[i] = abi.copy()
+	}
+	return abis
 }
 
 type abilitiesDto struct {
@@ -81,12 +83,12 @@ func (abilitiesDto) isComponentDto() {}
 
 func (x abilities) ToDto() abilitiesDto {
 	return abilitiesDto{
-		Abilities: x.abilities,
+		Abilities: copyEntityAbilities(x.abilities),
 	}
 }
 
 func (x abilitiesDto) ToComponent() *abilities {
 	return &abilities{
-		abilities: x.Abilities,
+		abilities: copyEntityAbilities(x.Abilities),
 	}
 }

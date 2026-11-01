@@ -1,6 +1,7 @@
-package ecs
+package abilities
 
 import (
+	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
@@ -13,26 +14,29 @@ type DodgeParams struct {
 
 func (DodgeParams) IsAbilityParams() {}
 
+func (p *DodgeParams) Copy() ecs.AbilityParams {
+	if p == nil {
+		return p
+	}
+	c := *p
+	return &c
+}
+
 func DodgeAbility(
 	self common.EntityId,
-	params AbilityParams,
-	ecsContainer *ECSContainer,
+	params ecs.AbilityParams,
+	ecsContainer *ecs.ECSContainer,
 ) error {
 	if params == nil {
 		return fmt.Errorf("dodge ability called with nil params")
 	}
 
-	var dodgeParams DodgeParams
-	switch p := params.(type) {
-	case DodgeParams:
-		dodgeParams = p
-	case *DodgeParams:
-		if p == nil {
-			return fmt.Errorf("dodge ability called with nil params")
-		}
-		dodgeParams = *p
-	default:
+	dodgeParams, ok := params.(*DodgeParams)
+	if !ok {
 		return fmt.Errorf("dodge ability called with invalid params type: %T", params)
+	}
+	if dodgeParams == nil {
+		return fmt.Errorf("dodge ability called with nil params")
 	}
 
 	am := ecsContainer.AnimationManager
@@ -40,12 +44,12 @@ func DodgeAbility(
 	vm := ecsContainer.VelocityManager
 	sm := ecsContainer.SpriteManager
 
-	err := am.SetState(self, Anim_Jump, ecsContainer)
+	err := am.SetState(self, ecs.Anim_Jump, ecsContainer)
 	if err != nil {
 		return fmt.Errorf("error setting animation state of entity %d to jump: %v", self, err)
 	}
 
-	err = am.SetQueuedStateIfNone(self, Anim_Idle, ecsContainer)
+	err = am.SetQueuedStateIfNone(self, ecs.Anim_Idle, ecsContainer)
 	if err != nil {
 		return fmt.Errorf("error setting queued animation state of entity %d to idle: %v", self, err)
 	}
@@ -85,8 +89,8 @@ func DodgeAbility(
 
 func DodgeAbilityPost(
 	self common.EntityId,
-	params AbilityParams,
-	ecsContainer *ECSContainer,
+	params ecs.AbilityParams,
+	ecsContainer *ecs.ECSContainer,
 ) error {
 	hpm := ecsContainer.HitpointsManager
 	sm := ecsContainer.SpriteManager

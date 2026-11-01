@@ -19,7 +19,7 @@ func (deathrattleManager) Effect(e common.EntityId, ecsContainer *ECSContainer) 
 		return fmt.Errorf("could not get deathrattle component of entity %d: %v", e, err)
 	}
 
-	effect, err := ecsContainer.AbilitiesManager.GetAbilityFunc(dr.ability.Def.AbilityId)
+	effect, err := ecsContainer.AbilitiesManager.GetAbilityFunc(dr.ability.Def.AbilityId, ecsContainer)
 	if err != nil {
 		return fmt.Errorf("could not get ability function for ability %v of entity %d: %v", dr.ability.Def.AbilityId, e, err)
 	}

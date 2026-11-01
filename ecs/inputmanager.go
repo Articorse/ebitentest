@@ -92,3 +92,15 @@ func (*inputManager) SetLastFacingDir(e common.EntityId, facingDir utils.Vec2f, 
 
 	return nil
 }
+
+func (inputManager) GetInputSourceFunc(
+	inputType InputTypeEnum,
+	ecsContainer *ECSContainer,
+) (InputSourceFunc, error) {
+	inputSourceFunc, ok := ecsContainer.inputSourceFuncs[inputType]
+	if !ok {
+		return nil, fmt.Errorf("input source function for input type %v not found", inputType)
+	}
+
+	return inputSourceFunc, nil
+}

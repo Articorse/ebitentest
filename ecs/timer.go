@@ -4,11 +4,8 @@ import "ebittest/ecs/common"
 
 type TimerFuncEnum uint64
 
-const (
-	TimerFunc_None TimerFuncEnum = iota
-	TimerFunc_Selfdestruct
-	TimerFunc_Spawn
-)
+// The other IDs are defined by the content that registers them
+const TimerFunc_None TimerFuncEnum = 0
 
 type TimerFunc func(self common.EntityId, ecsContainer *ECSContainer) error
 

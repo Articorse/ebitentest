@@ -2,10 +2,12 @@ package main
 
 import (
 	"ebittest/assetmanager"
+	"ebittest/content"
+	"ebittest/content/inputsources"
+	"ebittest/content/templates"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
-	"ebittest/ecs/shapes"
 	"ebittest/ecs/systems/abilitysystem"
 	"ebittest/ecs/systems/animationsystem"
 	"ebittest/ecs/systems/collisionsystem"
@@ -122,7 +124,7 @@ func (g *game) Update() error {
 		pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(ebiten.KeyD, ebiten.KeyA)
 		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewMouseInputKey(ebiten.MouseButtonLeft, -1)
 		pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(ebiten.KeySpace, -1)
-		pInpComp := ecs.NewInputComponent(pInputConfig, ecs.InputType_Human, nil, ecs.Facing_Mouse)
+		pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.InputType_Human, nil, ecs.Facing_Mouse)
 		g.ecs.AddComponent(g.playerEntity, pInpComp)
 		gamepadFound = true
 	}
@@ -137,7 +139,9 @@ func (g *game) Update() error {
 		g.justLoaded = false
 		if g.newWorld {
 			g.newWorld = false
-			g.spawnStartingEquipment()
+			if err := templates.SpawnStartingEquipment(g.ecs, g.playerEntity); err != nil {
+				log.Fatal("error spawning starting equipment: ", err)
+			}
 		}
 		g.logConsistency("after loading")
 	}
@@ -156,7 +160,7 @@ func (g *game) Update() error {
 			continue
 		}
 
-		inputSourceFunc, err := ecs.GetInputSourceFunc(inputType)
+		inputSourceFunc, err := im.GetInputSourceFunc(inputType, g.ecs)
 		if err != nil {
 			log.Printf("error getting input source func for entity %d: %v\n", eid, err)
 			continue
@@ -599,6 +603,10 @@ func main() {
 		log.Fatal("error generating tile atlas from json: ", err)
 	}
 
+	if err := content.Register(g.ecs); err != nil {
+		log.Fatal("error registering content: ", err)
+	}
+
 	g.ecs.TickState = *common.NewTickState()
 	g.ecs.SetSimulatedPosCheck(g.chunkContainer.IsActiveWorldPos)
 
@@ -617,7 +625,10 @@ func main() {
 		if err := world.Reset(); err != nil {
 			log.Fatal("error resetting world: ", err)
 		}
-		g.spawnPlayer()
+		g.playerEntity, err = templates.SpawnPlayer(g.ecs)
+		if err != nil {
+			log.Fatal("error spawning player: ", err)
+		}
 		g.newWorld = true
 	}
 
@@ -629,319 +640,5 @@ func main() {
 
 	if err := ebiten.RunGame(&g); err != nil {
 		log.Fatal(err)
-	}
-}
-
-func (g *game) spawnPlayer() {
-	// Player
-	pParComp := ecs.NewHierarchyComponent()
-	pTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
-	pVelComp := ecs.NewDefaultVelocityComponent()
-	pSprComp, err := ecs.NewSpriteComponent(common.AssetSheetSlime, 20, false)
-	if err != nil {
-		log.Fatal(err)
-	}
-	pAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	pAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-		{FrameIdx: 0, DurationMs: 100},
-		{FrameIdx: 1, DurationMs: 100},
-		{FrameIdx: 2, DurationMs: 100},
-		{FrameIdx: 1, DurationMs: 100},
-	}
-	pAniStateFrames[ecs.Anim_Jump] = []ecs.AnimationFrame{
-		{FrameIdx: 0, DurationMs: 50},
-		{FrameIdx: 1, DurationMs: 50},
-		{FrameIdx: 2, DurationMs: 50},
-		{FrameIdx: 1, DurationMs: 50},
-	}
-	pAniComp, err := ecs.NewAnimationComponent(common.AssetSheetSlime, pAniStateFrames)
-	if err != nil {
-		log.Fatal(err)
-	}
-	pPhyColShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-	pPhyColComp := ecs.NewPhysicsColliderComponent(
-		ecs.Layer_Player,
-		ecs.Layer_Enemy|
-			ecs.Layer_EnemyProjectile|
-			ecs.Layer_Terrain|
-			ecs.Layer_Platform,
-		ecs.Collider_Mob,
-		pPhyColShape,
-	)
-	pHpComp := ecs.NewHitpointsComponent(20, 1000)
-	pHitboxShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-	pHitboxComp := ecs.NewHitboxColliderComponent(
-		ecs.Layer_Player,
-		ecs.Layer_Enemy|
-			ecs.Layer_EnemyProjectile|
-			ecs.Layer_Terrain|
-			ecs.Layer_Platform,
-		pHitboxShape,
-	)
-	pAbis := [16]ecs.EntityAbility{}
-	pAbis[0] = ecs.EntityAbility{
-		Def: ecs.NewAbilityDef(
-			ecs.Ability_Dodge,
-			ecs.Ability_Dodge_Post,
-			1000,
-			200,
-		),
-		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
-		Params: ecs.DodgeParams{
-			Force: 10,
-		},
-	}
-	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
-	pCLComp := ecs.NewChunkLoaderComponent(3)
-	g.playerEntity, err = g.ecs.AddNewEntity(
-		pParComp,
-		pTraComp,
-		pVelComp,
-		pSprComp,
-		pAniComp,
-		pPhyColComp,
-		pHpComp,
-		pHitboxComp,
-		pAbiComp,
-		pCLComp,
-		ecs.NewPersistentComponent(),
-	)
-	if err != nil {
-		log.Fatal("error spawning player: ", err)
-	}
-
-	// // Gun
-	// gunParComp := ecs.NewParentComponent()
-	// gunTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
-	// gunVelComp := ecs.NewDefaultVelocityComponent()
-	// gunSprComp, err := ecs.NewSpriteComponent("assets/sprites/gun.png", 20, true)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// gunAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	// gunAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-	// 	{FrameIdx: 0, DurationMs: 1000},
-	// }
-	// gunAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
-	// 	{FrameIdx: 1, DurationMs: 100},
-	// }
-	// gunAniComp, err := ecs.NewAnimationComponent("assets/sprites/gun_ss.png", utils.Vec2{X: 32, Y: 32}, gunAniStateFrames)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// gunFPComp := ecs.NewFacePositionComponent(utils.Vec2{}, true)
-	//
-	// bulletTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
-	// bulletVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
-	// bulletTimerComp, err := ecs.NewTimerComponent(500, 1, timerfuncs.Selfdestruct)
-	// if err != nil {
-	// 	log.Fatal("error creating bullet timer component: ", err)
-	// }
-	// bulletDmgComp := ecs.NewContactDamageComponent(g.playerEntity, 10, true, true, 5)
-	// bulletSprComp, err := ecs.NewSpriteComponent("assets/sprites/bullet.png", 20, false)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// bulletAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	// bulletAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-	// 	{FrameIdx: 0, DurationMs: 50},
-	// 	{FrameIdx: 1, DurationMs: 50},
-	// 	{FrameIdx: 2, DurationMs: 50},
-	// 	{FrameIdx: 1, DurationMs: 50},
-	// }
-	// bulletAniComp, err := ecs.NewAnimationComponent("assets/sprites/bullet_ss.png", utils.Vec2{X: 32, Y: 32}, bulletAniStateFrames)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// bulletHurtboxShape, err := shapes.NewCircleShape(3, utils.Vec2{X: 0, Y: 0})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// bulletHurtboxComp := ecs.NewHurtboxColliderComponent(
-	// 	ecs.Layer_FriendlyProjectile,
-	// 	ecs.Layer_Enemy|
-	// 		ecs.Layer_Terrain,
-	// 	bulletHurtboxShape,
-	// )
-	//
-	// gunSpaComp, err := ecs.NewSpawnerComponent(
-	// 	utils.Vec2{X: 13, Y: 0},
-	// 	ecs.SpawnerType_Point,
-	// 	nil,
-	// 	bulletTraComp, bulletSprComp, bulletVelComp, bulletDmgComp, bulletHurtboxComp, bulletAniComp, bulletTimerComp,
-	// )
-	// if err != nil {
-	// 	log.Fatal("error creating gun spawner component: ", err)
-	// }
-	//
-	// spawnName, spawnDef := abilitydefs.SpawnAbility(200)
-	// gunAbis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
-	// gunAbis[0] = ecs.EntityAbility{
-	// 	Name:   spawnName,
-	// 	Def:    spawnDef,
-	// 	Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
-	// }
-	// gunEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis)
-	//
-	// gun := g.ecs.AddEntity(
-	// 	gunParComp,
-	// 	gunTraComp,
-	// 	gunVelComp,
-	// 	gunSprComp,
-	// 	gunAniComp,
-	// 	gunSpaComp,
-	// 	gunFPComp,
-	// 	gunEquipmentComp,
-	// )
-	//
-	// pEquipperComp := ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{
-	// 	ecs.Equip_MainHand: gun,
-	// })
-	//
-	// g.ecs.AddComponent(g.playerEntity, pEquipperComp)
-	//
-	// err = pm.Attach(gun, g.playerEntity, g.ecs)
-	// if err != nil {
-	// 	log.Fatal("error attaching gun to player: ", err)
-	// }
-
-}
-
-// Spawning outside the active chunks is refused, so this waits until the chunks around the player are active
-func (g *game) spawnStartingEquipment() {
-	// Bazooka
-	bazookaParComp := ecs.NewHierarchyComponent()
-	bazookaTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
-	bazookaVelComp := ecs.NewDefaultVelocityComponent()
-	bazookaSprComp, err := ecs.NewSpriteComponent(common.AssetSheetBazooka, 20, true)
-	if err != nil {
-		log.Fatal(err)
-	}
-	bazookaAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	bazookaAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-		{FrameIdx: 0, DurationMs: 1000},
-	}
-	bazookaAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
-		{FrameIdx: 1, DurationMs: 100},
-	}
-	bazookaAniComp, err := ecs.NewAnimationComponent(common.AssetSheetBazooka, bazookaAniStateFrames)
-	if err != nil {
-		log.Fatal(err)
-	}
-	bazookaFPComp := ecs.NewFacePositionComponent(utils.Vec2f{}, true)
-
-	rocketTraComp := ecs.NewTransformComponent(utils.Vec2f{}, 1, 0)
-	rocketVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{X: 3, Y: 0}, 0, 1)
-	rocketTimerComp, err := ecs.NewTimerComponent(2000, 1, ecs.TimerFunc_Selfdestruct)
-	if err != nil {
-		log.Fatal("error creating rocket timer component: ", err)
-	}
-	rocketCDComp := ecs.NewContactDamageComponent(g.playerEntity, 20, true, false, 65)
-	rocketSprComp, err := ecs.NewSpriteComponent(common.AssetSheetRocket, 21, true)
-	if err != nil {
-		log.Fatal(err)
-	}
-	rocketAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	rocketAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-		{FrameIdx: 0, DurationMs: 50},
-		{FrameIdx: 1, DurationMs: 50},
-	}
-	rocketAniComp, err := ecs.NewAnimationComponent(common.AssetSheetRocket, rocketAniStateFrames)
-	if err != nil {
-		log.Fatal(err)
-	}
-	rocketHurtboxShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
-	if err != nil {
-		log.Fatal(err)
-	}
-	rocketHurtboxComp := ecs.NewHurtboxColliderComponent(
-		ecs.Layer_FriendlyProjectile,
-		ecs.Layer_Enemy|
-			ecs.Layer_Terrain,
-		rocketHurtboxShape,
-	)
-	explosionAniFrames := []ecs.AnimationFrame{
-		{FrameIdx: 0, DurationMs: 50},
-		{FrameIdx: 1, DurationMs: 50},
-		{FrameIdx: 2, DurationMs: 50},
-		{FrameIdx: 3, DurationMs: 100},
-		{FrameIdx: 4, DurationMs: 100},
-		{FrameIdx: 5, DurationMs: 150},
-		{FrameIdx: 6, DurationMs: 200},
-	}
-	explodeAbi := ecs.EntityAbility{
-		Def: ecs.NewAbilityDef(
-			ecs.Ability_Explode,
-			ecs.Ability_None,
-			0,
-			0,
-		),
-		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
-		Params: ecs.ExplodeParams{
-			Force:           20.0,
-			Radii:           []float64{10, 20, 45},
-			DmgTiers:        []int{50, 25, 10},
-			Animationframes: explosionAniFrames,
-			SelfDestruct:    true,
-		},
-	}
-	rocketDeathComp, err := ecs.NewDeathrattleComponent(explodeAbi)
-	if err != nil {
-		log.Fatal("error creating rocket deathrattle component: ", err)
-	}
-
-	bazookaSpaComp, err := ecs.NewSpawnerComponent(
-		utils.Vec2f{X: 13, Y: 0},
-		ecs.SpawnerType_Point,
-		nil,
-		rocketTraComp, rocketSprComp, rocketVelComp, rocketCDComp, rocketHurtboxComp, rocketAniComp, rocketTimerComp, rocketDeathComp,
-	)
-	if err != nil {
-		log.Fatal("error creating bazooka spawner component: ", err)
-	}
-
-	bazookaAbis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
-	bazookaAbis[0] = ecs.EntityAbility{
-		Def: ecs.NewAbilityDef(
-			ecs.Ability_Spawn,
-			ecs.Ability_None,
-			500,
-			0,
-		),
-		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
-		Params: nil,
-	}
-	bazookaEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, bazookaAbis)
-
-	bazooka, err := g.ecs.AddNewEntity(
-		bazookaParComp,
-		bazookaTraComp,
-		bazookaVelComp,
-		bazookaSprComp,
-		bazookaAniComp,
-		bazookaSpaComp,
-		bazookaFPComp,
-		bazookaEquipmentComp,
-		ecs.NewPersistentComponent(),
-	)
-	if err != nil {
-		log.Fatal("error spawning bazooka: ", err)
-	}
-
-	pEquipperComp := ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{
-		ecs.Equip_MainHand: bazooka,
-	})
-
-	g.ecs.AddComponent(g.playerEntity, pEquipperComp)
-
-	err = hm.Attach(bazooka, g.playerEntity, ecs.Link_Held, g.ecs)
-	if err != nil {
-		log.Fatal("error attaching bazooka to player: ", err)
 	}
 }

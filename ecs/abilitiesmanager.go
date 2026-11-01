@@ -159,19 +159,16 @@ func (abilitiesManager) ActivateAbility(
 
 func (abilitiesManager) GetAbilityFunc(
 	abilityId AbilityEnum,
+	ecsContainer *ECSContainer,
 ) (AbilityFunc, error) {
-	switch abilityId {
-	case Ability_None:
+	if abilityId == Ability_None {
 		return nil, nil
-	case Ability_Dodge:
-		return DodgeAbility, nil
-	case Ability_Dodge_Post:
-		return DodgeAbilityPost, nil
-	case Ability_Explode:
-		return ExplodeAbility, nil
-	case Ability_Spawn:
-		return SpawnAbility, nil
-	default:
+	}
+
+	abilityFunc, ok := ecsContainer.abilityFuncs[abilityId]
+	if !ok {
 		return nil, fmt.Errorf("ability function for ability %v not found", abilityId)
 	}
+
+	return abilityFunc, nil
 }

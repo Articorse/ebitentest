@@ -42,7 +42,7 @@ func (timerManager) TickDown(
 	timer.counterMs -= data.TickMs
 
 	if timer.counterMs <= 0 {
-		timerFunc, err := ecsContainer.TimerManager.GetTimerFunc(timer.timerFunc)
+		timerFunc, err := ecsContainer.TimerManager.GetTimerFunc(timer.timerFunc, ecsContainer)
 		if err != nil {
 			return false, fmt.Errorf("could not get timer function of entity %d: %v", e, err)
 		}
@@ -64,15 +64,16 @@ func (timerManager) TickDown(
 
 func (timerManager) GetTimerFunc(
 	timerFuncId TimerFuncEnum,
+	ecsContainer *ECSContainer,
 ) (TimerFunc, error) {
-	switch timerFuncId {
-	case TimerFunc_None:
+	if timerFuncId == TimerFunc_None {
 		return nil, nil
-	case TimerFunc_Selfdestruct:
-		return Timer_Selfdestruct, nil
-	case TimerFunc_Spawn:
-		return Timer_Spawn, nil
-	default:
+	}
+
+	timerFunc, ok := ecsContainer.timerFuncs[timerFuncId]
+	if !ok {
 		return nil, fmt.Errorf("timer function for timer %v not found", timerFuncId)
 	}
+
+	return timerFunc, nil
 }

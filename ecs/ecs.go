@@ -30,6 +30,10 @@ type ECSContainer struct {
 
 	isSimulatedPos func(worldPos utils.Vec2f) bool
 
+	abilityFuncs     map[AbilityEnum]AbilityFunc
+	timerFuncs       map[TimerFuncEnum]TimerFunc
+	inputSourceFuncs map[InputTypeEnum]InputSourceFunc
+
 	Inputs            Storage[input]
 	Hierarchies       Storage[hierarchy]
 	Transforms        Storage[transform]
@@ -106,18 +110,16 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
 	gob.Register(&shapes.PolygonParams{})
-	gob.Register(&DodgeParams{})
-	gob.Register(&ExplodeParams{})
-	gob.Register(&InputFollowParams{})
-	gob.Register(&InputDemoParams{})
-	gob.Register(&InputLoopParams{})
-	gob.Register(&InputReplayParams{})
 
 	rngSource := rand.NewPCG(data.RngSeed1, data.RngSeed2)
 
 	return &ECSContainer{
 		nextEntity: 0,
 		InputLog:   make(map[uint64]map[common.EntityId]InputState),
+
+		abilityFuncs:     make(map[AbilityEnum]AbilityFunc),
+		timerFuncs:       make(map[TimerFuncEnum]TimerFunc),
+		inputSourceFuncs: make(map[InputTypeEnum]InputSourceFunc),
 
 		Rng:       rand.New(rngSource),
 		rngSource: rngSource,

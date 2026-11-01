@@ -1,6 +1,7 @@
-package ecs
+package inputsources
 
 import (
+	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"fmt"
 )
@@ -9,33 +10,36 @@ type InputFollowParams struct {
 	FollowEntity common.EntityId
 }
 
-func (InputFollowParams) isInputParams() {}
+func (InputFollowParams) IsInputParams() {}
+
+func (p *InputFollowParams) Copy() ecs.InputParams {
+	if p == nil {
+		return p
+	}
+	c := *p
+	return &c
+}
 
 func FollowInputSource(
 	entityId common.EntityId,
 	tick uint64,
-	params InputParams,
-	ecsContainer *ECSContainer,
-) (InputState, error) {
+	params ecs.InputParams,
+	ecsContainer *ecs.ECSContainer,
+) (ecs.InputState, error) {
 	if params == nil {
-		return InputState{}, fmt.Errorf("input params are nil")
+		return ecs.InputState{}, fmt.Errorf("input params are nil")
 	}
 
-	var followParams *InputFollowParams
-	switch p := params.(type) {
-	case InputFollowParams:
-		followParams = &p
-	case *InputFollowParams:
-		if p == nil {
-			return InputState{}, fmt.Errorf("input params are nil")
-		}
-		followParams = p
-	default:
-		return InputState{}, fmt.Errorf("input params are not of type InputFollowParams")
+	followParams, ok := params.(*InputFollowParams)
+	if !ok {
+		return ecs.InputState{}, fmt.Errorf("input params are not of type InputFollowParams")
+	}
+	if followParams == nil {
+		return ecs.InputState{}, fmt.Errorf("input params are nil")
 	}
 
 	tm := ecsContainer.TransformManager
-	is := InputState{}
+	is := ecs.InputState{}
 
 	selfWorldPos, err := tm.GetWorldPos(entityId, ecsContainer)
 	if err != nil {

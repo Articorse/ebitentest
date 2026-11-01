@@ -1,42 +1,51 @@
-package ecs
+package abilities
 
 import (
+	"ebittest/content/timerfuncs"
+	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"fmt"
+	"slices"
 )
 
 type ExplodeParams struct {
 	Force           float64
 	Radii           []float64
 	DmgTiers        []int
-	Animationframes []AnimationFrame
+	Animationframes []ecs.AnimationFrame
 	SelfDestruct    bool
 }
 
 func (ExplodeParams) IsAbilityParams() {}
 
+func (p *ExplodeParams) Copy() ecs.AbilityParams {
+	if p == nil {
+		return p
+	}
+	c := *p
+	c.Radii = slices.Clone(p.Radii)
+	c.DmgTiers = slices.Clone(p.DmgTiers)
+	c.Animationframes = slices.Clone(p.Animationframes)
+	return &c
+}
+
 func ExplodeAbility(
 	self common.EntityId,
-	params AbilityParams,
-	ecsContainer *ECSContainer,
+	params ecs.AbilityParams,
+	ecsContainer *ecs.ECSContainer,
 ) error {
 	if params == nil {
 		return fmt.Errorf("explode ability params cannot be nil")
 	}
 
-	var explodeParams ExplodeParams
-	switch p := params.(type) {
-	case ExplodeParams:
-		explodeParams = p
-	case *ExplodeParams:
-		if p == nil {
-			return fmt.Errorf("explode ability params cannot be nil")
-		}
-		explodeParams = *p
-	default:
+	explodeParams, ok := params.(*ExplodeParams)
+	if !ok {
 		return fmt.Errorf("invalid explode ability params type: %T", params)
+	}
+	if explodeParams == nil {
+		return fmt.Errorf("explode ability params cannot be nil")
 	}
 
 	var totalDuration uint64
@@ -88,18 +97,18 @@ func ExplodeAbility(
 		return fmt.Errorf("error getting hurtbox collider mask of entity %d for explode ability: %v", self, err)
 	}
 
-	traComp := NewTransformComponent(exWorldPos, exWorldScale, exWorldRot)
-	sprComp, err := NewSpriteComponent(common.AssetSheetExplosion, exSprLayer+1, false)
+	traComp := ecs.NewTransformComponent(exWorldPos, exWorldScale, exWorldRot)
+	sprComp, err := ecs.NewSpriteComponent(common.AssetSheetExplosion, exSprLayer+1, false)
 	if err != nil {
 		return fmt.Errorf("error creating sprite component for explode ability: %v", err)
 	}
-	stateFrames := make(map[AnimationState][]AnimationFrame)
-	stateFrames[Anim_Idle] = explodeParams.Animationframes
-	aniComp, err := NewAnimationComponent(common.AssetSheetExplosion, stateFrames)
+	stateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	stateFrames[ecs.Anim_Idle] = explodeParams.Animationframes
+	aniComp, err := ecs.NewAnimationComponent(common.AssetSheetExplosion, stateFrames)
 	if err != nil {
 		return fmt.Errorf("error creating animation component for explode ability: %v", err)
 	}
-	timerComp, err := NewTimerComponent(int(totalDuration), 1, TimerFunc_Selfdestruct)
+	timerComp, err := ecs.NewTimerComponent(int(totalDuration), 1, timerfuncs.TimerFunc_Selfdestruct)
 	if err != nil {
 		return fmt.Errorf("error creating timer component for explode ability: %v", err)
 	}
@@ -112,8 +121,8 @@ func ExplodeAbility(
 		hurtShapes[i] = hs
 	}
 
-	hurtComp := NewHurtboxColliderComponent(dmgLayer, dmgMask, hurtShapes...)
-	cdComp := NewContactDamageComponent(self, explodeParams.Force, false, true, explodeParams.DmgTiers...)
+	hurtComp := ecs.NewHurtboxColliderComponent(dmgLayer, dmgMask, hurtShapes...)
+	cdComp := ecs.NewContactDamageComponent(self, explodeParams.Force, false, true, explodeParams.DmgTiers...)
 
 	ecsContainer.AddComponent(explosionE, traComp)
 	ecsContainer.AddComponent(explosionE, sprComp)

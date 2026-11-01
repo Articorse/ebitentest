@@ -1,6 +1,7 @@
 package damagesystem
 
 import (
+	"ebittest/content/timerfuncs"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
@@ -117,7 +118,7 @@ func DealContactDamage(
 			ftTraComp := ecs.NewTransformComponent(hitWorldPos, 1, 0)
 			ftFtComp := ecs.NewFloatingTextComponent(fmt.Sprintf("%d", damageTiers[shapeIdx]), utils.Vec2f{}, 12, color.RGBA{R: 255, G: 0, B: 255, A: 255})
 			ftVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{X: 0, Y: -1}, 1, 1)
-			ftTimerComp, err := ecs.NewTimerComponent(1000, 1, ecs.TimerFunc_Selfdestruct)
+			ftTimerComp, err := ecs.NewTimerComponent(1000, 1, timerfuncs.TimerFunc_Selfdestruct)
 			if err != nil {
 				log.Fatal("error creating floating text timer component: ", err)
 			}

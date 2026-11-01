@@ -8,7 +8,7 @@ func (deathrattle) isComponent() {}
 
 func (x deathrattle) Copy() deathrattle {
 	return deathrattle{
-		ability: x.ability,
+		ability: x.ability.copy(),
 	}
 }
 
@@ -20,12 +20,12 @@ func (deathrattleDto) isComponentDto() {}
 
 func (x deathrattle) ToDto() deathrattleDto {
 	return deathrattleDto{
-		Ability: x.ability,
+		Ability: x.ability.copy(),
 	}
 }
 
 func (x deathrattleDto) ToComponent() *deathrattle {
 	return &deathrattle{
-		ability: x.Ability,
+		ability: x.Ability.copy(),
 	}
 }
