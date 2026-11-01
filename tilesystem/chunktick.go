@@ -141,16 +141,15 @@ func (cc *ChunkContainer) activateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContain
 		return fmt.Errorf("failed post-load of chunk: %w", err)
 	}
 
-	// Insertion order decides the order systems iterate over entities, so it must not depend on map order
-	for _, eId := range slices.Sorted(maps.Keys(ents)) {
-		instantiateEntity(eId, ents[eId], ecsCont)
+	for eId, compDtos := range ents {
+		instantiateEntity(eId, compDtos, ecsCont)
 	}
 
 	// The queued entities may already have been committed into the file this chunk was loaded from
 	queued := cc.queuedEntities[pos]
-	for _, eId := range slices.Sorted(maps.Keys(queued)) {
+	for eId, q := range queued {
 		if !ecsCont.HasEntity(eId) {
-			instantiateEntity(eId, queued[eId].dtos, ecsCont)
+			instantiateEntity(eId, q.dtos, ecsCont)
 		}
 	}
 	delete(cc.queuedEntities, pos)

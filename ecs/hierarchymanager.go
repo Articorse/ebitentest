@@ -242,8 +242,8 @@ func (*hierarchyManager) RemoveParentFromAllEntities(
 	hm := hierarchyManager{}
 	hierarchies := ecsContainer.Hierarchies.getData()
 
-	for hE, h := range hierarchies {
-		if h.parent == e {
+	for _, hE := range ecsContainer.Hierarchies.GetEntities() {
+		if hierarchies[hE].parent == e {
 			err := hm.Detach(hE, ecsContainer)
 			if err != nil {
 				log.Printf("error detaching entity %d from parent entity %d: %v", hE, e, err)
