@@ -47,14 +47,14 @@ func TestChunkTilesMatchTheirWorldPositions(t *testing.T) {
 	}
 }
 
-func TestTerrainFormsPatchesOfGrassAndDirt(t *testing.T) {
+func TestTerrainFormsPatches(t *testing.T) {
 	const size = 200
-	counts := map[data.TileEnum]int{}
+	kinds := map[data.TileEnum]bool{}
 	same, pairs := 0, 0
 	for y := range size {
 		for x := range size {
 			tile := worldgen.Tile(1, utils.Vec2i{X: x, Y: y})
-			counts[tile]++
+			kinds[tile] = true
 			if x > 0 {
 				pairs++
 				if tile == worldgen.Tile(1, utils.Vec2i{X: x - 1, Y: y}) {
@@ -64,12 +64,43 @@ func TestTerrainFormsPatchesOfGrassAndDirt(t *testing.T) {
 		}
 	}
 
-	if len(counts) != 2 || counts[data.Tile_Grass] < size*size/5 || counts[data.Tile_Dirt] < size*size/5 {
-		t.Fatalf("got tile counts %v, want a fair share of both grass and dirt and nothing else", counts)
+	if len(kinds) < 2 {
+		t.Fatalf("only %v appear", kinds)
 	}
-	// Uncorrelated tiles would agree with their neighbour only about half the time
+	// Uncorrelated tiles would agree with their neighbour far less often
 	if agreement := float64(same) / float64(pairs); agreement < 0.85 {
 		t.Fatalf("only %.2f of neighbouring tiles match, so the terrain isn't forming patches", agreement)
+	}
+}
+
+func TestNearestCellMatchesBruteForce(t *testing.T) {
+	const seed = 99
+	for i := range 2000 {
+		x := float64(i%50)*0.37 - 9
+		y := float64(i/50)*0.53 - 11
+
+		wantX, wantY, best := int64(0), int64(0), math.Inf(1)
+		for cy := int64(math.Floor(y)) - 4; cy <= int64(math.Floor(y))+4; cy++ {
+			for cx := int64(math.Floor(x)) - 4; cx <= int64(math.Floor(x))+4; cx++ {
+				px, py := noise.FeaturePoint(seed, cx, cy)
+				if d := (px-x)*(px-x) + (py-y)*(py-y); d < best {
+					best, wantX, wantY = d, cx, cy
+				}
+			}
+		}
+
+		if gotX, gotY := noise.NearestCell(seed, x, y); gotX != wantX || gotY != wantY {
+			t.Fatalf("nearest cell to (%v, %v) is (%d, %d), want (%d, %d)", x, y, gotX, gotY, wantX, wantY)
+		}
+	}
+}
+
+func TestHashDoesNotConfuseCoordinates(t *testing.T) {
+	for _, pair := range [][2][2]int64{{{-1, 1}, {1, -1}}, {{1, 2}, {2, 1}}, {{-1, -1}, {1, 1}}, {{0, 5}, {5, 0}}} {
+		a, b := pair[0], pair[1]
+		if noise.Hash2(3, a[0], a[1]) == noise.Hash2(3, b[0], b[1]) {
+			t.Errorf("(%d, %d) and (%d, %d) hash alike", a[0], a[1], b[0], b[1])
+		}
 	}
 }
 

@@ -14,7 +14,7 @@ import (
 func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 	// Player
 	pParComp := ecs.NewHierarchyComponent()
-	pTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
+	pTraComp := ecs.NewTransformComponent(utils.Vec2f{}, 1, 0)
 	pVelComp := ecs.NewDefaultVelocityComponent()
 	pSprComp, err := ecs.NewSpriteComponent(common.AssetSheetSlime, 20, false)
 	if err != nil {
@@ -197,7 +197,11 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.EntityId) error {
 	// Bazooka
 	bazookaParComp := ecs.NewHierarchyComponent()
-	bazookaTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
+	playerPos, err := ecsContainer.WorldPos(player)
+	if err != nil {
+		return fmt.Errorf("error getting world position of player %d: %w", player, err)
+	}
+	bazookaTraComp := ecs.NewTransformComponent(playerPos, 1, 0)
 	bazookaVelComp := ecs.NewDefaultVelocityComponent()
 	bazookaSprComp, err := ecs.NewSpriteComponent(common.AssetSheetBazooka, 20, true)
 	if err != nil {

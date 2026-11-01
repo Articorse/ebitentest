@@ -499,6 +499,21 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 	}
 }
 
+func (g *game) moveToNewWorldSpawn(e common.EntityId) error {
+	pos, err := g.ecs.WorldPos(e)
+	if err != nil {
+		return err
+	}
+
+	spawn, ok := g.chunkContainer.NewWorldSpawnPos(pos)
+	if !ok {
+		log.Printf("no passable tile within %d tiles of %v, spawning entity %d there anyway", data.WorldgenSpawnSearchRadiusTiles, pos, e)
+		return nil
+	}
+
+	return g.ecs.SetWorldPos(e, spawn)
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	ebiten.SetVsyncEnabled(false)
@@ -539,6 +554,9 @@ func main() {
 		g.playerEntity, err = templates.SpawnPlayer(g.ecs)
 		if err != nil {
 			log.Fatal("error spawning player: ", err)
+		}
+		if err := g.moveToNewWorldSpawn(g.playerEntity); err != nil {
+			log.Fatal("error moving player to spawn: ", err)
 		}
 		g.newWorld = true
 	}
