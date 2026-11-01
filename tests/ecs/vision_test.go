@@ -1,9 +1,11 @@
 package ecs_test
 
 import (
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
+	"math"
 	"testing"
 )
 
@@ -51,5 +53,27 @@ func TestVisionSavesOnlyItsRadius(t *testing.T) {
 	}
 	if restored.CanSee(utils.Vec2i{}) {
 		t.Fatal("restored vision sees something before its first update")
+	}
+}
+
+func TestVisionCircleOnlyShowsComputedTiles(t *testing.T) {
+	const radius = data.PlayerVisionRadiusTiles
+	outer := (radius - data.VisionCircleMarginTiles) * data.TileSize
+	v := ecs.NewVisionComponent(radius)
+
+	for i := range 9 {
+		for j := range 9 {
+			// Positions spread over the whole tile, edges included
+			viewer := utils.Vec2f{X: (float64(i)/8 - 0.5) * data.TileSize, Y: (float64(j)/8 - 0.5) * data.TileSize}
+			v.Update(utils.WorldPosToTilePos(viewer), func(utils.Vec2i) bool { return false })
+
+			for a := range 360 {
+				angle := float64(a) * math.Pi / 180
+				edge := viewer.Add(utils.Vec2f{X: math.Cos(angle) * outer, Y: math.Sin(angle) * outer})
+				if tile := utils.WorldPosToTilePos(edge); !v.CanSee(tile) {
+					t.Fatalf("viewer at %v: the circle reaches tile %v, which wasn't computed as visible", viewer, tile)
+				}
+			}
+		}
 	}
 }

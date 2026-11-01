@@ -422,7 +422,9 @@ func (g *game) Draw(screen *ebiten.Image) {
 	}
 
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
-		g.visionOverlay.Draw(screen, g.ecs.Camera, vision)
+		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
+			g.visionOverlay.Draw(screen, g.ecs.Camera, pos, vision)
+		}
 	}
 
 	g.DrawDebug(screen)
