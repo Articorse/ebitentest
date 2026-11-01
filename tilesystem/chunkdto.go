@@ -1,12 +1,14 @@
 package tilesystem
 
 import (
+	"cmp"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
 	"maps"
+	"slices"
 )
 
 type chunkDto struct {
@@ -37,6 +39,10 @@ func (cc *ChunkContainer) chunkToDto(
 			CurrentHealth: pTile.currentHealth,
 		})
 	}
+	// Sorted, so that saving the same chunk twice writes the same file
+	slices.SortFunc(promotedTiles, func(a, b promotedTileDto) int {
+		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
+	})
 
 	entitiesWithComps := make(map[common.EntityId][]ecs.ComponentDto)
 	for _, root := range cc.currentTickEIdsInChunks[pos] {

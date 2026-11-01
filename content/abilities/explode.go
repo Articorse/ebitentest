@@ -86,7 +86,8 @@ func ExplodeAbility(
 	}
 
 	dmgLayer := hurtbox.Layer()
-	dmgMask := hurtbox.Mask()
+	// Explosions also damage the ground they go off on, which the projectile that carried them only flew over
+	dmgMask := hurtbox.Mask() | ecs.Layer_Ground
 
 	traComp := ecs.NewTransformComponent(exWorldPos, exWorldScale, exWorldRot)
 	sprComp, err := ecs.NewSpriteComponent(common.AssetSheetExplosion, exSprLayer+1, false)

@@ -9,7 +9,7 @@
   {
     "id": 1,
     "imagePath": "assets/tiles/dirt.png",
-    "maxHealth": 50,
+    "maxHealth": -1,
     "passable": true,
     "opaque": false
   },
@@ -17,6 +17,7 @@
     "id": 2,
     "imagePath": "assets/tiles/grass.png",
     "maxHealth": 50,
+    "destroyedInto": 1,
     "passable": true,
     "opaque": false
   },
@@ -24,6 +25,7 @@
     "id": 3,
     "imagePath": "assets/tiles/rock.png",
     "maxHealth": 200,
+    "destroyedInto": 1,
     "passable": false,
     "opaque": true
   },

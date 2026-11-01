@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"image/color"
 	"log"
-	"slices"
 )
 
 func Tick(ecsCont *ecs.ECSContainer) {
@@ -17,12 +16,19 @@ func Tick(ecsCont *ecs.ECSContainer) {
 	}
 }
 
+type TileDamager interface {
+	// False if the tile can't be damaged
+	DamageTile(t utils.Vec2i, damage int) bool
+}
+
+// Single-tick hurtboxes are switched off at the end, once they've damaged everything they overlap, entities and tiles
+// alike
 func DealContactDamage(
 	collisions []common.Collision,
+	tileCollisions []common.TileCollision,
+	tiles TileDamager,
 	ecsCont *ecs.ECSContainer,
 ) (entitiesKilled uint64, err error) {
-	spentSingleTick := []common.EntityId{}
-
 	for _, c := range collisions {
 		dmgE, hitE := c.A, c.B
 		cd, ok := ecsCont.ContactDamages.Get(dmgE)
@@ -89,24 +95,10 @@ func DealContactDamage(
 			log.Printf("Error getting ecs position for entity %d: %v\n", hitE, err)
 			continue
 		}
-
-		ftTraComp := ecs.NewTransformComponent(hitWorldPos, 1, 0)
-		ftFtComp := ecs.NewFloatingTextComponent(fmt.Sprintf("%d", damageTiers[shapeIdx]), utils.Vec2f{}, 12, color.RGBA{R: 255, G: 0, B: 255, A: 255})
-		ftVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{X: 0, Y: -1}, 1, 1)
-		ftTimerComp, err := ecs.NewTimerComponent(1000, 1, timerfuncs.TimerFunc_Selfdestruct)
-		if err != nil {
-			log.Fatal("error creating floating text timer component: ", err)
-		}
-		if _, err := ecsCont.AddNewEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp); err != nil {
-			log.Printf("Error spawning floating text for entity %d: %v\n", hitE, err)
-		}
+		spawnDamageNumber(hitWorldPos, damageTiers[shapeIdx], ecsCont)
 
 		if cd.DieOnContact() {
 			ecsCont.ScheduleKillEntity(dmgE)
-		}
-
-		if cd.SingleTick() && !slices.Contains(spentSingleTick, dmgE) {
-			spentSingleTick = append(spentSingleTick, dmgE)
 		}
 
 		if dead {
@@ -115,29 +107,52 @@ func DealContactDamage(
 		}
 	}
 
-	// Disabled only after all collisions, so that every entity a source touches this tick is still damaged
-	for _, e := range spentSingleTick {
-		hurtbox, ok := ecsCont.HurtboxColliders.Get(e)
-		if !ok {
-			log.Printf("Error disabling hurtbox collider for entity %d: it has none\n", e)
+	dealTileDamage(tileCollisions, tiles, ecsCont)
+
+	for e, cd := range ecs.Query1(&ecsCont.ContactDamages) {
+		if !cd.SingleTick() {
 			continue
 		}
-		hurtbox.SetEnabled(false)
+		if hurtbox, ok := ecsCont.HurtboxColliders.Get(e); ok {
+			hurtbox.SetEnabled(false)
+		}
 	}
 
 	return entitiesKilled, nil
 }
 
-// Only kills what dies on contact, for now; tiles will take damage once they can be damaged
-func DealTerrainContactDamage(collisions []common.TileCollision, ecsCont *ecs.ECSContainer) {
+func dealTileDamage(collisions []common.TileCollision, tiles TileDamager, ecsCont *ecs.ECSContainer) {
 	for _, c := range collisions {
 		cd, ok := ecsCont.ContactDamages.Get(c.E)
 		if !ok {
 			continue
 		}
 
-		if cd.DieOnContact() {
+		if c.Impassable && cd.DieOnContact() {
 			ecsCont.ScheduleKillEntity(c.E)
 		}
+
+		damageTiers := cd.DamageTiers()
+		if len(damageTiers) <= c.ShapeIdx {
+			log.Printf("Error: collider shape index %d out of range for damage tiers of entity %d\n", c.ShapeIdx, c.E)
+			continue
+		}
+
+		if tiles.DamageTile(c.Tile, damageTiers[c.ShapeIdx]) {
+			spawnDamageNumber(utils.TilePosToWorldPos(c.Tile), damageTiers[c.ShapeIdx], ecsCont)
+		}
+	}
+}
+
+func spawnDamageNumber(pos utils.Vec2f, damage int, ecsCont *ecs.ECSContainer) {
+	ftTraComp := ecs.NewTransformComponent(pos, 1, 0)
+	ftFtComp := ecs.NewFloatingTextComponent(fmt.Sprintf("%d", damage), utils.Vec2f{}, 12, color.RGBA{R: 255, G: 0, B: 255, A: 255})
+	ftVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{X: 0, Y: -1}, 1, 1)
+	ftTimerComp, err := ecs.NewTimerComponent(1000, 1, timerfuncs.TimerFunc_Selfdestruct)
+	if err != nil {
+		log.Fatal("error creating floating text timer component: ", err)
+	}
+	if _, err := ecsCont.AddNewEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp); err != nil {
+		log.Printf("Error spawning damage number at %v: %v\n", pos, err)
 	}
 }

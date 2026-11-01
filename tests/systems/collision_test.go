@@ -180,7 +180,7 @@ func TestEntitiesWithHurtboxesAndHitboxesDamageEachOther(t *testing.T) {
 	hurtboxes, hitboxes := ecs.Colliders(&x.HurtboxColliders), ecs.Colliders(&x.HitboxColliders)
 	pairs := collisionsystem.GetDirectedAABBCollisions(hurtboxes, hitboxes, []common.EntityPair{{A: fighters[0], B: fighters[1]}}, x)
 	cols := collisionsystem.GetCollisions(hurtboxes, hitboxes, pairs, x)
-	if _, err := damagesystem.DealContactDamage(cols, x); err != nil {
+	if _, err := damagesystem.DealContactDamage(cols, nil, noTiles{}, x); err != nil {
 		t.Fatal(err)
 	}
 

@@ -29,7 +29,7 @@ func TestSingleTickContactDamageHitsEveryTargetOnceThenDisablesItsHurtbox(t *tes
 	for _, e := range targets {
 		collisions = append(collisions, common.Collision{A: explosion, B: e, Vector: utils.Vec2f{X: 1}})
 	}
-	if _, err := damagesystem.DealContactDamage(collisions, x); err != nil {
+	if _, err := damagesystem.DealContactDamage(collisions, nil, noTiles{}, x); err != nil {
 		t.Fatal(err)
 	}
 
@@ -48,3 +48,7 @@ func TestSingleTickContactDamageHitsEveryTargetOnceThenDisablesItsHurtbox(t *tes
 		t.Error("the explosion's hurtbox is still enabled after its single tick")
 	}
 }
+
+type noTiles struct{}
+
+func (noTiles) DamageTile(utils.Vec2i, int) bool { return false }

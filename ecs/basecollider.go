@@ -17,6 +17,7 @@ const (
 	Layer_EnemyProjectile    = LayerMask(0b0001000000000000)
 	Layer_Terrain            = LayerMask(0b0000100000000000)
 	Layer_Platform           = LayerMask(0b0000010000000000)
+	Layer_Ground = LayerMask(0b0000001000000000)
 )
 
 type baseCollider struct {

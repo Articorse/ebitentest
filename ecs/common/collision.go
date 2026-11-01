@@ -21,4 +21,5 @@ type TileCollision struct {
 	Tile     utils.Vec2i
 	Vector   utils.Vec2f
 	ShapeIdx int
+	Impassable bool
 }

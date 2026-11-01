@@ -312,16 +312,15 @@ func (g *game) Update() error {
 
 	damagesystem.Tick(g.ecs)
 
-	_, err = damagesystem.DealContactDamage(damageCollisions, g.ecs)
-	if err != nil {
-		log.Println("error during dealing contact damage: ", err)
-	}
-
 	terrainDamageCollisions, err := g.chunkContainer.GetHurtboxTileCollisions(g.ecs)
 	if err != nil {
 		log.Println("error during terrain damage collision checking: ", err)
 	}
-	damagesystem.DealTerrainContactDamage(terrainDamageCollisions, g.ecs)
+
+	_, err = damagesystem.DealContactDamage(damageCollisions, terrainDamageCollisions, g.chunkContainer, g.ecs)
+	if err != nil {
+		log.Println("error during dealing contact damage: ", err)
+	}
 
 	err = platformsystem.Tick(g.ecs.TickState.CollisionGrid, g.ecs)
 	if err != nil {

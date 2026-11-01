@@ -220,30 +220,57 @@ func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECSContainer) error {
 		ft, _ := ecs.FloatingTexts.Get(e)
 		offset, textValue, color, size := ft.Offset(), ft.Text(), ft.Color(), ft.Size()
 
-		// FIXME: Move this into a map
-		fontBytes, _ := os.ReadFile("/usr/share/fonts/noto/NotoSansMono-Black.ttf")
-
-		source, err := text.NewGoTextFaceSource(bytes.NewReader(fontBytes))
+		face, err := floatingTextFace(size)
 		if err != nil {
-			return fmt.Errorf("error creating text face source for floating text entity %d: %v", e, err)
-		}
-
-		face := text.GoTextFace{
-			Source: source,
-			Size:   size,
+			return fmt.Errorf("error getting font for floating text entity %d: %v", e, err)
 		}
 
 		op := &text.DrawOptions{}
 		tX := ecsPos.X + offset.X - ecs.Camera.X
 		tY := ecsPos.Y + offset.Y - ecs.Camera.Y
-		w, h := text.Measure(textValue, &face, 0)
+		w, h := text.Measure(textValue, face, 0)
 		op.GeoM.Translate(tX-w/2, tY-h/2)
 		op.ColorScale.ScaleWithColor(color)
 
-		text.Draw(screen, textValue, &face, op)
+		text.Draw(screen, textValue, face, op)
 	}
 
 	return nil
+}
+
+const floatingTextFontPath = "/usr/share/fonts/noto/NotoSansMono-Black.ttf"
+
+// Loaded once: parsing the font is slow, and drawn glyphs are only reused within the same source
+var floatingTextFont struct {
+	loaded bool
+	source *text.GoTextFaceSource
+	err    error
+	faces  map[float64]*text.GoTextFace
+}
+
+func floatingTextFace(size float64) (*text.GoTextFace, error) {
+	f := &floatingTextFont
+	if !f.loaded {
+		f.loaded = true
+		f.faces = make(map[float64]*text.GoTextFace)
+
+		fontBytes, err := os.ReadFile(floatingTextFontPath)
+		if err != nil {
+			f.err = fmt.Errorf("error reading font: %w", err)
+		} else if f.source, err = text.NewGoTextFaceSource(bytes.NewReader(fontBytes)); err != nil {
+			f.err = fmt.Errorf("error parsing font: %w", err)
+		}
+	}
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	face, ok := f.faces[size]
+	if !ok {
+		face = &text.GoTextFace{Source: f.source, Size: size}
+		f.faces[size] = face
+	}
+	return face, nil
 }
 
 func getNeighborBatch(

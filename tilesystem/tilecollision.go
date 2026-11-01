@@ -12,8 +12,9 @@ import (
 )
 
 type EntityTiles struct {
-	E     common.EntityId
-	Tiles []utils.Vec2i
+	E          common.EntityId
+	Tiles      []utils.Vec2i
+	Impassable []bool
 }
 
 // Pushes each entity out by the sum of its tile collisions, which are grouped by entity
@@ -63,7 +64,7 @@ func GetCollisions(
 			continue
 		}
 
-		for _, t := range et.Tiles {
+		for i, t := range et.Tiles {
 			tShape, err := shapes.NewRectangleShape(
 				data.TileSize,
 				data.TileSize,
@@ -79,7 +80,13 @@ func GetCollisions(
 
 			for shapeIdx, eShape := range col.Shapes() {
 				if v := collisionsystem.ShapeCollision(-1, et.E, tShape, eShape, ecsContainer); !v.IsZero() {
-					collisions = append(collisions, common.TileCollision{E: et.E, Tile: t, Vector: v, ShapeIdx: shapeIdx})
+					collisions = append(collisions, common.TileCollision{
+						E:          et.E,
+						Tile:       t,
+						Vector:     v,
+						ShapeIdx:   shapeIdx,
+						Impassable: et.Impassable[i],
+					})
 					break
 				}
 			}
@@ -109,7 +116,7 @@ func GetAABBCollisions(
 		}
 
 		collided := EntityTiles{E: et.E}
-		for _, t := range et.Tiles {
+		for i, t := range et.Tiles {
 			tAABB := [2]utils.Vec2f{
 				{X: (float64(t.X) - 0.5) * data.TileSize, Y: (float64(t.Y) - 0.5) * data.TileSize},
 				{X: (float64(t.X) + 0.5) * data.TileSize, Y: (float64(t.Y) + 0.5) * data.TileSize},
@@ -117,6 +124,7 @@ func GetAABBCollisions(
 
 			if utils.DetectAABBCollision(eAABB, tAABB) {
 				collided.Tiles = append(collided.Tiles, t)
+				collided.Impassable = append(collided.Impassable, et.Impassable[i])
 			}
 		}
 
@@ -128,7 +136,8 @@ func GetAABBCollisions(
 	return collisions, nil
 }
 
-// Unloaded tiles count as impassable, so that nothing walks out of the simulated area
+// A tile is on Layer_Terrain if it's impassable and on Layer_Ground otherwise, and collides with colliders whose mask
+// has its layer. Unloaded tiles count as impassable, so that nothing walks out of the simulated area.
 func (cc *ChunkContainer) GetTilesWithPotentialPhysicsCollisions(ecsContainer *ecs.ECSContainer) ([]EntityTiles, error) {
 	return cc.getTilesWithPotentialCollisions(ecs.Colliders(&ecsContainer.PhysicsColliders), true, ecsContainer, func(e common.EntityId) bool {
 		pc, _ := ecsContainer.PhysicsColliders.Get(e)
@@ -136,7 +145,7 @@ func (cc *ChunkContainer) GetTilesWithPotentialPhysicsCollisions(ecsContainer *e
 	})
 }
 
-// Only tiles that are really impassable count, so that a projectile leaving the simulated area doesn't hit its edge
+// Unloaded tiles don't count, so that a projectile leaving the simulated area doesn't hit its edge
 func (cc *ChunkContainer) GetHurtboxTileCollisions(ecsContainer *ecs.ECSContainer) ([]common.TileCollision, error) {
 	hurtboxes := ecs.Colliders(&ecsContainer.HurtboxColliders)
 
@@ -161,7 +170,8 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 ) (potentialCollisions []EntityTiles, err error) {
 	for _, e := range colliders.GetEntities() {
 		col, _ := colliders.Collider(e)
-		if !col.Enabled() || col.Mask()&ecs.Layer_Terrain == 0 || (include != nil && !include(e)) {
+		mask := col.Mask()
+		if !col.Enabled() || mask&(ecs.Layer_Terrain|ecs.Layer_Ground) == 0 || (include != nil && !include(e)) {
 			continue
 		}
 
@@ -171,7 +181,18 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 			continue
 		}
 
-		tiles := []utils.Vec2i{}
+		et := EntityTiles{E: e}
+		add := func(t utils.Vec2i, impassable bool) {
+			layer := ecs.Layer_Ground
+			if impassable {
+				layer = ecs.Layer_Terrain
+			}
+			if mask&layer != 0 {
+				et.Tiles = append(et.Tiles, t)
+				et.Impassable = append(et.Impassable, impassable)
+			}
+		}
+
 		minTileX := int(math.Floor(worldAABB[0].X/data.TileSize)) - 1
 		minTileY := int(math.Floor(worldAABB[0].Y/data.TileSize)) - 1
 		maxTileX := int(math.Floor(worldAABB[1].X/data.TileSize)) + 1
@@ -184,7 +205,7 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 				chunk, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 				if !ok {
 					if unloadedImpassable {
-						tiles = append(tiles, t)
+						add(t, true)
 					}
 					continue
 				}
@@ -196,14 +217,12 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 					continue
 				}
 
-				if !tileDef.passable {
-					tiles = append(tiles, t)
-				}
+				add(t, !tileDef.passable)
 			}
 		}
 
-		if len(tiles) > 0 {
-			potentialCollisions = append(potentialCollisions, EntityTiles{E: e, Tiles: tiles})
+		if len(et.Tiles) > 0 {
+			potentialCollisions = append(potentialCollisions, et)
 		}
 	}
 

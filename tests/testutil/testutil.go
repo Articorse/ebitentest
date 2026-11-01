@@ -137,7 +137,7 @@ func TempWorld(t *testing.T) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	if err := os.CopyFS(filepath.Join(dir, "assets"), os.DirFS(filepath.Join(repoRoot(), "assets"))); err != nil {
+	if err := os.CopyFS(filepath.Join(dir, "assets"), os.DirFS(filepath.Join(RepoRoot(), "assets"))); err != nil {
 		t.Fatal(err)
 	}
 
@@ -145,7 +145,7 @@ func TempWorld(t *testing.T) string {
 	return dir
 }
 
-func repoRoot() string {
+func RepoRoot() string {
 	_, file, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(file), "..", "..")
 }

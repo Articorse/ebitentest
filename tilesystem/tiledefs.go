@@ -11,10 +11,12 @@ import (
 )
 
 type tileDef struct {
-	image     *ebiten.Image
-	maxHealth int
-	passable  bool
-	opaque    bool
+	image *ebiten.Image
+	// Not positive for tiles that can't be damaged
+	maxHealth     int
+	destroyedInto data.TileEnum
+	passable      bool
+	opaque        bool
 }
 
 type promotedTile struct {
@@ -25,8 +27,10 @@ type tileDefDTO struct {
 	Id        uint16 `json:"id"`
 	ImagePath string `json:"imagePath"`
 	MaxHealth int    `json:"maxHealth"`
-	Passable  bool   `json:"passable"`
-	Opaque    bool   `json:"opaque"`
+	// Required for tiles that can be damaged
+	DestroyedInto *uint16 `json:"destroyedInto"`
+	Passable      bool    `json:"passable"`
+	Opaque        bool    `json:"opaque"`
 }
 
 func dtosToDefsMap(dtos []tileDefDTO) (map[data.TileEnum]tileDef, error) {
@@ -41,11 +45,26 @@ func dtosToDefsMap(dtos []tileDefDTO) (map[data.TileEnum]tileDef, error) {
 			}
 		}
 
-		tileDefs[data.TileEnum(dto.Id)] = tileDef{
+		def := tileDef{
 			image:     img,
 			maxHealth: dto.MaxHealth,
 			passable:  dto.Passable,
 			opaque:    dto.Opaque,
+		}
+
+		if def.maxHealth > 0 {
+			if dto.DestroyedInto == nil {
+				return nil, fmt.Errorf("tile %d can be damaged, but doesn't say what it's destroyed into", dto.Id)
+			}
+			def.destroyedInto = data.TileEnum(*dto.DestroyedInto)
+		}
+
+		tileDefs[data.TileEnum(dto.Id)] = def
+	}
+
+	for id, def := range tileDefs {
+		if _, ok := tileDefs[def.destroyedInto]; def.maxHealth > 0 && !ok {
+			return nil, fmt.Errorf("tile %d is destroyed into tile %d, which isn't defined", id, def.destroyedInto)
 		}
 	}
 
