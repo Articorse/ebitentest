@@ -28,6 +28,8 @@ type ECSContainer struct {
 	TickIdx   uint64
 	TickState common.TickState
 
+	isSimulatedPos func(worldPos utils.Vec2f) bool
+
 	Inputs            Storage[input]
 	Hierarchies       Storage[hierarchy]
 	Transforms        Storage[transform]
@@ -214,14 +216,47 @@ func (x *ECSContainer) AddEmptyEntity() common.EntityId {
 	return x.nextEntity - 1
 }
 
-func (x *ECSContainer) AddNewEntity(comps ...Component) common.EntityId {
+func (x *ECSContainer) SetSimulatedPosCheck(isSimulatedPos func(worldPos utils.Vec2f) bool) {
+	x.isSimulatedPos = isSimulatedPos
+}
+
+func (x *ECSContainer) AddNewEntity(comps ...Component) (common.EntityId, error) {
+	if err := x.checkSpawnPos(comps); err != nil {
+		return -1, err
+	}
+
 	e := x.AddEmptyEntity()
 
 	for _, comp := range comps {
 		x.AddComponent(e, comp)
 	}
 
-	return e
+	return e, nil
+}
+
+// An entity spawned outside the simulated area would never be simulated, only stored or despawned at the end of
+// the tick. Chunkloaders are exempt, since they decide what is simulated.
+func (x *ECSContainer) checkSpawnPos(comps []Component) error {
+	if x.isSimulatedPos == nil {
+		return nil
+	}
+
+	var t *transform
+	for _, comp := range comps {
+		switch c := comp.(type) {
+		case *chunkLoader:
+			return nil
+		case *transform:
+			t = c
+		}
+	}
+
+	// A new entity has no parent yet, so its local position is its world position
+	if t != nil && !x.isSimulatedPos(t.pos) {
+		return fmt.Errorf("cannot spawn entity at %v, outside the active chunks", t.pos)
+	}
+
+	return nil
 }
 
 func (x *ECSContainer) AddEntityWithId(eId common.EntityId, comps ...Component) error {

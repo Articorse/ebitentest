@@ -58,6 +58,7 @@ type game struct {
 	chunkContainer *tilesystem.ChunkContainer
 	loading        bool
 	justLoaded     bool
+	newWorld       bool
 
 	assetmanager *assetmanager.AssetManager
 
@@ -134,6 +135,10 @@ func (g *game) Update() error {
 	// The first tick activates the chunks loaded during loading, so the whole world can be checked only now
 	if g.justLoaded {
 		g.justLoaded = false
+		if g.newWorld {
+			g.newWorld = false
+			g.spawnStartingEquipment()
+		}
 		g.logConsistency("after loading")
 	}
 
@@ -595,6 +600,7 @@ func main() {
 	}
 
 	g.ecs.TickState = *common.NewTickState()
+	g.ecs.SetSimulatedPosCheck(g.chunkContainer.IsActiveWorldPos)
 
 	header, worldExists, err := world.Load(g.ecs)
 	if err != nil {
@@ -612,6 +618,7 @@ func main() {
 			log.Fatal("error resetting world: ", err)
 		}
 		g.spawnPlayer()
+		g.newWorld = true
 	}
 
 	g.loading = true
@@ -692,7 +699,7 @@ func (g *game) spawnPlayer() {
 	}
 	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
 	pCLComp := ecs.NewChunkLoaderComponent(3)
-	g.playerEntity = g.ecs.AddNewEntity(
+	g.playerEntity, err = g.ecs.AddNewEntity(
 		pParComp,
 		pTraComp,
 		pVelComp,
@@ -705,6 +712,9 @@ func (g *game) spawnPlayer() {
 		pCLComp,
 		ecs.NewPersistentComponent(),
 	)
+	if err != nil {
+		log.Fatal("error spawning player: ", err)
+	}
 
 	// // Gun
 	// gunParComp := ecs.NewParentComponent()
@@ -801,6 +811,10 @@ func (g *game) spawnPlayer() {
 	// 	log.Fatal("error attaching gun to player: ", err)
 	// }
 
+}
+
+// Spawning outside the active chunks is refused, so this waits until the chunks around the player are active
+func (g *game) spawnStartingEquipment() {
 	// Bazooka
 	bazookaParComp := ecs.NewHierarchyComponent()
 	bazookaTraComp := ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0)
@@ -905,7 +919,7 @@ func (g *game) spawnPlayer() {
 	}
 	bazookaEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, bazookaAbis)
 
-	bazooka := g.ecs.AddNewEntity(
+	bazooka, err := g.ecs.AddNewEntity(
 		bazookaParComp,
 		bazookaTraComp,
 		bazookaVelComp,
@@ -916,6 +930,9 @@ func (g *game) spawnPlayer() {
 		bazookaEquipmentComp,
 		ecs.NewPersistentComponent(),
 	)
+	if err != nil {
+		log.Fatal("error spawning bazooka: ", err)
+	}
 
 	pEquipperComp := ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{
 		ecs.Equip_MainHand: bazooka,

@@ -6,6 +6,7 @@ import (
 	"ebittest/utils"
 	"fmt"
 	"math"
+	"slices"
 )
 
 type spawnerManager struct{}
@@ -44,29 +45,22 @@ func (*spawnerManager) Spawn(
 		return -1, fmt.Errorf("error getting components to spawn for spawner entity %d: %v", spawnerEntity, err)
 	}
 
-	newEntity := ecsContainer.AddNewEntity(
-		comps...,
-	)
-
 	// If there is no Transform, then both of these are zero, which is fine if spawning based on camera or other entity
 	worldPos, _ := tm.GetWorldPos(spawnerEntity, ecsContainer)
 	worldRot, _ := tm.GetWorldRotation(spawnerEntity, ecsContainer)
 
 	spawnerOffset, err := sm.GetOffset(spawnerEntity, ecsContainer)
 	if err != nil {
-		ecsContainer.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error getting offset of spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	sType, err := sm.GetSpawnerType(spawnerEntity, ecsContainer)
 	if err != nil {
-		ecsContainer.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error getting spawner type of spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	shape, err := sm.GetShape(spawnerEntity, ecsContainer)
 	if err != nil {
-		ecsContainer.ScheduleRemoveEntity(newEntity)
 		return -1, fmt.Errorf("error getting shape of spawner entity %d: %v", spawnerEntity, err)
 	}
 
@@ -88,16 +82,24 @@ func (*spawnerManager) Spawn(
 		finalOffset = shape.GetRandomPointAroundShape(ecsContainer.Rng).Add(worldPos).Add(spawnerOffset)
 	}
 
-	err = tm.SetWorldPos(newEntity, worldPos.Add(finalOffset), ecsContainer)
-	if err != nil {
-		ecsContainer.ScheduleRemoveEntity(newEntity)
-		return -1, fmt.Errorf("error setting world position of new entity %d: %v", newEntity, err)
+	// Placed before spawning, since the spawn position decides whether spawning is allowed.
+	// The spawner's components are shared by every spawn, so its transform is replaced rather than modified.
+	comps = slices.Clone(comps)
+	tIdx := slices.IndexFunc(comps, func(c Component) bool {
+		_, ok := c.(*transform)
+		return ok
+	})
+	if tIdx < 0 {
+		return -1, fmt.Errorf("components of spawner entity %d have no transform", spawnerEntity)
 	}
+	t := comps[tIdx].(*transform).Copy()
+	t.pos = worldPos.Add(finalOffset)
+	t.rotation = worldRot
+	comps[tIdx] = &t
 
-	err = tm.SetWorldRotation(newEntity, worldRot, ecsContainer)
+	newEntity, err := ecsContainer.AddNewEntity(comps...)
 	if err != nil {
-		ecsContainer.ScheduleRemoveEntity(newEntity)
-		return -1, fmt.Errorf("error setting world rotation of new entity %d: %v", newEntity, err)
+		return -1, fmt.Errorf("error spawning entity of spawner entity %d: %v", spawnerEntity, err)
 	}
 
 	return newEntity, nil

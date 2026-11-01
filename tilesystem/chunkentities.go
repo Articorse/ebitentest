@@ -31,3 +31,8 @@ func (cc *ChunkContainer) getEntityIdsInChunks(ecsCont *ecs.ECSContainer) (map[u
 
 	return eIdsInChunks, nil
 }
+
+func (cc *ChunkContainer) IsActiveWorldPos(worldPos utils.Vec2f) bool {
+	_, ok := cc.chunks[utils.WorldPosToChunkGridPos(worldPos)]
+	return ok
+}

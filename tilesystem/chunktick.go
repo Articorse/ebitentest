@@ -193,6 +193,8 @@ func (cc *ChunkContainer) resolveEntitiesLeavingSimulation(deactivating []utils.
 				for _, e := range slices.Sorted(maps.Keys(members)) {
 					cc.queueEntity(pos, e, members[e])
 				}
+			} else {
+				log.Printf("Despawning entity %d, since it left the active chunks", root)
 			}
 
 			ecsCont.ScheduleRemoveEntity(root)
