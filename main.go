@@ -40,10 +40,9 @@ var (
 	max_pos_diff                     = 0.0
 	resolvedPhysicsCollisions uint64 = 0
 
-	im     = g.ecs.InputManager
-	pcm    = g.ecs.PhysicsColliderManager
-	hurtcm = g.ecs.HurtboxColliderManager
-	hitcm  = g.ecs.HitboxColliderManager
+	physicsColliders = ecs.Colliders(&g.ecs.PhysicsColliders)
+	hurtboxColliders = ecs.Colliders(&g.ecs.HurtboxColliders)
+	hitboxColliders  = ecs.Colliders(&g.ecs.HitboxColliders)
 
 	gamepadFound = false
 )
@@ -133,20 +132,10 @@ func (g *game) Update() error {
 	}
 
 	tickInputs := make(map[common.EntityId]ecs.InputState)
-	for _, eid := range g.ecs.Inputs.GetEntities() {
-		inputType, err := im.GetInputType(eid, g.ecs)
-		if err != nil {
-			log.Printf("error getting input type for entity %d: %v\n", eid, err)
-			continue
-		}
+	for eid, in := range ecs.Query1(&g.ecs.Inputs) {
+		inputParams := in.Params()
 
-		inputParams, err := im.GetParams(eid, g.ecs)
-		if err != nil {
-			log.Printf("error getting input params for entity %d: %v\n", eid, err)
-			continue
-		}
-
-		inputSourceFunc, err := im.GetInputSourceFunc(inputType, g.ecs)
+		inputSourceFunc, err := g.ecs.InputSourceFunc(in.Type())
 		if err != nil {
 			log.Printf("error getting input source func for entity %d: %v\n", eid, err)
 			continue
@@ -283,7 +272,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	physicsAABBCollisions, err := collisionsystem.GetAABBCollisions(pcm, pcm, proximateEntities, g.ecs)
+	physicsAABBCollisions, err := collisionsystem.GetAABBCollisions(physicsColliders, physicsColliders, proximateEntities, g.ecs)
 	if err != nil {
 		log.Println("error during AABB collision checking: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
@@ -292,7 +281,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	physicsCollisions, err := collisionsystem.GetCollisions(pcm, pcm, physicsAABBCollisions, g.ecs)
+	physicsCollisions, err := collisionsystem.GetCollisions(physicsColliders, physicsColliders, physicsAABBCollisions, g.ecs)
 	if err != nil {
 		log.Println("error during physics collision checking: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
@@ -331,7 +320,7 @@ func (g *game) Update() error {
 		log.Println("ability system tick error: ", err)
 	}
 
-	damageAABBCollisions, err := collisionsystem.GetMirrorAABBCollisions(hurtcm, hitcm, proximateEntities, g.ecs)
+	damageAABBCollisions, err := collisionsystem.GetMirrorAABBCollisions(hurtboxColliders, hitboxColliders, proximateEntities, g.ecs)
 	if err != nil {
 		log.Println("error during AABB damage collision checking: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
@@ -340,7 +329,7 @@ func (g *game) Update() error {
 		}
 	}
 
-	damageCollisions, err := collisionsystem.GetCollisions(hurtcm, hitcm, damageAABBCollisions, g.ecs)
+	damageCollisions, err := collisionsystem.GetCollisions(hurtboxColliders, hitboxColliders, damageAABBCollisions, g.ecs)
 	if err != nil {
 		log.Println("error during damage collision checking: ", err, "removing entity")
 		var invalidComponentsErr *common.ErrorMissingComponentDependency
@@ -471,7 +460,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 	}
 
 	if DEBUG_LEVEL == 2 {
-		if err := collisionsystem.DrawColliders(pcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
+		if err := collisionsystem.DrawColliders(physicsColliders, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
 			log.Println("error while drawing physics colliders: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
@@ -479,7 +468,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			}
 		}
 
-		// if err := collisionsystem.DrawColliders(hurtcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
+		// if err := collisionsystem.DrawColliders(hurtboxColliders, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
 		// 	log.Println("error while drawing physics colliders: ", err, "removing entity")
 		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
 		// 	if errors.As(err, &invalidComponentsErr) {
@@ -487,7 +476,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 		// 	}
 		// }
 
-		// if err := collisionsystem.DrawColliders(hitcm, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
+		// if err := collisionsystem.DrawColliders(hitboxColliders, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
 		// 	log.Println("error while drawing physics colliders: ", err, "removing entity")
 		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
 		// 	if errors.As(err, &invalidComponentsErr) {
@@ -495,7 +484,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 		// 	}
 		// }
 
-		if err := collisionsystem.DrawAABBs(pcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
+		if err := collisionsystem.DrawAABBs(physicsColliders, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
 			log.Println("error while drawing AABBs: ", err, "removing entity")
 			var invalidComponentsErr *common.ErrorMissingComponentDependency
 			if errors.As(err, &invalidComponentsErr) {
@@ -503,7 +492,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			}
 		}
 
-		// if err := collisionsystem.DrawAABBs(hurtcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
+		// if err := collisionsystem.DrawAABBs(hurtboxColliders, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
 		// 	log.Println("error while drawing AABBs: ", err, "removing entity")
 		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
 		// 	if errors.As(err, &invalidComponentsErr) {
@@ -511,7 +500,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 		// 	}
 		// }
 		//
-		// if err := collisionsystem.DrawAABBs(hitcm, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
+		// if err := collisionsystem.DrawAABBs(hitboxColliders, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
 		// 	log.Println("error while drawing AABBs: ", err, "removing entity")
 		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
 		// 	if errors.As(err, &invalidComponentsErr) {

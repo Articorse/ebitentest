@@ -10,25 +10,9 @@ import (
 	"log"
 )
 
-func Tick(ecs *ecs.ECSContainer) {
-	hpm := ecs.HitpointsManager
-
-	for _, e := range ecs.Hitpoints.GetEntities() {
-		invulCur, err := hpm.GetInvulCurrent(e, ecs)
-		if err != nil {
-			log.Printf("Error getting invulnerability current for entity %d: %v\n", e, err)
-			continue
-		}
-
-		if invulCur == 0 {
-			continue
-		}
-
-		err = hpm.TickInvul(e, ecs)
-		if err != nil {
-			log.Printf("Error ticking invulnerability for entity %d: %v\n", e, err)
-			continue
-		}
+func Tick(ecsCont *ecs.ECSContainer) {
+	for _, hp := range ecs.Query1(&ecsCont.Hitpoints) {
+		hp.TickInvul()
 	}
 }
 
@@ -36,38 +20,28 @@ func DealContactDamage(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	ecsCont *ecs.ECSContainer,
 ) (entitiesKilled uint64, err error) {
-	cdm := ecsCont.ContactDamageManager
-	hpm := ecsCont.HitpointsManager
-
 	for dmgE, cols := range collisions {
 		disableColliderAfter := []common.EntityId{}
 
+		cd, ok := ecsCont.ContactDamages.Get(dmgE)
+		if !ok {
+			log.Printf("Error dealing contact damage of entity %d: it has no contact damage\n", dmgE)
+			continue
+		}
+
 		for hitE, c := range cols {
-			isInvul, err := hpm.IsInvul(hitE, ecsCont)
-			if err != nil {
-				log.Printf("Error checking invulnerability for entity %d: %v\n", hitE, err)
+			hp, ok := ecsCont.Hitpoints.Get(hitE)
+			if !ok {
+				log.Printf("Error dealing contact damage to entity %d: it has no hitpoints\n", hitE)
 				continue
 			}
 
-			if isInvul {
+			if hp.IsInvul() || hitE == dmgE {
 				continue
 			}
 
-			damageTiers, err := cdm.GetDamageTiers(dmgE, ecsCont)
-			if err != nil {
-				log.Printf("Error getting damage tiers for entity %d: %v\n", dmgE, err)
-				continue
-			}
-
-			if hitE == dmgE {
-				continue
-			}
-
-			knockback, err := cdm.GetKnockback(dmgE, ecsCont)
-			if err != nil {
-				log.Printf("Error getting knockback for entity %d: %v\n", dmgE, err)
-				continue
-			}
+			damageTiers := cd.DamageTiers()
+			knockback := cd.Knockback()
 
 			var dmgVelVector utils.Vec2f
 			if ecsCont.Velocities.HasComponent(dmgE) {
@@ -103,7 +77,7 @@ func DealContactDamage(
 				continue
 			}
 
-			dead, err := hpm.TakeDamage(hitE, damageTiers[shapeIdx], ecsCont)
+			dead, err := ecsCont.Damage(hitE, damageTiers[shapeIdx])
 			if err != nil {
 				log.Printf("Error applying damage to entity %d: %v\n", hitE, err)
 				continue
@@ -126,23 +100,11 @@ func DealContactDamage(
 				log.Printf("Error spawning floating text for entity %d: %v\n", hitE, err)
 			}
 
-			dieOnContact, err := cdm.GetDieOnContact(dmgE, ecsCont)
-			if err != nil {
-				log.Printf("Error getting die on contact for entity %d: %v\n", dmgE, err)
-				continue
-			}
-
-			if dieOnContact {
+			if cd.DieOnContact() {
 				ecsCont.ScheduleKillEntity(dmgE)
 			}
 
-			singleTick, err := cdm.GetSingleTick(dmgE, ecsCont)
-			if err != nil {
-				log.Printf("Error getting single tick for entity %d: %v\n", dmgE, err)
-				continue
-			}
-
-			if singleTick {
+			if cd.SingleTick() {
 				disableColliderAfter = append(disableColliderAfter, hitE)
 			}
 
@@ -153,11 +115,12 @@ func DealContactDamage(
 		}
 
 		for _, e := range disableColliderAfter {
-			err := ecsCont.HurtboxColliderManager.SetEnabled(e, false, ecsCont)
-			if err != nil {
-				log.Printf("Error disabling hurtbox collider for entity %d: %v\n", e, err)
+			hurtbox, ok := ecsCont.HurtboxColliders.Get(e)
+			if !ok {
+				log.Printf("Error disabling hurtbox collider for entity %d: it has none\n", e)
 				continue
 			}
+			hurtbox.SetEnabled(false)
 		}
 	}
 

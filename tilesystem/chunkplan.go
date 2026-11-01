@@ -20,24 +20,18 @@ type chunkPlan struct {
 }
 
 func buildChunkPlan(ecsCont *ecs.ECSContainer) (plan chunkPlan, err error) {
-	clm := ecsCont.ChunkLoaderManager
-
 	activate := make(map[utils.Vec2i]int)
 	plan.keepActive = make(map[utils.Vec2i]struct{})
 	prefetch := make(map[utils.Vec2i]int)
 
-	for _, eId := range ecsCont.ChunkLoaders.GetEntities() {
+	for eId, loader := range ecs.Query1(&ecsCont.ChunkLoaders) {
 		worldPos, ierr := ecsCont.WorldPos(eId)
 		if ierr != nil {
 			err = errors.Join(err, fmt.Errorf("error getting world position of entity %d: %v", eId, ierr))
 			continue
 		}
 
-		radius, ierr := clm.GetRadius(eId, ecsCont)
-		if ierr != nil {
-			err = errors.Join(err, fmt.Errorf("error getting radius of entity %d: %v", eId, ierr))
-			continue
-		}
+		radius := loader.Radius()
 
 		center := utils.WorldPosToChunkGridPos(worldPos)
 		outer := radius + data.ChunkPrefetchMargin

@@ -12,21 +12,15 @@ func ResolvePhysicsCollisions(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	ecsContainer *ecs.ECSContainer,
 ) (collisionsResolved uint64, err error) {
-	cm := ecsContainer.PhysicsColliderManager
-
 	for eA, cols := range collisions {
 		for eB, c := range cols {
-			aColType, err := cm.GetColliderType(eA, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider type for entity %d: %v\n", eA, err)
+			aCol, aOk := ecsContainer.PhysicsColliders.Get(eA)
+			bCol, bOk := ecsContainer.PhysicsColliders.Get(eB)
+			if !aOk || !bOk {
+				log.Printf("Error resolving collision of entities %d and %d: both need a physics collider\n", eA, eB)
 				continue
 			}
-
-			bColType, err := cm.GetColliderType(eB, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider type for entity %d: %v\n", eB, err)
-				continue
-			}
+			aColType, bColType := aCol.ColliderType(), bCol.ColliderType()
 
 			if aColType == ecs.Collider_Trigger || bColType == ecs.Collider_Trigger {
 				continue

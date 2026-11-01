@@ -39,33 +39,31 @@ func DodgeAbility(
 		return fmt.Errorf("dodge ability called with nil params")
 	}
 
-	am := ecsContainer.AnimationManager
-	hpm := ecsContainer.HitpointsManager
-	sm := ecsContainer.SpriteManager
+	anim, animOk := ecsContainer.Animations.Get(self)
+	hp, hpOk := ecsContainer.Hitpoints.Get(self)
+	spr, sprOk := ecsContainer.Sprites.Get(self)
+	if !animOk || !hpOk || !sprOk {
+		return fmt.Errorf("entity %d needs an animation, hitpoints and a sprite to dodge", self)
+	}
 
-	err := am.SetState(self, ecs.Anim_Jump, ecsContainer)
+	err := ecsContainer.SetAnimationState(self, ecs.Anim_Jump)
 	if err != nil {
 		return fmt.Errorf("error setting animation state of entity %d to jump: %v", self, err)
 	}
 
-	err = am.SetQueuedStateIfNone(self, ecs.Anim_Idle, ecsContainer)
+	err = anim.SetQueuedStateIfNone(ecs.Anim_Idle)
 	if err != nil {
 		return fmt.Errorf("error setting queued animation state of entity %d to idle: %v", self, err)
 	}
 
-	err = hpm.SetInvul(self, math.MaxInt, ecsContainer)
-	if err != nil {
-		return fmt.Errorf("error setting invulnerability of entity %d: %v", self, err)
-	}
+	hp.SetInvul(math.MaxInt)
 
-	err = sm.SetSpriteFlash(
-		self,
+	err = spr.SetFlash(
 		[]utils.RelativeColor{
 			{R: 10, G: 10, B: 10, A: 1},
 		},
 		[]int{1000},
 		math.MaxInt,
-		ecsContainer,
 	)
 	if err != nil {
 		return fmt.Errorf("error setting sprite flash of entity %d: %v", self, err)
@@ -92,18 +90,14 @@ func DodgeAbilityPost(
 	params ecs.AbilityParams,
 	ecsContainer *ecs.ECSContainer,
 ) error {
-	hpm := ecsContainer.HitpointsManager
-	sm := ecsContainer.SpriteManager
-
-	err := hpm.SetInvul(self, 0, ecsContainer)
-	if err != nil {
-		return fmt.Errorf("error setting invulnerability of entity %d to 0: %v", self, err)
+	hp, hpOk := ecsContainer.Hitpoints.Get(self)
+	spr, sprOk := ecsContainer.Sprites.Get(self)
+	if !hpOk || !sprOk {
+		return fmt.Errorf("entity %d needs hitpoints and a sprite to end its dodge", self)
 	}
 
-	err = sm.StopFlash(self, ecsContainer)
-	if err != nil {
-		return fmt.Errorf("error clearing sprite flash of entity %d: %v", self, err)
-	}
+	hp.SetInvul(0)
+	spr.StopFlash()
 
 	return nil
 }

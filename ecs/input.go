@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/utils"
+	"fmt"
 	"maps"
 	"math"
 
@@ -117,7 +118,7 @@ func (x InputKey) GetInput() float64 {
 	return 0
 }
 
-type input struct {
+type Input struct {
 	config        map[InputType]InputKey
 	inputType     InputTypeEnum
 	facingInput   FacingInputEnum
@@ -134,8 +135,70 @@ func newUnsetInputKey() InputKey {
 	}
 }
 
-func (x input) Copy() input {
-	return input{
+type FacingInputEnum uint8
+
+const (
+	Facing_None FacingInputEnum = iota
+	Facing_Mouse
+	Facing_Analog2
+)
+
+type InputState struct {
+	Analog1X, Analog1Y float64
+	Analog2X, Analog2Y float64
+	MainHandEqAbility1 float64
+	MainHandEqAbility2 float64
+	OffHandEqAbility1  float64
+	OffHandEqAbility2  float64
+	Ability1           float64
+	Ability2           float64
+	FacingDir          utils.Vec2f
+}
+
+func NewInputComponent(config map[InputType]InputKey, inputType InputTypeEnum, params InputParams, facingInput FacingInputEnum) *Input {
+	return &Input{config: config, inputType: inputType, params: params, facingInput: facingInput}
+}
+
+func (x *Input) Value(inputType InputType) float64 {
+	inKey, ok := x.config[inputType]
+	if !ok {
+		return 0
+	}
+
+	return inKey.GetInput()
+}
+
+func (x *Input) Params() InputParams {
+	return x.params
+}
+
+func (x *Input) Type() InputTypeEnum {
+	return x.inputType
+}
+
+func (x *Input) FacingInput() FacingInputEnum {
+	return x.facingInput
+}
+
+func (x *Input) LastFacingDir() utils.Vec2f {
+	return x.lastFacingDir
+}
+
+func (x *Input) SetLastFacingDir(facingDir utils.Vec2f) {
+	x.lastFacingDir = facingDir
+}
+
+func (x *ECSContainer) InputSourceFunc(inputType InputTypeEnum) (InputSourceFunc, error) {
+	inputSourceFunc, ok := x.inputSourceFuncs[inputType]
+	if !ok {
+		return nil, fmt.Errorf("input source function for input type %v not found", inputType)
+	}
+
+	return inputSourceFunc, nil
+}
+
+func (x Input) Copy() Input {
+	return Input{
 		config:        x.config,
 		inputType:     x.inputType,
 		facingInput:   x.facingInput,
@@ -144,7 +207,7 @@ func (x input) Copy() input {
 	}
 }
 
-func (x input) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+func (x Input) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.Inputs.addComponent(e, x.Copy())
 }
 
@@ -156,7 +219,7 @@ type inputDto struct {
 	LastFacingDir utils.Vec2f
 }
 
-func (x input) toDto() (ComponentDto, error) {
+func (x Input) toDto() (ComponentDto, error) {
 	return &inputDto{
 		Config:        maps.Clone(x.config),
 		InputType:     x.inputType,
@@ -174,7 +237,7 @@ func copyInputParams(params InputParams) InputParams {
 }
 
 func (x *inputDto) toComponent() (Component, error) {
-	return &input{
+	return &Input{
 		config:        x.Config,
 		inputType:     x.InputType,
 		facingInput:   x.FacingInput,

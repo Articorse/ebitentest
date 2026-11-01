@@ -52,7 +52,7 @@ func DrawCollisions(
 }
 
 func DrawColliders(
-	colManager ecs.IColliderManager,
+	colliders ecs.ColliderSet,
 	baseColor color.RGBA,
 	collidedColor color.RGBA,
 	screen *ebiten.Image,
@@ -60,7 +60,8 @@ func DrawColliders(
 	collisions map[common.EntityId]map[common.EntityId]common.Collision,
 	ecsContainer *ecs.ECSContainer,
 ) error {
-	for _, e := range colManager.EntityIds(ecsContainer) {
+	for _, e := range colliders.GetEntities() {
+		col, _ := colliders.Collider(e)
 
 		worldPos, err := ecsContainer.WorldPos(e)
 		if err != nil {
@@ -93,13 +94,7 @@ func DrawColliders(
 			}
 		}
 
-		colShapes, err := colManager.GetShapes(e, ecsContainer)
-		if err != nil {
-			log.Printf("Error getting collider shapes for entity %d: %v\n", e, err)
-			continue
-		}
-
-		for _, shape := range colShapes {
+		for _, shape := range col.Shapes() {
 			switch h := shape.(type) {
 			case *shapes.RectangleShape:
 				verts := []utils.Vec2f{
@@ -156,7 +151,7 @@ func DrawColliders(
 }
 
 func DrawAABBs(
-	colManager ecs.IColliderManager,
+	colliders ecs.ColliderSet,
 	baseColor color.RGBA,
 	collidedColor color.RGBA,
 	screen *ebiten.Image,
@@ -164,7 +159,8 @@ func DrawAABBs(
 	aabbcollisions map[common.EntityId][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) error {
-	for _, e := range colManager.EntityIds(ecsContainer) {
+	for _, e := range colliders.GetEntities() {
+		col, _ := colliders.Collider(e)
 
 		worldPos, err := ecsContainer.WorldPos(e)
 		if err != nil {
@@ -202,7 +198,7 @@ func DrawAABBs(
 			lineColor = collidedColor
 		}
 
-		aabb, err := colManager.GetWorldPaddedAABB(e, ecsContainer)
+		aabb, err := ecsContainer.WorldAABB(e, col.LocalPaddedAABB())
 		if err != nil {
 			log.Printf("Error getting AABB for entity %d: %v\n", e, err)
 			continue

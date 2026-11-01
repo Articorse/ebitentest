@@ -7,17 +7,24 @@ import (
 	"fmt"
 )
 
-type hitboxCollider struct {
+type HitboxCollider struct {
 	baseCollider
 }
 
-func (x hitboxCollider) Copy() hitboxCollider {
+func NewHitboxColliderComponent(
+	collisionLayer LayerMask,
+	collisionMask LayerMask,
+	shapes ...shapes.Shape,
+) *HitboxCollider {
+	return &HitboxCollider{baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask)}
+}
+func (x HitboxCollider) Copy() HitboxCollider {
 	colShapesCopy := make([]shapes.Shape, len(x.shapes))
 	for i, shape := range x.shapes {
 		colShapesCopy[i] = shape.Copy()
 	}
 
-	return hitboxCollider{
+	return HitboxCollider{
 		baseCollider: baseCollider{
 			enabled:        x.enabled,
 			shapes:         colShapesCopy,
@@ -30,11 +37,9 @@ func (x hitboxCollider) Copy() hitboxCollider {
 	}
 }
 
-func (x hitboxCollider) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+func (x HitboxCollider) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.HitboxColliders.addComponent(e, x.Copy())
 }
-
-func (x *hitboxCollider) getBaseCollider() *baseCollider { return &x.baseCollider }
 
 type hitboxColliderDto struct {
 	Enabled        bool
@@ -46,7 +51,7 @@ type hitboxColliderDto struct {
 	CollisionMask  LayerMask
 }
 
-func (x hitboxCollider) toDto() (ComponentDto, error) {
+func (x HitboxCollider) toDto() (ComponentDto, error) {
 	shapesDto := make([]shapes.ShapeDto, len(x.shapes))
 	for i, shape := range x.shapes {
 		shapeDto, err := shapes.ShapeToDto(shape)
@@ -77,7 +82,7 @@ func (x *hitboxColliderDto) toComponent() (Component, error) {
 		shapesList[i] = shape
 	}
 
-	return &hitboxCollider{
+	return &HitboxCollider{
 		baseCollider: baseCollider{
 			enabled:        x.Enabled,
 			shapes:         shapesList,

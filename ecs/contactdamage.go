@@ -1,8 +1,11 @@
 package ecs
 
-import "ebittest/ecs/common"
+import (
+	"ebittest/ecs/common"
+	"slices"
+)
 
-type contactDamage struct {
+type ContactDamage struct {
 	source       common.EntityId
 	knockback    float64
 	dieOnContact bool
@@ -10,20 +13,54 @@ type contactDamage struct {
 	damageTiers  []int
 }
 
-func (x contactDamage) Copy() contactDamage {
-	dTiersCopy := make([]int, len(x.damageTiers))
-	copy(dTiersCopy, x.damageTiers)
+func NewContactDamageComponent(
+	source common.EntityId,
+	knockback float64,
+	dieOnContact bool,
+	singleTick bool,
+	damageTiers ...int,
+) *ContactDamage {
+	return &ContactDamage{
+		source:       source,
+		knockback:    knockback,
+		dieOnContact: dieOnContact,
+		singleTick:   singleTick,
+		damageTiers:  damageTiers,
+	}
+}
 
-	return contactDamage{
+func (x *ContactDamage) Source() common.EntityId {
+	return x.source
+}
+
+// A copy, so that callers can't change the tiers of the component
+func (x *ContactDamage) DamageTiers() []int {
+	return slices.Clone(x.damageTiers)
+}
+
+func (x *ContactDamage) Knockback() float64 {
+	return x.knockback
+}
+
+func (x *ContactDamage) DieOnContact() bool {
+	return x.dieOnContact
+}
+
+func (x *ContactDamage) SingleTick() bool {
+	return x.singleTick
+}
+
+func (x ContactDamage) Copy() ContactDamage {
+	return ContactDamage{
 		source:       x.source,
 		knockback:    x.knockback,
 		dieOnContact: x.dieOnContact,
 		singleTick:   x.singleTick,
-		damageTiers:  dTiersCopy,
+		damageTiers:  slices.Clone(x.damageTiers),
 	}
 }
 
-func (x contactDamage) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+func (x ContactDamage) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.ContactDamages.addComponent(e, x.Copy())
 }
 
@@ -35,9 +72,8 @@ type contactDamageDto struct {
 	DamageTiers  []int
 }
 
-func (x contactDamage) toDto() (ComponentDto, error) {
+func (x ContactDamage) toDto() (ComponentDto, error) {
 	x = x.Copy()
-
 	return &contactDamageDto{
 		Source:       x.source,
 		Knockback:    x.knockback,
@@ -48,7 +84,7 @@ func (x contactDamage) toDto() (ComponentDto, error) {
 }
 
 func (x contactDamageDto) toComponent() (Component, error) {
-	return &contactDamage{
+	return &ContactDamage{
 		source:       x.Source,
 		knockback:    x.Knockback,
 		dieOnContact: x.DieOnContact,

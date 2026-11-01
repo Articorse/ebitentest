@@ -7,9 +7,8 @@ import (
 )
 
 func Tick(ecsContainer *ecs.ECSContainer) error {
-	tm := ecsContainer.TimerManager
 	for _, e := range slices.Clone(ecsContainer.Timers.GetEntities()) {
-		_, err := tm.TickDown(e, ecsContainer)
+		_, err := ecsContainer.TickTimer(e)
 		if err != nil {
 			return fmt.Errorf("error ticking down timer component of entity %d: %v", e, err)
 		}

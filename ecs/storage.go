@@ -2,7 +2,6 @@ package ecs
 
 import (
 	"ebittest/ecs/common"
-	"fmt"
 	"slices"
 )
 
@@ -31,24 +30,11 @@ func (x *Storage[T]) Get(e common.EntityId) (*T, bool) {
 	return c, ok
 }
 
-func (x *Storage[T]) getData() map[common.EntityId]*T {
-	return x.data
-}
-
-func (x *Storage[T]) getComponent(e common.EntityId) (*T, error) {
-	c, ok := x.data[e]
-	if !ok {
-		return nil, fmt.Errorf("could not get %T component of entity %d", *new(T), e)
-	}
-
-	return c, nil
-}
-
 func (x *Storage[T]) deleteEntity(e common.EntityId) {
 	if i, found := slices.BinarySearch(x.order, e); found {
 		x.order = slices.Delete(x.order, i, i+1)
 	}
-	delete(x.getData(), e)
+	delete(x.data, e)
 }
 
 func (x *Storage[T]) addComponent(e common.EntityId, c T) {

@@ -28,77 +28,17 @@ func HandleInputs(
 ) error {
 	for e, input := range allInputs {
 		if ecsContainer.Transforms.HasComponent(e) {
-			fpm := ecsContainer.FacePositionManager
-
 			eWorldPos, err := ecsContainer.WorldPos(e)
 			if err != nil {
 				log.Printf("Error getting world position for entity %d: %v\n", e, err)
 				continue
 			}
 
-			hasFPComp := ecsContainer.FacePositions.HasComponent(e)
+			face(e, eWorldPos, input.FacingDir, ecsContainer)
 
-			if hasFPComp {
-				hpEnabled, err := fpm.GetEnabled(e, ecsContainer)
-				if err != nil {
-					log.Printf("Error getting face position enabled for entity %d: %v\n", e, err)
-					continue
-				}
-
-				if hpEnabled {
-					mX := input.FacingDir.X
-					mY := input.FacingDir.Y
-
-					if mX != 0 || mY != 0 {
-						dX := mX - eWorldPos.X
-						dY := mY - eWorldPos.Y
-						r := math.Atan2(dY, dX)
-
-						if t, ok := ecsContainer.Transforms.Get(e); ok {
-							t.SetLocalRotation(r)
-						} else {
-							log.Printf("Error setting rotation for entity %d: it has no transform\n", e)
-						}
-					}
-				}
-			}
-
-			if ecsContainer.Equippers.HasComponent(e) {
-				eqm := ecsContainer.EquipManager
-
-				eqEntities, err := eqm.GetEquipmentEntities(e, ecsContainer)
-				if err != nil {
-					log.Printf("Error getting equipment entities for entity %d: %v\n", e, err)
-					continue
-				}
-
-				for _, eqE := range eqEntities {
-					hasFPComp := ecsContainer.FacePositions.HasComponent(eqE)
-
-					if hasFPComp {
-						hpEnabled, err := fpm.GetEnabled(eqE, ecsContainer)
-						if err != nil {
-							log.Printf("Error getting face position enabled for entity %d: %v\n", eqE, err)
-							continue
-						}
-
-						if hpEnabled {
-							mX := input.FacingDir.X
-							mY := input.FacingDir.Y
-
-							if mX != 0 || mY != 0 {
-								dX := mX - eWorldPos.X
-								dY := mY - eWorldPos.Y
-								r := math.Atan2(dY, dX)
-
-								if t, ok := ecsContainer.Transforms.Get(eqE); ok {
-									t.SetLocalRotation(r)
-								} else {
-									log.Printf("Error setting rotation for entity %d: it has no transform\n", eqE)
-								}
-							}
-						}
-					}
+			if equipper, ok := ecsContainer.Equippers.Get(e); ok {
+				for _, eqE := range equipper.Equipment() {
+					face(eqE, eWorldPos, input.FacingDir, ecsContainer)
 				}
 			}
 		}
@@ -116,12 +56,11 @@ func HandleInputs(
 		}
 
 		if ecsContainer.Equippers.HasComponent(e) {
-			em := ecsContainer.EquipManager
 			for _, t := range equipTriggers {
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := em.ActivateAbility(e, t.slot, nil, utils.Vec2f{}, t.abiIdx, ecsContainer); err != nil {
+				if _, err := ecsContainer.ActivateEquipmentAbility(e, t.slot, nil, utils.Vec2f{}, t.abiIdx); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}
@@ -133,12 +72,11 @@ func HandleInputs(
 		}
 
 		if ecsContainer.Abilities.HasComponent(e) {
-			am := ecsContainer.AbilitiesManager
 			for _, t := range selfTriggers {
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := am.ActivateAbility(e, nil, utils.Vec2f{}, t.abiIdx, ecsContainer); err != nil {
+				if _, err := ecsContainer.ActivateAbility(e, nil, utils.Vec2f{}, t.abiIdx); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}
@@ -146,4 +84,19 @@ func HandleInputs(
 	}
 
 	return nil
+}
+
+func face(e common.EntityId, from utils.Vec2f, target utils.Vec2f, ecsContainer *ecs.ECSContainer) {
+	fp, ok := ecsContainer.FacePositions.Get(e)
+	if !ok || !fp.Enabled() || (target.X == 0 && target.Y == 0) {
+		return
+	}
+
+	t, ok := ecsContainer.Transforms.Get(e)
+	if !ok {
+		log.Printf("Error setting rotation for entity %d: it has no transform\n", e)
+		return
+	}
+
+	t.SetLocalRotation(math.Atan2(target.Y-from.Y, target.X-from.X))
 }

@@ -35,17 +35,17 @@ func TestDodgeIsInvulnerableOnlyWhileActive(t *testing.T) {
 		ecs.NewHitpointsComponent(20, 1000), ecs.NewAbilitiesComponent(abis))
 
 	x.SetTickInputs(0, map[common.EntityId]ecs.InputState{p: {Analog1X: 1}})
-	if activated, err := x.AbilitiesManager.ActivateAbility(p, nil, utils.Vec2f{}, 0, x); err != nil || !activated {
+	if activated, err := x.ActivateAbility(p, nil, utils.Vec2f{}, 0); err != nil || !activated {
 		t.Fatalf("dodge activated %v, error %v", activated, err)
 	}
 
 	invulAt := func() int {
 		t.Helper()
-		invul, err := x.HitpointsManager.GetInvulCurrent(p, x)
-		if err != nil {
-			t.Fatal(err)
+		hp, ok := x.Hitpoints.Get(p)
+		if !ok {
+			t.Fatal("player has no hitpoints")
 		}
-		return invul
+		return hp.InvulCurrent()
 	}
 
 	if invulAt() <= 0 {
@@ -77,7 +77,7 @@ func TestSpawnAbilitySpawnsOncePerActivation(t *testing.T) {
 		ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{ecs.Equip_MainHand: gun}))
 
 	before := len(x.Transforms.GetEntities())
-	if _, err := x.EquipManager.ActivateAbility(holder, ecs.Equip_MainHand, nil, utils.Vec2f{}, 0, x); err != nil {
+	if _, err := x.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, nil, utils.Vec2f{}, 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := abilitysystem.Tick(x); err != nil {
@@ -116,7 +116,7 @@ func TestEquipmentAbilityKeepsParams(t *testing.T) {
 	}
 
 	for name, y := range map[string]*ecs.ECSContainer{"live": x, "restored": testutil.Restore(t, members)} {
-		if _, err := y.EquipManager.ActivateAbility(holder, ecs.Equip_MainHand, nil, utils.Vec2f{}, 0, y); err != nil {
+		if _, err := y.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, nil, utils.Vec2f{}, 0); err != nil {
 			t.Fatalf("%s equipment: %v", name, err)
 		}
 		if explosions := len(y.Timers.GetEntities()); explosions != 1 {

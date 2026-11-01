@@ -15,19 +15,34 @@ const (
 	Collider_Trigger
 )
 
-type physicsCollider struct {
+type PhysicsCollider struct {
 	baseCollider
 
 	colliderType PhysicsColliderType
 }
 
-func (x physicsCollider) Copy() physicsCollider {
+func NewPhysicsColliderComponent(
+	collisionLayer LayerMask,
+	collisionMask LayerMask,
+	cType PhysicsColliderType,
+	shapes ...shapes.Shape,
+) *PhysicsCollider {
+	return &PhysicsCollider{
+		colliderType: cType,
+		baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask),
+	}
+}
+func (x *PhysicsCollider) ColliderType() PhysicsColliderType {
+	return x.colliderType
+}
+
+func (x PhysicsCollider) Copy() PhysicsCollider {
 	colShapesCopy := make([]shapes.Shape, len(x.shapes))
 	for i, shape := range x.shapes {
 		colShapesCopy[i] = shape.Copy()
 	}
 
-	return physicsCollider{
+	return PhysicsCollider{
 		colliderType: x.colliderType,
 		baseCollider: baseCollider{
 			enabled:        x.enabled,
@@ -41,11 +56,9 @@ func (x physicsCollider) Copy() physicsCollider {
 	}
 }
 
-func (x physicsCollider) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+func (x PhysicsCollider) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.PhysicsColliders.addComponent(e, x.Copy())
 }
-
-func (x *physicsCollider) getBaseCollider() *baseCollider { return &x.baseCollider }
 
 type physicsColliderDto struct {
 	ColliderType   PhysicsColliderType
@@ -58,7 +71,7 @@ type physicsColliderDto struct {
 	CollisionMask  LayerMask
 }
 
-func (x physicsCollider) toDto() (ComponentDto, error) {
+func (x PhysicsCollider) toDto() (ComponentDto, error) {
 	shapesDto := make([]shapes.ShapeDto, len(x.shapes))
 	for i, shape := range x.shapes {
 		shapeDto, err := shapes.ShapeToDto(shape)
@@ -90,7 +103,7 @@ func (x *physicsColliderDto) toComponent() (Component, error) {
 		shapesList[i] = shape
 	}
 
-	return &physicsCollider{
+	return &PhysicsCollider{
 		colliderType: x.ColliderType,
 		baseCollider: baseCollider{
 			enabled:        x.Enabled,

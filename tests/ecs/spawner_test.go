@@ -22,7 +22,7 @@ func TestPointSpawnerPlacesAtRotatedOffset(t *testing.T) {
 	want := utils.Vec2f{X: 100 + 13*math.Cos(0.5), Y: 100 + 13*math.Sin(0.5)}
 
 	for range 2 {
-		e, err := x.SpawnerManager.Spawn(s, x)
+		e, err := x.Spawn(s)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -57,7 +57,7 @@ func TestShapeSpawnersSpawnWithinShapeAroundSpawner(t *testing.T) {
 		s := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{X: 100, Y: 100}, 1, 0), sp)
 
 		for range 20 {
-			e, err := x.SpawnerManager.Spawn(s, x)
+			e, err := x.Spawn(s)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -78,7 +78,7 @@ func TestSpawnerRefusedOutsideSimulatedArea(t *testing.T) {
 	}
 	s := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{X: 990}, 1, 0), sp)
 
-	if _, err := x.SpawnerManager.Spawn(s, x); err == nil {
+	if _, err := x.Spawn(s); err == nil {
 		t.Fatal("spawn outside the simulated area was allowed")
 	}
 }
@@ -86,10 +86,11 @@ func TestSpawnerRefusedOutsideSimulatedArea(t *testing.T) {
 func templateString(t *testing.T, x *ecs.ECSContainer, s common.EntityId) string {
 	t.Helper()
 
-	comps, err := x.SpawnerManager.GetComponents(s, x)
-	if err != nil {
-		t.Fatal(err)
+	spawner, ok := x.Spawners.Get(s)
+	if !ok {
+		t.Fatal("entity has no spawner")
 	}
+	comps := spawner.Components()
 
 	str := ""
 	for _, c := range comps {

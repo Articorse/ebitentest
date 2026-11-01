@@ -40,16 +40,17 @@ func GetCollisions(
 	potentialCollisions map[common.EntityId][]utils.Vec2i,
 	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId]utils.Vec2f, error) {
-	pcm := ecsContainer.PhysicsColliderManager
 	collisions := make(map[common.EntityId]utils.Vec2f)
 
 	for e, colTiles := range potentialCollisions {
+		pc, ok := ecsContainer.PhysicsColliders.Get(e)
+		if !ok {
+			log.Printf("Error getting collider shapes for entity %d: it has no physics collider\n", e)
+			continue
+		}
+		eColShapes := pc.Shapes()
+
 		for _, t := range colTiles {
-			eColShapes, err := pcm.GetShapes(e, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider shapes for entity %d: %v\n", e, err)
-				continue
-			}
 
 			tShape, err := shapes.NewRectangleShape(
 				data.TileSize,
@@ -105,36 +106,16 @@ func GetAABBCollisions(
 	potentialCollisions map[common.EntityId][]utils.Vec2i,
 	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId][]utils.Vec2i, error) {
-	pcm := ecsContainer.PhysicsColliderManager
 	collisions := make(map[common.EntityId][]utils.Vec2i)
 
 	for e, colTiles := range potentialCollisions {
+		pc, ok := ecsContainer.PhysicsColliders.Get(e)
+		if !ok || !pc.Enabled() || pc.Mask()&ecs.Layer_Terrain == 0 {
+			continue
+		}
+
 		for _, t := range colTiles {
-			if !pcm.HasCollider(e, ecsContainer) {
-				continue
-			}
-
-			pcEnabled, err := pcm.IsEnabled(e, ecsContainer)
-			if err != nil {
-				log.Printf("Error checking if collider is enabled for entity %d: %v\n", e, err)
-				continue
-			}
-
-			if !pcEnabled {
-				continue
-			}
-
-			pcMask, err := pcm.GetMask(e, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider mask for entity %d: %v\n", e, err)
-				continue
-			}
-
-			if pcMask&ecs.Layer_Terrain == 0 {
-				continue
-			}
-
-			eAABB, err := pcm.GetWorldPaddedAABB(e, ecsContainer)
+			eAABB, err := ecsContainer.WorldAABB(e, pc.LocalPaddedAABB())
 			if err != nil {
 				log.Printf("Error getting AABB for entity %d: %v\n", e, err)
 				continue
@@ -164,25 +145,15 @@ func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 	ecsContainer *ecs.ECSContainer,
 	tileSize int,
 ) (potentialCollisions map[common.EntityId][]utils.Vec2i, err error) {
-	pcm := ecsContainer.PhysicsColliderManager
 	potentialCollisions = make(map[common.EntityId][]utils.Vec2i)
 
 	for _, e := range ecsContainer.Transforms.GetEntities() {
-		if !pcm.HasCollider(e, ecsContainer) {
+		pc, ok := ecsContainer.PhysicsColliders.Get(e)
+		if !ok || pc.ColliderType() != ecs.Collider_Mob {
 			continue
 		}
 
-		colType, err := pcm.GetColliderType(e, ecsContainer)
-		if err != nil {
-			log.Printf("error getting collider type of entity %d: %v", e, err)
-			continue
-		}
-
-		if colType != ecs.Collider_Mob {
-			continue
-		}
-
-		worldAABB, err := pcm.GetWorldAABB(e, ecsContainer)
+		worldAABB, err := ecsContainer.WorldAABB(e, pc.LocalAABB())
 		if err != nil {
 			log.Printf("error getting world AABB of entity %d: %v", e, err)
 			continue

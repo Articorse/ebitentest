@@ -76,26 +76,17 @@ func ExplodeAbility(
 
 	var exSprLayer uint8
 
-	if ecsContainer.Sprites.HasComponent(self) {
-		exSprLayer, err = ecsContainer.SpriteManager.GetLayer(self, ecsContainer)
-		if err != nil {
-			return fmt.Errorf("error getting sprite layer of entity %d for explode ability: %v", self, err)
-		}
+	if spr, ok := ecsContainer.Sprites.Get(self); ok {
+		exSprLayer = spr.Layer()
 	}
 
-	if !ecsContainer.HurtboxColliders.HasComponent(self) {
+	hurtbox, ok := ecsContainer.HurtboxColliders.Get(self)
+	if !ok {
 		return fmt.Errorf("entity %d does not have a hurtbox collider component for explode ability", self)
 	}
 
-	dmgLayer, err := ecsContainer.HurtboxColliderManager.GetLayer(self, ecsContainer)
-	if err != nil {
-		return fmt.Errorf("error getting hurtbox collider layer of entity %d for explode ability: %v", self, err)
-	}
-
-	dmgMask, err := ecsContainer.HurtboxColliderManager.GetMask(self, ecsContainer)
-	if err != nil {
-		return fmt.Errorf("error getting hurtbox collider mask of entity %d for explode ability: %v", self, err)
-	}
+	dmgLayer := hurtbox.Layer()
+	dmgMask := hurtbox.Mask()
 
 	traComp := ecs.NewTransformComponent(exWorldPos, exWorldScale, exWorldRot)
 	sprComp, err := ecs.NewSpriteComponent(common.AssetSheetExplosion, exSprLayer+1, false)

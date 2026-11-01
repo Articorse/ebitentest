@@ -12,11 +12,8 @@ func Tick(
 	shg map[utils.Vec2i][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) error {
-	pcm := ecsContainer.PlatformColliderManager
-	phcm := ecsContainer.PhysicsColliderManager
-
-	for _, eA := range ecsContainer.PlatformColliders.GetEntities() {
-		aAABB, err := pcm.GetWorldAABB(eA, ecsContainer)
+	for eA, aCol := range ecs.Query1(&ecsContainer.PlatformColliders) {
+		aAABB, err := ecsContainer.WorldAABB(eA, aCol.LocalAABB())
 		if err != nil {
 			log.Printf("error getting AABB of entity %d: %v", eA, err)
 			continue
@@ -28,17 +25,7 @@ func Tick(
 			continue
 		}
 
-		aLayer, err := pcm.GetLayer(eA, ecsContainer)
-		if err != nil {
-			log.Printf("error getting layer of entity %d: %v", eA, err)
-			continue
-		}
-
-		aMask, err := pcm.GetMask(eA, ecsContainer)
-		if err != nil {
-			log.Printf("error getting mask of entity %d: %v", eA, err)
-			continue
-		}
+		aLayer, aMask := aCol.Layer(), aCol.Mask()
 
 		startCellX := int(aWorldPos.X / data.SpatialHashGridCellSize)
 		startCellY := int(aWorldPos.Y / data.SpatialHashGridCellSize)
@@ -50,23 +37,12 @@ func Tick(
 						continue
 					}
 
-					if !ecsContainer.PhysicsColliders.HasComponent(eB) {
+					bCol, ok := ecsContainer.PhysicsColliders.Get(eB)
+					if !ok {
 						continue
 					}
 
-					bLayer, err := phcm.GetLayer(eB, ecsContainer)
-					if err != nil {
-						log.Printf("error getting layer of entity %d: %v", eB, err)
-						continue
-					}
-
-					bMask, err := phcm.GetMask(eB, ecsContainer)
-					if err != nil {
-						log.Printf("error getting mask of entity %d: %v", eB, err)
-						continue
-					}
-
-					if (aLayer&bMask) == 0 || (bLayer&aMask) == 0 {
+					if (aLayer&bCol.Mask()) == 0 || (bCol.Layer()&aMask) == 0 {
 						continue
 					}
 

@@ -37,17 +37,17 @@ func TestRegistryRefusesTakenAndNoneIds(t *testing.T) {
 func TestUnregisteredAbilityReportedOnUse(t *testing.T) {
 	x := ecs.NewECSContainer()
 
-	if _, err := x.AbilitiesManager.GetAbilityFunc(abilities.Ability_Dodge, x); err == nil {
+	if _, err := x.AbilityFunc(abilities.Ability_Dodge); err == nil {
 		t.Fatal("unregistered ability found")
 	}
-	if f, err := x.AbilitiesManager.GetAbilityFunc(ecs.Ability_None, x); f != nil || err != nil {
+	if f, err := x.AbilityFunc(ecs.Ability_None); f != nil || err != nil {
 		t.Fatalf("none ability: function %v, error %v", f != nil, err)
 	}
 
 	if err := x.RegisterAbility(abilities.Ability_Dodge, noopAbility); err != nil {
 		t.Fatal(err)
 	}
-	if f, err := x.AbilitiesManager.GetAbilityFunc(abilities.Ability_Dodge, x); f == nil || err != nil {
+	if f, err := x.AbilityFunc(abilities.Ability_Dodge); f == nil || err != nil {
 		t.Fatalf("registered ability: function %v, error %v", f != nil, err)
 	}
 }

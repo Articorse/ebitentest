@@ -7,19 +7,24 @@ import (
 	"fmt"
 )
 
-type platformCollider struct {
+type PlatformCollider struct {
 	baseCollider
 }
 
-func (x *platformCollider) getBaseCollider() *baseCollider { return &x.baseCollider }
-
-func (x platformCollider) Copy() platformCollider {
+func NewPlatformColliderComponent(
+	collisionLayer LayerMask,
+	collisionMask LayerMask,
+	shapes []shapes.Shape,
+) *PlatformCollider {
+	return &PlatformCollider{baseCollider: newBaseCollider(shapes, collisionLayer, collisionMask)}
+}
+func (x PlatformCollider) Copy() PlatformCollider {
 	colShapesCopy := make([]shapes.Shape, len(x.shapes))
 	for i, shape := range x.shapes {
 		colShapesCopy[i] = shape.Copy()
 	}
 
-	return platformCollider{
+	return PlatformCollider{
 		baseCollider: baseCollider{
 			enabled:        x.enabled,
 			shapes:         colShapesCopy,
@@ -32,7 +37,7 @@ func (x platformCollider) Copy() platformCollider {
 	}
 }
 
-func (x platformCollider) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+func (x PlatformCollider) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.PlatformColliders.addComponent(e, x.Copy())
 }
 
@@ -46,7 +51,7 @@ type platformColliderDto struct {
 	CollisionMask  LayerMask
 }
 
-func (x platformCollider) toDto() (ComponentDto, error) {
+func (x PlatformCollider) toDto() (ComponentDto, error) {
 	shapesDto := make([]shapes.ShapeDto, len(x.shapes))
 	for i, shape := range x.shapes {
 		shapeDto, err := shapes.ShapeToDto(shape)
@@ -77,7 +82,7 @@ func (x *platformColliderDto) toComponent() (Component, error) {
 		shapesList[i] = shape
 	}
 
-	return &platformCollider{
+	return &PlatformCollider{
 		baseCollider: baseCollider{
 			enabled:        x.Enabled,
 			shapes:         shapesList,

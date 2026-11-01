@@ -12,12 +12,14 @@ import (
 // Moves a tethered entity back inside its anchor's loaded area, as close as possible to where it was.
 // Returns false if e isn't tethered to a live chunkloader, in which case it's resolved like any other entity.
 func (cc *ChunkContainer) relocateTethered(e common.EntityId, ecsCont *ecs.ECSContainer) bool {
-	if !ecsCont.Tethers.HasComponent(e) {
+	tether, ok := ecsCont.Tethers.Get(e)
+	if !ok {
 		return false
 	}
 
-	anchor, err := ecsCont.TetherManager.GetAnchor(e, ecsCont)
-	if err != nil || !ecsCont.ChunkLoaders.HasComponent(anchor) {
+	anchor := tether.Anchor()
+	loader, ok := ecsCont.ChunkLoaders.Get(anchor)
+	if !ok {
 		return false
 	}
 
@@ -27,11 +29,7 @@ func (cc *ChunkContainer) relocateTethered(e common.EntityId, ecsCont *ecs.ECSCo
 		return false
 	}
 
-	radius, err := ecsCont.ChunkLoaderManager.GetRadius(anchor, ecsCont)
-	if err != nil {
-		log.Printf("error getting chunkloader radius of anchor %d of entity %d: %v", anchor, e, err)
-		return false
-	}
+	radius := loader.Radius()
 
 	ePos, err := ecsCont.WorldPos(e)
 	if err != nil {

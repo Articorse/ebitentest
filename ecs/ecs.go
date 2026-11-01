@@ -38,49 +38,29 @@ type ECSContainer struct {
 	timerFuncs       map[TimerFuncEnum]TimerFunc
 	inputSourceFuncs map[InputTypeEnum]InputSourceFunc
 
-	Inputs            Storage[input]
+	Inputs            Storage[Input]
 	Hierarchies       Storage[Hierarchy]
 	Transforms        Storage[Transform]
 	Velocities        Storage[Velocity]
-	Sprites           Storage[sprite]
-	Animations        Storage[animation]
-	PhysicsColliders  Storage[physicsCollider]
-	PlatformColliders Storage[platformCollider]
-	HitboxColliders   Storage[hitboxCollider]
-	HurtboxColliders  Storage[hurtboxCollider]
-	Spawners          Storage[spawner]
-	Timers            Storage[timer]
-	Hitpoints         Storage[hitpoints]
-	ContactDamages    Storage[contactDamage]
-	Abilities         Storage[abilities]
-	FacePositions     Storage[facePosition]
-	Equipments        Storage[equipment]
-	Equippers         Storage[equipper]
-	Deathrattles      Storage[deathrattle]
-	FloatingTexts     Storage[floatingText]
-	ChunkLoaders      Storage[chunkLoader]
-	Persistents       Storage[persistent]
-	Tethers           Storage[tether]
-
-	InputManager            inputManager
-	SpriteManager           spriteManager
-	AnimationManager        animationManager
-	PhysicsColliderManager  physicsColliderManager
-	PlatformColliderManager platformColliderManager
-	HitboxColliderManager   hitboxColliderManager
-	HurtboxColliderManager  hurtboxColliderManager
-	SpawnerManager          spawnerManager
-	TimerManager            timerManager
-	HitpointsManager        hitpointsManager
-	ContactDamageManager    contactDamageManager
-	AbilitiesManager        abilitiesManager
-	FacePositionManager     facePositionManager
-	EquipManager            equipManager
-	DeathrattleManager      deathrattleManager
-	FloatingTextManager     floatingTextManager
-	ChunkLoaderManager      chunkLoaderManager
-	PersistentManager       persistentManager
-	TetherManager           tetherManager
+	Sprites           Storage[Sprite]
+	Animations        Storage[Animation]
+	PhysicsColliders  Storage[PhysicsCollider]
+	PlatformColliders Storage[PlatformCollider]
+	HitboxColliders   Storage[HitboxCollider]
+	HurtboxColliders  Storage[HurtboxCollider]
+	Spawners          Storage[Spawner]
+	Timers            Storage[Timer]
+	Hitpoints         Storage[Hitpoints]
+	ContactDamages    Storage[ContactDamage]
+	Abilities         Storage[Abilities]
+	FacePositions     Storage[FacePosition]
+	Equipments        Storage[Equipment]
+	Equippers         Storage[Equipper]
+	Deathrattles      Storage[Deathrattle]
+	FloatingTexts     Storage[FloatingText]
+	ChunkLoaders      Storage[ChunkLoader]
+	Persistents       Storage[Persistent]
+	Tethers           Storage[Tether]
 }
 
 func NewECSContainer() *ECSContainer {
@@ -127,49 +107,29 @@ func NewECSContainer() *ECSContainer {
 		TickIdx:   0,
 		TickState: common.TickState{},
 
-		Inputs:            newStorage[input](),
+		Inputs:            newStorage[Input](),
 		Hierarchies:       newStorage[Hierarchy](),
 		Transforms:        newStorage[Transform](),
 		Velocities:        newStorage[Velocity](),
-		Sprites:           newStorage[sprite](),
-		Animations:        newStorage[animation](),
-		PhysicsColliders:  newStorage[physicsCollider](),
-		PlatformColliders: newStorage[platformCollider](),
-		HitboxColliders:   newStorage[hitboxCollider](),
-		HurtboxColliders:  newStorage[hurtboxCollider](),
-		Spawners:          newStorage[spawner](),
-		Timers:            newStorage[timer](),
-		Hitpoints:         newStorage[hitpoints](),
-		ContactDamages:    newStorage[contactDamage](),
-		Abilities:         newStorage[abilities](),
-		FacePositions:     newStorage[facePosition](),
-		Equipments:        newStorage[equipment](),
-		Equippers:         newStorage[equipper](),
-		Deathrattles:      newStorage[deathrattle](),
-		FloatingTexts:     newStorage[floatingText](),
-		ChunkLoaders:      newStorage[chunkLoader](),
-		Persistents:       newStorage[persistent](),
-		Tethers:           newStorage[tether](),
-
-		InputManager:            inputManager{},
-		SpriteManager:           spriteManager{},
-		AnimationManager:        animationManager{},
-		PhysicsColliderManager:  physicsColliderManager{},
-		PlatformColliderManager: platformColliderManager{},
-		HitboxColliderManager:   hitboxColliderManager{},
-		HurtboxColliderManager:  hurtboxColliderManager{},
-		SpawnerManager:          spawnerManager{},
-		TimerManager:            timerManager{},
-		HitpointsManager:        hitpointsManager{},
-		ContactDamageManager:    contactDamageManager{},
-		AbilitiesManager:        abilitiesManager{},
-		FacePositionManager:     facePositionManager{},
-		EquipManager:            equipManager{},
-		DeathrattleManager:      deathrattleManager{},
-		FloatingTextManager:     floatingTextManager{},
-		ChunkLoaderManager:      chunkLoaderManager{},
-		PersistentManager:       persistentManager{},
-		TetherManager:           tetherManager{},
+		Sprites:           newStorage[Sprite](),
+		Animations:        newStorage[Animation](),
+		PhysicsColliders:  newStorage[PhysicsCollider](),
+		PlatformColliders: newStorage[PlatformCollider](),
+		HitboxColliders:   newStorage[HitboxCollider](),
+		HurtboxColliders:  newStorage[HurtboxCollider](),
+		Spawners:          newStorage[Spawner](),
+		Timers:            newStorage[Timer](),
+		Hitpoints:         newStorage[Hitpoints](),
+		ContactDamages:    newStorage[ContactDamage](),
+		Abilities:         newStorage[Abilities](),
+		FacePositions:     newStorage[FacePosition](),
+		Equipments:        newStorage[Equipment](),
+		Equippers:         newStorage[Equipper](),
+		Deathrattles:      newStorage[Deathrattle](),
+		FloatingTexts:     newStorage[FloatingText](),
+		ChunkLoaders:      newStorage[ChunkLoader](),
+		Persistents:       newStorage[Persistent](),
+		Tethers:           newStorage[Tether](),
 	}
 
 	// The order decides the order of an entity's components in saved data
@@ -276,7 +236,7 @@ func (x *ECSContainer) checkSpawnPos(comps []Component) error {
 	var t *Transform
 	for _, comp := range comps {
 		switch c := comp.(type) {
-		case *chunkLoader:
+		case *ChunkLoader:
 			return nil
 		case *Transform:
 			t = c
@@ -326,7 +286,7 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 	for i := 0; i < len(x.scheduledForDeath); i++ {
 		e := x.scheduledForDeath[i]
 		if x.Deathrattles.HasComponent(e) {
-			err := x.DeathrattleManager.Effect(e, x)
+			err := x.runDeathrattle(e)
 			if err != nil {
 				log.Printf("Error executing deathrattle for entity %d: %v\n", e, err)
 			}

@@ -10,35 +10,16 @@ import (
 )
 
 func GetCollisions(
-	aColManager ecs.IColliderManager,
-	bColManager ecs.IColliderManager,
+	aColliders ecs.ColliderSet,
+	bColliders ecs.ColliderSet,
 	potentialCollisions map[common.EntityId][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId]map[common.EntityId]common.Collision, error) {
 	collisions := make(map[common.EntityId]map[common.EntityId]common.Collision)
 	for e1, colEntities := range potentialCollisions {
 		for _, e2 := range colEntities {
-			if e1 == e2 {
-				continue
-			}
-
-			e1HasA := aColManager.HasCollider(e1, ecsContainer)
-			e1HasB := bColManager.HasCollider(e1, ecsContainer)
-			e2HasA := aColManager.HasCollider(e2, ecsContainer)
-			e2HasB := bColManager.HasCollider(e2, ecsContainer)
-
-			eA := common.EntityId(-1)
-			eB := common.EntityId(-1)
-
-			if e1HasA && e2HasB {
-				eA = e1
-				eB = e2
-			} else if e1HasB && e2HasA {
-				eA = e2
-				eB = e1
-			}
-
-			if eA == -1 || eB == -1 {
+			eA, eB, aCol, bCol, ok := orient(e1, e2, aColliders, bColliders)
+			if !ok {
 				continue
 			}
 
@@ -48,17 +29,8 @@ func GetCollisions(
 				}
 			}
 
-			aColShapes, err := aColManager.GetShapes(eA, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider shapes for entity %d: %v\n", eA, err)
-				continue
-			}
-
-			bColShapes, err := bColManager.GetShapes(eB, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider shapes for entity %d: %v\n", eB, err)
-				continue
-			}
+			aColShapes := aCol.Shapes()
+			bColShapes := bCol.Shapes()
 
 			collisionFound := false
 			var collisionVector utils.Vec2f
@@ -163,19 +135,19 @@ func GetCollisions(
 }
 
 func GetMirrorAABBCollisions(
-	aColManager ecs.IColliderManager,
-	bColManager ecs.IColliderManager,
+	aColliders ecs.ColliderSet,
+	bColliders ecs.ColliderSet,
 	proximateEntities map[common.EntityId][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId][]common.EntityId, error) {
 	allCollisions := make(map[common.EntityId][]common.EntityId)
 
-	aCollisions, err := GetAABBCollisions(aColManager, bColManager, proximateEntities, ecsContainer)
+	aCollisions, err := GetAABBCollisions(aColliders, bColliders, proximateEntities, ecsContainer)
 	if err != nil {
 		return nil, err
 	}
 
-	bCollisions, err := GetAABBCollisions(bColManager, aColManager, proximateEntities, ecsContainer)
+	bCollisions, err := GetAABBCollisions(bColliders, aColliders, proximateEntities, ecsContainer)
 	if err != nil {
 		return nil, err
 	}
@@ -198,8 +170,8 @@ func GetMirrorAABBCollisions(
 }
 
 func GetAABBCollisions(
-	aColManager ecs.IColliderManager,
-	bColManager ecs.IColliderManager,
+	aColliders ecs.ColliderSet,
+	bColliders ecs.ColliderSet,
 	proximateEntities map[common.EntityId][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) (map[common.EntityId][]common.EntityId, error) {
@@ -207,82 +179,22 @@ func GetAABBCollisions(
 
 	for e1, colEntities := range proximateEntities {
 		for _, e2 := range colEntities {
-			// TODO: Extract common code with GetCollisions()
-			if e1 == e2 {
+			eA, eB, aCol, bCol, ok := orient(e1, e2, aColliders, bColliders)
+			if !ok {
 				continue
 			}
 
-			e1HasA := aColManager.HasCollider(e1, ecsContainer)
-			e1HasB := bColManager.HasCollider(e1, ecsContainer)
-			e2HasA := aColManager.HasCollider(e2, ecsContainer)
-			e2HasB := bColManager.HasCollider(e2, ecsContainer)
-
-			eA := common.EntityId(-1)
-			eB := common.EntityId(-1)
-
-			if e1HasA && e2HasB {
-				eA = e1
-				eB = e2
-			} else if e1HasB && e2HasA {
-				eA = e2
-				eB = e1
-			}
-
-			if eA == -1 || eB == -1 {
+			if !aCol.Enabled() || !bCol.Enabled() {
 				continue
 			}
 
-			aEnabled, err := aColManager.IsEnabled(eA, ecsContainer)
-			if err != nil {
-				log.Printf("Error checking if collider is enabled for entity %d: %v\n", eA, err)
-				continue
-			}
-
-			if !aEnabled {
-				continue
-			}
-
-			bEnabled, err := bColManager.IsEnabled(eB, ecsContainer)
-			if err != nil {
-				log.Printf("Error checking if collider is enabled for entity %d: %v\n", eB, err)
-				continue
-			}
-
-			if !bEnabled {
-				continue
-			}
-
-			aLayer, err := aColManager.GetLayer(eA, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider layer for entity %d: %v\n", eA, err)
-				continue
-			}
-
-			aMask, err := aColManager.GetMask(eA, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider mask for entity %d: %v\n", eA, err)
-				continue
-			}
-
-			aAABB, err := aColManager.GetWorldPaddedAABB(eA, ecsContainer)
+			aAABB, err := ecsContainer.WorldAABB(eA, aCol.LocalPaddedAABB())
 			if err != nil {
 				log.Printf("Error getting AABB for entity %d: %v\n", eA, err)
 				continue
 			}
 
-			bLayer, err := bColManager.GetLayer(eB, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider layer for entity %d: %v\n", eB, err)
-				continue
-			}
-
-			bMask, err := bColManager.GetMask(eB, ecsContainer)
-			if err != nil {
-				log.Printf("Error getting collider mask for entity %d: %v\n", eB, err)
-				continue
-			}
-
-			if aLayer&bMask == 0 || bLayer&aMask == 0 {
+			if aCol.Layer()&bCol.Mask() == 0 || bCol.Layer()&aCol.Mask() == 0 {
 				continue
 			}
 
@@ -292,7 +204,7 @@ func GetAABBCollisions(
 				}
 			}
 
-			bAABB, err := bColManager.GetWorldPaddedAABB(eB, ecsContainer)
+			bAABB, err := ecsContainer.WorldAABB(eB, bCol.LocalPaddedAABB())
 			if err != nil {
 				log.Printf("Error getting AABB for entity %d: %v\n", eB, err)
 				continue
@@ -309,4 +221,27 @@ func GetAABBCollisions(
 	}
 
 	return collisions, nil
+}
+
+func orient(
+	e1, e2 common.EntityId,
+	aColliders, bColliders ecs.ColliderSet,
+) (eA, eB common.EntityId, aCol, bCol ecs.Collider, ok bool) {
+	if e1 == e2 {
+		return -1, -1, nil, nil, false
+	}
+
+	if aCol, ok := aColliders.Collider(e1); ok {
+		if bCol, ok := bColliders.Collider(e2); ok {
+			return e1, e2, aCol, bCol, true
+		}
+	}
+
+	if aCol, ok := aColliders.Collider(e2); ok {
+		if bCol, ok := bColliders.Collider(e1); ok {
+			return e2, e1, aCol, bCol, true
+		}
+	}
+
+	return -1, -1, nil, nil, false
 }

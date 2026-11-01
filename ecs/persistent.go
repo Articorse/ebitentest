@@ -2,25 +2,29 @@ package ecs
 
 import "ebittest/ecs/common"
 
-type persistent struct {
+type Persistent struct {
 	// TODO: Add disable/despawn range
 }
 
-func (x persistent) Copy() persistent {
-	return persistent{}
+func NewPersistentComponent() *Persistent {
+	return &Persistent{}
 }
 
-func (x persistent) addTo(ecsContainer *ECSContainer, e common.EntityId) {
+func (x Persistent) Copy() Persistent {
+	return Persistent{}
+}
+
+func (x Persistent) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.Persistents.addComponent(e, x.Copy())
 }
 
 type persistentDto struct {
 }
 
-func (x persistent) toDto() (ComponentDto, error) {
+func (x Persistent) toDto() (ComponentDto, error) {
 	return &persistentDto{}, nil
 }
 
 func (x persistentDto) toComponent() (Component, error) {
-	return &persistent{}, nil
+	return &Persistent{}, nil
 }

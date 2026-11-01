@@ -26,7 +26,8 @@ func TestDtosShareNoMemoryWithLiveComponents(t *testing.T) {
 	c2 := testutil.AddMovable(t, x, utils.Vec2f{}, false)
 	testutil.Attach(t, x, c1, p, ecs.Link_Held)
 	testutil.Attach(t, x, c2, p, ecs.Link_Held)
-	if err := x.SpriteManager.SetSpriteFlash(p, []utils.RelativeColor{{R: 1}, {R: 2}}, []int{100, 100}, 1000, x); err != nil {
+	liveSpr, _ := x.Sprites.Get(p)
+	if err := liveSpr.SetFlash([]utils.RelativeColor{{R: 1}, {R: 2}}, []int{100, 100}, 1000); err != nil {
 		t.Fatal(err)
 	}
 
@@ -36,14 +37,11 @@ func TestDtosShareNoMemoryWithLiveComponents(t *testing.T) {
 	if err := x.Detach(c1); err != nil {
 		t.Fatal(err)
 	}
-	params, err := x.InputManager.GetParams(p, x)
-	if err != nil {
-		t.Fatal(err)
-	}
+	in, _ := x.Inputs.Get(p)
+	params := in.Params()
 	for i := range 10 {
-		if err := x.SpriteManager.TickFlash(p, x); err != nil {
-			t.Fatal(err)
-		}
+		liveSpr, _ := x.Sprites.Get(p)
+		liveSpr.TickFlash()
 		if _, err := inputsources.LoopInputSource(p, uint64(i), params, x); err != nil {
 			t.Fatal(err)
 		}
