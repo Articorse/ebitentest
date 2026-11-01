@@ -42,6 +42,7 @@ const (
 	WorldgenRockWarpTiles          = 2.0
 	WorldgenRockWarpScaleTiles     = 5.0
 	WorldgenSpawnSearchRadiusTiles = 64
+	PlayerVisionRadiusTiles        = 12
 )
 
 var (

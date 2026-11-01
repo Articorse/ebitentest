@@ -2,6 +2,7 @@ package tilesystem
 
 import (
 	"ebittest/data"
+	"ebittest/utils"
 	"fmt"
 	"log"
 
@@ -13,7 +14,7 @@ type tileDef struct {
 	image     *ebiten.Image
 	maxHealth int
 	passable  bool
-	opaque    bool // TODO: Use this for a transparency system
+	opaque    bool
 }
 
 type promotedTile struct {
@@ -49,4 +50,15 @@ func dtosToDefsMap(dtos []tileDefDTO) (map[data.TileEnum]tileDef, error) {
 	}
 
 	return tileDefs, nil
+}
+
+// Tiles outside the active chunks count as opaque, since nothing about them is known to the simulation
+func (cc *ChunkContainer) IsOpaqueTile(t utils.Vec2i) bool {
+	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	if !ok {
+		return true
+	}
+
+	def, ok := cc.atlas[c.getTileDefId(t)]
+	return !ok || def.opaque
 }

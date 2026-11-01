@@ -9,7 +9,7 @@ import (
 // The center of the passable tile closest to near, going by generated terrain only, so it's meant for a new world
 // that nothing has modified yet
 func (cc *ChunkContainer) NewWorldSpawnPos(near utils.Vec2f) (utils.Vec2f, bool) {
-	start := worldPosToTilePos(near)
+	start := utils.WorldPosToTilePos(near)
 	best, bestDistSq := utils.Vec2i{}, -1
 
 	// Rings are squares, so a closer tile can still turn up in a later ring; the search ends once none can
@@ -40,5 +40,5 @@ func (cc *ChunkContainer) NewWorldSpawnPos(near utils.Vec2f) (utils.Vec2f, bool)
 	if bestDistSq == -1 {
 		return near, false
 	}
-	return tilePosToWorldPos(best), true
+	return utils.TilePosToWorldPos(best), true
 }

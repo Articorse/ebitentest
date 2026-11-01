@@ -59,6 +59,7 @@ type ECSContainer struct {
 	ChunkLoaders      Storage[ChunkLoader]
 	Persistents       Storage[Persistent]
 	Tethers           Storage[Tether]
+	Visions           Storage[Vision]
 }
 
 func NewECSContainer() *ECSContainer {
@@ -85,6 +86,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&chunkLoaderDto{})
 	gob.Register(&persistentDto{})
 	gob.Register(&tetherDto{})
+	gob.Register(&visionDto{})
 
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
@@ -128,6 +130,7 @@ func NewECSContainer() *ECSContainer {
 		ChunkLoaders:      newStorage[ChunkLoader](),
 		Persistents:       newStorage[Persistent](),
 		Tethers:           newStorage[Tether](),
+		Visions:           newStorage[Vision](),
 	}
 
 	// The order decides the order of an entity's components in saved data
@@ -155,6 +158,7 @@ func NewECSContainer() *ECSContainer {
 		&x.ChunkLoaders,
 		&x.Persistents,
 		&x.Tethers,
+		&x.Visions,
 	}
 
 	return x

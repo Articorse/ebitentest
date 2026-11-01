@@ -18,6 +18,7 @@ import (
 	"ebittest/ecs/systems/movementsystem"
 	"ebittest/ecs/systems/platformsystem"
 	"ebittest/ecs/systems/timersystem"
+	"ebittest/ecs/systems/visionsystem"
 	"ebittest/tilesystem"
 	"ebittest/utils"
 	"ebittest/world"
@@ -56,7 +57,8 @@ type game struct {
 	justLoaded     bool
 	newWorld       bool
 
-	assetmanager *assetmanager.AssetManager
+	assetmanager  *assetmanager.AssetManager
+	visionOverlay drawsystem.VisionOverlay
 }
 
 func (g *game) Update() error {
@@ -320,6 +322,8 @@ func (g *game) Update() error {
 		log.Println("platform system tick error: ", err)
 	}
 
+	visionsystem.Tick(g.ecs, g.chunkContainer.IsOpaqueTile)
+
 	if err := g.ecs.RemoveScheduledEntities(); err != nil {
 		log.Println("error while removing scheduled entities: ", err)
 	}
@@ -415,6 +419,10 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	if err := drawsystem.DrawFloatingTexts(screen, g.ecs); err != nil {
 		log.Println("error while drawing floating texts: ", err)
+	}
+
+	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
+		g.visionOverlay.Draw(screen, g.ecs.Camera, vision)
 	}
 
 	g.DrawDebug(screen)

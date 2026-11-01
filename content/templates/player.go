@@ -90,6 +90,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		pAbiComp,
 		pCLComp,
 		ecs.NewPersistentComponent(),
+		ecs.NewVisionComponent(data.PlayerVisionRadiusTiles),
 	)
 	if err != nil {
 		return -1, fmt.Errorf("error spawning player: %w", err)

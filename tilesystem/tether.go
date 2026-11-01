@@ -6,7 +6,6 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"log"
-	"math"
 )
 
 // Moves a tethered entity back inside its anchor's loaded area, as close as possible to where it was.
@@ -47,7 +46,7 @@ func (cc *ChunkContainer) relocateTethered(e common.EntityId, ecsCont *ecs.ECSCo
 		Y: (center.Y+radius+1)*data.ChunkSize - 1 - data.TetherBorderTiles,
 	}
 
-	eTile := worldPosToTilePos(ePos)
+	eTile := utils.WorldPosToTilePos(ePos)
 	start := utils.Vec2i{
 		X: min(max(eTile.X, minTile.X), maxTile.X),
 		Y: min(max(eTile.Y, minTile.Y), maxTile.Y),
@@ -55,7 +54,7 @@ func (cc *ChunkContainer) relocateTethered(e common.EntityId, ecsCont *ecs.ECSCo
 
 	targetPos := anchorPos
 	if tile, found := cc.findClosestPassableTile(start, minTile, maxTile); found {
-		targetPos = tilePosToWorldPos(tile)
+		targetPos = utils.TilePosToWorldPos(tile)
 	}
 
 	if err := ecsCont.Detach(e); err != nil {
@@ -119,18 +118,6 @@ func (cc *ChunkContainer) isTilePassable(t utils.Vec2i) bool {
 
 	def, ok := cc.atlas[c.getTileDefId(t)]
 	return ok && def.passable
-}
-
-// Tiles are centered on multiples of the tile size
-func worldPosToTilePos(pos utils.Vec2f) utils.Vec2i {
-	return utils.Vec2i{
-		X: int(math.Floor(pos.X/data.TileSize + 0.5)),
-		Y: int(math.Floor(pos.Y/data.TileSize + 0.5)),
-	}
-}
-
-func tilePosToWorldPos(t utils.Vec2i) utils.Vec2f {
-	return utils.Vec2f{X: float64(t.X * data.TileSize), Y: float64(t.Y * data.TileSize)}
 }
 
 func floorDiv(a, b int) int {
