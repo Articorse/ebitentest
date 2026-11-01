@@ -21,12 +21,10 @@ import (
 	"ebittest/tilesystem"
 	"ebittest/utils"
 	"ebittest/world"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"image/color"
 	"log"
-	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -63,15 +61,6 @@ type game struct {
 	newWorld       bool
 
 	assetmanager *assetmanager.AssetManager
-
-	recording          bool
-	recordingStartTick uint64
-	recordedInputs     map[uint64]ecs.InputState
-
-	replaying       bool
-	replayStartTick uint64
-	replayInputs    map[uint64]ecs.InputState
-	replayEntity    common.EntityId
 }
 
 func (g *game) Update() error {
@@ -189,24 +178,6 @@ func (g *game) Update() error {
 		log.Printf("error during handling inputs: %v", err)
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
-		f, err := os.Create("replay.json")
-		if err != nil {
-			log.Println("error creating replay file: ", err)
-		}
-		defer f.Close()
-
-		j, err := json.Marshal(g.ecs.InputLog)
-		if err != nil {
-			log.Println("error marshalling replay log: ", err)
-		}
-
-		_, err = f.Write(j)
-		if err != nil {
-			log.Println("error writing replay file: ", err)
-		}
-	}
-
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
 		g.ecs.Camera.X -= 10
 	}
@@ -230,22 +201,6 @@ func (g *game) Update() error {
 		}
 
 		g.ecs.Camera = pWorldPos.Subtract(utils.Vec2f{X: float64(data.CameraWidth) / 2, Y: float64(data.CameraHeight) / 2})
-	}
-
-	// Replay
-	if inpututil.IsKeyJustPressed(ebiten.KeyF5) {
-		if !g.recording {
-			g.recording = true
-			g.recordingStartTick = g.ecs.TickIdx
-			g.recordedInputs = make(map[uint64]ecs.InputState)
-		} else {
-			g.recording = false
-			// TODO: Save to file
-		}
-	}
-	if g.recording {
-		relTick := g.ecs.TickIdx - g.recordingStartTick
-		g.recordedInputs[relTick] = g.ecs.InputLog[g.ecs.TickIdx][g.playerEntity]
 	}
 
 	// DEBUG

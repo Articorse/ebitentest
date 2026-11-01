@@ -57,11 +57,8 @@ func Load(ecsCont *ecs.ECSContainer) (h Header, exists bool, err error) {
 	ecsCont.SetNextEntity(h.NextEntity)
 	ecsCont.TickIdx = h.TickIdx
 
-	// Headers saved before RNG state was stored have none, in which case the seeded state is kept
-	if len(h.RngState) > 0 {
-		if err := ecsCont.SetRngState(h.RngState); err != nil {
-			return h, true, fmt.Errorf("error restoring RNG state: %w", err)
-		}
+	if err := ecsCont.SetRngState(h.RngState); err != nil {
+		return h, true, fmt.Errorf("error restoring RNG state: %w", err)
 	}
 
 	for e, compDtos := range h.Entities {

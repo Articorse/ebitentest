@@ -19,7 +19,9 @@ type ECSContainer struct {
 	scheduledForDeletion []common.EntityId
 	scheduledForDeath    []common.EntityId
 
-	InputLog     map[uint64]map[common.EntityId]InputState
+	tickInputs     map[common.EntityId]InputState
+	tickInputsTick uint64
+
 	Camera       utils.Vec2f
 	CameraFollow bool
 
@@ -115,7 +117,6 @@ func NewECSContainer() *ECSContainer {
 
 	return &ECSContainer{
 		nextEntity: 0,
-		InputLog:   make(map[uint64]map[common.EntityId]InputState),
 
 		abilityFuncs:     make(map[AbilityEnum]AbilityFunc),
 		timerFuncs:       make(map[TimerFuncEnum]TimerFunc),
@@ -177,24 +178,28 @@ func NewECSContainer() *ECSContainer {
 }
 
 func (x *ECSContainer) GetCurrentTickInputs() (map[common.EntityId]InputState, error) {
-	if tickInputs, ok := x.InputLog[x.TickIdx]; ok {
-		return tickInputs, nil
+	if x.tickInputs == nil || x.tickInputsTick != x.TickIdx {
+		return nil, fmt.Errorf("no inputs found for tick %d", x.TickIdx)
 	}
-	return nil, fmt.Errorf("no inputs found for tick %d", x.TickIdx)
+	return x.tickInputs, nil
 }
 
 func (x *ECSContainer) GetCurrentTickInputsForEntity(e common.EntityId) (InputState, error) {
-	if tickInputs, ok := x.InputLog[x.TickIdx]; ok {
-		if input, ok := tickInputs[e]; ok {
-			return input, nil
-		}
+	tickInputs, err := x.GetCurrentTickInputs()
+	if err != nil {
+		return InputState{}, err
+	}
+
+	input, ok := tickInputs[e]
+	if !ok {
 		return InputState{}, fmt.Errorf("no input found for entity %d in tick %d", e, x.TickIdx)
 	}
-	return InputState{}, fmt.Errorf("no inputs found for tick %d", x.TickIdx)
+	return input, nil
 }
 
 func (x *ECSContainer) SetTickInputs(tick uint64, inputs map[common.EntityId]InputState) {
-	x.InputLog[tick] = inputs
+	x.tickInputs = inputs
+	x.tickInputsTick = tick
 }
 
 func (x *ECSContainer) RngState() ([]byte, error) {
