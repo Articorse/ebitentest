@@ -21,14 +21,13 @@ func DealContactDamage(
 	ecsCont *ecs.ECSContainer,
 ) (entitiesKilled uint64, err error) {
 	for dmgE, cols := range collisions {
-		disableColliderAfter := []common.EntityId{}
-
 		cd, ok := ecsCont.ContactDamages.Get(dmgE)
 		if !ok {
 			log.Printf("Error dealing contact damage of entity %d: it has no contact damage\n", dmgE)
 			continue
 		}
 
+		hitAny := false
 		for hitE, c := range cols {
 			hp, ok := ecsCont.Hitpoints.Get(hitE)
 			if !ok {
@@ -104,9 +103,7 @@ func DealContactDamage(
 				ecsCont.ScheduleKillEntity(dmgE)
 			}
 
-			if cd.SingleTick() {
-				disableColliderAfter = append(disableColliderAfter, hitE)
-			}
+			hitAny = true
 
 			if dead {
 				entitiesKilled++
@@ -114,10 +111,11 @@ func DealContactDamage(
 			}
 		}
 
-		for _, e := range disableColliderAfter {
-			hurtbox, ok := ecsCont.HurtboxColliders.Get(e)
+		// Disabled only after the loop, so that every entity it touches this tick is still damaged
+		if hitAny && cd.SingleTick() {
+			hurtbox, ok := ecsCont.HurtboxColliders.Get(dmgE)
 			if !ok {
-				log.Printf("Error disabling hurtbox collider for entity %d: it has none\n", e)
+				log.Printf("Error disabling hurtbox collider for entity %d: it has none\n", dmgE)
 				continue
 			}
 			hurtbox.SetEnabled(false)

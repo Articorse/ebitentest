@@ -5,7 +5,9 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"log"
+	"maps"
 	"math"
+	"slices"
 )
 
 type equipTrigger struct {
@@ -26,7 +28,9 @@ func HandleInputs(
 	ecsContainer *ecs.ECSContainer,
 	allInputs map[common.EntityId]ecs.InputState,
 ) error {
-	for e, input := range allInputs {
+	// In entity order, so that abilities activate, and spawned entities get their IDs, the same way every run
+	for _, e := range slices.Sorted(maps.Keys(allInputs)) {
+		input := allInputs[e]
 		if ecsContainer.Transforms.HasComponent(e) {
 			eWorldPos, err := ecsContainer.WorldPos(e)
 			if err != nil {
