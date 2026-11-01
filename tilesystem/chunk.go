@@ -3,7 +3,7 @@ package tilesystem
 import (
 	"ebittest/data"
 	"ebittest/utils"
-	"math/rand/v2"
+	"ebittest/worldgen"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -17,17 +17,8 @@ type chunk struct {
 }
 
 func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
-	r := rand.NewPCG(data.RngSeed1+uint64(pos.X), data.RngSeed2+uint64(pos.Y))
-
-	c := chunk{}
+	c := chunk{tiles: worldgen.ChunkTiles(cc.seed, pos)}
 	c.promotedTiles = make(map[utils.Vec2i]promotedTile)
-
-	for y := range data.ChunkSize {
-		for x := range data.ChunkSize {
-			tileId := data.TileEnum(r.Uint64()%3 + 1)
-			c.tiles[y*data.ChunkSize+x] = tileId
-		}
-	}
 
 	return &c, nil
 }

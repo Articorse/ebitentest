@@ -50,6 +50,15 @@ func (cc *ChunkContainer) SetGeneration(generation uint64) {
 	cc.generation = generation
 }
 
+// Must be set before the first chunk is requested, since chunks are generated on the I/O thread
+func (cc *ChunkContainer) SetSeed(seed uint64) {
+	cc.seed = seed
+}
+
+func (cc *ChunkContainer) Seed() uint64 {
+	return cc.seed
+}
+
 func (cc *ChunkContainer) IsCommitting() bool {
 	return cc.commitInFlight != nil
 }

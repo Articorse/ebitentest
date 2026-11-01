@@ -21,6 +21,8 @@ import (
 const (
 	AtlasPath          = "assets/tiles/atlas.json"
 	PlayerLoaderRadius = 3
+	// Fixed rather than random like the game's, so that a failing test fails the same way every time
+	WorldSeed uint64 = 0x5EED
 )
 
 var PlayerStart = utils.Vec2f{X: 100, Y: 100}
@@ -197,11 +199,14 @@ func StartSession(t testing.TB) *Session {
 			t.Fatal(err)
 		}
 		cc.SetGeneration(h.Generation)
+		cc.SetSeed(h.Seed)
 		s.Player = h.PlayerEntity
 	} else {
 		if err := world.Reset(); err != nil {
 			t.Fatal(err)
 		}
+		cc.SetSeed(WorldSeed)
+		x.SeedRng(WorldSeed)
 		s.Player = Add(t, x,
 			ecs.NewHierarchyComponent(),
 			ecs.NewTransformComponent(PlayerStart, 1, 0),
@@ -254,7 +259,7 @@ func (s *Session) MovePlayer(pos utils.Vec2f) {
 func (s *Session) Commit() {
 	s.t.Helper()
 
-	h, err := world.Snapshot(s.Player, s.ECS)
+	h, err := world.Snapshot(s.Chunks.Seed(), s.Player, s.ECS)
 	if err != nil {
 		s.t.Fatal(err)
 	}

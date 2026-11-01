@@ -121,7 +121,7 @@ func TestPeriodicCommitResumesTickAndRng(t *testing.T) {
 	x := s.ECS
 	x.Rng.IntN(1000)
 
-	h, err := world.Snapshot(s.Player, x)
+	h, err := world.Snapshot(s.Chunks.Seed(), s.Player, x)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,5 +188,23 @@ func TestRecoveryFinishesCommittedAndDiscardsUncommittedFiles(t *testing.T) {
 		if filepath.Ext(e.Name()) == ".tmp" || filepath.Ext(e.Name()) == ".deleted" {
 			t.Errorf("%s left behind", e.Name())
 		}
+	}
+}
+
+func TestNewWorldIsDefinedByItsSeed(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+
+	fresh := testutil.NewECS(t)
+	fresh.SeedRng(testutil.WorldSeed)
+	if s.ECS.Rng.Uint64() != fresh.Rng.Uint64() {
+		t.Fatal("the new world's RNG isn't seeded from the world seed")
+	}
+
+	s.Commit()
+
+	r := testutil.StartSession(t)
+	if !r.Resumed || r.Chunks.Seed() != testutil.WorldSeed {
+		t.Fatalf("resumed %v with seed %d, want the saved seed %d", r.Resumed, r.Chunks.Seed(), testutil.WorldSeed)
 	}
 }

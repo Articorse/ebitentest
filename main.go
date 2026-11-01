@@ -351,7 +351,7 @@ func (g *game) startWorldSave() {
 
 	g.logConsistency("before saving")
 
-	header, err := world.Snapshot(g.playerEntity, g.ecs)
+	header, err := world.Snapshot(g.chunkContainer.Seed(), g.playerEntity, g.ecs)
 	if err != nil {
 		log.Println("error taking world snapshot: ", err)
 		return
@@ -370,7 +370,7 @@ func (g *game) saveAndExit() error {
 
 	g.logConsistency("before saving")
 
-	header, err := world.Snapshot(g.playerEntity, g.ecs)
+	header, err := world.Snapshot(g.chunkContainer.Seed(), g.playerEntity, g.ecs)
 	if err != nil {
 		log.Println("error taking world snapshot: ", err)
 		return ebiten.Termination
@@ -527,11 +527,15 @@ func main() {
 			log.Fatal("error recovering chunk files: ", err)
 		}
 		g.chunkContainer.SetGeneration(header.Generation)
+		g.chunkContainer.SetSeed(header.Seed)
 		g.playerEntity = header.PlayerEntity
 	} else {
 		if err := world.Reset(); err != nil {
 			log.Fatal("error resetting world: ", err)
 		}
+		seed := world.NewSeed()
+		g.chunkContainer.SetSeed(seed)
+		g.ecs.SeedRng(seed)
 		g.playerEntity, err = templates.SpawnPlayer(g.ecs)
 		if err != nil {
 			log.Fatal("error spawning player: ", err)

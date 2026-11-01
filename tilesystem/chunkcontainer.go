@@ -31,6 +31,8 @@ type ChunkContainer struct {
 
 	generation     uint64
 	commitInFlight *inFlightCommit
+
+	seed uint64
 }
 
 func NewChunkContainer() *ChunkContainer {

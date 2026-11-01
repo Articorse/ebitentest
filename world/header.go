@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 )
 
 type Header struct {
+	Seed         uint64
 	Generation   uint64
 	NextEntity   common.EntityId
 	TickIdx      uint64
@@ -23,13 +25,14 @@ type Header struct {
 
 // Chunkloaders and their compositions are stored here rather than in chunks,
 // since the chunks they would be stored in can't be loaded without them.
-func Snapshot(playerEntity common.EntityId, ecsCont *ecs.ECSContainer) (Header, error) {
+func Snapshot(seed uint64, playerEntity common.EntityId, ecsCont *ecs.ECSContainer) (Header, error) {
 	rngState, err := ecsCont.RngState()
 	if err != nil {
 		return Header{}, fmt.Errorf("error getting RNG state: %w", err)
 	}
 
 	h := Header{
+		Seed:         seed,
 		NextEntity:   ecsCont.NextEntity(),
 		TickIdx:      ecsCont.TickIdx,
 		PlayerEntity: playerEntity,
@@ -77,6 +80,11 @@ func Load(ecsCont *ecs.ECSContainer) (h Header, exists bool, err error) {
 	}
 
 	return h, true, nil
+}
+
+// Deliberately not deterministic, unlike everything else, since each new world should differ
+func NewSeed() uint64 {
+	return rand.Uint64()
 }
 
 func Reset() error {

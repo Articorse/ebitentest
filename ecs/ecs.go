@@ -1,7 +1,6 @@
 package ecs
 
 import (
-	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
@@ -91,7 +90,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&shapes.RectangleParams{})
 	gob.Register(&shapes.PolygonParams{})
 
-	rngSource := rand.NewPCG(data.RngSeed1, data.RngSeed2)
+	rngSource := rand.NewPCG(0, 0)
 
 	x := &ECSContainer{
 		nextEntity: 0,
@@ -184,6 +183,10 @@ func (x *ECSContainer) GetCurrentTickInputsForEntity(e common.EntityId) (InputSt
 func (x *ECSContainer) SetTickInputs(tick uint64, inputs map[common.EntityId]InputState) {
 	x.tickInputs = inputs
 	x.tickInputsTick = tick
+}
+
+func (x *ECSContainer) SeedRng(seed uint64) {
+	x.rngSource.Seed(seed, 0)
 }
 
 func (x *ECSContainer) RngState() ([]byte, error) {

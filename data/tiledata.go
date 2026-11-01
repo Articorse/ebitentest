@@ -7,7 +7,7 @@ const (
 	Tile_None TileEnum = iota
 	Tile_Dirt
 	Tile_Grass
+	Tile_Rock
 	Tile_WaterShallow
 	Tile_WaterDeep
-	Tile_Rock
 )
