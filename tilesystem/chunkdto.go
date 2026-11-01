@@ -10,11 +10,12 @@ import (
 )
 
 type chunkDto struct {
-	X             int
-	Y             int
-	Tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
-	PromotedTiles []promotedTileDto
-	Entities      map[common.EntityId][]ecs.ComponentDto
+	X               int
+	Y               int
+	Tiles           [data.ChunkSize * data.ChunkSize]data.TileEnum
+	PromotedTiles   []promotedTileDto
+	Entities        map[common.EntityId][]ecs.ComponentDto
+	TerrainModified bool
 }
 
 type promotedTileDto struct {
@@ -51,11 +52,12 @@ func (cc *ChunkContainer) chunkToDto(
 	}
 
 	return chunkDto{
-		X:             pos.X,
-		Y:             pos.Y,
-		Tiles:         c.tiles,
-		PromotedTiles: promotedTiles,
-		Entities:      entitiesWithComps,
+		X:               pos.X,
+		Y:               pos.Y,
+		Tiles:           c.tiles,
+		PromotedTiles:   promotedTiles,
+		Entities:        entitiesWithComps,
+		TerrainModified: c.terrainModified,
 	}, nil
 }
 
@@ -68,8 +70,13 @@ func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 	}
 
 	chunk := &chunk{
-		tiles:         dto.Tiles,
-		promotedTiles: promotedTiles,
+		tiles:           dto.Tiles,
+		promotedTiles:   promotedTiles,
+		terrainModified: dto.TerrainModified,
 	}
 	return chunk
+}
+
+func (dto chunkDto) needsSaving() bool {
+	return dto.TerrainModified || len(dto.PromotedTiles) > 0 || len(dto.Entities) > 0
 }

@@ -187,7 +187,7 @@ func (cc *ChunkContainer) waitUntilAvailable(pos utils.Vec2i) error {
 }
 
 func loadChunkGob(cellKey utils.Vec2i) (cDto chunkDto, exists bool, err error) {
-	file, err := os.Open(fmt.Sprintf(data.ChunkDataFilePathTemplate, cellKey.X, cellKey.Y))
+	file, err := os.Open(chunkFilePath(cellKey))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return chunkDto{}, false, nil

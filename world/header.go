@@ -14,12 +14,13 @@ import (
 )
 
 type Header struct {
-	Generation   uint64
-	NextEntity   common.EntityId
-	TickIdx      uint64
-	PlayerEntity common.EntityId
-	RngState     []byte
-	Entities     map[common.EntityId][]ecs.ComponentDto
+	FormatVersion int
+	Generation    uint64
+	NextEntity    common.EntityId
+	TickIdx       uint64
+	PlayerEntity  common.EntityId
+	RngState      []byte
+	Entities      map[common.EntityId][]ecs.ComponentDto
 }
 
 // Chunkloaders and their compositions are stored here rather than in chunks,
@@ -31,11 +32,12 @@ func Snapshot(playerEntity common.EntityId, ecsCont *ecs.ECSContainer) (Header, 
 	}
 
 	h := Header{
-		NextEntity:   ecsCont.NextEntity(),
-		TickIdx:      ecsCont.TickIdx,
-		PlayerEntity: playerEntity,
-		RngState:     rngState,
-		Entities:     make(map[common.EntityId][]ecs.ComponentDto),
+		FormatVersion: data.WorldFormatVersion,
+		NextEntity:    ecsCont.NextEntity(),
+		TickIdx:       ecsCont.TickIdx,
+		PlayerEntity:  playerEntity,
+		RngState:      rngState,
+		Entities:      make(map[common.EntityId][]ecs.ComponentDto),
 	}
 
 	for _, loader := range ecsCont.ChunkLoaders.GetEntities() {
@@ -53,6 +55,13 @@ func Load(ecsCont *ecs.ECSContainer) (h Header, exists bool, err error) {
 	h, exists, err = readHeader()
 	if err != nil || !exists {
 		return h, exists, err
+	}
+
+	if h.FormatVersion != data.WorldFormatVersion {
+		return h, true, fmt.Errorf(
+			"world was saved in format version %d, but this build only reads version %d; delete %s to start a new world",
+			h.FormatVersion, data.WorldFormatVersion, data.ChunkDataDir,
+		)
 	}
 
 	ecsCont.SetNextEntity(h.NextEntity)

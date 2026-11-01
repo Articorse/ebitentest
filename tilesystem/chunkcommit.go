@@ -31,6 +31,7 @@ type commitRequest struct {
 	header  world.Header
 	chunks  map[utils.Vec2i]chunkDto
 	appends map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto
+	deletes []utils.Vec2i
 }
 
 type commitResult struct {
@@ -42,6 +43,7 @@ type inFlightCommit struct {
 	generation     uint64
 	chunkVersions  map[utils.Vec2i]uint64
 	entityVersions map[utils.Vec2i]map[common.EntityId]uint64
+	deletes        []utils.Vec2i
 }
 
 func (cc *ChunkContainer) SetGeneration(generation uint64) {
@@ -78,16 +80,28 @@ func (cc *ChunkContainer) StartCommit(header world.Header, ecsCont *ecs.ECSConta
 		if err != nil {
 			return fmt.Errorf("failed to convert chunk at %v to DTO: %w", pos, err)
 		}
-		req.chunks[pos] = cDto
+
+		if cDto.needsSaving() {
+			req.chunks[pos] = cDto
+		} else {
+			req.deletes = append(req.deletes, pos)
+		}
 	}
 
 	// Maps are cloned, since the main thread keeps adding to them while the commit is written
 	for pos, evicted := range cc.evictedChunks {
+		inFlight.chunkVersions[pos] = evicted.version
+
+		if !evicted.dto.needsSaving() {
+			req.deletes = append(req.deletes, pos)
+			continue
+		}
+
 		cDto := evicted.dto
 		cDto.Entities = maps.Clone(evicted.dto.Entities)
 		req.chunks[pos] = cDto
-		inFlight.chunkVersions[pos] = evicted.version
 	}
+	inFlight.deletes = req.deletes
 
 	for pos, ents := range cc.queuedEntities {
 		req.appends[pos] = make(map[common.EntityId][]ecs.ComponentDto, len(ents))
@@ -149,6 +163,9 @@ func (cc *ChunkContainer) finishCommit(res commitResult) {
 	for pos := range inFlight.entityVersions {
 		delete(cc.resident, pos)
 	}
+	for _, pos := range inFlight.deletes {
+		delete(cc.resident, pos)
+	}
 
 	// Entries replaced since the commit started hold newer data, so only the committed versions are dropped
 	for pos, version := range inFlight.chunkVersions {
@@ -189,15 +206,19 @@ func (cc *ChunkContainer) queueEntity(pos utils.Vec2i, e common.EntityId, dtos [
 	cc.queuedEntities[pos][e] = pendingEntity{dtos: dtos, version: cc.pendingVersion}
 }
 
-// Runs on the IO thread. Every chunk file is written under a temporary name first, then the header is replaced,
-// committing the save, and only then are the temporary files moved into place. RecoverChunkFiles finishes or discards
-// that last step if the game stops in the middle of it.
+// Runs on the IO thread. Every chunk file is written under a temporary name first, and every deletion is marked,
+// then the header is replaced, committing the save, and only then are the temporary files moved into place and the
+// marked files deleted. RecoverChunkFiles finishes or discards that last step if the game stops in the middle of it.
 func (cc *ChunkContainer) commit(req commitRequest) (committed bool, err error) {
 	generation := req.header.Generation
 	var tmpPaths []string
+	var deleteMarkers []string
 
 	discard := func() {
 		for _, p := range tmpPaths {
+			os.Remove(p)
+		}
+		for _, p := range deleteMarkers {
 			os.Remove(p)
 		}
 	}
@@ -245,6 +266,19 @@ func (cc *ChunkContainer) commit(req commitRequest) (committed bool, err error) 
 		}
 	}
 
+	for _, pos := range req.deletes {
+		if _, err := os.Stat(chunkFilePath(pos)); errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+
+		p := chunkDeleteMarkerPath(pos, generation)
+		if err := writeEmptyFile(p); err != nil {
+			discard()
+			return false, fmt.Errorf("failed to mark chunk at %v for deletion: %w", pos, err)
+		}
+		deleteMarkers = append(deleteMarkers, p)
+	}
+
 	if err := world.WriteHeader(req.header); err != nil {
 		discard()
 		return false, fmt.Errorf("failed to write world header: %w", err)
@@ -255,6 +289,10 @@ func (cc *ChunkContainer) commit(req commitRequest) (committed bool, err error) 
 		if err := os.Rename(p, committedFilePath(p, generation)); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("failed to move %s into place: %w", p, err))
 		}
+	}
+
+	for _, p := range deleteMarkers {
+		errs = errors.Join(errs, deleteMarkedFile(p, generation))
 	}
 
 	return true, errs
@@ -271,6 +309,19 @@ func RecoverChunkFiles(committedGeneration uint64) error {
 
 	var errs error
 	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".deleted") {
+			p := filepath.Join(data.ChunkDataDir, entry.Name())
+			_, generationStr, found := cutLast(strings.TrimSuffix(entry.Name(), ".deleted"), ".")
+			generation, parseErr := strconv.ParseUint(generationStr, 10, 64)
+
+			if found && parseErr == nil && generation == committedGeneration {
+				errs = errors.Join(errs, deleteMarkedFile(p, generation))
+			} else if err := os.Remove(p); err != nil {
+				errs = errors.Join(errs, fmt.Errorf("failed to remove %s: %w", p, err))
+			}
+			continue
+		}
+
 		if !strings.HasSuffix(entry.Name(), ".tmp") {
 			continue
 		}
@@ -292,6 +343,42 @@ func RecoverChunkFiles(committedGeneration uint64) error {
 	}
 
 	return errs
+}
+
+func chunkFilePath(pos utils.Vec2i) string {
+	return fmt.Sprintf(data.ChunkDataFilePathTemplate, pos.X, pos.Y)
+}
+
+func chunkDeleteMarkerPath(pos utils.Vec2i, generation uint64) string {
+	return fmt.Sprintf(data.ChunkDataFilePathTemplate+".%d.deleted", pos.X, pos.Y, generation)
+}
+
+// The marker is only removed once the file it marks is gone, so that recovery can retry the deletion
+func deleteMarkedFile(markerPath string, generation uint64) error {
+	p := strings.TrimSuffix(markerPath, fmt.Sprintf(".%d.deleted", generation))
+	if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("failed to delete %s: %w", p, err)
+	}
+
+	if err := os.Remove(markerPath); err != nil {
+		return fmt.Errorf("failed to remove %s: %w", markerPath, err)
+	}
+
+	return nil
+}
+
+func writeEmptyFile(filePath string) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("error creating file: %w", err)
+	}
+
+	if err := file.Sync(); err != nil {
+		file.Close()
+		return fmt.Errorf("error syncing file: %w", err)
+	}
+
+	return file.Close()
 }
 
 func chunkTmpFilePath(pos utils.Vec2i, generation uint64) string {

@@ -24,6 +24,7 @@ const (
 	ChunkDataDir                       = "chunkdata"
 	ChunkDataFilePathTemplate          = "chunkdata/chunk_%d_%d.gob"
 	WorldHeaderFilePath                = "chunkdata/world.gob"
+	WorldFormatVersion                 = 1
 	ChunkReloadRetries                 = 3
 	MaxChunkLoadDispatchPerTick        = 4
 	ChunkDeactivateMargin              = 1
