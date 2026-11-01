@@ -10,9 +10,9 @@ import (
 type LinkKindEnum uint8
 
 const (
-	// Stored with the parent, removed with it
+	// Stored with the parent if persistent, removed with it
 	Link_Part LinkKindEnum = iota
-	// Stored with the parent, dropped when it's killed
+	// Always stored with the parent, dropped when it's killed
 	Link_Held
 	// Never stored with the parent, detached when it's stored or removed
 	Link_Attached

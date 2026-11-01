@@ -570,7 +570,7 @@ func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 	return comps
 }
 
-// Returns the DTOs of root and of every persistent part and held entity under it, which is the unit that gets stored.
+// Returns the DTOs of root, its held entities and its persistent parts, which is the unit that gets stored.
 // Links to entities outside the unit are cut, and root's transform becomes a world transform if it was attached.
 func (x *ECSContainer) GetCompositionComponents(root common.EntityId) (map[common.EntityId][]ComponentDto, error) {
 	hm := hierarchyManager{}
@@ -591,6 +591,12 @@ func (x *ECSContainer) GetCompositionComponents(root common.EntityId) (map[commo
 				})
 				if e == root {
 					d.Parent = -1
+				}
+			case *equipperDto:
+				for slot, eq := range d.Equipment {
+					if _, ok := members[eq]; !ok {
+						log.Printf("consistency: equipper %d is stored without its equipment %d in slot %v", e, eq, slot)
+					}
 				}
 			case *transformDto:
 				if e != root || !rootIsAttached {
@@ -620,8 +626,13 @@ func (x *ECSContainer) collectComposition(e common.EntityId, members map[common.
 	members[e] = x.GetEntityComponents(e)
 
 	for _, c := range hm.GetChildren(e, x) {
-		if hm.GetLinkKind(c, x) == Link_Attached || !x.Persistents.HasComponent(c) {
+		switch hm.GetLinkKind(c, x) {
+		case Link_Attached:
 			continue
+		case Link_Part:
+			if !x.Persistents.HasComponent(c) {
+				continue
+			}
 		}
 		x.collectComposition(c, members)
 	}

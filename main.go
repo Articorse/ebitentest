@@ -57,6 +57,7 @@ type game struct {
 
 	chunkContainer *tilesystem.ChunkContainer
 	loading        bool
+	justLoaded     bool
 
 	assetmanager *assetmanager.AssetManager
 
@@ -84,6 +85,7 @@ func (g *game) Update() error {
 		}
 
 		g.loading = !ready
+		g.justLoaded = ready
 		return nil
 	}
 
@@ -127,6 +129,12 @@ func (g *game) Update() error {
 	err = g.chunkContainer.Tick(g.ecs)
 	if err != nil {
 		log.Println("error ticking chunk container:", err)
+	}
+
+	// The first tick activates the chunks loaded during loading, so the whole world can be checked only now
+	if g.justLoaded {
+		g.justLoaded = false
+		g.logConsistency("after loading")
 	}
 
 	tickInputs := make(map[common.EntityId]ecs.InputState)
@@ -409,11 +417,19 @@ func (g *game) Update() error {
 	return nil
 }
 
+func (g *game) logConsistency(when string) {
+	if err := g.ecs.CheckConsistency(); err != nil {
+		log.Printf("consistency check %s failed:\n%v", when, err)
+	}
+}
+
 func (g *game) startWorldSave() {
 	if g.chunkContainer.IsCommitting() {
 		log.Println("skipping world save, the previous one is still being written")
 		return
 	}
+
+	g.logConsistency("before saving")
 
 	header, err := world.Snapshot(g.playerEntity, g.ecs)
 	if err != nil {
@@ -431,6 +447,8 @@ func (g *game) saveAndExit() error {
 	if g.loading {
 		return ebiten.Termination
 	}
+
+	g.logConsistency("before saving")
 
 	header, err := world.Snapshot(g.playerEntity, g.ecs)
 	if err != nil {
