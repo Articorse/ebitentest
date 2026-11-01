@@ -25,9 +25,9 @@ func TestSingleTickContactDamageHitsEveryTargetOnceThenDisablesItsHurtbox(t *tes
 			ecs.NewHitboxColliderComponent(ecs.Layer_Enemy, ecs.Layer_FriendlyProjectile, shape)))
 	}
 
-	collisions := map[common.EntityId]map[common.EntityId]common.Collision{explosion: {}}
+	collisions := []common.Collision{}
 	for _, e := range targets {
-		collisions[explosion][e] = common.Collision{Vector: utils.Vec2f{X: 1}}
+		collisions = append(collisions, common.Collision{A: explosion, B: e, Vector: utils.Vec2f{X: 1}})
 	}
 	if _, err := damagesystem.DealContactDamage(collisions, x); err != nil {
 		t.Fatal(err)

@@ -18,34 +18,26 @@ func DrawCollisions(
 	screen *ebiten.Image,
 	color color.RGBA,
 	camera utils.Vec2f,
-	collisions map[common.EntityId]map[common.EntityId]common.Collision,
+	collisions []common.Collision,
 	ecsContainer *ecs.ECSContainer,
 ) error {
-	for eA, cols := range collisions {
-
-		if !ecsContainer.Transforms.HasComponent(eA) {
-			log.Printf("Entity %d in collisions does not have a transform component\n", eA)
-			continue
-		}
-
-		aWorldPos, err := ecsContainer.WorldPos(eA)
+	for _, col := range collisions {
+		aWorldPos, err := ecsContainer.WorldPos(col.A)
 		if err != nil {
-			log.Printf("Error getting world position for entity %d: %v\n", eA, err)
+			log.Printf("Error getting world position for entity %d: %v\n", col.A, err)
 			continue
 		}
 
-		for _, col := range cols {
-			vector.StrokeLine(
-				screen,
-				float32(aWorldPos.X-camera.X),
-				float32(aWorldPos.Y-camera.Y),
-				float32(aWorldPos.X+col.Vector.X*10-camera.X),
-				float32(aWorldPos.Y+col.Vector.Y*10-camera.Y),
-				2,
-				color,
-				false,
-			)
-		}
+		vector.StrokeLine(
+			screen,
+			float32(aWorldPos.X-camera.X),
+			float32(aWorldPos.Y-camera.Y),
+			float32(aWorldPos.X+col.Vector.X*10-camera.X),
+			float32(aWorldPos.Y+col.Vector.Y*10-camera.Y),
+			2,
+			color,
+			false,
+		)
 	}
 
 	return nil
@@ -57,7 +49,7 @@ func DrawColliders(
 	collidedColor color.RGBA,
 	screen *ebiten.Image,
 	camera utils.Vec2f,
-	collisions map[common.EntityId]map[common.EntityId]common.Collision,
+	collisions []common.Collision,
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	for _, e := range colliders.GetEntities() {
@@ -83,15 +75,8 @@ func DrawColliders(
 
 		lineColor := baseColor
 
-		if _, ok := collisions[e]; ok {
+		if slices.ContainsFunc(collisions, func(c common.Collision) bool { return c.A == e || c.B == e }) {
 			lineColor = collidedColor
-		} else {
-			for _, c := range collisions {
-				if _, ok := c[e]; ok {
-					lineColor = collidedColor
-					break
-				}
-			}
 		}
 
 		for _, shape := range col.Shapes() {
@@ -128,17 +113,15 @@ func DrawColliders(
 					false,
 				)
 			case *shapes.PolygonShape:
-				var verts []utils.Vec2f
-				for _, v := range h.GetVertices() {
-					verts = append(verts, utils.Vec2f{X: worldPos.X + v.X, Y: worldPos.Y + v.Y})
-				}
-				for _, v := range verts[:len(verts)-1] {
+				verts := GetWorldPolygonVertices(*h, worldPos)
+				for i, v := range verts {
+					next := verts[(i+1)%len(verts)]
 					vector.StrokeLine(
 						screen,
 						float32(v.X-camera.X),
 						float32(v.Y-camera.Y),
-						float32(v.X-camera.X),
-						float32(v.Y-camera.Y),
+						float32(next.X-camera.X),
+						float32(next.Y-camera.Y),
 						1,
 						lineColor,
 						false,
@@ -156,7 +139,7 @@ func DrawAABBs(
 	collidedColor color.RGBA,
 	screen *ebiten.Image,
 	camera utils.Vec2f,
-	aabbcollisions map[common.EntityId][]common.EntityId,
+	aabbcollisions []common.EntityPair,
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	for _, e := range colliders.GetEntities() {
@@ -182,19 +165,7 @@ func DrawAABBs(
 
 		lineColor := baseColor
 
-		isColliding := false
-		if _, ok := aabbcollisions[e]; ok {
-			isColliding = true
-		} else {
-			for _, c := range aabbcollisions {
-				if slices.Contains(c, e) {
-					isColliding = true
-					break
-				}
-			}
-		}
-
-		if isColliding {
+		if slices.ContainsFunc(aabbcollisions, func(p common.EntityPair) bool { return p.A == e || p.B == e }) {
 			lineColor = collidedColor
 		}
 

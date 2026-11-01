@@ -1,6 +1,7 @@
 package collisionsystem
 
 import (
+	"cmp"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
@@ -9,239 +10,149 @@ import (
 	"slices"
 )
 
+// Keeps the order of the pairs, with each pair's A taken from aColliders and B from bColliders
 func GetCollisions(
 	aColliders ecs.ColliderSet,
 	bColliders ecs.ColliderSet,
-	potentialCollisions map[common.EntityId][]common.EntityId,
+	potentialCollisions []common.EntityPair,
 	ecsContainer *ecs.ECSContainer,
-) (map[common.EntityId]map[common.EntityId]common.Collision, error) {
-	collisions := make(map[common.EntityId]map[common.EntityId]common.Collision)
-	for e1, colEntities := range potentialCollisions {
-		for _, e2 := range colEntities {
-			eA, eB, aCol, bCol, ok := orient(e1, e2, aColliders, bColliders)
-			if !ok {
-				continue
-			}
+) []common.Collision {
+	collisions := []common.Collision{}
+	for _, pair := range potentialCollisions {
+		aCol, aOk := aColliders.Collider(pair.A)
+		bCol, bOk := bColliders.Collider(pair.B)
+		if !aOk || !bOk {
+			continue
+		}
 
-			if collidedEntities, ok := collisions[eB]; ok {
-				if _, ok := collidedEntities[eA]; ok {
-					continue
-				}
-			}
-
-			aColShapes := aCol.Shapes()
-			bColShapes := bCol.Shapes()
-
-			collisionFound := false
-			var collisionVector utils.Vec2f
-			var aCollidedIdx int
-			var bCollidedIdx int
-
-			for aColShapeIdx, aColShape := range aColShapes {
-				if collisionFound {
-					break
-				}
-
-				for bColShapeIdx, bColShape := range bColShapes {
-					if collisionFound {
-						break
-					}
-
-					aCollidedIdx = aColShapeIdx
-					bCollidedIdx = bColShapeIdx
-
-					switch aS := aColShape.(type) {
-					case *shapes.RectangleShape:
-						switch bS := bColShape.(type) {
-						case *shapes.RectangleShape:
-							collisionVector = GetRectangleRectangleCollision(eA, eB, *aS, *bS, ecsContainer)
-							if !collisionVector.IsZero() {
-								collisionFound = true
-							}
-						case *shapes.CircleShape:
-							collisionVector = GetRectangleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
-							if !collisionVector.IsZero() {
-								collisionFound = true
-							}
-						case *shapes.PolygonShape:
-							collisionVector = GetRectanglePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
-							if !collisionVector.IsZero() {
-								collisionFound = true
-							}
-						default:
-							log.Printf("unsupported collider shape type for collision detection: %T", bS)
-						}
-					case *shapes.CircleShape:
-						switch bS := bColShape.(type) {
-						case *shapes.RectangleShape:
-							collisionVector = GetRectangleCircleCollision(eB, eA, *bS, *aS, ecsContainer)
-							collisionVector = collisionVector.Multiply(-1)
-							if !collisionVector.IsZero() {
-								collisionFound = true
-							}
-						case *shapes.CircleShape:
-							collisionVector = GetCircleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
-							if !collisionVector.IsZero() {
-								collisionFound = true
-							}
-						case *shapes.PolygonShape:
-							collisionVector = GetCirclePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
-							if !collisionVector.IsZero() {
-								collisionFound = true
-							}
-						default:
-							log.Printf("unsupported collider shape type for collision detection: %T", bS)
-						}
-					case *shapes.PolygonShape:
-						switch bS := bColShape.(type) {
-						case *shapes.RectangleShape:
-							collisionVector = GetRectanglePolygonCollision(eB, eA, *bS, *aS, ecsContainer)
-							collisionVector = collisionVector.Multiply(-1)
-							if !collisionVector.IsZero() {
-								collisionFound = true
-							}
-						case *shapes.CircleShape:
-							collisionVector = GetCirclePolygonCollision(eB, eA, *bS, *aS, ecsContainer)
-							collisionVector = collisionVector.Multiply(-1)
-							if !collisionVector.IsZero() {
-								collisionFound = true
-							}
-						case *shapes.PolygonShape:
-							collisionVector = GetPolygonPolygonCollision(eA, eB, *aS, *bS, ecsContainer)
-							if !collisionVector.IsZero() {
-								collisionFound = true
-							}
-						default:
-							log.Printf("unsupported collider shape type for collision detection: %T", bS)
-						}
-					}
-				}
-			}
-
-			if !collisionVector.IsZero() {
-				if _, ok := collisions[eA]; !ok {
-					collisions[eA] = make(map[common.EntityId]common.Collision)
-				}
-				collisions[eA][eB] = common.Collision{
-					Vector:    collisionVector,
-					AShapeIdx: aCollidedIdx,
-					BShapeIdx: bCollidedIdx,
-				}
-			}
+		if c, ok := firstShapeCollision(pair, aCol.Shapes(), bCol.Shapes(), ecsContainer); ok {
+			collisions = append(collisions, c)
 		}
 	}
 
-	return collisions, nil
+	return collisions
 }
 
-func GetMirrorAABBCollisions(
-	aColliders ecs.ColliderSet,
-	bColliders ecs.ColliderSet,
-	proximateEntities map[common.EntityId][]common.EntityId,
+func firstShapeCollision(
+	pair common.EntityPair,
+	aShapes []shapes.Shape,
+	bShapes []shapes.Shape,
 	ecsContainer *ecs.ECSContainer,
-) (map[common.EntityId][]common.EntityId, error) {
-	allCollisions := make(map[common.EntityId][]common.EntityId)
-
-	aCollisions, err := GetAABBCollisions(aColliders, bColliders, proximateEntities, ecsContainer)
-	if err != nil {
-		return nil, err
-	}
-
-	bCollisions, err := GetAABBCollisions(bColliders, aColliders, proximateEntities, ecsContainer)
-	if err != nil {
-		return nil, err
-	}
-
-	for eA, collidedEntities := range aCollisions {
-		if _, ok := allCollisions[eA]; !ok {
-			allCollisions[eA] = []common.EntityId{}
+) (common.Collision, bool) {
+	for aIdx, aShape := range aShapes {
+		for bIdx, bShape := range bShapes {
+			v := ShapeCollision(pair.A, pair.B, aShape, bShape, ecsContainer)
+			if !v.IsZero() {
+				return common.Collision{A: pair.A, B: pair.B, Vector: v, AShapeIdx: aIdx, BShapeIdx: bIdx}, true
+			}
 		}
-		allCollisions[eA] = append(allCollisions[eA], collidedEntities...)
 	}
 
-	for eB, collidedEntities := range bCollisions {
-		if _, ok := allCollisions[eB]; !ok {
-			allCollisions[eB] = []common.EntityId{}
-		}
-		allCollisions[eB] = append(allCollisions[eB], collidedEntities...)
-	}
-
-	return allCollisions, nil
+	return common.Collision{}, false
 }
 
+// The vector is how far B has to move out of A, or zero without a collision. Pass -1 for a shape without an entity.
+func ShapeCollision(eA, eB common.EntityId, aShape, bShape shapes.Shape, ecsContainer *ecs.ECSContainer) utils.Vec2f {
+	switch aS := aShape.(type) {
+	case *shapes.RectangleShape:
+		switch bS := bShape.(type) {
+		case *shapes.RectangleShape:
+			return GetRectangleRectangleCollision(eA, eB, *aS, *bS, ecsContainer)
+		case *shapes.CircleShape:
+			return GetRectangleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
+		case *shapes.PolygonShape:
+			return GetRectanglePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
+		}
+	case *shapes.CircleShape:
+		switch bS := bShape.(type) {
+		case *shapes.RectangleShape:
+			return GetRectangleCircleCollision(eB, eA, *bS, *aS, ecsContainer).Multiply(-1)
+		case *shapes.CircleShape:
+			return GetCircleCircleCollision(eA, eB, *aS, *bS, ecsContainer)
+		case *shapes.PolygonShape:
+			return GetCirclePolygonCollision(eA, eB, *aS, *bS, ecsContainer)
+		}
+	case *shapes.PolygonShape:
+		switch bS := bShape.(type) {
+		case *shapes.RectangleShape:
+			return GetRectanglePolygonCollision(eB, eA, *bS, *aS, ecsContainer).Multiply(-1)
+		case *shapes.CircleShape:
+			return GetCirclePolygonCollision(eB, eA, *bS, *aS, ecsContainer).Multiply(-1)
+		case *shapes.PolygonShape:
+			return GetPolygonPolygonCollision(eA, eB, *aS, *bS, ecsContainer)
+		}
+	}
+
+	log.Printf("unsupported collider shape types for collision detection: %T and %T", aShape, bShape)
+	return utils.Vec2f{}
+}
+
+// For colliders of a single kind, where a pair collides the same either way round, so is listed once as given
 func GetAABBCollisions(
-	aColliders ecs.ColliderSet,
-	bColliders ecs.ColliderSet,
-	proximateEntities map[common.EntityId][]common.EntityId,
+	colliders ecs.ColliderSet,
+	proximateEntities []common.EntityPair,
 	ecsContainer *ecs.ECSContainer,
-) (map[common.EntityId][]common.EntityId, error) {
-	collisions := make(map[common.EntityId][]common.EntityId)
-
-	for e1, colEntities := range proximateEntities {
-		for _, e2 := range colEntities {
-			eA, eB, aCol, bCol, ok := orient(e1, e2, aColliders, bColliders)
-			if !ok {
-				continue
-			}
-
-			if !aCol.Enabled() || !bCol.Enabled() {
-				continue
-			}
-
-			aAABB, err := ecsContainer.WorldAABB(eA, aCol.LocalPaddedAABB())
-			if err != nil {
-				log.Printf("Error getting AABB for entity %d: %v\n", eA, err)
-				continue
-			}
-
-			if aCol.Layer()&bCol.Mask() == 0 || bCol.Layer()&aCol.Mask() == 0 {
-				continue
-			}
-
-			if collidedEntities, ok := collisions[eB]; ok {
-				if slices.Contains(collidedEntities, eA) {
-					continue
-				}
-			}
-
-			bAABB, err := ecsContainer.WorldAABB(eB, bCol.LocalPaddedAABB())
-			if err != nil {
-				log.Printf("Error getting AABB for entity %d: %v\n", eB, err)
-				continue
-			}
-
-			if utils.DetectAABBCollision(aAABB, bAABB) {
-				v, ok := collisions[eA]
-				if !ok {
-					collisions[eA] = []common.EntityId{eB}
-				}
-				collisions[eA] = append(v, eB)
-			}
+) []common.EntityPair {
+	collisions := []common.EntityPair{}
+	for _, pair := range proximateEntities {
+		if aabbsCollide(pair, colliders, colliders, ecsContainer) {
+			collisions = append(collisions, pair)
 		}
 	}
 
-	return collisions, nil
+	return collisions
 }
 
-func orient(
-	e1, e2 common.EntityId,
-	aColliders, bColliders ecs.ColliderSet,
-) (eA, eB common.EntityId, aCol, bCol ecs.Collider, ok bool) {
-	if e1 == e2 {
-		return -1, -1, nil, nil, false
-	}
-
-	if aCol, ok := aColliders.Collider(e1); ok {
-		if bCol, ok := bColliders.Collider(e2); ok {
-			return e1, e2, aCol, bCol, true
+// For pairs where A acts on B, such as a hurtbox damaging a hitbox, so each pair is tried both ways round
+func GetDirectedAABBCollisions(
+	aColliders ecs.ColliderSet,
+	bColliders ecs.ColliderSet,
+	proximateEntities []common.EntityPair,
+	ecsContainer *ecs.ECSContainer,
+) []common.EntityPair {
+	collisions := []common.EntityPair{}
+	for _, pair := range proximateEntities {
+		for _, p := range []common.EntityPair{pair, {A: pair.B, B: pair.A}} {
+			if aabbsCollide(p, aColliders, bColliders, ecsContainer) {
+				collisions = append(collisions, p)
+			}
 		}
 	}
 
-	if aCol, ok := aColliders.Collider(e2); ok {
-		if bCol, ok := bColliders.Collider(e1); ok {
-			return e2, e1, aCol, bCol, true
-		}
+	slices.SortFunc(collisions, func(p, q common.EntityPair) int {
+		return cmp.Or(cmp.Compare(p.A, q.A), cmp.Compare(p.B, q.B))
+	})
+
+	return collisions
+}
+
+func aabbsCollide(
+	pair common.EntityPair,
+	aColliders ecs.ColliderSet,
+	bColliders ecs.ColliderSet,
+	ecsContainer *ecs.ECSContainer,
+) bool {
+	aCol, aOk := aColliders.Collider(pair.A)
+	bCol, bOk := bColliders.Collider(pair.B)
+	if !aOk || !bOk || !aCol.Enabled() || !bCol.Enabled() {
+		return false
 	}
 
-	return -1, -1, nil, nil, false
+	if aCol.Layer()&bCol.Mask() == 0 || bCol.Layer()&aCol.Mask() == 0 {
+		return false
+	}
+
+	aAABB, err := ecsContainer.WorldAABB(pair.A, aCol.LocalPaddedAABB())
+	if err != nil {
+		log.Printf("Error getting AABB for entity %d: %v\n", pair.A, err)
+		return false
+	}
+
+	bAABB, err := ecsContainer.WorldAABB(pair.B, bCol.LocalPaddedAABB())
+	if err != nil {
+		log.Printf("Error getting AABB for entity %d: %v\n", pair.B, err)
+		return false
+	}
+
+	return utils.DetectAABBCollision(aAABB, bAABB)
 }

@@ -11,21 +11,31 @@ import (
 	"math"
 )
 
+type EntityTiles struct {
+	E     common.EntityId
+	Tiles []utils.Vec2i
+}
+
+type TileCollision struct {
+	E      common.EntityId
+	Vector utils.Vec2f
+}
+
 func ResolveTileCollisions(
-	collisions map[common.EntityId]utils.Vec2f,
+	collisions []TileCollision,
 	ecsContainer *ecs.ECSContainer,
 ) (collisionsResolved uint64, err error) {
-	for e, c := range collisions {
-		t, traOk := ecsContainer.Transforms.Get(e)
-		v, velOk := ecsContainer.Velocities.Get(e)
+	for _, c := range collisions {
+		t, traOk := ecsContainer.Transforms.Get(c.E)
+		v, velOk := ecsContainer.Velocities.Get(c.E)
 		if !traOk || !velOk {
-			log.Printf("Error resolving tile collision of entity %d: it needs a transform and a velocity\n", e)
+			log.Printf("Error resolving tile collision of entity %d: it needs a transform and a velocity\n", c.E)
 			continue
 		}
 
-		t.AddLocalPos(c)
+		t.AddLocalPos(c.Vector)
 
-		impulse := utils.CalculateImpulse(v.LocalVector(), c.Normalized(), data.Bounciness)
+		impulse := utils.CalculateImpulse(v.LocalVector(), c.Vector.Normalized(), data.Bounciness)
 		if impulse.Length() > 0 {
 			v.SetLocalVector(v.LocalVector().Add(impulse))
 
@@ -37,21 +47,20 @@ func ResolveTileCollisions(
 }
 
 func GetCollisions(
-	potentialCollisions map[common.EntityId][]utils.Vec2i,
+	potentialCollisions []EntityTiles,
 	ecsContainer *ecs.ECSContainer,
-) (map[common.EntityId]utils.Vec2f, error) {
-	collisions := make(map[common.EntityId]utils.Vec2f)
+) ([]TileCollision, error) {
+	collisions := []TileCollision{}
 
-	for e, colTiles := range potentialCollisions {
-		pc, ok := ecsContainer.PhysicsColliders.Get(e)
+	for _, et := range potentialCollisions {
+		pc, ok := ecsContainer.PhysicsColliders.Get(et.E)
 		if !ok {
-			log.Printf("Error getting collider shapes for entity %d: it has no physics collider\n", e)
+			log.Printf("Error getting collider shapes for entity %d: it has no physics collider\n", et.E)
 			continue
 		}
-		eColShapes := pc.Shapes()
 
-		for _, t := range colTiles {
-
+		var total utils.Vec2f
+		for _, t := range et.Tiles {
 			tShape, err := shapes.NewRectangleShape(
 				data.TileSize,
 				data.TileSize,
@@ -65,37 +74,16 @@ func GetCollisions(
 				continue
 			}
 
-			collisionFound := false
-			var collisionVector utils.Vec2f
-			for _, eColShape := range eColShapes {
-				if collisionFound {
+			for _, eShape := range pc.Shapes() {
+				if v := collisionsystem.ShapeCollision(-1, et.E, tShape, eShape, ecsContainer); !v.IsZero() {
+					total = total.Add(v)
 					break
 				}
-
-				switch eS := eColShape.(type) {
-				case *shapes.RectangleShape:
-					collisionVector = collisionsystem.GetRectangleRectangleCollision(-1, e, *tShape, *eS, ecsContainer)
-					if !collisionVector.IsZero() {
-						collisionFound = true
-					}
-				case *shapes.CircleShape:
-					collisionVector = collisionsystem.GetRectangleCircleCollision(-1, e, *tShape, *eS, ecsContainer)
-					if !collisionVector.IsZero() {
-						collisionFound = true
-					}
-				case *shapes.PolygonShape:
-					collisionVector = collisionsystem.GetRectanglePolygonCollision(-1, e, *tShape, *eS, ecsContainer)
-					if !collisionVector.IsZero() {
-						collisionFound = true
-					}
-				default:
-					log.Printf("unsupported collider shape type for collision detection: %T", eS)
-				}
 			}
+		}
 
-			if !collisionVector.IsZero() {
-				collisions[e] = collisions[e].Add(collisionVector)
-			}
+		if !total.IsZero() {
+			collisions = append(collisions, TileCollision{E: et.E, Vector: total})
 		}
 	}
 
@@ -103,38 +91,37 @@ func GetCollisions(
 }
 
 func GetAABBCollisions(
-	potentialCollisions map[common.EntityId][]utils.Vec2i,
+	potentialCollisions []EntityTiles,
 	ecsContainer *ecs.ECSContainer,
-) (map[common.EntityId][]utils.Vec2i, error) {
-	collisions := make(map[common.EntityId][]utils.Vec2i)
+) ([]EntityTiles, error) {
+	collisions := []EntityTiles{}
 
-	for e, colTiles := range potentialCollisions {
-		pc, ok := ecsContainer.PhysicsColliders.Get(e)
+	for _, et := range potentialCollisions {
+		pc, ok := ecsContainer.PhysicsColliders.Get(et.E)
 		if !ok || !pc.Enabled() || pc.Mask()&ecs.Layer_Terrain == 0 {
 			continue
 		}
 
-		for _, t := range colTiles {
-			eAABB, err := ecsContainer.WorldAABB(e, pc.LocalPaddedAABB())
-			if err != nil {
-				log.Printf("Error getting AABB for entity %d: %v\n", e, err)
-				continue
-			}
+		eAABB, err := ecsContainer.WorldAABB(et.E, pc.LocalPaddedAABB())
+		if err != nil {
+			log.Printf("Error getting AABB for entity %d: %v\n", et.E, err)
+			continue
+		}
 
+		collided := EntityTiles{E: et.E}
+		for _, t := range et.Tiles {
 			tAABB := [2]utils.Vec2f{
-				utils.Vec2f{
-					X: float64(t.X) * data.TileSize,
-					Y: float64(t.Y) * data.TileSize,
-				},
-				utils.Vec2f{
-					X: float64(t.X+1) * data.TileSize,
-					Y: float64(t.Y+1) * data.TileSize,
-				},
+				{X: (float64(t.X) - 0.5) * data.TileSize, Y: (float64(t.Y) - 0.5) * data.TileSize},
+				{X: (float64(t.X) + 0.5) * data.TileSize, Y: (float64(t.Y) + 0.5) * data.TileSize},
 			}
 
 			if utils.DetectAABBCollision(eAABB, tAABB) {
-				collisions[e] = append(collisions[e], t)
+				collided.Tiles = append(collided.Tiles, t)
 			}
+		}
+
+		if len(collided.Tiles) > 0 {
+			collisions = append(collisions, collided)
 		}
 	}
 
@@ -144,8 +131,7 @@ func GetAABBCollisions(
 func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 	ecsContainer *ecs.ECSContainer,
 	tileSize int,
-) (potentialCollisions map[common.EntityId][]utils.Vec2i, err error) {
-	potentialCollisions = make(map[common.EntityId][]utils.Vec2i)
+) (potentialCollisions []EntityTiles, err error) {
 
 	for _, e := range ecsContainer.Transforms.GetEntities() {
 		pc, ok := ecsContainer.PhysicsColliders.Get(e)
@@ -159,6 +145,7 @@ func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 			continue
 		}
 
+		tiles := []utils.Vec2i{}
 		minTileX := int(math.Floor(worldAABB[0].X/float64(tileSize))) - 1
 		minTileY := int(math.Floor(worldAABB[0].Y/float64(tileSize))) - 1
 		maxTileX := int(math.Floor(worldAABB[1].X/float64(tileSize))) + 1
@@ -175,7 +162,7 @@ func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 
 				chunk, ok := cc.chunks[chunkGridPos]
 				if !ok {
-					potentialCollisions[e] = append(potentialCollisions[e], worldTilePos)
+					tiles = append(tiles, worldTilePos)
 					continue
 				}
 
@@ -187,9 +174,13 @@ func (cc *ChunkContainer) GetTilesWithPotentialCollisions(
 				}
 
 				if !tileDef.passable {
-					potentialCollisions[e] = append(potentialCollisions[e], worldTilePos)
+					tiles = append(tiles, worldTilePos)
 				}
 			}
+		}
+
+		if len(tiles) > 0 {
+			potentialCollisions = append(potentialCollisions, EntityTiles{E: e, Tiles: tiles})
 		}
 	}
 

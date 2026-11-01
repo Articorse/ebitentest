@@ -1,6 +1,7 @@
 package commonsystems
 
 import (
+	"cmp"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -30,11 +31,12 @@ func PopulateSpatialHashGrid(
 	return grid, nil
 }
 
+// Every pair is listed once, lower ID first, in ID order
 func GetSHGProximities(
 	shg map[utils.Vec2i][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
-) (map[common.EntityId][]common.EntityId, error) {
-	proximateEntities := make(map[common.EntityId][]common.EntityId)
+) ([]common.EntityPair, error) {
+	proximateEntities := []common.EntityPair{}
 
 	for _, eA := range ecsContainer.Transforms.GetEntities() {
 		worldPosA, err := ecsContainer.WorldPos(eA)
@@ -43,12 +45,13 @@ func GetSHGProximities(
 			continue
 		}
 
+		start := len(proximateEntities)
 		cellX := int(worldPosA.X / data.SpatialHashGridCellSize)
 		cellY := int(worldPosA.Y / data.SpatialHashGridCellSize)
 		for dx := -1; dx <= 1; dx++ {
 			for dy := -1; dy <= 1; dy++ {
 				for _, eB := range shg[utils.Vec2i{X: cellX + dx, Y: cellY + dy}] {
-					if eA == eB {
+					if eB <= eA {
 						continue
 					}
 
@@ -60,18 +63,12 @@ func GetSHGProximities(
 						}
 					}
 
-					if proximateEntity, ok := proximateEntities[eB]; ok {
-						if slices.Contains(proximateEntity, eA) {
-							continue
-						}
-					}
-
-					if !slices.Contains(proximateEntities[eA], eB) {
-						proximateEntities[eA] = append(proximateEntities[eA], eB)
-					}
+					proximateEntities = append(proximateEntities, common.EntityPair{A: eA, B: eB})
 				}
 			}
 		}
+
+		slices.SortFunc(proximateEntities[start:], func(p, q common.EntityPair) int { return cmp.Compare(p.B, q.B) })
 	}
 
 	return proximateEntities, nil

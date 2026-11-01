@@ -330,37 +330,14 @@ func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 		s.deleteEntity(e)
 	}
 
-	maps.DeleteFunc(x.TickState.AABBCollisions, func(k common.EntityId, v []common.EntityId) bool {
-		if k == e {
-			return true
-		}
-		for _, vE := range v {
-			if vE == e {
-				return true
-			}
-		}
-		return false
+	involvesE := func(p common.EntityPair) bool { return p.A == e || p.B == e }
+	x.TickState.AABBCollisions = slices.DeleteFunc(x.TickState.AABBCollisions, involvesE)
+	x.TickState.ProximateEntities = slices.DeleteFunc(x.TickState.ProximateEntities, involvesE)
+	x.TickState.Collisions = slices.DeleteFunc(x.TickState.Collisions, func(c common.Collision) bool {
+		return c.A == e || c.B == e
 	})
 
 	maps.DeleteFunc(x.TickState.CollisionGrid, func(k utils.Vec2i, v []common.EntityId) bool {
-		for _, vE := range v {
-			if vE == e {
-				return true
-			}
-		}
-		return false
-	})
-
-	maps.DeleteFunc(x.TickState.Collisions, func(k common.EntityId, v map[common.EntityId]common.Collision) bool {
-		for vE := range v {
-			if vE == e {
-				return true
-			}
-		}
-		return false
-	})
-
-	maps.DeleteFunc(x.TickState.ProximateEntities, func(k common.EntityId, v []common.EntityId) bool {
 		for _, vE := range v {
 			if vE == e {
 				return true

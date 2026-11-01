@@ -272,23 +272,8 @@ func (g *game) Update() error {
 		}
 	}
 
-	physicsAABBCollisions, err := collisionsystem.GetAABBCollisions(physicsColliders, physicsColliders, proximateEntities, g.ecs)
-	if err != nil {
-		log.Println("error during AABB collision checking: ", err, "removing entity")
-		var invalidComponentsErr *common.ErrorMissingComponentDependency
-		if errors.As(err, &invalidComponentsErr) {
-			g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-		}
-	}
-
-	physicsCollisions, err := collisionsystem.GetCollisions(physicsColliders, physicsColliders, physicsAABBCollisions, g.ecs)
-	if err != nil {
-		log.Println("error during physics collision checking: ", err, "removing entity")
-		var invalidComponentsErr *common.ErrorMissingComponentDependency
-		if errors.As(err, &invalidComponentsErr) {
-			g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-		}
-	}
+	physicsAABBCollisions := collisionsystem.GetAABBCollisions(physicsColliders, proximateEntities, g.ecs)
+	physicsCollisions := collisionsystem.GetCollisions(physicsColliders, physicsColliders, physicsAABBCollisions, g.ecs)
 
 	resolvedPhysicsCollisions, err = collisionsystem.ResolvePhysicsCollisions(physicsCollisions, g.ecs)
 	if err != nil {
@@ -320,23 +305,8 @@ func (g *game) Update() error {
 		log.Println("ability system tick error: ", err)
 	}
 
-	damageAABBCollisions, err := collisionsystem.GetMirrorAABBCollisions(hurtboxColliders, hitboxColliders, proximateEntities, g.ecs)
-	if err != nil {
-		log.Println("error during AABB damage collision checking: ", err, "removing entity")
-		var invalidComponentsErr *common.ErrorMissingComponentDependency
-		if errors.As(err, &invalidComponentsErr) {
-			g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-		}
-	}
-
-	damageCollisions, err := collisionsystem.GetCollisions(hurtboxColliders, hitboxColliders, damageAABBCollisions, g.ecs)
-	if err != nil {
-		log.Println("error during damage collision checking: ", err, "removing entity")
-		var invalidComponentsErr *common.ErrorMissingComponentDependency
-		if errors.As(err, &invalidComponentsErr) {
-			g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-		}
-	}
+	damageAABBCollisions := collisionsystem.GetDirectedAABBCollisions(hurtboxColliders, hitboxColliders, proximateEntities, g.ecs)
+	damageCollisions := collisionsystem.GetCollisions(hurtboxColliders, hitboxColliders, damageAABBCollisions, g.ecs)
 
 	damagesystem.Tick(g.ecs)
 
@@ -512,12 +482,7 @@ func (g *game) DrawDebug(screen *ebiten.Image) {
 			log.Println("error while drawing collisions: ", err)
 		}
 
-		proximateEntitiesCount := 0
-		for _, others := range g.ecs.TickState.ProximateEntities {
-			for range others {
-				proximateEntitiesCount++
-			}
-		}
+		proximateEntitiesCount := len(g.ecs.TickState.ProximateEntities)
 
 		pVel, ok := g.ecs.Velocities.Get(g.playerEntity)
 		if !ok {

@@ -173,13 +173,13 @@ func GetRectangleRectangleCollision(
 		if overlapX > 0 && overlapY > 0 {
 			if overlapX < overlapY {
 				sign := 1.0
-				if r1Min.X < r2Min.X {
+				if r2Min.X < r1Min.X {
 					sign = -1.0
 				}
 				return utils.Vec2f{X: overlapX * sign, Y: 0}
 			} else {
 				sign := 1.0
-				if r1Min.Y < r2Min.Y {
+				if r2Min.Y < r1Min.Y {
 					sign = -1.0
 				}
 				return utils.Vec2f{X: 0, Y: overlapY * sign}
@@ -359,7 +359,8 @@ func GetRectanglePolygonCollision(
 			utils.Vec2f{X: rHit.GetAABB()[1].X, Y: rHit.GetAABB()[1].Y},
 			utils.Vec2f{X: rHit.GetAABB()[0].X, Y: rHit.GetAABB()[1].Y},
 		},
-		rHit.GetOffset(),
+		// The rectangle's AABB already includes its offset
+		utils.Vec2f{},
 	)
 
 	if err != nil {
@@ -407,46 +408,82 @@ func GetCirclePolygonCollision(
 	relVel := cVel.Subtract(pVel)
 
 	if relVel.IsZero() {
-		minDist := math.MaxFloat64
-		var closest utils.Vec2f
-		for _, v := range polyVerts {
-			d := v.Subtract(circleStart).Length()
-			if d < minDist {
-				minDist = d
-				closest = v
-			}
-		}
-		collisionVector := circleStart.Subtract(closest)
-		distance := collisionVector.Length()
-		penetrationDepth := cHit.GetRadius() - distance
-		if penetrationDepth > 0 && distance != 0 {
-			return collisionVector.Normalized().Multiply(penetrationDepth)
-		}
-		return utils.Vec2f{X: 0, Y: 0}
+		return circlePolygonPushOut(circleStart, cHit.GetRadius(), polyVerts)
 	}
 
-	// Swept test: move circle along relVel, check for intersection with polygon edges
+	// Swept test: move the circle along relVel and check for the first overlap, like polygon-polygon
 	steps := 4
 	for i := 1; i <= steps; i++ {
 		t := float64(i) / float64(steps)
-		circlePos := circleStart.Add(relVel.Multiply(t))
-		minDist := math.MaxFloat64
-		var closest utils.Vec2f
-		for _, v := range polyVerts {
-			d := v.Subtract(circlePos).Length()
-			if d < minDist {
-				minDist = d
-				closest = v
-			}
-		}
-		collisionVector := circlePos.Subtract(closest)
-		distance := collisionVector.Length()
-		penetrationDepth := cHit.GetRadius() - distance
-		if penetrationDepth > 0 && distance != 0 {
-			return collisionVector.Normalized().Multiply(penetrationDepth)
+		if v := circlePolygonPushOut(circleStart.Add(relVel.Multiply(t)), cHit.GetRadius(), polyVerts); !v.IsZero() {
+			return v
 		}
 	}
 	return utils.Vec2f{X: 0, Y: 0}
+}
+
+// Pushes the polygon out of the circle across the polygon edge closest to the circle's center
+func circlePolygonPushOut(center utils.Vec2f, radius float64, verts []utils.Vec2f) utils.Vec2f {
+	closest, closestEdge := utils.Vec2f{}, 0
+	minDist := math.MaxFloat64
+	for i, a := range verts {
+		p := closestPointOnSegment(center, a, verts[(i+1)%len(verts)])
+		if d := p.Subtract(center).Length(); d < minDist {
+			minDist, closest, closestEdge = d, p, i
+		}
+	}
+
+	inside := pointInConvexPolygon(center, verts)
+	if !inside && minDist >= radius {
+		return utils.Vec2f{X: 0, Y: 0}
+	}
+
+	var outward utils.Vec2f
+	if minDist == 0 {
+		outward = edgeOutwardNormal(verts, closestEdge)
+	} else if inside {
+		outward = closest.Subtract(center).Normalized()
+	} else {
+		outward = center.Subtract(closest).Normalized()
+	}
+
+	depth := radius - minDist
+	if inside {
+		depth = radius + minDist
+	}
+
+	return outward.Multiply(-depth)
+}
+
+func closestPointOnSegment(p, a, b utils.Vec2f) utils.Vec2f {
+	ab := b.Subtract(a)
+	lenSq := ab.Dot(ab)
+	if lenSq == 0 {
+		return a
+	}
+	t := utils.Clamp(p.Subtract(a).Dot(ab)/lenSq, 0, 1)
+	return a.Add(ab.Multiply(t))
+}
+
+// Works for either winding, which is why it compares the signs of the edges rather than expecting one
+func pointInConvexPolygon(p utils.Vec2f, verts []utils.Vec2f) bool {
+	pos, neg := false, false
+	for i, a := range verts {
+		b := verts[(i+1)%len(verts)]
+		cross := (b.X-a.X)*(p.Y-a.Y) - (b.Y-a.Y)*(p.X-a.X)
+		pos = pos || cross > 0
+		neg = neg || cross < 0
+	}
+	return !(pos && neg)
+}
+
+func edgeOutwardNormal(verts []utils.Vec2f, edge int) utils.Vec2f {
+	a, b := verts[edge], verts[(edge+1)%len(verts)]
+	normal := utils.Vec2f{X: -(b.Y - a.Y), Y: b.X - a.X}.Normalized()
+	if normal.Dot(a.Subtract(polygonCentroid(verts))) < 0 {
+		normal = normal.Multiply(-1)
+	}
+	return normal
 }
 
 // Pass -1 in case of collision without entity
@@ -524,9 +561,10 @@ func GetPolygonPolygonCollision(
 
 func GetWorldPolygonVertices(p shapes.PolygonShape, worldPos utils.Vec2f) []utils.Vec2f {
 	verts := p.GetVertices()
+	origin := worldPos.Add(p.GetOffset())
 	worldVerts := make([]utils.Vec2f, len(verts))
 	for i, v := range verts {
-		worldVerts[i] = worldPos.Add(v)
+		worldVerts[i] = origin.Add(v)
 	}
 	return worldVerts
 }
