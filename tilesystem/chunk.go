@@ -68,6 +68,11 @@ func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) bool {
 	return true
 }
 
+func (cc *ChunkContainer) CanDamageTile(t utils.Vec2i) bool {
+	_, ok := cc.TileHealth(t)
+	return ok
+}
+
 func (cc *ChunkContainer) TileHealth(t utils.Vec2i) (health int, ok bool) {
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	if !ok {

@@ -59,6 +59,9 @@ type game struct {
 
 	assetmanager  *assetmanager.AssetManager
 	visionOverlay drawsystem.VisionOverlay
+
+	// Drawing happens after the tick that used them, when they're no longer the ECS's current inputs
+	lastTickInputs map[common.EntityId]ecs.InputState
 }
 
 func (g *game) Update() error {
@@ -158,6 +161,7 @@ func (g *game) Update() error {
 		tickInputs[eid] = tInputs
 	}
 	g.ecs.SetTickInputs(g.ecs.TickIdx, tickInputs)
+	g.lastTickInputs = tickInputs
 
 	currentTickInputs, err := g.ecs.GetCurrentTickInputs()
 	if err != nil {
@@ -440,6 +444,12 @@ func (g *game) Draw(screen *ebiten.Image) {
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
 		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
 			g.visionOverlay.Draw(screen, g.ecs.Camera, pos, vision, g.chunkContainer.DrawMemory)
+		}
+	}
+
+	if input, ok := g.lastTickInputs[g.playerEntity]; ok {
+		if err := drawsystem.DrawTileTarget(screen, g.ecs.Camera, g.playerEntity, input.AimPos, g.ecs); err != nil {
+			log.Println("error while drawing the tile target: ", err)
 		}
 	}
 

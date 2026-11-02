@@ -46,14 +46,14 @@ func HandleInputs(
 				continue
 			}
 
-			face(e, eWorldPos, input.FacingDir, ecsContainer)
+			face(e, eWorldPos, input.AimPos, ecsContainer)
 
 			if equipper, ok := ecsContainer.Equippers.Get(e); ok {
 				for _, eqE := range equipper.Equipment() {
 					if ecsContainer.IsDisabled(eqE) {
 						continue
 					}
-					face(eqE, eWorldPos, input.FacingDir, ecsContainer)
+					face(eqE, eWorldPos, input.AimPos, ecsContainer)
 				}
 			}
 		}
@@ -63,7 +63,7 @@ func HandleInputs(
 			vel.AddForce(dir.Multiply(vel.Acceleration()))
 		}
 
-		target := ecs.AbilityTarget{Pos: input.FacingDir}
+		target := ecs.AbilityTarget{Pos: input.AimPos}
 
 		equipTriggers := []equipTrigger{
 			{input.MainHandEqAbility1, ecs.Equip_MainHand, 0, "main hand ability 1"},

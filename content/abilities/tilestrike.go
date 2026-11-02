@@ -1,11 +1,13 @@
 package abilities
 
 import (
+	"ebittest/content/effects"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/fov"
 	"ebittest/utils"
 	"fmt"
+	"log"
 )
 
 type TileStrikeParams struct {
@@ -24,7 +26,27 @@ func (p *TileStrikeParams) Copy() ecs.AbilityParams {
 	return &c
 }
 
-// Damages the tile at the target position, if it's in range, in sight and on a layer in the mask
+// In range, in sight, on a layer in the mask and damageable
+func (p *TileStrikeParams) CanTargetTile(from, tile utils.Vec2i, terrain ecs.Terrain) bool {
+	if p == nil {
+		return false
+	}
+
+	if dx, dy := tile.X-from.X, tile.Y-from.Y; dx*dx+dy*dy > p.RangeTiles*p.RangeTiles {
+		return false
+	}
+
+	if layer, ok := terrain.TileLayer(tile); !ok || layer&p.Mask == 0 || !terrain.CanDamageTile(tile) {
+		return false
+	}
+
+	inSight := false
+	fov.Compute(from, p.RangeTiles, terrain.IsOpaqueTile, func(t utils.Vec2i) {
+		inSight = inSight || t == tile
+	})
+	return inSight
+}
+
 func TileStrikeAbility(
 	self common.EntityId,
 	target ecs.AbilityTarget,
@@ -46,25 +68,16 @@ func TileStrikeAbility(
 		return false, fmt.Errorf("error getting world position of entity %d for tile strike: %v", striker, err)
 	}
 
-	origin := utils.WorldPosToTilePos(strikerPos)
 	tile := utils.WorldPosToTilePos(target.Pos)
 	terrain := ecsContainer.Terrain()
-
-	if dx, dy := tile.X-origin.X, tile.Y-origin.Y; dx*dx+dy*dy > p.RangeTiles*p.RangeTiles {
+	if !p.CanTargetTile(utils.WorldPosToTilePos(strikerPos), tile, terrain) || !terrain.DamageTile(tile, p.Damage) {
 		return false, nil
 	}
 
-	if layer, ok := terrain.TileLayer(tile); !ok || layer&p.Mask == 0 {
-		return false, nil
+	// The strike already landed, so a missing damage number mustn't undo its cooldown
+	if err := effects.SpawnDamageNumber(utils.TilePosToWorldPos(tile), p.Damage, ecsContainer); err != nil {
+		log.Println(err)
 	}
 
-	inSight := false
-	fov.Compute(origin, p.RangeTiles, terrain.IsOpaqueTile, func(t utils.Vec2i) {
-		inSight = inSight || t == tile
-	})
-	if !inSight {
-		return false, nil
-	}
-
-	return terrain.DamageTile(tile, p.Damage), nil
+	return true, nil
 }

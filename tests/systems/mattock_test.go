@@ -16,6 +16,8 @@ func (openGround) IsOpaqueTile(utils.Vec2i) bool { return false }
 
 func (openGround) TileLayer(utils.Vec2i) (ecs.LayerMask, bool) { return ecs.Layer_Ground, true }
 
+func (openGround) CanDamageTile(utils.Vec2i) bool { return true }
+
 func (g openGround) DamageTile(t utils.Vec2i, damage int) bool {
 	g.damaged[t] += damage
 	return true
@@ -29,9 +31,26 @@ func TestTheMattockStrikesTheTileUnderTheCursor(t *testing.T) {
 	testutil.SetPos(t, x, player, spawn)
 
 	cursor := spawn.Add(utils.Vec2f{X: 30, Y: -5})
-	press(t, x, player, ecs.InputState{MainHandEqAbility1: 1, FacingDir: cursor})
+	press(t, x, player, ecs.InputState{MainHandEqAbility1: 1, AimPos: cursor})
 
 	if want := map[utils.Vec2i]int{utils.WorldPosToTilePos(cursor): 50}; !maps.Equal(ground.damaged, want) {
 		t.Fatalf("damaged %v, want %v", ground.damaged, want)
+	}
+}
+
+func TestOnlyATileTargetingItemInHandTargetsTiles(t *testing.T) {
+	x, player, _, _, _ := newArmedPlayer(t)
+
+	if _, ok := x.HeldTileTargeting(player); !ok {
+		t.Fatal("the mattock in hand doesn't target tiles")
+	}
+	press(t, x, player, ecs.InputState{SelectSlot: 2})
+	if _, ok := x.HeldTileTargeting(player); ok {
+		t.Fatal("the bazooka in hand targets tiles")
+	}
+	press(t, x, player, ecs.InputState{SelectSlot: 1})
+	x.SetDisabled(player, true)
+	if _, ok := x.HeldTileTargeting(player); ok {
+		t.Fatal("a mattock put away with its disabled holder targets tiles")
 	}
 }

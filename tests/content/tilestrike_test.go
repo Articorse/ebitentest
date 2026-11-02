@@ -44,8 +44,12 @@ func (f *fakeTerrain) TileLayer(t utils.Vec2i) (ecs.LayerMask, bool) {
 	return ecs.Layer_Ground, true
 }
 
+func (f *fakeTerrain) CanDamageTile(t utils.Vec2i) bool {
+	return f.loaded(t) && !f.sturdy[t]
+}
+
 func (f *fakeTerrain) DamageTile(t utils.Vec2i, damage int) bool {
-	if !f.loaded(t) || f.sturdy[t] {
+	if !f.CanDamageTile(t) {
 		return false
 	}
 	f.damaged[t] += damage
@@ -171,5 +175,45 @@ func TestTileStrikeDoesntHurtEntitiesOnTheTile(t *testing.T) {
 	}
 	if hp, _ := x.Hitpoints.Get(bystander); hp.Current() != 10 {
 		t.Fatalf("the entity on the tile has %d hitpoints, want 10", hp.Current())
+	}
+}
+
+func TestTileStrikeShowsItsDamageOnlyWhenItLands(t *testing.T) {
+	terrain := newFakeTerrain()
+	x, holder := newMattockHolder(t, terrain, ecs.Layer_Ground)
+
+	strike(t, x, holder, utils.Vec2i{X: 5})
+	if n := len(x.FloatingTexts.GetEntities()); n != 0 {
+		t.Fatalf("a refused strike spawned %d damage numbers", n)
+	}
+
+	strike(t, x, holder, utils.Vec2i{X: 1})
+	numbers := x.FloatingTexts.GetEntities()
+	if len(numbers) != 1 {
+		t.Fatalf("a strike spawned %d damage numbers, want 1", len(numbers))
+	}
+	if pos := testutil.WorldPos(t, x, numbers[0]); pos != utils.TilePosToWorldPos(utils.Vec2i{X: 1}) {
+		t.Fatalf("the damage number is at %v, want the struck tile", pos)
+	}
+}
+
+func TestTileStrikeTargetingAgreesWithWhereItLands(t *testing.T) {
+	terrain := newFakeTerrain(utils.Vec2i{X: 1})
+	terrain.sturdy[utils.Vec2i{Y: 1}] = true
+	params := &abilities.TileStrikeParams{RangeTiles: 2, Damage: 50, Mask: ecs.Layer_Terrain | ecs.Layer_Ground}
+
+	for _, c := range []struct {
+		tile utils.Vec2i
+		want bool
+	}{
+		{utils.Vec2i{X: 1}, true},
+		{utils.Vec2i{Y: -2}, true},
+		{utils.Vec2i{X: 2}, false},
+		{utils.Vec2i{Y: 1}, false},
+		{utils.Vec2i{Y: -3}, false},
+	} {
+		if got := params.CanTargetTile(utils.Vec2i{}, c.tile, terrain); got != c.want {
+			t.Errorf("can target %v: %v, want %v", c.tile, got, c.want)
+		}
 	}
 }

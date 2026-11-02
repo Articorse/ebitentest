@@ -8,6 +8,7 @@ import (
 	"ebittest/ecs/systems/damagesystem"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
+	"slices"
 	"testing"
 )
 
@@ -136,5 +137,29 @@ func TestSavedSourceRemembersWhatItHit(t *testing.T) {
 	cd, _ := y.ContactDamages.Get(source)
 	if cd.CanHitEntity(target) {
 		t.Fatal("after saving, the source could hit its target again")
+	}
+}
+
+func TestContactDamageShowsWhatItDealtWhereItLanded(t *testing.T) {
+	x := testutil.NewECS(t)
+	x.SetTerrain(openGround{damaged: map[utils.Vec2i]int{}})
+	source := addSource(t, x, ecs.NewContactDamageComponent(-1, 0, 3))
+	target := addTarget(t, x, 0)
+	testutil.SetPos(t, x, target, utils.Vec2f{X: 5, Y: 7})
+	tile := utils.Vec2i{X: 3, Y: -2}
+
+	collisions := []common.Collision{{A: source, B: target, Vector: utils.Vec2f{X: 1}}}
+	tileCollisions := []common.TileCollision{{E: source, Tile: tile}}
+	if _, err := damagesystem.DealContactDamage(collisions, tileCollisions, x); err != nil {
+		t.Fatal(err)
+	}
+
+	got := []utils.Vec2f{}
+	for _, e := range x.FloatingTexts.GetEntities() {
+		got = append(got, testutil.WorldPos(t, x, e))
+	}
+	want := []utils.Vec2f{{X: 5, Y: 7}, utils.TilePosToWorldPos(tile)}
+	if !slices.Equal(got, want) {
+		t.Fatalf("damage numbers at %v, want at the target and the tile %v", got, want)
 	}
 }

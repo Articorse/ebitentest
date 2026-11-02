@@ -1,12 +1,10 @@
 package damagesystem
 
 import (
-	"ebittest/content/timerfuncs"
+	"ebittest/content/effects"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
-	"fmt"
-	"image/color"
 	"log"
 )
 
@@ -88,7 +86,9 @@ func DealContactDamage(
 			log.Printf("Error getting ecs position for entity %d: %v\n", hitE, err)
 			continue
 		}
-		spawnDamageNumber(hitWorldPos, damageTiers[shapeIdx], ecsCont)
+		if err := effects.SpawnDamageNumber(hitWorldPos, damageTiers[shapeIdx], ecsCont); err != nil {
+			log.Println(err)
+		}
 
 		if cd.DieOnContact() {
 			ecsCont.ScheduleKillEntity(dmgE)
@@ -133,20 +133,9 @@ func dealTileDamage(collisions []common.TileCollision, ecsCont *ecs.ECSContainer
 
 		if cd.CanHitTile(c.Tile) && ecsCont.Terrain().DamageTile(c.Tile, damageTiers[c.ShapeIdx]) {
 			cd.RecordTileHit(c.Tile)
-			spawnDamageNumber(utils.TilePosToWorldPos(c.Tile), damageTiers[c.ShapeIdx], ecsCont)
+			if err := effects.SpawnDamageNumber(utils.TilePosToWorldPos(c.Tile), damageTiers[c.ShapeIdx], ecsCont); err != nil {
+				log.Println(err)
+			}
 		}
-	}
-}
-
-func spawnDamageNumber(pos utils.Vec2f, damage int, ecsCont *ecs.ECSContainer) {
-	ftTraComp := ecs.NewTransformComponent(pos, 1, 0)
-	ftFtComp := ecs.NewFloatingTextComponent(fmt.Sprintf("%d", damage), utils.Vec2f{}, 12, color.RGBA{R: 255, G: 0, B: 255, A: 255})
-	ftVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{X: 0, Y: -1}, 1, 1)
-	ftTimerComp, err := ecs.NewTimerComponent(1000, 1, timerfuncs.TimerFunc_Selfdestruct)
-	if err != nil {
-		log.Fatal("error creating floating text timer component: ", err)
-	}
-	if _, err := ecsCont.AddNewEntity(ftTraComp, ftFtComp, ftVelComp, ftTimerComp); err != nil {
-		log.Printf("Error spawning damage number at %v: %v\n", pos, err)
 	}
 }

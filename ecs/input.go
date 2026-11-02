@@ -162,7 +162,7 @@ type InputState struct {
 	OffHandEqAbility2  float64
 	Ability1           float64
 	Ability2           float64
-	FacingDir          utils.Vec2f
+	AimPos             utils.Vec2f
 	// 1-based, so that the zero value selects nothing
 	SelectSlot int
 }
