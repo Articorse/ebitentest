@@ -10,6 +10,12 @@ import (
 	"testing"
 )
 
+// Between pickup reach and the edge of the pull, as shares of the pull's reach, so that tuning either doesn't break
+// these tests
+func inPull(share float64) float64 {
+	return share * data.ItemPullReachPx
+}
+
 // A player whose mattock lies loose at pos, past its pickup delay
 func playerWithLooseMattock(t *testing.T, pos utils.Vec2f) (*ecs.ECSContainer, common.EntityId, common.EntityId) {
 	t.Helper()
@@ -23,9 +29,10 @@ func playerWithLooseMattock(t *testing.T, pos utils.Vec2f) (*ecs.ECSContainer, c
 
 func TestNearbyItemsArePulledInFasterEachTick(t *testing.T) {
 	// Not a distance that lands exactly on the edge of pickup reach, where rounding would decide
-	x, player, mattock := playerWithLooseMattock(t, utils.Vec2f{X: 15.3})
+	start := inPull(0.9) + 0.03
+	x, player, mattock := playerWithLooseMattock(t, utils.Vec2f{X: start})
 
-	want := 15.3
+	want := start
 	for tick := 0; x.Parent(mattock) == -1; tick++ {
 		tickItems(x, data.TickMs)
 		want -= data.ItemPullStartSpeedPx + float64(tick)*data.ItemPullAccelerationPx
@@ -58,7 +65,7 @@ func TestItemsOutsideThePullAreLeftAlone(t *testing.T) {
 }
 
 func TestAPulledItemStopsWhenThePlayerGetsAway(t *testing.T) {
-	x, player, mattock := playerWithLooseMattock(t, utils.Vec2f{X: 17})
+	x, player, mattock := playerWithLooseMattock(t, utils.Vec2f{X: inPull(0.9)})
 	tickItems(x, 3*data.TickMs)
 
 	testutil.SetPos(t, x, player, utils.Vec2f{X: -100})
@@ -69,7 +76,7 @@ func TestAPulledItemStopsWhenThePlayerGetsAway(t *testing.T) {
 	}
 
 	// Pulled again from the start, rather than at the speed it had built up
-	testutil.SetPos(t, x, player, left.Add(utils.Vec2f{X: 12}))
+	testutil.SetPos(t, x, player, left.Add(utils.Vec2f{X: inPull(0.6)}))
 	tickItems(x, data.TickMs)
 	if moved := testutil.WorldPos(t, x, mattock).X - left.X; math.Abs(moved-data.ItemPullStartSpeedPx) > 1e-9 {
 		t.Fatalf("pulled again, the mattock moved %v in its first tick, want %v", moved, data.ItemPullStartSpeedPx)
@@ -79,10 +86,11 @@ func TestAPulledItemStopsWhenThePlayerGetsAway(t *testing.T) {
 func TestItemsThatCantBePickedUpArentPulled(t *testing.T) {
 	x, player, mattock, _, _ := newArmedPlayer(t)
 	press(t, x, player, ecs.InputState{DropItem: true})
-	testutil.SetPos(t, x, mattock, utils.Vec2f{X: 12})
+	inReach := utils.Vec2f{X: inPull(0.6)}
+	testutil.SetPos(t, x, mattock, inReach)
 
 	tickItems(x, data.ItemPickupDelayMs-data.TickMs)
-	if pos := testutil.WorldPos(t, x, mattock); pos != (utils.Vec2f{X: 12}) {
+	if pos := testutil.WorldPos(t, x, mattock); pos != inReach {
 		t.Fatalf("an item was pulled to %v during its pickup delay", pos)
 	}
 
@@ -94,18 +102,19 @@ func TestItemsThatCantBePickedUpArentPulled(t *testing.T) {
 		}
 	}
 	tickItems(x, 500)
-	if pos := testutil.WorldPos(t, x, mattock); pos != (utils.Vec2f{X: 12}) {
+	if pos := testutil.WorldPos(t, x, mattock); pos != inReach {
 		t.Fatalf("an item was pulled to %v towards a full inventory", pos)
 	}
 }
 
 func TestPulledItemsSlideAlongTerrain(t *testing.T) {
-	x, _, mattock := playerWithLooseMattock(t, utils.Vec2f{X: -12, Y: 10})
-	x.SetTerrain(blockedLeftOf{openGround: openGround{damaged: map[utils.Vec2i]int{}}, x: -11.9})
+	start := utils.Vec2f{X: -inPull(0.6), Y: inPull(0.5)}
+	x, _, mattock := playerWithLooseMattock(t, start)
+	x.SetTerrain(blockedLeftOf{openGround: openGround{damaged: map[utils.Vec2i]int{}}, x: start.X + 0.1})
 
 	tickItems(x, 3*data.TickMs)
 	pos := testutil.WorldPos(t, x, mattock)
-	if pos.X != -12 || pos.Y >= 10 {
+	if pos.X != start.X || pos.Y >= start.Y {
 		t.Fatalf("pulled past a wall between it and the player, the mattock is at %v; want it to slide along the wall", pos)
 	}
 }
@@ -119,16 +128,16 @@ type blockedLeftOf struct {
 func (b blockedLeftOf) IsBlockedAt(pos utils.Vec2f) bool { return pos.X >= b.x && pos.X < b.x+1 }
 
 func TestItemsArePulledTowardsTheClosestCollector(t *testing.T) {
-	x, player, mattock := playerWithLooseMattock(t, utils.Vec2f{X: 10})
-	testutil.SetPos(t, x, player, utils.Vec2f{X: -2})
-	// 9px away against the player's 12, so that neither is close enough to pick it up in the same tick
-	closer := testutil.AddMovable(t, x, utils.Vec2f{X: 19}, false, ecs.NewInventoryComponent(1))
+	x, player, mattock := playerWithLooseMattock(t, utils.Vec2f{})
+	testutil.SetPos(t, x, player, utils.Vec2f{X: -inPull(0.8)})
+	// Neither is close enough to pick it up in the same tick
+	closer := testutil.AddMovable(t, x, utils.Vec2f{X: inPull(0.6)}, false, ecs.NewInventoryComponent(1))
 	if closer < player {
 		t.Fatal("the test needs the closer collector to come later in entity order, so that order alone can't pick it")
 	}
 
 	tickItems(x, data.TickMs)
-	if pos := testutil.WorldPos(t, x, mattock); pos.X <= 10 {
+	if pos := testutil.WorldPos(t, x, mattock); pos.X <= 0 {
 		t.Fatalf("the mattock moved to %v, towards the further collector", pos)
 	}
 }

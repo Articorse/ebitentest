@@ -81,7 +81,7 @@ func TestDroppedItemsArePickedBackUpOnlyAfterTheirDelay(t *testing.T) {
 	x, player, mattock, _, _ := newArmedPlayer(t)
 	press(t, x, player, ecs.InputState{DropItem: true})
 	// Within reach, but away from the player, so that picking it up has to move it into the player's hand
-	testutil.SetPos(t, x, mattock, utils.Vec2f{X: 5, Y: -3})
+	testutil.SetPos(t, x, mattock, utils.Vec2f{X: data.ItemPickupReachPx / 2, Y: -data.ItemPickupReachPx / 3})
 
 	tickItems(x, data.ItemPickupDelayMs-data.TickMs)
 	if x.Parent(mattock) != -1 {
