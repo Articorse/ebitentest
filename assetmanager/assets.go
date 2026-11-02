@@ -15,6 +15,7 @@ var (
 	assets = map[common.ImageAssetTag]ImageAssetDef{
 		common.AssetSheetSlime:            ImageAssetDef{path: "assets/sprites/slime_ss.png", frameCount: 3, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetImageTree:             ImageAssetDef{path: "assets/sprites/tree.png", frameCount: 1, frameSize: utils.Vec2f{X: 32, Y: 32}},
+		common.AssetImageTreeStump:        ImageAssetDef{path: "assets/sprites/treestump.png", frameCount: 1, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetSheetEvilSlime:        ImageAssetDef{path: "assets/sprites/evilslime_ss.png", frameCount: 5, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetSheetBazooka:          ImageAssetDef{path: "assets/sprites/bazooka_ss.png", frameCount: 2, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetSheetRocket:           ImageAssetDef{path: "assets/sprites/rocket_ss.png", frameCount: 2, frameSize: utils.Vec2f{X: 32, Y: 32}},

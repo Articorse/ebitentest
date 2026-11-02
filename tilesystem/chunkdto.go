@@ -6,7 +6,6 @@ import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
-	"ebittest/worldgen"
 	"fmt"
 	"maps"
 	"slices"
@@ -19,6 +18,15 @@ type chunkDto struct {
 	PromotedTiles   []promotedTileDto
 	Entities        map[common.EntityId][]ecs.ComponentDto
 	TerrainModified bool
+	Features        []featureDto
+}
+
+type featureDto struct {
+	X       int
+	Y       int
+	Feature data.FeatureEnum
+	// 0 for an undamaged feature
+	Health int
 }
 
 type promotedTileDto struct {
@@ -45,6 +53,14 @@ func (cc *ChunkContainer) chunkToDto(
 		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
 	})
 
+	features := make([]featureDto, 0, len(c.features))
+	for t, f := range c.features {
+		features = append(features, featureDto{X: t.X, Y: t.Y, Feature: f, Health: c.featureHealth[t]})
+	}
+	slices.SortFunc(features, func(a, b featureDto) int {
+		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
+	})
+
 	entitiesWithComps := make(map[common.EntityId][]ecs.ComponentDto)
 	for _, root := range cc.currentTickEIdsInChunks[pos] {
 		if !ecsCont.Persistents.HasComponent(root) {
@@ -65,10 +81,11 @@ func (cc *ChunkContainer) chunkToDto(
 		PromotedTiles:   promotedTiles,
 		Entities:        entitiesWithComps,
 		TerrainModified: c.terrainModified,
+		Features:        features,
 	}, nil
 }
 
-func (cc *ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
+func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 	promotedTiles := make(map[utils.Vec2i]promotedTile)
 	for _, pDto := range dto.PromotedTiles {
 		promotedTiles[utils.Vec2i{X: pDto.X, Y: pDto.Y}] = promotedTile{
@@ -76,10 +93,21 @@ func (cc *ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 		}
 	}
 
+	features := make(map[utils.Vec2i]data.FeatureEnum, len(dto.Features))
+	featureHealth := make(map[utils.Vec2i]int)
+	for _, f := range dto.Features {
+		t := utils.Vec2i{X: f.X, Y: f.Y}
+		features[t] = f.Feature
+		if f.Health > 0 {
+			featureHealth[t] = f.Health
+		}
+	}
+
 	chunk := &chunk{
 		tiles:           dto.Tiles,
 		promotedTiles:   promotedTiles,
-		features:        worldgen.ChunkFeatures(cc.seed, utils.Vec2i{X: dto.X, Y: dto.Y}),
+		features:        features,
+		featureHealth:   featureHealth,
 		terrainModified: dto.TerrainModified,
 	}
 	return chunk

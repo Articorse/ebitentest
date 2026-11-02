@@ -134,28 +134,32 @@ func GetRectangleCircleCollision(
 	return utils.Vec2f{X: 0, Y: 0}
 }
 
-// The closest point on the rectangle is the center itself then, so the distance can't tell which way is out; the
-// circle leaves through the nearest edge instead
+// The closest point on the rectangle is the center itself then, also when the center is on an edge, so the distance
+// can't tell which way is out; the circle leaves through the nearest edge instead
 func circleCenterInRectangle(center utils.Vec2f, radius float64, rectMin, rectMax utils.Vec2f) (utils.Vec2f, bool) {
-	if center.X <= rectMin.X || center.X >= rectMax.X || center.Y <= rectMin.Y || center.Y >= rectMax.Y {
+	if center.X < rectMin.X || center.X > rectMax.X || center.Y < rectMin.Y || center.Y > rectMax.Y {
 		return utils.Vec2f{}, false
 	}
 
-	exits := []utils.Vec2f{
-		{X: -(center.X - rectMin.X)},
-		{X: rectMax.X - center.X},
-		{Y: -(center.Y - rectMin.Y)},
-		{Y: rectMax.Y - center.Y},
+	// Each edge's outward normal with the center's distance to it, which can be 0
+	exits := []struct {
+		normal   utils.Vec2f
+		distance float64
+	}{
+		{utils.Vec2f{X: -1}, center.X - rectMin.X},
+		{utils.Vec2f{X: 1}, rectMax.X - center.X},
+		{utils.Vec2f{Y: -1}, center.Y - rectMin.Y},
+		{utils.Vec2f{Y: 1}, rectMax.Y - center.Y},
 	}
 
 	nearest := exits[0]
 	for _, e := range exits[1:] {
-		if e.Length() < nearest.Length() {
+		if e.distance < nearest.distance {
 			nearest = e
 		}
 	}
 
-	return nearest.Add(nearest.Normalized().Multiply(radius)), true
+	return nearest.normal.Multiply(nearest.distance + radius), true
 }
 
 // Pass -1 in case of collision without entity

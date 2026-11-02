@@ -5,6 +5,7 @@ type ImageAssetTag string
 const (
 	AssetSheetSlime            ImageAssetTag = "slime"
 	AssetImageTree             ImageAssetTag = "tree"
+	AssetImageTreeStump        ImageAssetTag = "treestump"
 	AssetSheetEvilSlime        ImageAssetTag = "evilslime"
 	AssetSheetBazooka          ImageAssetTag = "bazooka"
 	AssetSheetRocket           ImageAssetTag = "rocket"

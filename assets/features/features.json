@@ -4,6 +4,14 @@
     "imageAsset": "tree",
     "imageOffset": { "x": 1, "y": -7 },
     "spriteLayer": 20,
-    "collider": { "width": 8, "height": 6, "offset": { "x": 0, "y": 3 } }
+    "collider": { "width": 8, "height": 6, "offset": { "x": 0, "y": 3 } },
+    "maxHealth": 100,
+    "destroyedInto": 2
+  },
+  {
+    "id": 2,
+    "imageAsset": "treestump",
+    "imageOffset": { "x": 1, "y": -7 },
+    "spriteLayer": 20
   }
 ]

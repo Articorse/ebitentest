@@ -139,14 +139,14 @@ func TestAnExplosionTurnsTheGrassUnderATreeIntoDirtAndTheTreeStays(t *testing.T)
 	}
 }
 
-func TestHittingATrunkDoesntDamageTheGroundUnderIt(t *testing.T) {
+func TestHittingATrunkDamagesTheTreeButNotTheGroundUnderIt(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	tree := findLoneTree(t, s)
-	before, _ := s.Chunks.TileHealth(tree)
+	groundBefore, _ := s.Chunks.TileHealth(tree)
 
 	// Like a rocket's body: it collides with terrain, which the trunk is, but not with the ground
-	shell := addExplosion(t, s.ECS, utils.TilePosToWorldPos(tree).Add(utils.Vec2f{Y: 3}), ecs.Layer_Terrain, []float64{1}, 50)
+	shell := addExplosion(t, s.ECS, utils.TilePosToWorldPos(tree).Add(utils.Vec2f{Y: 3}), ecs.Layer_Terrain, []float64{1}, 30)
 	cols := touchTerrain(t, s)
 
 	hitTrunk := false
@@ -156,8 +156,61 @@ func TestHittingATrunkDoesntDamageTheGroundUnderIt(t *testing.T) {
 	if !hitTrunk {
 		t.Fatalf("collisions %+v don't say the trunk was hit", cols)
 	}
-	if after, _ := s.Chunks.TileHealth(tree); after != before {
-		t.Fatalf("the grass under the trunk went from %d to %d health", before, after)
+	if health, _ := s.Chunks.FeatureHealth(tree); health != 70 {
+		t.Fatalf("the tree has %d health after a 30-damage hit, want 70", health)
+	}
+	if after, _ := s.Chunks.TileHealth(tree); after != groundBefore {
+		t.Fatalf("the grass under the trunk went from %d to %d health", groundBefore, after)
+	}
+}
+
+func TestAnExplosionDamagesBothATreeAndTheGroundUnderItOnce(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	tree := findLoneTree(t, s)
+
+	explosion := addExplosion(t, s.ECS, utils.TilePosToWorldPos(tree), ecs.Layer_Terrain|ecs.Layer_Ground, []float64{6}, 20)
+	cd, _ := s.ECS.ContactDamages.Get(explosion)
+	cd.WithActiveMs(0).WithRehitIntervalMs(0)
+	for range 3 {
+		touchTerrain(t, s)
+	}
+
+	if health, _ := s.Chunks.FeatureHealth(tree); health != 80 {
+		t.Fatalf("the tree has %d health after an explosion of 20 touched it for 3 ticks, want 80: hit once", health)
+	}
+	if health, _ := s.Chunks.TileHealth(tree); health != 30 {
+		t.Fatalf("the grass under it has %d health, want 30: hit once as well", health)
+	}
+}
+
+func TestADestroyedTreeLeavesAStumpThatsOutOfTheWay(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	tree := findLoneTree(t, s)
+
+	if !s.Chunks.DamageFeature(tree, 60) || !s.Chunks.DamageFeature(tree, 40) {
+		t.Fatal("the tree couldn't be damaged")
+	}
+	if f, _ := s.Chunks.FeatureAt(tree); f != data.Feature_Stump {
+		t.Fatalf("after 100 damage the tree is %v, want a stump", f)
+	}
+	if s.Chunks.CanDamageFeature(tree) || s.Chunks.DamageFeature(tree, 10) {
+		t.Fatal("the stump can be damaged")
+	}
+
+	center := utils.TilePosToWorldPos(tree)
+	sprites := s.Chunks.FeatureSprites([2]utils.Vec2f{center, center})
+	if len(sprites) != 1 || sprites[0].ImageAsset != common.AssetImageTreeStump {
+		t.Fatalf("sprites on the tile are %+v, want the stump", sprites)
+	}
+
+	mob := addCircle(t, s.ECS, center.Add(utils.Vec2f{Y: 3}), 3, func(shape shapes.Shape) ecs.Component {
+		return ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Terrain, ecs.Collider_Mob, shape)
+	})
+	resolveTerrain(t, s)
+	if got := testutil.WorldPos(t, s.ECS, mob); got != center.Add(utils.Vec2f{Y: 3}) {
+		t.Fatalf("a mob where the trunk was moved to %v, so the stump still blocks", got)
 	}
 }
 
@@ -179,43 +232,25 @@ func TestTreesAreDrawnWhereTheyStand(t *testing.T) {
 	}
 }
 
-func TestTreesStayAfterTheirChunkIsSavedAndLoaded(t *testing.T) {
+func TestDamagedTreesAndStumpsAreSaved(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
-	tree := findLoneTree(t, s)
+	damaged := findLoneTree(t, s)
+	felled := findTile(t, s, func(tile utils.Vec2i) bool {
+		f, ok := s.Chunks.FeatureAt(tile)
+		return ok && f == data.Feature_Tree && tile != damaged
+	})
 
-	// Damaging the grass next to the tree makes its chunk get saved, rather than generated again
-	chunkOf := func(tile utils.Vec2i) utils.Vec2i { return utils.WorldPosToChunkGridPos(utils.TilePosToWorldPos(tile)) }
-	neighbor := tree
-	for _, n := range []utils.Vec2i{{X: tree.X - 1, Y: tree.Y}, {X: tree.X + 1, Y: tree.Y}, {X: tree.X, Y: tree.Y - 1}, {X: tree.X, Y: tree.Y + 1}} {
-		if chunkOf(n) == chunkOf(tree) {
-			neighbor = n
-			break
-		}
-	}
-	if neighbor == tree || !s.Chunks.DamageTile(neighbor, 10) {
-		t.Fatal("couldn't damage the grass next to the tree")
+	if !s.Chunks.DamageFeature(damaged, 30) || !s.Chunks.DamageFeature(felled, 100) {
+		t.Fatal("the trees couldn't be damaged")
 	}
 
 	s.Commit()
 	r := testutil.StartSession(t)
-	if f, ok := r.Chunks.FeatureAt(tree); !ok || f != data.Feature_Tree {
-		t.Fatalf("after restarting, tile %v has feature %v (%v), want a tree", tree, f, ok)
+	if health, ok := r.Chunks.FeatureHealth(damaged); !ok || health != 70 {
+		t.Fatalf("after restarting, the damaged tree has %d health (%v), want 70", health, ok)
 	}
-	if health, ok := r.Chunks.TileHealth(neighbor); !ok || health != 40 {
-		t.Fatalf("after restarting, the damaged grass has %d health (%v), so its chunk wasn't the saved one", health, ok)
-	}
-}
-
-func TestTheTerrainKnowsWhichTilesHaveTrees(t *testing.T) {
-	testutil.TempWorld(t)
-	s := testutil.StartSession(t)
-	tree := findLoneTree(t, s)
-
-	if !s.Chunks.HasFeature(tree) {
-		t.Fatal("the tree's tile has no feature")
-	}
-	if beside := (utils.Vec2i{X: tree.X + 1, Y: tree.Y}); s.Chunks.HasFeature(beside) {
-		t.Fatalf("the tile beside the tree, %v, has a feature", beside)
+	if f, _ := r.Chunks.FeatureAt(felled); f != data.Feature_Stump {
+		t.Fatalf("after restarting, the felled tree is %v, want a stump", f)
 	}
 }

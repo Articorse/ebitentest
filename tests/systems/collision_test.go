@@ -191,7 +191,7 @@ func TestEntitiesWithHurtboxesAndHitboxesDamageEachOther(t *testing.T) {
 	}
 }
 
-func TestCircleWithItsCenterInsideARectangleLeavesThroughTheNearestEdge(t *testing.T) {
+func TestCircleWithItsCenterInsideOrOnARectangleLeavesThroughTheNearestEdge(t *testing.T) {
 	for _, moving := range []bool{false, true} {
 		for _, c := range []struct {
 			offset utils.Vec2f
@@ -200,6 +200,9 @@ func TestCircleWithItsCenterInsideARectangleLeavesThroughTheNearestEdge(t *testi
 			{offset: utils.Vec2f{X: 2}, want: utils.Vec2f{X: 8}},
 			{offset: utils.Vec2f{X: -1, Y: 3}, want: utils.Vec2f{Y: 7}},
 			{offset: utils.Vec2f{}, want: utils.Vec2f{X: -10}},
+			{offset: utils.Vec2f{X: 5, Y: 1}, want: utils.Vec2f{X: 5}},
+			{offset: utils.Vec2f{X: 1, Y: -5}, want: utils.Vec2f{Y: -5}},
+			{offset: utils.Vec2f{X: -5, Y: 5}, want: utils.Vec2f{X: -5}},
 		} {
 			x := testutil.NewECS(t)
 			rect := addBody(t, x, utils.Vec2f{}, newShape(t, "rectangle", utils.Vec2f{}))
@@ -211,7 +214,7 @@ func TestCircleWithItsCenterInsideARectangleLeavesThroughTheNearestEdge(t *testi
 
 			cols := physicsCollisions(x, []common.EntityPair{{A: rect, B: circle}})
 			if len(cols) != 1 || !testutil.ApproxEqual(cols[0].Vector, c.want) {
-				t.Errorf("circle at %v inside a 10×10 rectangle, moving %v: got %+v, want push-out %v", c.offset, moving, cols, c.want)
+				t.Errorf("circle at %v inside or on a 10×10 rectangle, moving %v: got %+v, want push-out %v", c.offset, moving, cols, c.want)
 			}
 		}
 	}

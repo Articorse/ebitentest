@@ -6,4 +6,5 @@ type FeatureEnum uint16
 const (
 	Feature_None FeatureEnum = iota
 	Feature_Tree
+	Feature_Stump
 )

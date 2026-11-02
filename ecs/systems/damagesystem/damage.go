@@ -125,14 +125,20 @@ func dealTileDamage(collisions []common.TileCollision, ecsCont *ecs.ECSContainer
 			ecsCont.ScheduleKillEntity(c.E)
 		}
 
-		// Hitting a feature only damages the feature, not the ground it stands on, and no feature can be damaged yet
-		if c.Feature {
-			continue
-		}
-
 		damageTiers := cd.DamageTiers()
 		if len(damageTiers) <= c.ShapeIdx {
 			log.Printf("Error: collider shape index %d out of range for damage tiers of entity %d\n", c.ShapeIdx, c.E)
+			continue
+		}
+
+		// Hitting a feature's collider only damages the feature, not the ground it stands on
+		if c.Feature {
+			if cd.CanHitFeature(c.Tile) && ecsCont.Terrain().DamageFeature(c.Tile, damageTiers[c.ShapeIdx]) {
+				cd.RecordFeatureHit(c.Tile)
+				if err := effects.SpawnDamageNumber(utils.TilePosToWorldPos(c.Tile), damageTiers[c.ShapeIdx], ecsCont); err != nil {
+					log.Println(err)
+				}
+			}
 			continue
 		}
 

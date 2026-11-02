@@ -18,9 +18,10 @@ type ContactDamage struct {
 	rehitIntervalMs int
 
 	ageMs int
-	// How old the source was when it last hit each target
+	// How old the source was when it last hit each target. A tile and the feature on it are hit separately.
 	hitEntities map[common.EntityId]int
 	hitTiles    map[utils.Vec2i]int
+	hitFeatures map[utils.Vec2i]int
 }
 
 func NewContactDamageComponent(source common.EntityId, knockback float64, damageTiers ...int) *ContactDamage {
@@ -30,6 +31,7 @@ func NewContactDamageComponent(source common.EntityId, knockback float64, damage
 		damageTiers: damageTiers,
 		hitEntities: make(map[common.EntityId]int),
 		hitTiles:    make(map[utils.Vec2i]int),
+		hitFeatures: make(map[utils.Vec2i]int),
 	}
 }
 
@@ -82,6 +84,11 @@ func (x *ContactDamage) CanHitTile(t utils.Vec2i) bool {
 	return x.canHit(lastHit, hit)
 }
 
+func (x *ContactDamage) CanHitFeature(t utils.Vec2i) bool {
+	lastHit, hit := x.hitFeatures[t]
+	return x.canHit(lastHit, hit)
+}
+
 func (x *ContactDamage) canHit(lastHit int, hit bool) bool {
 	return x.IsActive() && (!hit || (x.rehitIntervalMs > 0 && x.ageMs-lastHit >= x.rehitIntervalMs))
 }
@@ -94,6 +101,10 @@ func (x *ContactDamage) RecordTileHit(t utils.Vec2i) {
 	x.hitTiles[t] = x.ageMs
 }
 
+func (x *ContactDamage) RecordFeatureHit(t utils.Vec2i) {
+	x.hitFeatures[t] = x.ageMs
+}
+
 func (x *ContactDamage) TickAge() {
 	x.ageMs += data.TickMs
 }
@@ -102,11 +113,15 @@ func (x ContactDamage) Copy() ContactDamage {
 	x.damageTiers = slices.Clone(x.damageTiers)
 	x.hitEntities = maps.Clone(x.hitEntities)
 	x.hitTiles = maps.Clone(x.hitTiles)
+	x.hitFeatures = maps.Clone(x.hitFeatures)
 	if x.hitEntities == nil {
 		x.hitEntities = make(map[common.EntityId]int)
 	}
 	if x.hitTiles == nil {
 		x.hitTiles = make(map[utils.Vec2i]int)
+	}
+	if x.hitFeatures == nil {
+		x.hitFeatures = make(map[utils.Vec2i]int)
 	}
 	return x
 }
@@ -125,6 +140,7 @@ type contactDamageDto struct {
 	AgeMs           int
 	HitEntities     map[common.EntityId]int
 	HitTiles        map[utils.Vec2i]int
+	HitFeatures     map[utils.Vec2i]int
 }
 
 func (x ContactDamage) toDto() (ComponentDto, error) {
@@ -139,6 +155,7 @@ func (x ContactDamage) toDto() (ComponentDto, error) {
 		AgeMs:           x.ageMs,
 		HitEntities:     x.hitEntities,
 		HitTiles:        x.hitTiles,
+		HitFeatures:     x.hitFeatures,
 	}, nil
 }
 
@@ -153,6 +170,7 @@ func (x contactDamageDto) toComponent() (Component, error) {
 		ageMs:           x.AgeMs,
 		hitEntities:     x.HitEntities,
 		hitTiles:        x.HitTiles,
+		hitFeatures:     x.HitFeatures,
 	}.Copy()
 	return &c, nil
 }

@@ -11,8 +11,9 @@ import (
 type chunk struct {
 	tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
 	promotedTiles map[utils.Vec2i]promotedTile
-	// Generated again whenever the chunk is loaded rather than saved, since nothing can change them yet
-	features        map[utils.Vec2i]data.FeatureEnum
+	features      map[utils.Vec2i]data.FeatureEnum
+	// Only for damaged features
+	featureHealth   map[utils.Vec2i]int
 	terrainModified bool
 
 	Image *ebiten.Image
@@ -21,6 +22,7 @@ type chunk struct {
 func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
 	c := chunk{tiles: worldgen.ChunkTiles(cc.seed, pos), features: worldgen.ChunkFeatures(cc.seed, pos)}
 	c.promotedTiles = make(map[utils.Vec2i]promotedTile)
+	c.featureHealth = make(map[utils.Vec2i]int)
 
 	return &c, nil
 }

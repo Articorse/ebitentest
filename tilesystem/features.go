@@ -20,6 +20,10 @@ type featureDef struct {
 	hasCollider bool
 	// World-space bounds relative to the center of the feature's tile
 	colliderMin, colliderMax utils.Vec2f
+
+	// Not positive for features that can't be damaged
+	maxHealth     int
+	destroyedInto data.FeatureEnum
 }
 
 type featureDefDTO struct {
@@ -28,6 +32,9 @@ type featureDefDTO struct {
 	ImageOffset utils.Vec2f         `json:"imageOffset"`
 	SpriteLayer uint8               `json:"spriteLayer"`
 	Collider    *featureColliderDTO `json:"collider"`
+	MaxHealth   int                 `json:"maxHealth"`
+	// Required for features that can be damaged
+	DestroyedInto *uint16 `json:"destroyedInto"`
 }
 
 type featureColliderDTO struct {
@@ -64,16 +71,81 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string) error {
 			def.colliderMax = c.Offset.Add(utils.Vec2f{X: c.Width / 2, Y: c.Height / 2})
 		}
 
+		def.maxHealth = dto.MaxHealth
+		if def.maxHealth > 0 {
+			if dto.DestroyedInto == nil {
+				return fmt.Errorf("feature %d can be damaged, but doesn't say what it's destroyed into", dto.Id)
+			}
+			def.destroyedInto = data.FeatureEnum(*dto.DestroyedInto)
+		}
+
 		defs[data.FeatureEnum(dto.Id)] = def
+	}
+
+	for id, def := range defs {
+		if _, ok := defs[def.destroyedInto]; def.maxHealth > 0 && !ok {
+			return fmt.Errorf("feature %d is destroyed into feature %d, which isn't defined", id, def.destroyedInto)
+		}
 	}
 
 	cc.featureAtlas = defs
 	return nil
 }
 
-func (cc *ChunkContainer) HasFeature(t utils.Vec2i) bool {
-	_, ok := cc.FeatureAt(t)
+func (cc *ChunkContainer) CanDamageFeature(t utils.Vec2i) bool {
+	_, ok := cc.FeatureHealth(t)
 	return ok
+}
+
+func (cc *ChunkContainer) FeatureHealth(t utils.Vec2i) (health int, ok bool) {
+	c, def, ok := cc.featureOn(t)
+	if !ok || def.maxHealth <= 0 {
+		return 0, false
+	}
+
+	if h, ok := c.featureHealth[t]; ok {
+		return h, true
+	}
+	return def.maxHealth, true
+}
+
+// Returns false for features that can't be damaged, or tiles without one in an active chunk
+func (cc *ChunkContainer) DamageFeature(t utils.Vec2i, damage int) bool {
+	c, def, ok := cc.featureOn(t)
+	if !ok || def.maxHealth <= 0 {
+		return false
+	}
+
+	health := def.maxHealth
+	if h, ok := c.featureHealth[t]; ok {
+		health = h
+	}
+	health -= damage
+	c.terrainModified = true
+
+	if health > 0 {
+		c.featureHealth[t] = health
+		return true
+	}
+
+	delete(c.featureHealth, t)
+	c.features[t] = def.destroyedInto
+	return true
+}
+
+func (cc *ChunkContainer) featureOn(t utils.Vec2i) (*chunk, featureDef, bool) {
+	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	if !ok {
+		return nil, featureDef{}, false
+	}
+
+	f, ok := c.features[t]
+	if !ok {
+		return nil, featureDef{}, false
+	}
+
+	def, ok := cc.featureAtlas[f]
+	return c, def, ok
 }
 
 func (cc *ChunkContainer) FeatureAt(t utils.Vec2i) (data.FeatureEnum, bool) {

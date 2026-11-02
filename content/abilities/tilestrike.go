@@ -26,8 +26,8 @@ func (p *TileStrikeParams) Copy() ecs.AbilityParams {
 	return &c
 }
 
-// The tile under the aim if the strike can affect it. Otherwise the last terrain tile between from and aim that it can
-// affect, so that aiming past a wall, such as at something behind it, hits the wall. Ground is only hit when aimed at
+// The tile under the aim if the strike can affect it. Otherwise the last terrain tile, or tree, between from and aim that
+// it can affect, so that aiming past a wall, such as at something behind it, hits the wall. Ground is only hit when aimed at
 // directly, since the ground in front of where the player aims gets in the way of every strike, and destroying it
 // moves the target closer with each one.
 func (p *TileStrikeParams) TargetTile(from, aim utils.Vec2f, terrain ecs.Terrain) (utils.Vec2i, bool) {
@@ -47,7 +47,7 @@ func (p *TileStrikeParams) TargetTile(from, aim utils.Vec2f, terrain ecs.Terrain
 
 	target, found := utils.Vec2i{}, false
 	for _, t := range utils.TilesAlongSegment(from, aim) {
-		if layer, _ := terrain.TileLayer(t); layer == ecs.Layer_Terrain && p.canAffect(origin, t, inSight, terrain) {
+		if layer, _ := struckLayer(t, terrain); layer == ecs.Layer_Terrain && p.canAffect(origin, t, inSight, terrain) {
 			target, found = t, true
 		}
 	}
@@ -60,13 +60,27 @@ func (p *TileStrikeParams) canAffect(origin, tile utils.Vec2i, inSight map[utils
 		return false
 	}
 
-	// A strike aimed at a feature hits the feature rather than the ground under it, and no feature can be damaged yet
-	if terrain.HasFeature(tile) {
+	layer, ok := struckLayer(tile, terrain)
+	if !ok || layer&p.Mask == 0 {
 		return false
 	}
+	return terrain.CanDamageFeature(tile) || terrain.CanDamageTile(tile)
+}
 
-	layer, ok := terrain.TileLayer(tile)
-	return ok && layer&p.Mask != 0 && terrain.CanDamageTile(tile)
+// A feature that can be damaged takes strikes aimed at its tile instead of the ground under it, and counts as terrain,
+// like the collider it has. One that can't, such as a stump, doesn't get in the way.
+func struckLayer(tile utils.Vec2i, terrain ecs.Terrain) (ecs.LayerMask, bool) {
+	if terrain.CanDamageFeature(tile) {
+		return ecs.Layer_Terrain, true
+	}
+	return terrain.TileLayer(tile)
+}
+
+func strikeTile(tile utils.Vec2i, damage int, terrain ecs.Terrain) bool {
+	if terrain.CanDamageFeature(tile) {
+		return terrain.DamageFeature(tile, damage)
+	}
+	return terrain.DamageTile(tile, damage)
 }
 
 func TileStrikeAbility(
@@ -96,7 +110,7 @@ func TileStrikeAbility(
 
 	terrain := ecsContainer.Terrain()
 	tile, ok := p.TargetTile(strikerPos, target.Pos, terrain)
-	if !ok || !terrain.DamageTile(tile, p.Damage) {
+	if !ok || !strikeTile(tile, p.Damage, terrain) {
 		return false, nil
 	}
 

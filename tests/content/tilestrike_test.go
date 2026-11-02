@@ -11,16 +11,24 @@ import (
 	"testing"
 )
 
-// Ground everywhere within 5 tiles of the origin, with rock where it's told to be
+// Ground everywhere within 5 tiles of the origin, with rock and trees where it's told to be
 type fakeTerrain struct {
 	rock    map[utils.Vec2i]bool
 	trees   map[utils.Vec2i]bool
-	damaged map[utils.Vec2i]int
 	sturdy  map[utils.Vec2i]bool
+	damaged map[utils.Vec2i]int
+	// Trees damaged, apart from the ground under them
+	treesDamaged map[utils.Vec2i]int
 }
 
 func newFakeTerrain(rock ...utils.Vec2i) *fakeTerrain {
-	f := &fakeTerrain{rock: map[utils.Vec2i]bool{}, trees: map[utils.Vec2i]bool{}, damaged: map[utils.Vec2i]int{}, sturdy: map[utils.Vec2i]bool{}}
+	f := &fakeTerrain{
+		rock:         map[utils.Vec2i]bool{},
+		trees:        map[utils.Vec2i]bool{},
+		sturdy:       map[utils.Vec2i]bool{},
+		damaged:      map[utils.Vec2i]int{},
+		treesDamaged: map[utils.Vec2i]int{},
+	}
 	for _, r := range rock {
 		f.rock[r] = true
 	}
@@ -45,8 +53,16 @@ func (f *fakeTerrain) TileLayer(t utils.Vec2i) (ecs.LayerMask, bool) {
 	return ecs.Layer_Ground, true
 }
 
-func (f *fakeTerrain) HasFeature(t utils.Vec2i) bool {
+func (f *fakeTerrain) CanDamageFeature(t utils.Vec2i) bool {
 	return f.trees[t]
+}
+
+func (f *fakeTerrain) DamageFeature(t utils.Vec2i, damage int) bool {
+	if !f.trees[t] {
+		return false
+	}
+	f.treesDamaged[t] += damage
+	return true
 }
 
 func (f *fakeTerrain) CanDamageTile(t utils.Vec2i) bool {
@@ -112,8 +128,12 @@ func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 		{"rock past the aim", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 1}, none, nil},
 		{"rock on the way", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}, nil},
 		{"ground behind rock it can't affect", ecs.Layer_Ground, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 3}, none, nil},
-		{"a tree", both, nil, nil, utils.Vec2i{X: 1}, none, []utils.Vec2i{{X: 1}}},
+		{"a tree", both, nil, nil, utils.Vec2i{X: 1}, utils.Vec2i{X: 1}, []utils.Vec2i{{X: 1}}},
 		{"rock behind a tree", both, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 1}}},
+		{"ground behind a tree", both, nil, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 1}}},
+		{"a tree past the range", both, nil, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 2}}},
+		{"a tree with a ground-only mask", ecs.Layer_Ground, nil, nil, utils.Vec2i{X: 1}, none, []utils.Vec2i{{X: 1}}},
+		{"a tree on ground that can't be damaged", both, nil, []utils.Vec2i{{X: 1}}, utils.Vec2i{X: 1}, utils.Vec2i{X: 1}, []utils.Vec2i{{X: 1}}},
 	}
 
 	for _, c := range cases {
@@ -135,12 +155,18 @@ func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 			t.Errorf("%s: targets %v, want %v", c.name, tile, c.want)
 		}
 
-		want := map[utils.Vec2i]int{c.want: 50}
-		if c.want == none {
-			want = map[utils.Vec2i]int{}
+		wantGround, wantTrees := map[utils.Vec2i]int{}, map[utils.Vec2i]int{}
+		switch {
+		case c.want == none:
+		case terrain.trees[c.want]:
+			wantTrees[c.want] = 50
+		default:
+			wantGround[c.want] = 50
 		}
-		if used := strike(t, x, holder, c.aim); used != (c.want != none) || !maps.Equal(terrain.damaged, want) {
-			t.Errorf("%s: strike used %v and damaged %v, want %v", c.name, used, terrain.damaged, want)
+		used := strike(t, x, holder, c.aim)
+		if used != (c.want != none) || !maps.Equal(terrain.damaged, wantGround) || !maps.Equal(terrain.treesDamaged, wantTrees) {
+			t.Errorf("%s: strike used %v, damaged ground %v and trees %v; want ground %v and trees %v",
+				c.name, used, terrain.damaged, terrain.treesDamaged, wantGround, wantTrees)
 		}
 	}
 }
