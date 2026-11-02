@@ -379,13 +379,6 @@ func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 		s.deleteEntity(e)
 	}
 
-	involvesE := func(p common.EntityPair) bool { return p.A == e || p.B == e }
-	x.TickState.AABBCollisions = slices.DeleteFunc(x.TickState.AABBCollisions, involvesE)
-	x.TickState.ProximateEntities = slices.DeleteFunc(x.TickState.ProximateEntities, involvesE)
-	x.TickState.Collisions = slices.DeleteFunc(x.TickState.Collisions, func(c common.Collision) bool {
-		return c.A == e || c.B == e
-	})
-
 	for cell, entities := range x.TickState.CollisionGrid {
 		if i := slices.Index(entities, e); i != -1 {
 			x.TickState.CollisionGrid[cell] = slices.Delete(entities, i, i+1)

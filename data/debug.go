@@ -2,10 +2,13 @@ package data
 
 import "image/color"
 
+// Colliders are outlined in the color of their kind, brighter while their entity touches something
 var (
-	Debug_ColliderColor             = color.RGBA{0, 255, 0, 255}
-	Debug_ColliderCollidedColor     = color.RGBA{255, 0, 0, 255}
-	Debug_AABBColliderColor         = color.RGBA{255, 255, 0, 255}
-	Debug_AABBColliderCollidedColor = color.RGBA{255, 0, 255, 255}
-	Debug_CollisionVectorColor      = color.RGBA{255, 0, 0, 255}
+	Debug_PhysicsColliderColor         = color.RGBA{0, 160, 0, 255}
+	Debug_PhysicsColliderTouchingColor = color.RGBA{140, 255, 140, 255}
+	Debug_HitboxColliderColor          = color.RGBA{0, 90, 220, 255}
+	Debug_HitboxColliderTouchingColor  = color.RGBA{140, 200, 255, 255}
+	Debug_HurtboxColliderColor         = color.RGBA{200, 0, 0, 255}
+	Debug_HurtboxColliderTouchingColor = color.RGBA{255, 140, 140, 255}
+	Debug_PlatformColliderColor        = color.RGBA{190, 170, 0, 255}
 )

@@ -8,55 +8,37 @@ import (
 	"ebittest/utils"
 	"image/color"
 	"log"
-	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
-func DrawCollisions(
-	screen *ebiten.Image,
-	color color.RGBA,
-	camera utils.Vec2f,
-	collisions []common.Collision,
-	ecsContainer *ecs.ECSContainer,
-) error {
-	for _, col := range collisions {
-		aWorldPos, err := ecsContainer.WorldPos(col.A)
-		if err != nil {
-			log.Printf("Error getting world position for entity %d: %v\n", col.A, err)
-			continue
-		}
-
-		vector.StrokeLine(
-			screen,
-			float32(aWorldPos.X-camera.X),
-			float32(aWorldPos.Y-camera.Y),
-			float32(aWorldPos.X+col.Vector.X*10-camera.X),
-			float32(aWorldPos.Y+col.Vector.Y*10-camera.Y),
-			2,
-			color,
-			false,
-		)
-	}
-
-	return nil
-}
-
+// Outlines the colliders on screen, in the touching color for entities that touched something this tick
 func DrawColliders(
 	colliders ecs.ColliderSet,
 	baseColor color.RGBA,
-	collidedColor color.RGBA,
+	touchingColor color.RGBA,
 	screen *ebiten.Image,
 	camera utils.Vec2f,
-	collisions []common.Collision,
+	touching map[common.EntityId]bool,
 	ecsContainer *ecs.ECSContainer,
-) error {
+) {
+	onScreen := [2]utils.Vec2f{camera, camera.Add(utils.Vec2f{X: data.CameraWidth, Y: data.CameraHeight})}
+
 	for _, e := range colliders.GetEntities() {
-		if ecsContainer.IsDisabled(e) {
+		col, _ := colliders.Collider(e)
+		if ecsContainer.IsDisabled(e) || !col.Enabled() {
 			continue
 		}
-		col, _ := colliders.Collider(e)
+
+		aabb, err := ecsContainer.ColliderWorldAABB(e, col)
+		if err != nil {
+			log.Printf("Error getting AABB of entity %d: %v\n", e, err)
+			continue
+		}
+		if !utils.DetectAABBCollision(aabb, onScreen) {
+			continue
+		}
 
 		worldPos, err := ecsContainer.WorldPos(e)
 		if err != nil {
@@ -64,22 +46,9 @@ func DrawColliders(
 			continue
 		}
 
-		drawWindow := [2]utils.Vec2f{
-			utils.Vec2f{X: 0 - data.SpatialHashGridCellSize, Y: 0 - data.SpatialHashGridCellSize},
-			utils.Vec2f{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
-		}
-
-		if worldPos.X < drawWindow[0].X ||
-			worldPos.X > drawWindow[1].X ||
-			worldPos.Y < drawWindow[0].Y ||
-			worldPos.Y > drawWindow[1].Y {
-			continue
-		}
-
 		lineColor := baseColor
-
-		if slices.ContainsFunc(collisions, func(c common.Collision) bool { return c.A == e || c.B == e }) {
-			lineColor = collidedColor
+		if touching[e] {
+			lineColor = touchingColor
 		}
 
 		for _, shape := range col.Shapes() {
@@ -137,75 +106,4 @@ func DrawColliders(
 			}
 		}
 	}
-	return nil
-}
-
-func DrawAABBs(
-	colliders ecs.ColliderSet,
-	baseColor color.RGBA,
-	collidedColor color.RGBA,
-	screen *ebiten.Image,
-	camera utils.Vec2f,
-	aabbcollisions []common.EntityPair,
-	ecsContainer *ecs.ECSContainer,
-) error {
-	for _, e := range colliders.GetEntities() {
-		if ecsContainer.IsDisabled(e) {
-			continue
-		}
-		col, _ := colliders.Collider(e)
-
-		worldPos, err := ecsContainer.WorldPos(e)
-		if err != nil {
-			log.Printf("Error getting world position for entity %d: %v\n", e, err)
-			continue
-		}
-
-		drawWindow := [2]utils.Vec2f{
-			utils.Vec2f{X: 0 - data.SpatialHashGridCellSize, Y: 0 - data.SpatialHashGridCellSize},
-			utils.Vec2f{X: data.CameraWidth + data.SpatialHashGridCellSize, Y: data.CameraHeight + data.SpatialHashGridCellSize},
-		}
-
-		if worldPos.X < drawWindow[0].X ||
-			worldPos.X > drawWindow[1].X ||
-			worldPos.Y < drawWindow[0].Y ||
-			worldPos.Y > drawWindow[1].Y {
-			continue
-		}
-
-		lineColor := baseColor
-
-		if slices.ContainsFunc(aabbcollisions, func(p common.EntityPair) bool { return p.A == e || p.B == e }) {
-			lineColor = collidedColor
-		}
-
-		aabb, err := ecsContainer.ColliderPaddedWorldAABB(e, col)
-		if err != nil {
-			log.Printf("Error getting AABB for entity %d: %v\n", e, err)
-			continue
-		}
-
-		verts := []utils.Vec2f{
-			utils.Vec2f{X: aabb[0].X, Y: aabb[0].Y},
-			utils.Vec2f{X: aabb[1].X, Y: aabb[0].Y},
-			utils.Vec2f{X: aabb[1].X, Y: aabb[1].Y},
-			utils.Vec2f{X: aabb[0].X, Y: aabb[1].Y},
-			utils.Vec2f{X: aabb[0].X, Y: aabb[0].Y},
-		}
-
-		for i := 0; i < len(verts)-1; i++ {
-			vector.StrokeLine(
-				screen,
-				float32(verts[i].X-camera.X),
-				float32(verts[i].Y-camera.Y),
-				float32(verts[i+1].X-camera.X),
-				float32(verts[i+1].Y-camera.Y),
-				1,
-				lineColor,
-				false,
-			)
-		}
-	}
-
-	return nil
 }

@@ -36,15 +36,10 @@ import (
 var (
 	g = game{ecs: ecs.NewECSContainer(), assetmanager: assetmanager.NewAssetManager()}
 
-	DEBUG_LEVEL                      = 0
-	max_vel                          = 0.0
-	prev_pos                         = utils.Vec2f{}
-	max_pos_diff                     = 0.0
-	resolvedPhysicsCollisions uint64 = 0
-
-	physicsColliders = ecs.Colliders(&g.ecs.PhysicsColliders)
-	hurtboxColliders = ecs.Colliders(&g.ecs.HurtboxColliders)
-	hitboxColliders  = ecs.Colliders(&g.ecs.HitboxColliders)
+	physicsColliders  = ecs.Colliders(&g.ecs.PhysicsColliders)
+	hurtboxColliders  = ecs.Colliders(&g.ecs.HurtboxColliders)
+	hitboxColliders   = ecs.Colliders(&g.ecs.HitboxColliders)
+	platformColliders = ecs.Colliders(&g.ecs.PlatformColliders)
 
 	gamepadFound = false
 )
@@ -60,6 +55,15 @@ type game struct {
 
 	assetmanager  *assetmanager.AssetManager
 	visionOverlay drawsystem.VisionOverlay
+
+	showFPS       bool
+	showColliders bool
+	touching      touchingColliders
+}
+
+// Which colliders of each kind touched something in the last tick, for drawing them
+type touchingColliders struct {
+	physics, hitboxes, hurtboxes map[common.EntityId]bool
 }
 
 func (g *game) Update() error {
@@ -199,47 +203,12 @@ func (g *game) Update() error {
 		g.ecs.Camera = pWorldPos.Subtract(utils.Vec2f{X: float64(data.CameraWidth) / 2, Y: float64(data.CameraHeight) / 2})
 	}
 
-	// DEBUG
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
-		DEBUG_LEVEL++
-		if DEBUG_LEVEL > 2 {
-			DEBUG_LEVEL = 0
-		}
+		g.showFPS = !g.showFPS
 	}
-
 	if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
-		max_vel = 0
-		max_pos_diff = 0
+		g.showColliders = !g.showColliders
 	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
-		parEnt := g.ecs.Parent(common.EntityId(1))
-
-		if parEnt > -1 {
-			err = g.ecs.Detach(common.EntityId(1))
-			if err != nil {
-				log.Println("error detaching gun: ", err)
-			}
-		} else {
-			err = g.ecs.Attach(common.EntityId(1), g.playerEntity, ecs.Link_Held)
-			if err != nil {
-				log.Println("error attaching gun to player: ", err)
-			}
-		}
-	}
-
-	pWorldPos, err := g.ecs.WorldPos(g.playerEntity)
-	if err != nil {
-		log.Println("error getting player ecs position for debug: ", err)
-	} else {
-		pos_diff := prev_pos.Subtract(pWorldPos).Length()
-		if max_pos_diff < pos_diff {
-			max_pos_diff = pos_diff
-		}
-		prev_pos = pWorldPos
-	}
-
-	// END DEBUG
 
 	err = animationsystem.Tick(g.ecs, g.assetmanager)
 	if err != nil {
@@ -285,7 +254,7 @@ func (g *game) Update() error {
 	physicsAABBCollisions := collisionsystem.GetAABBCollisions(physicsColliders, proximateEntities, g.ecs)
 	physicsCollisions := collisionsystem.GetCollisions(physicsColliders, physicsColliders, physicsAABBCollisions, g.ecs)
 
-	resolvedPhysicsCollisions, err = collisionsystem.ResolvePhysicsCollisions(physicsCollisions, g.ecs)
+	_, err = collisionsystem.ResolvePhysicsCollisions(physicsCollisions, g.ecs)
 	if err != nil {
 		log.Println("error during collision resolution: ", err)
 	}
@@ -348,9 +317,9 @@ func (g *game) Update() error {
 		log.Println("error while removing scheduled entities: ", err)
 	}
 
-	g.ecs.TickState.ProximateEntities = proximateEntities
-	g.ecs.TickState.AABBCollisions = physicsAABBCollisions
-	g.ecs.TickState.Collisions = physicsCollisions
+	if g.showColliders {
+		g.touching = touchingCollidersOf(physicsCollisions, tileCollisions, damageCollisions, terrainDamageCollisions)
+	}
 
 	if g.ecs.TickIdx%(data.WorldSavePeriodSec*data.TPS) == 0 {
 		g.startWorldSave()
@@ -473,78 +442,47 @@ func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 }
 
 func (g *game) DrawDebug(screen *ebiten.Image) {
-	if DEBUG_LEVEL == 1 {
+	if g.showColliders {
+		// Platforms resolve what lands on them themselves, without reporting it, so they're never shown touching
+		for _, c := range []struct {
+			colliders      ecs.ColliderSet
+			color, touches color.RGBA
+			touching       map[common.EntityId]bool
+		}{
+			{platformColliders, data.Debug_PlatformColliderColor, data.Debug_PlatformColliderColor, nil},
+			{physicsColliders, data.Debug_PhysicsColliderColor, data.Debug_PhysicsColliderTouchingColor, g.touching.physics},
+			{hitboxColliders, data.Debug_HitboxColliderColor, data.Debug_HitboxColliderTouchingColor, g.touching.hitboxes},
+			{hurtboxColliders, data.Debug_HurtboxColliderColor, data.Debug_HurtboxColliderTouchingColor, g.touching.hurtboxes},
+		} {
+			collisionsystem.DrawColliders(c.colliders, c.color, c.touches, screen, g.ecs.Camera, c.touching, g.ecs)
+		}
+	}
+
+	if g.showFPS {
 		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f", ebiten.ActualFPS()))
 	}
+}
 
-	if DEBUG_LEVEL == 2 {
-		if err := collisionsystem.DrawColliders(physicsColliders, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
-			log.Println("error while drawing physics colliders: ", err, "removing entity")
-			var invalidComponentsErr *common.ErrorMissingComponentDependency
-			if errors.As(err, &invalidComponentsErr) {
-				g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-			}
-		}
-
-		// if err := collisionsystem.DrawColliders(hurtboxColliders, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
-		// 	log.Println("error while drawing physics colliders: ", err, "removing entity")
-		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
-		// 	if errors.As(err, &invalidComponentsErr) {
-		// 		g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-		// 	}
-		// }
-
-		// if err := collisionsystem.DrawColliders(hitboxColliders, data.Debug_ColliderColor, data.Debug_ColliderCollidedColor, screen, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
-		// 	log.Println("error while drawing physics colliders: ", err, "removing entity")
-		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
-		// 	if errors.As(err, &invalidComponentsErr) {
-		// 		g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-		// 	}
-		// }
-
-		if err := collisionsystem.DrawAABBs(physicsColliders, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
-			log.Println("error while drawing AABBs: ", err, "removing entity")
-			var invalidComponentsErr *common.ErrorMissingComponentDependency
-			if errors.As(err, &invalidComponentsErr) {
-				g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-			}
-		}
-
-		// if err := collisionsystem.DrawAABBs(hurtboxColliders, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
-		// 	log.Println("error while drawing AABBs: ", err, "removing entity")
-		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
-		// 	if errors.As(err, &invalidComponentsErr) {
-		// 		g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-		// 	}
-		// }
-		//
-		// if err := collisionsystem.DrawAABBs(hitboxColliders, data.Debug_AABBColliderColor, data.Debug_AABBColliderColor, screen, g.ecs.Camera, g.ecs.TickState.AABBCollisions, g.ecs); err != nil {
-		// 	log.Println("error while drawing AABBs: ", err, "removing entity")
-		// 	var invalidComponentsErr *common.ErrorMissingComponentDependency
-		// 	if errors.As(err, &invalidComponentsErr) {
-		// 		g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
-		// 	}
-		// }
-
-		if err := collisionsystem.DrawCollisions(screen, data.Debug_CollisionVectorColor, g.ecs.Camera, g.ecs.TickState.Collisions, g.ecs); err != nil {
-			log.Println("error while drawing collisions: ", err)
-		}
-
-		proximateEntitiesCount := len(g.ecs.TickState.ProximateEntities)
-
-		pVel, ok := g.ecs.Velocities.Get(g.playerEntity)
-		if !ok {
-			log.Fatalf("player %d has no velocity to show for debug", g.playerEntity)
-		}
-		pLocalVelVec := pVel.LocalVector()
-
-		vel := pLocalVelVec.Length()
-		if vel > max_vel {
-			max_vel = vel
-		}
-
-		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f\nTick: %d\nVel: %v\nMaxVel: %f\nMaxPosDiff: %v\nSHG Cells: %v\nProximate Pairs: %d\nResolved Collisions: %d", ebiten.ActualFPS(), g.ecs.TickIdx, pLocalVelVec, max_vel, max_pos_diff, g.ecs.TickState.CollisionGrid, proximateEntitiesCount, resolvedPhysicsCollisions))
+func touchingCollidersOf(
+	physicsCollisions []common.Collision,
+	physicsTileCollisions []common.TileCollision,
+	damageCollisions []common.Collision,
+	damageTileCollisions []common.TileCollision,
+) touchingColliders {
+	t := touchingColliders{physics: map[common.EntityId]bool{}, hitboxes: map[common.EntityId]bool{}, hurtboxes: map[common.EntityId]bool{}}
+	for _, c := range physicsCollisions {
+		t.physics[c.A], t.physics[c.B] = true, true
 	}
+	for _, c := range physicsTileCollisions {
+		t.physics[c.E] = true
+	}
+	for _, c := range damageCollisions {
+		t.hurtboxes[c.A], t.hitboxes[c.B] = true, true
+	}
+	for _, c := range damageTileCollisions {
+		t.hurtboxes[c.E] = true
+	}
+	return t
 }
 
 func (g *game) moveToNewWorldSpawn(e common.EntityId) error {
