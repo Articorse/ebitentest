@@ -11,10 +11,6 @@ import (
 	"testing"
 )
 
-type noTiles struct{}
-
-func (noTiles) DamageTile(utils.Vec2i, int) bool { return false }
-
 func addSource(t *testing.T, x *ecs.ECSContainer, cd *ecs.ContactDamage) common.EntityId {
 	t.Helper()
 	shape, err := shapes.NewCircleShape(5, utils.Vec2f{})
@@ -44,7 +40,7 @@ func touchEntities(t *testing.T, x *ecs.ECSContainer, sources, targets []common.
 			collisions = append(collisions, common.Collision{A: s, B: e, Vector: utils.Vec2f{X: 1}})
 		}
 	}
-	if _, err := damagesystem.DealContactDamage(collisions, nil, noTiles{}, x); err != nil {
+	if _, err := damagesystem.DealContactDamage(collisions, nil, x); err != nil {
 		t.Fatal(err)
 	}
 	testutil.RemoveScheduled(t, x)

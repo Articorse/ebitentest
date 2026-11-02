@@ -15,9 +15,9 @@ func TestInputsAreHandledInEntityOrder(t *testing.T) {
 	x := testutil.NewECS(t)
 	const recordOrder = ecs.AbilityEnum(1000)
 	order := []common.EntityId{}
-	err := x.RegisterAbility(recordOrder, func(self common.EntityId, _ ecs.AbilityParams, _ *ecs.ECSContainer) error {
+	err := x.RegisterAbility(recordOrder, func(self common.EntityId, _ ecs.AbilityTarget, _ ecs.AbilityParams, _ *ecs.ECSContainer) (bool, error) {
 		order = append(order, self)
-		return nil
+		return true, nil
 	})
 	if err != nil {
 		t.Fatal(err)

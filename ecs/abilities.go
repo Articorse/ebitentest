@@ -26,11 +26,19 @@ type AbilityParams interface {
 	Copy() AbilityParams
 }
 
+type AbilityTarget struct {
+	Entities []common.EntityId
+	Pos      utils.Vec2f
+}
+
+// An ability that isn't used, such as one aimed at something it can't affect, doesn't start its duration or cooldown,
+// so it must not have changed anything
 type AbilityFunc func(
 	self common.EntityId,
+	target AbilityTarget,
 	params AbilityParams,
 	ecsContainer *ECSContainer,
-) error
+) (used bool, err error)
 
 type AbilityDef struct {
 	AbilityId     AbilityEnum
@@ -125,12 +133,7 @@ func (x *ECSContainer) TickAbilities(e common.EntityId) error {
 	return nil
 }
 
-func (x *ECSContainer) ActivateAbility(
-	e common.EntityId,
-	targets []common.EntityId,
-	targetPos utils.Vec2f,
-	abiIdx int,
-) (activated bool, err error) {
+func (x *ECSContainer) ActivateAbility(e common.EntityId, target AbilityTarget, abiIdx int) (activated bool, err error) {
 	if abiIdx > data.MaxAbilitySlots-1 {
 		return false, fmt.Errorf("ability index %d is out of bounds", abiIdx)
 	}
@@ -151,12 +154,13 @@ func (x *ECSContainer) ActivateAbility(
 	}
 
 	// Activated on a copy, so that a failed activation leaves the ability as it was
-	if _, err := tryActivate(e, &abi, targets, targetPos, x); err != nil {
+	activated, err = tryActivate(e, &abi, target, x)
+	if err != nil {
 		return false, fmt.Errorf("error trying to activate ability %v of entity %d: %v", abi.Def.AbilityId, e, err)
 	}
 	abis.abilities[abiIdx] = abi
 
-	return true, nil
+	return activated, nil
 }
 
 func (x *ECSContainer) AbilityFunc(abilityId AbilityEnum) (AbilityFunc, error) {

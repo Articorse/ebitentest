@@ -3,7 +3,6 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
-	"ebittest/utils"
 	"fmt"
 )
 
@@ -47,8 +46,7 @@ func (x *Equipment) Fits(slot EquipSlotEnum) bool {
 func (x *ECSContainer) ActivateEquipmentAbility(
 	e common.EntityId,
 	slot EquipSlotEnum,
-	targets []common.EntityId,
-	targetPos utils.Vec2f,
+	target AbilityTarget,
 	abiIdx int,
 ) (activated bool, err error) {
 	if abiIdx > data.MaxEquipmentAbilitySlots-1 {
@@ -72,12 +70,13 @@ func (x *ECSContainer) ActivateEquipmentAbility(
 
 	// Activated on a copy, so that a failed activation leaves the ability as it was
 	abi := eq.abilities[abiIdx]
-	if _, err := tryActivate(eqE, &abi, targets, targetPos, x); err != nil {
+	activated, err = tryActivate(eqE, &abi, target, x)
+	if err != nil {
 		return false, fmt.Errorf("error trying to activate ability %v of equipment entity %d: %v", abi.Def.AbilityId, eqE, err)
 	}
 	eq.abilities[abiIdx] = abi
 
-	return true, nil
+	return activated, nil
 }
 
 func (x *ECSContainer) TickEquipmentAbilities(e common.EntityId) error {

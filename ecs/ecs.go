@@ -29,6 +29,7 @@ type ECSContainer struct {
 	TickState common.TickState
 
 	isSimulatedPos func(worldPos utils.Vec2f) bool
+	terrain        Terrain
 
 	storages []componentStorage
 
@@ -112,6 +113,8 @@ func NewECSContainer() *ECSContainer {
 
 		TickIdx:   0,
 		TickState: common.TickState{},
+
+		terrain: noTerrain{},
 
 		Inputs:            newStorage[Input](),
 		Hierarchies:       newStorage[Hierarchy](),

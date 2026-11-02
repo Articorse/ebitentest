@@ -26,7 +26,8 @@ func (x *ECSContainer) runDeathrattle(e common.EntityId) error {
 		return fmt.Errorf("could not get ability function for ability %v of entity %d: %v", dr.ability.Def.AbilityId, e, err)
 	}
 
-	return effect(e, dr.ability.Params, x)
+	_, err = effect(e, AbilityTarget{}, dr.ability.Params, x)
+	return err
 }
 
 func (x *ECSContainer) TickDeathrattle(e common.EntityId) error {

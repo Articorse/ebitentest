@@ -2,6 +2,7 @@ package tilesystem
 
 import (
 	"ebittest/data"
+	"ebittest/ecs"
 	"ebittest/utils"
 	"fmt"
 	"log"
@@ -80,4 +81,25 @@ func (cc *ChunkContainer) IsOpaqueTile(t utils.Vec2i) bool {
 
 	def, ok := cc.atlas[c.getTileDefId(t)]
 	return !ok || def.opaque
+}
+
+func (cc *ChunkContainer) TileLayer(t utils.Vec2i) (ecs.LayerMask, bool) {
+	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	if !ok {
+		return 0, false
+	}
+
+	def, ok := cc.atlas[c.getTileDefId(t)]
+	if !ok {
+		return 0, false
+	}
+
+	return tileLayer(!def.passable), true
+}
+
+func tileLayer(impassable bool) ecs.LayerMask {
+	if impassable {
+		return ecs.Layer_Terrain
+	}
+	return ecs.Layer_Ground
 }

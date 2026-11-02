@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-func noopAbility(common.EntityId, ecs.AbilityParams, *ecs.ECSContainer) error {
-	return nil
+func noopAbility(common.EntityId, ecs.AbilityTarget, ecs.AbilityParams, *ecs.ECSContainer) (bool, error) {
+	return true, nil
 }
 
 func TestRegistryRefusesTakenAndNoneIds(t *testing.T) {

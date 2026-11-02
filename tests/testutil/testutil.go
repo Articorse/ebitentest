@@ -187,6 +187,7 @@ func StartSession(t testing.TB) *Session {
 		t.Fatal(err)
 	}
 	x.SetSimulatedPosCheck(cc.IsActiveWorldPos)
+	x.SetTerrain(cc)
 
 	h, exists, err := world.Load(x)
 	if err != nil {

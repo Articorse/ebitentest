@@ -75,27 +75,27 @@ func TestDisabledAbilitiesCantStartButFinishWhatTheyStarted(t *testing.T) {
 	x := testutil.NewECS(t)
 	const abilityId, postId = ecs.AbilityEnum(1001), ecs.AbilityEnum(1002)
 	activated, ended := []common.EntityId{}, []common.EntityId{}
-	if err := x.RegisterAbility(abilityId, func(self common.EntityId, _ ecs.AbilityParams, _ *ecs.ECSContainer) error {
+	if err := x.RegisterAbility(abilityId, func(self common.EntityId, _ ecs.AbilityTarget, _ ecs.AbilityParams, _ *ecs.ECSContainer) (bool, error) {
 		activated = append(activated, self)
-		return nil
+		return true, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := x.RegisterAbility(postId, func(self common.EntityId, _ ecs.AbilityParams, _ *ecs.ECSContainer) error {
+	if err := x.RegisterAbility(postId, func(self common.EntityId, _ ecs.AbilityTarget, _ ecs.AbilityParams, _ *ecs.ECSContainer) (bool, error) {
 		ended = append(ended, self)
-		return nil
+		return true, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 
 	abis := [data.MaxAbilitySlots]ecs.EntityAbility{{Def: ecs.NewAbilityDef(abilityId, postId, 2*data.TickMs, 2*data.TickMs)}}
 	e := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewAbilitiesComponent(abis))
-	if ok, err := x.ActivateAbility(e, nil, utils.Vec2f{}, 0); err != nil || !ok {
+	if ok, err := x.ActivateAbility(e, ecs.AbilityTarget{}, 0); err != nil || !ok {
 		t.Fatalf("activation %v, error %v", ok, err)
 	}
 
 	x.SetDisabled(e, true)
-	if ok, err := x.ActivateAbility(e, nil, utils.Vec2f{}, 0); err != nil || ok {
+	if ok, err := x.ActivateAbility(e, ecs.AbilityTarget{}, 0); err != nil || ok {
 		t.Fatalf("a disabled entity's ability activated %v, error %v", ok, err)
 	}
 	for range 6 {
@@ -108,7 +108,7 @@ func TestDisabledAbilitiesCantStartButFinishWhatTheyStarted(t *testing.T) {
 	}
 
 	x.SetDisabled(e, false)
-	if ok, err := x.ActivateAbility(e, nil, utils.Vec2f{}, 0); err != nil || !ok {
+	if ok, err := x.ActivateAbility(e, ecs.AbilityTarget{}, 0); err != nil || !ok {
 		t.Fatalf("the cooldown didn't run out while disabled: activated %v, error %v", ok, err)
 	}
 	if !slices.Equal(activated, []common.EntityId{e, e}) {
@@ -151,7 +151,7 @@ func TestDisabledEntitiesNeitherLoseInvulnerabilityNorSee(t *testing.T) {
 	}
 
 	damagesystem.Tick(x)
-	visionsystem.Tick(x, func(utils.Vec2i) bool { return false })
+	visionsystem.Tick(x)
 
 	hpEnabled, _ := x.Hitpoints.Get(enabled)
 	hpDisabled, _ := x.Hitpoints.Get(disabled)
@@ -197,9 +197,9 @@ func TestDisabledEquipmentCantBeUsed(t *testing.T) {
 	x := testutil.NewECS(t)
 	const abilityId = ecs.AbilityEnum(1003)
 	used := 0
-	if err := x.RegisterAbility(abilityId, func(common.EntityId, ecs.AbilityParams, *ecs.ECSContainer) error {
+	if err := x.RegisterAbility(abilityId, func(common.EntityId, ecs.AbilityTarget, ecs.AbilityParams, *ecs.ECSContainer) (bool, error) {
 		used++
-		return nil
+		return true, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -211,12 +211,12 @@ func TestDisabledEquipmentCantBeUsed(t *testing.T) {
 	testutil.Attach(t, x, tool, holder, ecs.Link_Held)
 
 	x.SetDisabled(tool, true)
-	if ok, err := x.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, nil, utils.Vec2f{}, 0); err != nil || ok || used != 0 {
+	if ok, err := x.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, ecs.AbilityTarget{}, 0); err != nil || ok || used != 0 {
 		t.Fatalf("disabled equipment activated %v, error %v, used %d times", ok, err, used)
 	}
 
 	x.SetDisabled(tool, false)
-	if ok, err := x.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, nil, utils.Vec2f{}, 0); err != nil || !ok || used != 1 {
+	if ok, err := x.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, ecs.AbilityTarget{}, 0); err != nil || !ok || used != 1 {
 		t.Fatalf("enabled equipment activated %v, error %v, used %d times", ok, err, used)
 	}
 }

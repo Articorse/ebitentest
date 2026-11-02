@@ -34,26 +34,27 @@ func (p *ExplodeParams) Copy() ecs.AbilityParams {
 
 func ExplodeAbility(
 	self common.EntityId,
+	target ecs.AbilityTarget,
 	params ecs.AbilityParams,
 	ecsContainer *ecs.ECSContainer,
-) error {
+) (bool, error) {
 	if params == nil {
-		return fmt.Errorf("explode ability params cannot be nil")
+		return false, fmt.Errorf("explode ability params cannot be nil")
 	}
 
 	explodeParams, ok := params.(*ExplodeParams)
 	if !ok {
-		return fmt.Errorf("invalid explode ability params type: %T", params)
+		return false, fmt.Errorf("invalid explode ability params type: %T", params)
 	}
 	if explodeParams == nil {
-		return fmt.Errorf("explode ability params cannot be nil")
+		return false, fmt.Errorf("explode ability params cannot be nil")
 	}
 
 	var totalDuration uint64
 	explosionE := ecsContainer.AddEmptyEntity()
 
 	if !ecsContainer.Transforms.HasComponent(self) {
-		return fmt.Errorf("entity %d does not have a transform component for explode ability", self)
+		return false, fmt.Errorf("entity %d does not have a transform component for explode ability", self)
 	}
 
 	for _, f := range explodeParams.Animationframes {
@@ -62,17 +63,17 @@ func ExplodeAbility(
 
 	exWorldPos, err := ecsContainer.WorldPos(self)
 	if err != nil {
-		return fmt.Errorf("error getting world position of entity %d for explode ability: %v", self, err)
+		return false, fmt.Errorf("error getting world position of entity %d for explode ability: %v", self, err)
 	}
 
 	exWorldRot, err := ecsContainer.WorldRotation(self)
 	if err != nil {
-		return fmt.Errorf("error getting world rotation of entity %d for explode ability: %v", self, err)
+		return false, fmt.Errorf("error getting world rotation of entity %d for explode ability: %v", self, err)
 	}
 
 	exWorldScale, err := ecsContainer.WorldScale(self)
 	if err != nil {
-		return fmt.Errorf("error getting world scale of entity %d for explode ability: %v", self, err)
+		return false, fmt.Errorf("error getting world scale of entity %d for explode ability: %v", self, err)
 	}
 
 	var exSprLayer uint8
@@ -83,7 +84,7 @@ func ExplodeAbility(
 
 	hurtbox, ok := ecsContainer.HurtboxColliders.Get(self)
 	if !ok {
-		return fmt.Errorf("entity %d does not have a hurtbox collider component for explode ability", self)
+		return false, fmt.Errorf("entity %d does not have a hurtbox collider component for explode ability", self)
 	}
 
 	dmgLayer := hurtbox.Layer()
@@ -93,23 +94,23 @@ func ExplodeAbility(
 	traComp := ecs.NewTransformComponent(exWorldPos, exWorldScale, exWorldRot)
 	sprComp, err := ecs.NewSpriteComponent(common.AssetSheetExplosion, exSprLayer+1, false)
 	if err != nil {
-		return fmt.Errorf("error creating sprite component for explode ability: %v", err)
+		return false, fmt.Errorf("error creating sprite component for explode ability: %v", err)
 	}
 	stateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
 	stateFrames[ecs.Anim_Idle] = explodeParams.Animationframes
 	aniComp, err := ecs.NewAnimationComponent(common.AssetSheetExplosion, stateFrames)
 	if err != nil {
-		return fmt.Errorf("error creating animation component for explode ability: %v", err)
+		return false, fmt.Errorf("error creating animation component for explode ability: %v", err)
 	}
 	timerComp, err := ecs.NewTimerComponent(int(totalDuration), 1, timerfuncs.TimerFunc_Selfdestruct)
 	if err != nil {
-		return fmt.Errorf("error creating timer component for explode ability: %v", err)
+		return false, fmt.Errorf("error creating timer component for explode ability: %v", err)
 	}
 	hurtShapes := make([]shapes.Shape, len(explodeParams.Radii))
 	for i := range explodeParams.Radii {
 		hs, err := shapes.NewCircleShape(explodeParams.Radii[i], utils.Vec2f{})
 		if err != nil {
-			return fmt.Errorf("error creating hurtbox shape for explode ability: %v", err)
+			return false, fmt.Errorf("error creating hurtbox shape for explode ability: %v", err)
 		}
 		hurtShapes[i] = hs
 	}
@@ -124,5 +125,5 @@ func ExplodeAbility(
 	ecsContainer.AddComponent(explosionE, cdComp)
 	ecsContainer.AddComponent(explosionE, hurtComp)
 
-	return nil
+	return true, nil
 }

@@ -226,18 +226,17 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		return fmt.Errorf("error spawning bazooka: %w", err)
 	}
 
-	pEquipperComp := ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{
-		ecs.Equip_MainHand: bazooka,
-	})
+	ecsContainer.AddComponent(player, ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{}))
 
-	ecsContainer.AddComponent(player, pEquipperComp)
-
-	err = ecsContainer.Attach(bazooka, player, ecs.Link_Held)
+	mattock, err := spawnMattock(ecsContainer, playerPos)
 	if err != nil {
-		return fmt.Errorf("error attaching bazooka to player: %w", err)
+		return fmt.Errorf("error spawning mattock: %w", err)
+	}
+	if err := ecsContainer.PutInInventory(player, 0, mattock); err != nil {
+		return fmt.Errorf("error putting mattock in the player's inventory: %w", err)
 	}
 
-	if err := ecsContainer.PutInInventory(player, 0, bazooka); err != nil {
+	if err := ecsContainer.PutInInventory(player, 1, bazooka); err != nil {
 		return fmt.Errorf("error putting bazooka in the player's inventory: %w", err)
 	}
 
@@ -245,7 +244,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 	if err != nil {
 		return fmt.Errorf("error spawning gun: %w", err)
 	}
-	if err := ecsContainer.PutInInventory(player, 1, gun); err != nil {
+	if err := ecsContainer.PutInInventory(player, 2, gun); err != nil {
 		return fmt.Errorf("error putting gun in the player's inventory: %w", err)
 	}
 
@@ -254,6 +253,34 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 	}
 
 	return nil
+}
+
+func spawnMattock(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.EntityId, error) {
+	sprComp, err := ecs.NewSpriteComponent(common.AssetImageMattock, 20, false)
+	if err != nil {
+		return -1, err
+	}
+
+	abis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
+	abis[0] = ecs.EntityAbility{
+		Def:    ecs.NewAbilityDef(abilities.Ability_TileStrike, ecs.Ability_None, 400, 0),
+		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+		Params: &abilities.TileStrikeParams{
+			RangeTiles: 2,
+			Damage:     50,
+			Mask:       ecs.Layer_Terrain | ecs.Layer_Ground,
+		},
+	}
+
+	return ecsContainer.AddNewEntity(
+		ecs.NewHierarchyComponent(),
+		ecs.NewTransformComponent(pos, 1, 0),
+		ecs.NewDefaultVelocityComponent(),
+		sprComp,
+		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, abis),
+		ecs.NewItemComponent(),
+		ecs.NewPersistentComponent(),
+	)
 }
 
 func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.Vec2f) (common.EntityId, error) {

@@ -3,7 +3,6 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
-	"ebittest/utils"
 	"fmt"
 )
 
@@ -23,7 +22,7 @@ func tickAbilityState(owner common.EntityId, abi *EntityAbility, ecsContainer *E
 			}
 
 			if postEffect != nil {
-				err := postEffect(owner, abi.Params, ecsContainer)
+				_, err := postEffect(owner, AbilityTarget{}, abi.Params, ecsContainer)
 				if err != nil {
 					return fmt.Errorf("error executing post effect of ability %v of entity %d: %v", abi.Def.PostAbilityId, owner, err)
 				}
@@ -43,8 +42,7 @@ func tickAbilityState(owner common.EntityId, abi *EntityAbility, ecsContainer *E
 func tryActivate(
 	owner common.EntityId,
 	abi *EntityAbility,
-	targets []common.EntityId,
-	targetPos utils.Vec2f,
+	target AbilityTarget,
 	ecsContainer *ECSContainer,
 ) (bool, error) {
 	if abi.Def.AbilityId == Ability_None {
@@ -55,19 +53,22 @@ func tryActivate(
 		return false, nil
 	}
 
-	abi.Status.DurationCounterMs = abi.Def.DurationMs
-	abi.Status.CooldownCounterMs = abi.Def.CooldownMs
-	abi.Status.State = AbiAct_Active
-
 	effect, err := ecsContainer.AbilityFunc(abi.Def.AbilityId)
 	if err != nil {
 		return false, fmt.Errorf("error getting effect of ability %v of entity %d: %v", abi.Def.AbilityId, owner, err)
 	}
 
-	err = effect(owner, abi.Params, ecsContainer)
+	used, err := effect(owner, target, abi.Params, ecsContainer)
 	if err != nil {
 		return false, fmt.Errorf("error executing effect of ability %v of entity %d: %v", abi.Def.AbilityId, owner, err)
 	}
+	if !used {
+		return false, nil
+	}
+
+	abi.Status.DurationCounterMs = abi.Def.DurationMs
+	abi.Status.CooldownCounterMs = abi.Def.CooldownMs
+	abi.Status.State = AbiAct_Active
 
 	return true, nil
 }

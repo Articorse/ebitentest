@@ -183,11 +183,7 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 
 		et := EntityTiles{E: e}
 		add := func(t utils.Vec2i, impassable bool) {
-			layer := ecs.Layer_Ground
-			if impassable {
-				layer = ecs.Layer_Terrain
-			}
-			if mask&layer != 0 {
+			if mask&tileLayer(impassable) != 0 {
 				et.Tiles = append(et.Tiles, t)
 				et.Impassable = append(et.Impassable, impassable)
 			}

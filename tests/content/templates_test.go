@@ -4,6 +4,7 @@ import (
 	"ebittest/content/templates"
 	"ebittest/data"
 	"ebittest/ecs"
+	"ebittest/ecs/common"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"testing"
@@ -30,8 +31,8 @@ func TestPlayerTemplateWithStartingEquipment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(members) != 3 {
-		t.Fatalf("player stored with %d entities, want itself, the bazooka and the gun", len(members))
+	if len(members) != 4 {
+		t.Fatalf("player stored with %d entities, want itself, the mattock, the bazooka and the gun", len(members))
 	}
 }
 
@@ -55,7 +56,7 @@ func TestStartingEquipmentIsHeldWherePlayerIs(t *testing.T) {
 	}
 }
 
-func TestPlayerStartsWithTheBazookaSelected(t *testing.T) {
+func TestPlayerStartsWithItsToolsInOrderAndTheMattockSelected(t *testing.T) {
 	x := testutil.NewECS(t)
 	p, err := templates.SpawnPlayer(x)
 	if err != nil {
@@ -69,9 +70,16 @@ func TestPlayerStartsWithTheBazookaSelected(t *testing.T) {
 	if !ok || inv.Capacity() != data.HotbarSlots {
 		t.Fatalf("player inventory %v with %d slots, want %d", ok, inv.Capacity(), data.HotbarSlots)
 	}
+	for i, want := range []common.ImageAssetTag{common.AssetImageMattock, common.AssetSheetBazooka, common.AssetSheetGun} {
+		item, _ := inv.Slot(i)
+		if spr, ok := x.Sprites.Get(item); !ok || spr.ImageAsset() != want {
+			t.Fatalf("slot %d holds entity %d, want the %s", i, item, want)
+		}
+	}
+
 	equipper, _ := x.Equippers.Get(p)
-	bazooka, _ := equipper.InSlot(ecs.Equip_MainHand)
-	if item, ok := inv.Slot(inv.Selected()); !ok || item != bazooka {
-		t.Fatalf("the selected slot holds %d (%v), want the bazooka %d in hand", item, ok, bazooka)
+	inHand, _ := equipper.InSlot(ecs.Equip_MainHand)
+	if mattock, _ := inv.Slot(0); inv.Selected() != 0 || inHand != mattock {
+		t.Fatalf("slot %d is selected and %d is in hand, want the mattock %d in the first", inv.Selected(), inHand, mattock)
 	}
 }

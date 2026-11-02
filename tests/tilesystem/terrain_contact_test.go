@@ -51,7 +51,7 @@ func touchTerrain(t *testing.T, s *testutil.Session) []common.TileCollision {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := damagesystem.DealContactDamage(nil, cols, s.Chunks, s.ECS); err != nil {
+	if _, err := damagesystem.DealContactDamage(nil, cols, s.ECS); err != nil {
 		t.Fatal(err)
 	}
 	testutil.RemoveScheduled(t, s.ECS)

@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func newArmedPlayer(t *testing.T) (x *ecs.ECSContainer, player, bazooka, gun common.EntityId) {
+func newArmedPlayer(t *testing.T) (x *ecs.ECSContainer, player, mattock, bazooka, gun common.EntityId) {
 	t.Helper()
 	x = testutil.NewECS(t)
 	player, err := templates.SpawnPlayer(x)
@@ -24,9 +24,10 @@ func newArmedPlayer(t *testing.T) (x *ecs.ECSContainer, player, bazooka, gun com
 	}
 
 	inv, _ := x.Inventories.Get(player)
-	bazooka, _ = inv.Slot(0)
-	gun, _ = inv.Slot(1)
-	return x, player, bazooka, gun
+	mattock, _ = inv.Slot(0)
+	bazooka, _ = inv.Slot(1)
+	gun, _ = inv.Slot(2)
+	return x, player, mattock, bazooka, gun
 }
 
 func inHand(x *ecs.ECSContainer, player common.EntityId) common.EntityId {
@@ -46,14 +47,14 @@ func press(t *testing.T, x *ecs.ECSContainer, player common.EntityId, input ecs.
 }
 
 func TestOnlyTheSelectedItemIsInHandAndEnabled(t *testing.T) {
-	x, player, bazooka, gun := newArmedPlayer(t)
+	x, player, mattock, bazooka, gun := newArmedPlayer(t)
 
 	check := func(wantInHand common.EntityId) {
 		t.Helper()
 		if got := inHand(x, player); got != wantInHand {
 			t.Fatalf("main hand holds %d, want %d", got, wantInHand)
 		}
-		for _, item := range []common.EntityId{bazooka, gun} {
+		for _, item := range []common.EntityId{mattock, bazooka, gun} {
 			if x.IsDisabled(item) == (item == wantInHand) {
 				t.Fatalf("item %d disabled %v, but %d is in hand", item, x.IsDisabled(item), wantInHand)
 			}
@@ -63,13 +64,15 @@ func TestOnlyTheSelectedItemIsInHandAndEnabled(t *testing.T) {
 		}
 	}
 
-	check(bazooka)
+	check(mattock)
 	press(t, x, player, ecs.InputState{SelectSlot: 2})
-	check(gun)
+	check(bazooka)
 	press(t, x, player, ecs.InputState{SelectSlot: 3})
+	check(gun)
+	press(t, x, player, ecs.InputState{SelectSlot: 4})
 	check(-1)
 	press(t, x, player, ecs.InputState{SelectSlot: 1})
-	check(bazooka)
+	check(mattock)
 
 	inv, _ := x.Inventories.Get(player)
 	if inv.Selected() != 0 {
@@ -78,8 +81,8 @@ func TestOnlyTheSelectedItemIsInHandAndEnabled(t *testing.T) {
 }
 
 func TestFiringUsesWhatsInHand(t *testing.T) {
-	x, player, _, gun := newArmedPlayer(t)
-	press(t, x, player, ecs.InputState{SelectSlot: 2})
+	x, player, _, _, gun := newArmedPlayer(t)
+	press(t, x, player, ecs.InputState{SelectSlot: 3})
 
 	before := len(x.Transforms.GetEntities())
 	press(t, x, player, ecs.InputState{MainHandEqAbility1: 1})
@@ -98,7 +101,8 @@ func TestFiringUsesWhatsInHand(t *testing.T) {
 }
 
 func TestCooldownsKeepCountingWhileAnItemIsPutAway(t *testing.T) {
-	x, player, _, _ := newArmedPlayer(t)
+	x, player, _, _, _ := newArmedPlayer(t)
+	press(t, x, player, ecs.InputState{SelectSlot: 2})
 	fire := func() int {
 		t.Helper()
 		before := len(x.Transforms.GetEntities())
@@ -109,13 +113,13 @@ func TestCooldownsKeepCountingWhileAnItemIsPutAway(t *testing.T) {
 	if fire() != 1 {
 		t.Fatal("the bazooka didn't fire")
 	}
-	press(t, x, player, ecs.InputState{SelectSlot: 2})
+	press(t, x, player, ecs.InputState{SelectSlot: 3})
 	for range 500/data.TickMs + 2 {
 		if err := abilitysystem.Tick(x); err != nil {
 			t.Fatal(err)
 		}
 	}
-	press(t, x, player, ecs.InputState{SelectSlot: 1})
+	press(t, x, player, ecs.InputState{SelectSlot: 2})
 
 	if fire() != 1 {
 		t.Fatal("the bazooka's cooldown didn't run out while it was put away")

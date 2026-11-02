@@ -11,6 +11,7 @@ const (
 	AssetSheetExplosion        ImageAssetTag = "explosion"
 	AssetSheetGun              ImageAssetTag = "gun"
 	AssetSheetBullet           ImageAssetTag = "bullet"
+	AssetImageMattock          ImageAssetTag = "mattock"
 	AssetImagePlatform         ImageAssetTag = "platform"
 	AssetImageSlot             ImageAssetTag = "slot"
 	AssetImageSlotHighlight    ImageAssetTag = "slot_highlight"

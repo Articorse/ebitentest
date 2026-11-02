@@ -16,15 +16,9 @@ func Tick(ecsCont *ecs.ECSContainer) {
 	}
 }
 
-type TileDamager interface {
-	// False if the tile can't be damaged
-	DamageTile(t utils.Vec2i, damage int) bool
-}
-
 func DealContactDamage(
 	collisions []common.Collision,
 	tileCollisions []common.TileCollision,
-	tiles TileDamager,
 	ecsCont *ecs.ECSContainer,
 ) (entitiesKilled uint64, err error) {
 	for _, c := range collisions {
@@ -106,7 +100,7 @@ func DealContactDamage(
 		}
 	}
 
-	dealTileDamage(tileCollisions, tiles, ecsCont)
+	dealTileDamage(tileCollisions, ecsCont)
 
 	// Aged after dealing damage, so that a source deals damage in the tick it's created
 	for _, cd := range ecs.Query1(&ecsCont.ContactDamages, ecs.Without(&ecsCont.Disabled)) {
@@ -116,7 +110,7 @@ func DealContactDamage(
 	return entitiesKilled, nil
 }
 
-func dealTileDamage(collisions []common.TileCollision, tiles TileDamager, ecsCont *ecs.ECSContainer) {
+func dealTileDamage(collisions []common.TileCollision, ecsCont *ecs.ECSContainer) {
 	for _, c := range collisions {
 		cd, ok := ecsCont.ContactDamages.Get(c.E)
 		if !ok {
@@ -137,7 +131,7 @@ func dealTileDamage(collisions []common.TileCollision, tiles TileDamager, ecsCon
 			continue
 		}
 
-		if cd.CanHitTile(c.Tile) && tiles.DamageTile(c.Tile, damageTiers[c.ShapeIdx]) {
+		if cd.CanHitTile(c.Tile) && ecsCont.Terrain().DamageTile(c.Tile, damageTiers[c.ShapeIdx]) {
 			cd.RecordTileHit(c.Tile)
 			spawnDamageNumber(utils.TilePosToWorldPos(c.Tile), damageTiers[c.ShapeIdx], ecsCont)
 		}

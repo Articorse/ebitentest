@@ -12,11 +12,13 @@ const (
 	Ability_Dodge      ecs.AbilityEnum = 2
 	Ability_Dodge_Post ecs.AbilityEnum = 3
 	Ability_Explode    ecs.AbilityEnum = 4
+	Ability_TileStrike ecs.AbilityEnum = 5
 )
 
 func Register(ecsContainer *ecs.ECSContainer) error {
 	gob.Register(&DodgeParams{})
 	gob.Register(&ExplodeParams{})
+	gob.Register(&TileStrikeParams{})
 
 	abilityFuncs := []struct {
 		id          ecs.AbilityEnum
@@ -26,6 +28,7 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 		{Ability_Dodge, DodgeAbility},
 		{Ability_Dodge_Post, DodgeAbilityPost},
 		{Ability_Explode, ExplodeAbility},
+		{Ability_TileStrike, TileStrikeAbility},
 	}
 
 	for _, a := range abilityFuncs {

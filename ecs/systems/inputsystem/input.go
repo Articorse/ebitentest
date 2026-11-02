@@ -63,6 +63,8 @@ func HandleInputs(
 			vel.AddForce(dir.Multiply(vel.Acceleration()))
 		}
 
+		target := ecs.AbilityTarget{Pos: input.FacingDir}
+
 		equipTriggers := []equipTrigger{
 			{input.MainHandEqAbility1, ecs.Equip_MainHand, 0, "main hand ability 1"},
 			{input.MainHandEqAbility2, ecs.Equip_MainHand, 1, "main hand ability 2"},
@@ -75,7 +77,7 @@ func HandleInputs(
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := ecsContainer.ActivateEquipmentAbility(e, t.slot, nil, utils.Vec2f{}, t.abiIdx); err != nil {
+				if _, err := ecsContainer.ActivateEquipmentAbility(e, t.slot, target, t.abiIdx); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}
@@ -91,7 +93,7 @@ func HandleInputs(
 				if math.Abs(t.value) <= 0 {
 					continue
 				}
-				if _, err := ecsContainer.ActivateAbility(e, nil, utils.Vec2f{}, t.abiIdx); err != nil {
+				if _, err := ecsContainer.ActivateAbility(e, target, t.abiIdx); err != nil {
 					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
 				}
 			}

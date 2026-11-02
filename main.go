@@ -323,7 +323,7 @@ func (g *game) Update() error {
 		log.Println("error during terrain damage collision checking: ", err)
 	}
 
-	_, err = damagesystem.DealContactDamage(damageCollisions, terrainDamageCollisions, g.chunkContainer, g.ecs)
+	_, err = damagesystem.DealContactDamage(damageCollisions, terrainDamageCollisions, g.ecs)
 	if err != nil {
 		log.Println("error during dealing contact damage: ", err)
 	}
@@ -333,7 +333,7 @@ func (g *game) Update() error {
 		log.Println("platform system tick error: ", err)
 	}
 
-	visionsystem.Tick(g.ecs, g.chunkContainer.IsOpaqueTile)
+	visionsystem.Tick(g.ecs)
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
 		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
 			g.chunkContainer.RememberSeenTiles(pos, vision)
@@ -561,6 +561,7 @@ func main() {
 
 	g.ecs.TickState = *common.NewTickState()
 	g.ecs.SetSimulatedPosCheck(g.chunkContainer.IsActiveWorldPos)
+	g.ecs.SetTerrain(g.chunkContainer)
 
 	header, worldExists, err := world.Load(g.ecs)
 	if err != nil {

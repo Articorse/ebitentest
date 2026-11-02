@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func Tick(ecsContainer *ecs.ECSContainer, isOpaque func(utils.Vec2i) bool) {
+func Tick(ecsContainer *ecs.ECSContainer) {
 	for e, v := range ecs.Query1(&ecsContainer.Visions, ecs.Without(&ecsContainer.Disabled)) {
 		pos, err := ecsContainer.WorldPos(e)
 		if err != nil {
@@ -14,6 +14,6 @@ func Tick(ecsContainer *ecs.ECSContainer, isOpaque func(utils.Vec2i) bool) {
 			continue
 		}
 
-		v.Update(utils.WorldPosToTilePos(pos), isOpaque)
+		v.Update(utils.WorldPosToTilePos(pos), ecsContainer.Terrain().IsOpaqueTile)
 	}
 }
