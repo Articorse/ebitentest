@@ -7,6 +7,8 @@ type Terrain interface {
 	IsOpaqueTile(t utils.Vec2i) bool
 	// Layer_Terrain for impassable tiles and Layer_Ground for passable ones; false if the tile isn't loaded
 	TileLayer(t utils.Vec2i) (LayerMask, bool)
+	// Inside an impassable tile, a feature's collider, or where nothing is loaded
+	IsBlockedAt(pos utils.Vec2f) bool
 	CanDamageTile(t utils.Vec2i) bool
 	// False if the tile can't be damaged
 	DamageTile(t utils.Vec2i, damage int) bool
@@ -20,6 +22,7 @@ type noTerrain struct{}
 
 func (noTerrain) IsOpaqueTile(utils.Vec2i) bool           { return false }
 func (noTerrain) TileLayer(utils.Vec2i) (LayerMask, bool) { return 0, false }
+func (noTerrain) IsBlockedAt(utils.Vec2f) bool            { return false }
 func (noTerrain) CanDamageTile(utils.Vec2i) bool          { return false }
 func (noTerrain) DamageTile(utils.Vec2i, int) bool        { return false }
 func (noTerrain) CanDamageFeature(utils.Vec2i) bool       { return false }

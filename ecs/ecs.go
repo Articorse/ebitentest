@@ -65,6 +65,7 @@ type ECSContainer struct {
 	Items             Storage[Item]
 	Inventories       Storage[Inventory]
 	Swings            Storage[Swing]
+	Tosses            Storage[Toss]
 	Disabled          Storage[Disabled]
 }
 
@@ -95,6 +96,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&tetherDto{})
 	gob.Register(&visionDto{})
 	gob.Register(&swingDto{})
+	gob.Register(&tossDto{})
 	gob.Register(&itemDto{})
 	gob.Register(&inventoryDto{})
 	gob.Register(&disabledDto{})
@@ -149,6 +151,7 @@ func NewECSContainer() *ECSContainer {
 		Items:             newStorage[Item](),
 		Inventories:       newStorage[Inventory](),
 		Swings:            newStorage[Swing](),
+		Tosses:            newStorage[Toss](),
 		Disabled:          newStorage[Disabled](),
 	}
 
@@ -182,6 +185,7 @@ func NewECSContainer() *ECSContainer {
 		&x.Items,
 		&x.Inventories,
 		&x.Swings,
+		&x.Tosses,
 		&x.Disabled,
 	}
 

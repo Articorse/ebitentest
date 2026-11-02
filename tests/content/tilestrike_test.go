@@ -53,6 +53,11 @@ func (f *fakeTerrain) TileLayer(t utils.Vec2i) (ecs.LayerMask, bool) {
 	return ecs.Layer_Ground, true
 }
 
+func (f *fakeTerrain) IsBlockedAt(pos utils.Vec2f) bool {
+	t := utils.WorldPosToTilePos(pos)
+	return !f.loaded(t) || f.rock[t]
+}
+
 func (f *fakeTerrain) CanDamageFeature(t utils.Vec2i) bool {
 	return f.trees[t]
 }

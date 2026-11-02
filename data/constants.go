@@ -2,6 +2,7 @@ package data
 
 import (
 	"image/color"
+	"math"
 )
 
 const (
@@ -58,6 +59,13 @@ const (
 	HotbarSlotGapPx                = 1
 	ItemPickupDelayMs              = 2000
 	ItemPickupReachPx              = 8
+	ItemTossDistancePx             = 24.0
+	// Either way, as a share of the distance
+	ItemTossDistanceVariation = 0.15
+	// Either way
+	ItemTossAngleVariationRad = 10 * math.Pi / 180
+	ItemTossDurationMs        = 300
+	ItemTossHeightPx          = 6.0
 )
 
 var (

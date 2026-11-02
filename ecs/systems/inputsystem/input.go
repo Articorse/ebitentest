@@ -44,17 +44,18 @@ func HandleInputs(
 			}
 		}
 
-		if input.DropItem && ecsContainer.Inventories.HasComponent(e) {
-			if _, _, err := ecsContainer.DropSelectedItem(e); err != nil {
-				log.Printf("error dropping the selected item of entity %d: %v\n", e, err)
-			}
-		}
-
 		if aim, ok := ecsContainer.Aims.Get(e); ok {
 			if input.HasAim {
 				aim.SetTarget(input.AimPos)
 			} else {
 				aim.ClearTarget()
+			}
+		}
+
+		// After taking aim, since a dropped item is tossed towards it
+		if input.DropItem && ecsContainer.Inventories.HasComponent(e) {
+			if _, _, err := ecsContainer.DropSelectedItem(e); err != nil {
+				log.Printf("error dropping the selected item of entity %d: %v\n", e, err)
 			}
 		}
 

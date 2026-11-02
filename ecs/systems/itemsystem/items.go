@@ -7,8 +7,18 @@ import (
 	"log"
 )
 
-// Collectors and items in entity order, so that when two could pick up the same item, the same one always does
+// Tossed items land before anything picks them up. Collectors and items are in entity order, so that when two could
+// pick up the same item, the same one always does.
 func Tick(ecsContainer *ecs.ECSContainer) {
+	// Collected first, since a toss that ends takes its component away
+	tossed := []common.EntityId{}
+	for e := range ecs.Query1(&ecsContainer.Tosses, ecs.Without(&ecsContainer.Disabled)) {
+		tossed = append(tossed, e)
+	}
+	for _, e := range tossed {
+		ecsContainer.TickToss(e)
+	}
+
 	for _, item := range ecs.Query1(&ecsContainer.Items, ecs.Without(&ecsContainer.Disabled)) {
 		item.TickPickupDelay()
 	}

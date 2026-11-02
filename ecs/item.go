@@ -5,6 +5,7 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
+	"math"
 )
 
 // Lets an entity be put in an inventory. Each item is its own entity, so two items of a kind can differ in any of
@@ -59,7 +60,27 @@ func (x *ECSContainer) DropSelectedItem(owner common.EntityId) (common.EntityId,
 		itemComp.pickupDelayMs = data.ItemPickupDelayMs
 	}
 
+	x.tossTowardsAim(owner, item)
+
 	return item, true, nil
+}
+
+// Slightly off, in direction and distance, so that dropping things in a row doesn't stack them
+func (x *ECSContainer) tossTowardsAim(owner, item common.EntityId) {
+	aim, ok := x.AimOf(owner)
+	if !ok {
+		return
+	}
+	from, err := x.WorldPos(item)
+	if err != nil || aim == from {
+		return
+	}
+
+	angle := math.Atan2(aim.Y-from.Y, aim.X-from.X) + (2*x.Rng.Float64()-1)*data.ItemTossAngleVariationRad
+	distance := data.ItemTossDistancePx * (1 + (2*x.Rng.Float64()-1)*data.ItemTossDistanceVariation)
+	toss := utils.Vec2f{X: math.Cos(angle), Y: math.Sin(angle)}.Multiply(distance)
+
+	x.AddComponent(item, NewTossComponent(toss, data.ItemTossDurationMs, data.ItemTossHeightPx))
 }
 
 // Puts the item lying on the ground into the lowest free slot of the collector's inventory, in its hand. False if it
@@ -80,6 +101,7 @@ func (x *ECSContainer) PickUpItem(collector, item common.EntityId) (bool, error)
 		return false, nil
 	}
 
+	x.EndToss(item)
 	if err := x.PutInInventory(collector, slot, item); err != nil {
 		return false, err
 	}

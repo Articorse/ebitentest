@@ -254,3 +254,26 @@ func TestDamagedTreesAndStumpsAreSaved(t *testing.T) {
 		t.Fatalf("after restarting, the felled tree is %v, want a stump", f)
 	}
 }
+
+func TestTerrainBlocksTossesWhereItsImpassable(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	tree := utils.TilePosToWorldPos(findLoneTree(t, s))
+	rock := utils.TilePosToWorldPos(findTile(t, s, isRock))
+
+	for _, c := range []struct {
+		name string
+		pos  utils.Vec2f
+		want bool
+	}{
+		{"rock", rock, true},
+		{"a trunk", tree.Add(utils.Vec2f{Y: 3}), true},
+		{"a tree's tile beside its trunk", tree.Add(utils.Vec2f{X: -6, Y: -6}), false},
+		{"grass", tree.Add(utils.Vec2f{X: data.TileSize}), false},
+		{"outside the active chunks", tree.Add(utils.Vec2f{X: 100000}), true},
+	} {
+		if got := s.Chunks.IsBlockedAt(c.pos); got != c.want {
+			t.Errorf("%s at %v: blocked %v, want %v", c.name, c.pos, got, c.want)
+		}
+	}
+}
