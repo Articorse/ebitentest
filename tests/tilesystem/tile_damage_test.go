@@ -77,10 +77,10 @@ func addExplosion(t *testing.T, x *ecs.ECSContainer, pos utils.Vec2f, mask ecs.L
 	}
 	return testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(pos, 1, 0),
 		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, mask, circles...),
-		ecs.NewContactDamageComponent(-1, 0, false, true, tiers...))
+		ecs.NewContactDamageComponent(-1, 0, tiers...).WithActiveMs(data.TickMs))
 }
 
-func TestSingleTickExplosionDamagesEachTileOnceByItsRing(t *testing.T) {
+func TestExplosionDamagesEachTileOnceByItsRing(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	center := tileOf(t, s, data.Tile_Grass)
@@ -92,7 +92,7 @@ func TestSingleTickExplosionDamagesEachTileOnceByItsRing(t *testing.T) {
 		next = utils.Vec2i{X: center.X + 1, Y: center.Y}
 	}
 
-	e := addExplosion(t, s.ECS, utils.TilePosToWorldPos(center), ecs.Layer_Terrain|ecs.Layer_Ground, []float64{4, 12}, 7, 3)
+	addExplosion(t, s.ECS, utils.TilePosToWorldPos(center), ecs.Layer_Terrain|ecs.Layer_Ground, []float64{4, 12}, 7, 3)
 	touchTerrain(t, s)
 	touchTerrain(t, s)
 
@@ -102,20 +102,54 @@ func TestSingleTickExplosionDamagesEachTileOnceByItsRing(t *testing.T) {
 	if health, _ := s.Chunks.TileHealth(next); health != 50-3 {
 		t.Fatalf("neighbouring tile has %d health, want %d: hit once, by the outer ring", health, 50-3)
 	}
-	if hurtbox, _ := s.ECS.HurtboxColliders.Get(e); hurtbox.Enabled() {
-		t.Fatal("the single-tick hurtbox is still enabled")
+}
+
+func TestExplosionDoesntHurtTilesAfterItsFirstTick(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	grass := tileOf(t, s, data.Tile_Grass)
+	e := addExplosion(t, s.ECS, testutil.PlayerStart, ecs.Layer_Ground|ecs.Layer_Terrain, []float64{5}, 1)
+
+	touchTerrain(t, s)
+	testutil.SetPos(t, s.ECS, e, utils.TilePosToWorldPos(grass))
+	touchTerrain(t, s)
+
+	if health, _ := s.Chunks.TileHealth(grass); health != 50 {
+		t.Fatalf("grass under the explosion after its first tick has %d health, want it untouched", health)
 	}
 }
 
-func TestSingleTickHurtboxThatHitsNothingStopsAfterItsFirstTick(t *testing.T) {
+func groundSource(t *testing.T, s *testutil.Session, tile utils.Vec2i, cd *ecs.ContactDamage) {
+	t.Helper()
+	shape, err := shapes.NewCircleShape(5, utils.Vec2f{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	testutil.Add(t, s.ECS, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.TilePosToWorldPos(tile), 1, 0),
+		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Ground, shape), cd)
+}
+
+func TestTilesAreHitOnceByDefaultAndAgainOnlyWithARehitInterval(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
-	e := addExplosion(t, s.ECS, testutil.PlayerStart, ecs.Layer_Enemy, []float64{5}, 1)
+	once := tileOf(t, s, data.Tile_Grass)
+	groundSource(t, s, once, ecs.NewContactDamageComponent(-1, 0, 2))
+	for range 5 {
+		touchTerrain(t, s)
+	}
+	if health, _ := s.Chunks.TileHealth(once); health != 48 {
+		t.Fatalf("grass touched for 5 ticks has %d health, want 48: hit once", health)
+	}
 
-	touchTerrain(t, s)
-
-	if hurtbox, _ := s.ECS.HurtboxColliders.Get(e); hurtbox.Enabled() {
-		t.Fatal("the single-tick hurtbox is still enabled after its first tick")
+	testutil.TempWorld(t)
+	s = testutil.StartSession(t)
+	burning := tileOf(t, s, data.Tile_Grass)
+	groundSource(t, s, burning, ecs.NewContactDamageComponent(-1, 0, 2).WithRehitIntervalMs(2*data.TickMs))
+	for range 5 {
+		touchTerrain(t, s)
+	}
+	if health, _ := s.Chunks.TileHealth(burning); health != 44 {
+		t.Fatalf("grass under fire for 5 ticks has %d health, want 44: hit at ticks 0, 2 and 4", health)
 	}
 }
 

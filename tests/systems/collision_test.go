@@ -172,7 +172,7 @@ func TestEntitiesWithHurtboxesAndHitboxesDamageEachOther(t *testing.T) {
 	for _, pos := range []utils.Vec2f{{}, {X: 6}} {
 		fighters = append(fighters, testutil.AddMovable(t, x, pos, false,
 			ecs.NewHitpointsComponent(10, 0),
-			ecs.NewContactDamageComponent(-1, 0, false, false, 3),
+			ecs.NewContactDamageComponent(-1, 0, 3),
 			ecs.NewHurtboxColliderComponent(ecs.Layer_Enemy, ecs.Layer_Enemy, newShape(t, "circle", utils.Vec2f{})),
 			ecs.NewHitboxColliderComponent(ecs.Layer_Enemy, ecs.Layer_Enemy, newShape(t, "circle", utils.Vec2f{}))))
 	}

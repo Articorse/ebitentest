@@ -42,7 +42,7 @@ func addProjectile(t *testing.T, x *ecs.ECSContainer, pos utils.Vec2f, mask ecs.
 	}
 	return testutil.AddMovable(t, x, pos, false,
 		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, mask, shape),
-		ecs.NewContactDamageComponent(-1, 0, true, false, 10))
+		ecs.NewContactDamageComponent(-1, 0, 10).WithDieOnContact())
 }
 
 func touchTerrain(t *testing.T, s *testutil.Session) []common.TileCollision {

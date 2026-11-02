@@ -133,7 +133,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 	if err != nil {
 		return fmt.Errorf("error creating rocket timer component: %w", err)
 	}
-	rocketCDComp := ecs.NewContactDamageComponent(player, 20, true, false, 65)
+	rocketCDComp := ecs.NewContactDamageComponent(player, 20, 65).WithDieOnContact()
 	rocketSprComp, err := ecs.NewSpriteComponent(common.AssetSheetRocket, 21, true)
 	if err != nil {
 		return err
@@ -277,8 +277,7 @@ func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.
 	if err != nil {
 		return -1, fmt.Errorf("error creating bullet timer component: %w", err)
 	}
-	// Not single-tick: a single-tick hurtbox only lasts its first tick, and the bullet already dies on contact
-	bulletDmgComp := ecs.NewContactDamageComponent(player, 10, true, false, 5)
+	bulletDmgComp := ecs.NewContactDamageComponent(player, 10, 5).WithDieOnContact()
 	bulletSprComp, err := ecs.NewSpriteComponent(common.AssetSheetBullet, 20, false)
 	if err != nil {
 		return -1, err

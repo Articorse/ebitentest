@@ -21,8 +21,6 @@ type TileDamager interface {
 	DamageTile(t utils.Vec2i, damage int) bool
 }
 
-// Single-tick hurtboxes are switched off at the end, once they've damaged everything they overlap, entities and tiles
-// alike
 func DealContactDamage(
 	collisions []common.Collision,
 	tileCollisions []common.TileCollision,
@@ -43,7 +41,7 @@ func DealContactDamage(
 			continue
 		}
 
-		if hp.IsInvul() || hitE == dmgE {
+		if hp.IsInvul() || hitE == dmgE || !cd.CanHitEntity(hitE) {
 			continue
 		}
 
@@ -89,6 +87,7 @@ func DealContactDamage(
 			log.Printf("Error applying damage to entity %d: %v\n", hitE, err)
 			continue
 		}
+		cd.RecordEntityHit(hitE)
 
 		hitWorldPos, err := ecsCont.WorldPos(hitE)
 		if err != nil {
@@ -109,13 +108,9 @@ func DealContactDamage(
 
 	dealTileDamage(tileCollisions, tiles, ecsCont)
 
-	for e, cd := range ecs.Query1(&ecsCont.ContactDamages, ecs.Without(&ecsCont.Disabled)) {
-		if !cd.SingleTick() {
-			continue
-		}
-		if hurtbox, ok := ecsCont.HurtboxColliders.Get(e); ok {
-			hurtbox.SetEnabled(false)
-		}
+	// Aged after dealing damage, so that a source deals damage in the tick it's created
+	for _, cd := range ecs.Query1(&ecsCont.ContactDamages, ecs.Without(&ecsCont.Disabled)) {
+		cd.TickAge()
 	}
 
 	return entitiesKilled, nil
@@ -125,6 +120,10 @@ func dealTileDamage(collisions []common.TileCollision, tiles TileDamager, ecsCon
 	for _, c := range collisions {
 		cd, ok := ecsCont.ContactDamages.Get(c.E)
 		if !ok {
+			continue
+		}
+
+		if !cd.IsActive() {
 			continue
 		}
 
@@ -138,7 +137,8 @@ func dealTileDamage(collisions []common.TileCollision, tiles TileDamager, ecsCon
 			continue
 		}
 
-		if tiles.DamageTile(c.Tile, damageTiers[c.ShapeIdx]) {
+		if cd.CanHitTile(c.Tile) && tiles.DamageTile(c.Tile, damageTiers[c.ShapeIdx]) {
+			cd.RecordTileHit(c.Tile)
 			spawnDamageNumber(utils.TilePosToWorldPos(c.Tile), damageTiers[c.ShapeIdx], ecsCont)
 		}
 	}

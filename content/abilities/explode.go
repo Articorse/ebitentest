@@ -2,6 +2,7 @@ package abilities
 
 import (
 	"ebittest/content/timerfuncs"
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
@@ -114,7 +115,7 @@ func ExplodeAbility(
 	}
 
 	hurtComp := ecs.NewHurtboxColliderComponent(dmgLayer, dmgMask, hurtShapes...)
-	cdComp := ecs.NewContactDamageComponent(self, explodeParams.Force, false, true, explodeParams.DmgTiers...)
+	cdComp := ecs.NewContactDamageComponent(self, explodeParams.Force, explodeParams.DmgTiers...).WithActiveMs(data.TickMs)
 
 	ecsContainer.AddComponent(explosionE, traComp)
 	ecsContainer.AddComponent(explosionE, sprComp)
