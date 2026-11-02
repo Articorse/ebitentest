@@ -437,6 +437,10 @@ func (g *game) Draw(screen *ebiten.Image) {
 		}
 	}
 
+	if err := drawsystem.DrawHotbar(screen, g.playerEntity, g.ecs, g.assetmanager); err != nil {
+		log.Println("error while drawing hotbar: ", err)
+	}
+
 	g.DrawDebug(screen)
 }
 

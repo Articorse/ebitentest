@@ -134,6 +134,8 @@ func (x *ECSContainer) Detach(e common.EntityId) error {
 }
 
 func (x *ECSContainer) removeChild(p common.EntityId, c common.EntityId) {
+	x.takeOutOfInventory(p, c)
+
 	pHier, ok := x.Hierarchies.Get(p)
 	if !ok {
 		return

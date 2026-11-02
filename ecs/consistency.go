@@ -29,6 +29,26 @@ func (x *ECSContainer) CheckConsistency() error {
 		}
 	}
 
+	for e, inv := range Query1(&x.Inventories) {
+		if inv.selected < 0 || inv.selected >= len(inv.slots) {
+			errs = errors.Join(errs, fmt.Errorf("inventory %d has slot %d selected, outside its %d slots", e, inv.selected, len(inv.slots)))
+		}
+
+		for slot, item := range inv.slots {
+			switch {
+			case item == -1:
+			case !x.HasEntity(item):
+				errs = errors.Join(errs, fmt.Errorf("inventory %d references missing entity %d in slot %d", e, item, slot))
+			case !x.Items.HasComponent(item):
+				errs = errors.Join(errs, fmt.Errorf("inventory %d references entity %d in slot %d, which isn't an item", e, item, slot))
+			case x.Parent(item) != e || x.LinkKind(item) != Link_Held:
+				errs = errors.Join(errs, fmt.Errorf("item %d in slot %d of inventory %d isn't held by it", item, slot, e))
+			case slices.Index(inv.slots, item) != slot:
+				errs = errors.Join(errs, fmt.Errorf("item %d is in inventory %d more than once", item, e))
+			}
+		}
+	}
+
 	for _, e := range x.Hierarchies.GetEntities() {
 		p := x.Parent(e)
 		if p != -1 && !slices.Contains(x.Children(p), e) {

@@ -22,6 +22,8 @@ var (
 		common.AssetSheetGun:              ImageAssetDef{path: "assets/sprites/gun_ss.png", frameCount: 2, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetSheetBullet:           ImageAssetDef{path: "assets/sprites/bullet_ss.png", frameCount: 3, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetImagePlatform:         ImageAssetDef{path: "assets/sprites/platform.png", frameCount: 1, frameSize: utils.Vec2f{X: 32, Y: 32}},
+		common.AssetImageSlot:             ImageAssetDef{path: "assets/sprites/slot.png", frameCount: 1, frameSize: utils.Vec2f{X: 32, Y: 32}},
+		common.AssetImageSlotHighlight:    ImageAssetDef{path: "assets/sprites/slot_highlight.png", frameCount: 1, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetTileImageDirt:         ImageAssetDef{path: "assets/tiles/dirt.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
 		common.AssetTileImageGrass:        ImageAssetDef{path: "assets/tiles/grass.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
 		common.AssetTileImageRock:         ImageAssetDef{path: "assets/tiles/rock.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},

@@ -91,6 +91,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		pCLComp,
 		ecs.NewPersistentComponent(),
 		ecs.NewVisionComponent(data.PlayerVisionRadiusTiles),
+		ecs.NewInventoryComponent(data.HotbarSlots),
 	)
 	if err != nil {
 		return -1, fmt.Errorf("error spawning player: %w", err)
@@ -313,6 +314,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		bazookaSpaComp,
 		bazookaFPComp,
 		bazookaEquipmentComp,
+		ecs.NewItemComponent(),
 		ecs.NewPersistentComponent(),
 	)
 	if err != nil {
@@ -328,6 +330,10 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 	err = ecsContainer.Attach(bazooka, player, ecs.Link_Held)
 	if err != nil {
 		return fmt.Errorf("error attaching bazooka to player: %w", err)
+	}
+
+	if err := ecsContainer.PutInInventory(player, 0, bazooka); err != nil {
+		return fmt.Errorf("error putting bazooka in the player's inventory: %w", err)
 	}
 
 	return nil

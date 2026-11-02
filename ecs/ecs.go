@@ -60,6 +60,8 @@ type ECSContainer struct {
 	Persistents       Storage[Persistent]
 	Tethers           Storage[Tether]
 	Visions           Storage[Vision]
+	Items             Storage[Item]
+	Inventories       Storage[Inventory]
 }
 
 func NewECSContainer() *ECSContainer {
@@ -87,6 +89,8 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&persistentDto{})
 	gob.Register(&tetherDto{})
 	gob.Register(&visionDto{})
+	gob.Register(&itemDto{})
+	gob.Register(&inventoryDto{})
 
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
@@ -131,6 +135,8 @@ func NewECSContainer() *ECSContainer {
 		Persistents:       newStorage[Persistent](),
 		Tethers:           newStorage[Tether](),
 		Visions:           newStorage[Vision](),
+		Items:             newStorage[Item](),
+		Inventories:       newStorage[Inventory](),
 	}
 
 	// The order decides the order of an entity's components in saved data
@@ -159,6 +165,8 @@ func NewECSContainer() *ECSContainer {
 		&x.Persistents,
 		&x.Tethers,
 		&x.Visions,
+		&x.Items,
+		&x.Inventories,
 	}
 
 	return x
@@ -408,6 +416,12 @@ func (x *ECSContainer) GetCompositionComponents(root common.EntityId) (map[commo
 				for slot, eq := range d.Equipment {
 					if _, ok := members[eq]; !ok {
 						log.Printf("consistency: equipper %d is stored without its equipment %d in slot %v", e, eq, slot)
+					}
+				}
+			case *inventoryDto:
+				for slot, item := range d.Slots {
+					if _, ok := members[item]; item != -1 && !ok {
+						log.Printf("consistency: inventory %d is stored without its item %d in slot %d", e, item, slot)
 					}
 				}
 			case *transformDto:

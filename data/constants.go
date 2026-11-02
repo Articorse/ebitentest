@@ -49,6 +49,9 @@ const (
 	MemoryFilePrefix               = "memory_"
 	MemoryFilePathTemplate         = "chunkdata/memory_%d_%d.gob"
 	MemoryBrightness               = 0.35
+	HotbarSlots                    = 9
+	HotbarMarginPx                 = 5
+	HotbarSlotGapPx                = 1
 )
 
 var (

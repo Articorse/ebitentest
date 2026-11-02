@@ -105,6 +105,10 @@ func (x *Sprite) CurrentFrame(assetManager *assetmanager.AssetManager) (*ebiten.
 	return imgAsset.Frames[x.subImageIdx], nil
 }
 
+func (x *Sprite) ImageAsset() common.ImageAssetTag {
+	return x.imageAssetTag
+}
+
 func (x *Sprite) SetImageAsset(imageAssetTag common.ImageAssetTag) {
 	x.imageAssetTag = imageAssetTag
 }
