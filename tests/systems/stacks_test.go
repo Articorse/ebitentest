@@ -1,7 +1,6 @@
 package systems_test
 
 import (
-	"ebittest/content/items"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -21,7 +20,7 @@ func countOf(x *ecs.ECSContainer, item common.EntityId) int {
 // Spawns a plank where the player stands and has the player pick it up
 func pickUpPlank(t *testing.T, x *ecs.ECSContainer, player common.EntityId) bool {
 	t.Helper()
-	plank, err := items.SpawnPlanks(testutil.WorldPos(t, x, player), x)
+	plank, err := x.SpawnItem(data.Item_Planks, testutil.WorldPos(t, x, player))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +68,7 @@ func TestAFullHotbarStillTakesWhatFitsOnAStack(t *testing.T) {
 	pickUpPlank(t, x, player)
 	fillFreeSlots(t, x, player)
 
-	plank, err := items.SpawnPlanks(utils.Vec2f{X: data.ItemPullReachPx * 0.8}, x)
+	plank, err := x.SpawnItem(data.Item_Planks, utils.Vec2f{X: data.ItemPullReachPx * 0.8})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +91,7 @@ func TestAFullHotbarWithFullStacksLeavesItemsAlone(t *testing.T) {
 	fillFreeSlots(t, x, player)
 
 	start := utils.Vec2f{X: data.ItemPullReachPx * 0.8}
-	plank, err := items.SpawnPlanks(start, x)
+	plank, err := x.SpawnItem(data.Item_Planks, start)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,17 +151,12 @@ func TestItemsArentPickedUpWhileFlying(t *testing.T) {
 	}
 }
 
-func TestItemsWithoutAKindDontStack(t *testing.T) {
+func TestUniqueItemsNeverStack(t *testing.T) {
 	x, player, _, _, _ := newArmedPlayer(t)
-	// Stackable, but of no kind, so not a stack of anything in particular
-	held := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewStackableItemComponent(ecs.ItemKind_None, 10))
-	if err := x.PutInInventory(player, 3, held); err != nil {
-		t.Fatal(err)
-	}
 	fillFreeSlots(t, x, player)
 
-	loose := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewStackableItemComponent(ecs.ItemKind_None, 10))
+	loose := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewItemComponent())
 	if x.CanPickUp(player, loose) {
-		t.Fatal("an item without a kind can be stacked onto another one")
+		t.Fatal("a unique item can be stacked onto another one")
 	}
 }

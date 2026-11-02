@@ -57,7 +57,9 @@ type featureColliderDTO struct {
 	Offset utils.Vec2f `json:"offset"`
 }
 
-func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string) error {
+// Drop tables are checked against the item atlas, so that one naming an item that doesn't exist fails here rather than
+// when the feature is destroyed
+func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.ItemAtlas) error {
 	f, err := os.ReadFile(input)
 	if err != nil {
 		return fmt.Errorf("error reading feature atlas json file: %w", err)
@@ -98,7 +100,10 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string) error {
 			for i, o := range dto.Drops {
 				outcomes[i].ChancePercent = o.ChancePercent
 				for _, item := range o.Items {
-					outcomes[i].Items = append(outcomes[i].Items, ecs.ItemDrop{Kind: ecs.ItemKindEnum(item.Kind), Count: item.Count})
+					if _, ok := items.Def(data.ItemEnum(item.Kind)); !ok {
+						return fmt.Errorf("feature %d drops item %d, which isn't in the item atlas", dto.Id, item.Kind)
+					}
+					outcomes[i].Items = append(outcomes[i].Items, ecs.ItemDrop{Kind: data.ItemEnum(item.Kind), Count: item.Count})
 				}
 			}
 			drops, err := ecs.NewDropTable(outcomes...)

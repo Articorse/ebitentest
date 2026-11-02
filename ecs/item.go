@@ -5,24 +5,16 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
+	"log"
 	"math"
 )
 
-type ItemKindEnum uint16
-
-// The other kinds are defined by the content that registers them. Items without a kind never stack, and can't be
-// spawned by kind.
-const ItemKind_None ItemKindEnum = 0
-
-// Spawns one of an item kind lying at pos
-type ItemSpawnFunc func(pos utils.Vec2f, ecsContainer *ECSContainer) (common.EntityId, error)
-
-// Lets an entity be put in an inventory. Each item is its own entity, so two items of a kind can differ in any of
-// their components. A stack of an item is still a single entity, with a count.
+// Lets an entity be put in an inventory. A unique item, such as a tool, is its own entity, so two of them can differ
+// in any of their components. A generic item, such as planks, is only its kind and count, so a stack of it is a
+// single entity, and everything else about it comes from the item atlas.
 type Item struct {
-	kind     ItemKindEnum
-	count    int
-	maxStack int
+	kind  data.ItemEnum
+	count int
 
 	// So that what was just dropped isn't picked straight back up by whoever dropped it
 	pickupDelayMs int
@@ -31,14 +23,10 @@ type Item struct {
 }
 
 func NewItemComponent() *Item {
-	return &Item{count: 1, maxStack: 1}
+	return &Item{count: 1}
 }
 
-func NewStackableItemComponent(kind ItemKindEnum, maxStack int) *Item {
-	return &Item{kind: kind, count: 1, maxStack: maxStack}
-}
-
-func (x *Item) Kind() ItemKindEnum {
+func (x *Item) Kind() data.ItemEnum {
 	return x.kind
 }
 
@@ -46,8 +34,16 @@ func (x *Item) Count() int {
 	return x.count
 }
 
-func (x *Item) stacksWith(other *Item) bool {
-	return x.kind != ItemKind_None && x.kind == other.kind && x.maxStack > 1
+// 1 for unique items, which the atlas never has, and generic ones whose kind isn't in it
+func (x *ECSContainer) stackLimit(item *Item) int {
+	if def, ok := x.itemAtlas.Def(item.kind); ok {
+		return def.maxStack
+	}
+	return 1
+}
+
+func (x *ECSContainer) stacks(a, b *Item) bool {
+	return a.kind == b.kind && x.stackLimit(a) > 1
 }
 
 // An empty stack is waiting to be removed
@@ -59,12 +55,18 @@ func (x *Item) TickPickupDelay() {
 	x.pickupDelayMs = max(x.pickupDelayMs-data.TickMs, 0)
 }
 
-func (x *ECSContainer) SpawnItem(kind ItemKindEnum, pos utils.Vec2f) (common.EntityId, error) {
-	spawn, ok := x.itemSpawnFuncs[kind]
-	if !ok {
-		return -1, fmt.Errorf("no item of kind %v is registered", kind)
+// One of a generic item, lying at pos
+func (x *ECSContainer) SpawnItem(kind data.ItemEnum, pos utils.Vec2f) (common.EntityId, error) {
+	if _, ok := x.itemAtlas.Def(kind); !ok {
+		return -1, fmt.Errorf("item %v isn't in the item atlas", kind)
 	}
-	return spawn(pos, x)
+
+	return x.AddNewEntity(
+		NewHierarchyComponent(),
+		NewTransformComponent(pos, 1, 0),
+		&Item{kind: kind, count: 1},
+		NewPersistentComponent(),
+	)
 }
 
 // Pulls the loose item a tick towards target, faster each tick it's pulled, without passing it or going through
@@ -188,7 +190,7 @@ func (x *ECSContainer) CanPickUp(collector, item common.EntityId) bool {
 		return true
 	}
 	for i := range inv.Capacity() {
-		if held, ok := x.heldItem(inv, i); ok && held.stacksWith(itemComp) && held.count < held.maxStack {
+		if held, ok := x.heldItem(inv, i); ok && x.stacks(held, itemComp) && held.count < x.stackLimit(held) {
 			return true
 		}
 	}
@@ -218,10 +220,10 @@ func (x *ECSContainer) PickUpItem(collector, item common.EntityId) (bool, error)
 
 	for i := range inv.Capacity() {
 		held, ok := x.heldItem(inv, i)
-		if !ok || !held.stacksWith(itemComp) {
+		if !ok || !x.stacks(held, itemComp) {
 			continue
 		}
-		moved := min(held.maxStack-held.count, itemComp.count)
+		moved := min(x.stackLimit(held)-held.count, itemComp.count)
 		held.count += moved
 		itemComp.count -= moved
 	}
@@ -254,14 +256,35 @@ func (x Item) Copy() Item {
 	return x
 }
 
+// A generic item gets its sprite from the atlas whenever it's added, spawned or loaded, since its sprite isn't saved
 func (x Item) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.Items.addComponent(e, x.Copy())
+
+	if x.kind == data.Item_None {
+		return
+	}
+	def, ok := ecsContainer.itemAtlas.Def(x.kind)
+	if !ok {
+		log.Printf("item %d is of kind %v, which isn't in the item atlas", e, x.kind)
+		return
+	}
+
+	spr, err := NewSpriteComponent(def.imageAsset, data.ItemSpriteLayer, false)
+	if err != nil {
+		log.Printf("error creating the sprite of item %d: %v", e, err)
+		return
+	}
+	ecsContainer.AddComponent(e, spr)
+}
+
+func (x *ECSContainer) isGenericItem(e common.EntityId) bool {
+	item, ok := x.Items.Get(e)
+	return ok && item.kind != data.Item_None
 }
 
 type itemDto struct {
-	Kind          ItemKindEnum
+	Kind          data.ItemEnum
 	Count         int
-	MaxStack      int
 	PickupDelayMs int
 	PullSpeedPx   float64
 }
@@ -270,7 +293,6 @@ func (x Item) toDto() (ComponentDto, error) {
 	return &itemDto{
 		Kind:          x.kind,
 		Count:         x.count,
-		MaxStack:      x.maxStack,
 		PickupDelayMs: x.pickupDelayMs,
 		PullSpeedPx:   x.pullSpeedPx,
 	}, nil
@@ -280,7 +302,6 @@ func (x itemDto) toComponent() (Component, error) {
 	return &Item{
 		kind:          x.Kind,
 		count:         x.Count,
-		maxStack:      x.MaxStack,
 		pickupDelayMs: x.PickupDelayMs,
 		pullSpeedPx:   x.PullSpeedPx,
 	}, nil

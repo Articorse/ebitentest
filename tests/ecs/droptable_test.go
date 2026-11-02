@@ -1,7 +1,6 @@
 package ecs_test
 
 import (
-	"ebittest/content/items"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/systems/itemsystem"
@@ -12,7 +11,7 @@ import (
 )
 
 func planks(n int) []ecs.ItemDrop {
-	return []ecs.ItemDrop{{Kind: items.ItemKind_Planks, Count: n}}
+	return []ecs.ItemDrop{{Kind: data.Item_Planks, Count: n}}
 }
 
 func TestDropTablesRefuseOutcomesThatDontAddUp(t *testing.T) {

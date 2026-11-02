@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
@@ -11,7 +12,7 @@ import (
 )
 
 type ItemDrop struct {
-	Kind  ItemKindEnum
+	Kind  data.ItemEnum
 	Count int
 }
 

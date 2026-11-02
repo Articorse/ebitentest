@@ -1,7 +1,6 @@
 package tilesystem_test
 
 import (
-	"ebittest/content/items"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -310,7 +309,7 @@ func TestFelledTreesDropPlanks(t *testing.T) {
 		dropCounts[len(dropped)]++
 		for _, e := range dropped {
 			item, _ := s.ECS.Items.Get(e)
-			if item.Kind() != items.ItemKind_Planks || item.Count() != 1 || !s.ECS.Tosses.HasComponent(e) {
+			if item.Kind() != data.Item_Planks || item.Count() != 1 || !s.ECS.Tosses.HasComponent(e) {
 				t.Fatalf("the tree at %v dropped a %v of kind %v, tossed %v; want single planks, each tossed",
 					tree, item.Count(), item.Kind(), s.ECS.Tosses.HasComponent(e))
 			}
@@ -330,15 +329,27 @@ func TestFelledTreesDropPlanks(t *testing.T) {
 	}
 }
 
-func TestFeatureDropTablesMustAddUp(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "features.json")
-	atlas := `[{"id": 1, "imageAsset": "tree", "maxHealth": 10, "destroyedInto": 1,
-		"drops": [{"chance": 60, "items": [{"kind": 1, "count": 1}]}, {"chance": 50, "items": [{"kind": 1, "count": 2}]}]}]`
-	if err := os.WriteFile(path, []byte(atlas), 0o644); err != nil {
+func TestFeatureDropTablesMustAddUpAndDropKnownItems(t *testing.T) {
+	items, err := ecs.LoadItemAtlasFromJson(filepath.Join(testutil.RepoRoot(), testutil.ItemAtlasPath))
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := tilesystem.NewChunkContainer().GenerateFeatureAtlasFromJson(path); err == nil {
-		t.Fatal("a drop table adding up to 110% was accepted")
+	for _, c := range []struct {
+		name  string
+		drops string
+	}{
+		{"adding up to 110%", `[{"chance": 60, "items": [{"kind": 1, "count": 1}]}, {"chance": 50, "items": [{"kind": 1, "count": 2}]}]`},
+		{"dropping an item that isn't in the atlas", `[{"chance": 50, "items": [{"kind": 999, "count": 1}]}]`},
+	} {
+		path := filepath.Join(t.TempDir(), "features.json")
+		atlas := `[{"id": 1, "imageAsset": "tree", "maxHealth": 10, "destroyedInto": 1, "drops": ` + c.drops + `}]`
+		if err := os.WriteFile(path, []byte(atlas), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := tilesystem.NewChunkContainer().GenerateFeatureAtlasFromJson(path, items); err == nil {
+			t.Errorf("a drop table %s was accepted", c.name)
+		}
 	}
 }

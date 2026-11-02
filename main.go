@@ -572,7 +572,12 @@ func main() {
 	if err != nil {
 		log.Fatal("error generating tile atlas from json: ", err)
 	}
-	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json"); err != nil {
+	itemAtlas, err := ecs.LoadItemAtlasFromJson("assets/items/items.json")
+	if err != nil {
+		log.Fatal("error loading item atlas from json: ", err)
+	}
+	g.ecs.SetItemAtlas(itemAtlas)
+	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json", itemAtlas); err != nil {
 		log.Fatal("error generating feature atlas from json: ", err)
 	}
 

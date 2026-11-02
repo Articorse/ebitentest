@@ -3,6 +3,7 @@ package data
 import "math"
 
 const (
+	ItemSpriteLayer           = 20
 	ItemPickupDelayMs         = 2000
 	ItemPickupReachPx         = 3
 	ItemTossDistancePx        = 24.0

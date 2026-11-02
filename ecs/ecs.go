@@ -30,12 +30,12 @@ type ECSContainer struct {
 
 	isSimulatedPos func(worldPos utils.Vec2f) bool
 	terrain        Terrain
+	itemAtlas      *ItemAtlas
 
 	storages []componentStorage
 
 	abilityFuncs     map[AbilityEnum]AbilityFunc
 	timerFuncs       map[TimerFuncEnum]TimerFunc
-	itemSpawnFuncs   map[ItemKindEnum]ItemSpawnFunc
 	inputSourceFuncs map[InputTypeEnum]InputSourceFunc
 
 	Inputs            Storage[Input]
@@ -116,7 +116,7 @@ func NewECSContainer() *ECSContainer {
 
 		abilityFuncs:     make(map[AbilityEnum]AbilityFunc),
 		timerFuncs:       make(map[TimerFuncEnum]TimerFunc),
-		itemSpawnFuncs:   make(map[ItemKindEnum]ItemSpawnFunc),
+		itemAtlas:        NewItemAtlas(),
 		inputSourceFuncs: make(map[InputTypeEnum]InputSourceFunc),
 
 		Rng:       rand.New(rngSource),
@@ -413,6 +413,11 @@ func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 	var comps []ComponentDto
 
 	for _, s := range x.storages {
+		// A generic item's sprite comes from the item atlas when it's loaded
+		if s == componentStorage(&x.Sprites) && x.isGenericItem(eId) {
+			continue
+		}
+
 		dto, ok, err := s.toDto(eId)
 		if err != nil {
 			log.Printf("error converting component of entity %d to DTO: %v", eId, err)

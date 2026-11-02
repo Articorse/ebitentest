@@ -21,6 +21,7 @@ import (
 const (
 	AtlasPath          = "assets/tiles/atlas.json"
 	FeatureAtlasPath   = "assets/features/features.json"
+	ItemAtlasPath      = "assets/items/items.json"
 	PlayerLoaderRadius = 3
 	// Fixed rather than random like the game's, so that a failing test fails the same way every time
 	WorldSeed uint64 = 0x5EED
@@ -35,6 +36,12 @@ func NewECS(t testing.TB) *ecs.ECSContainer {
 	if err := content.Register(x); err != nil {
 		t.Fatal(err)
 	}
+	// From the repository, since tests run in their own package's directory unless they've moved to a temporary world
+	itemAtlas, err := ecs.LoadItemAtlasFromJson(filepath.Join(RepoRoot(), ItemAtlasPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	x.SetItemAtlas(itemAtlas)
 	x.TickState = *common.NewTickState()
 
 	return x
@@ -187,7 +194,7 @@ func StartSession(t testing.TB) *Session {
 	if err := cc.GenerateTileAtlasFromJson(AtlasPath); err != nil {
 		t.Fatal(err)
 	}
-	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath); err != nil {
+	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath, x.ItemAtlas()); err != nil {
 		t.Fatal(err)
 	}
 	x.SetSimulatedPosCheck(cc.IsActiveWorldPos)
