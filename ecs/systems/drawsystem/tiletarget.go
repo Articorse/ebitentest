@@ -16,7 +16,7 @@ var (
 	tileTargetInvalidColor = color.Black
 )
 
-// Outlines the tile the holder's tile-targeting item would hit, dimmed when using it there would do nothing
+// Outlines the tile the holder's tile-targeting item would hit, or the one under the aim if it wouldn't hit any
 func DrawTileTarget(
 	screen *ebiten.Image,
 	camera utils.Vec2f,
@@ -38,10 +38,10 @@ func DrawTileTarget(
 		return err
 	}
 
-	tile := utils.WorldPosToTilePos(aimPos)
-	clr := tileTargetInvalidColor
-	if targeting.CanTargetTile(utils.WorldPosToTilePos(holderPos), tile, ecsContainer.Terrain()) {
-		clr = tileTargetColor
+	tile, ok := targeting.TargetTile(holderPos, aimPos, ecsContainer.Terrain())
+	clr := tileTargetColor
+	if !ok {
+		tile, clr = utils.WorldPosToTilePos(aimPos), tileTargetInvalidColor
 	}
 
 	// Strokes are centered on the rectangle's edges, so it's inset by half the width to draw the outline inside the tile

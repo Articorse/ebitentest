@@ -26,25 +26,36 @@ func (p *TileStrikeParams) Copy() ecs.AbilityParams {
 	return &c
 }
 
-// In range, in sight, on a layer in the mask and damageable
-func (p *TileStrikeParams) CanTargetTile(from, tile utils.Vec2i, terrain ecs.Terrain) bool {
+// The last tile between from and aim that the strike can affect, so that aiming past a tile, such as at something
+// behind it, still hits it, but aiming at a tile doesn't hit the one in front of it instead
+func (p *TileStrikeParams) TargetTile(from, aim utils.Vec2f, terrain ecs.Terrain) (utils.Vec2i, bool) {
 	if p == nil {
-		return false
+		return utils.Vec2i{}, false
 	}
 
-	if dx, dy := tile.X-from.X, tile.Y-from.Y; dx*dx+dy*dy > p.RangeTiles*p.RangeTiles {
-		return false
-	}
-
-	if layer, ok := terrain.TileLayer(tile); !ok || layer&p.Mask == 0 || !terrain.CanDamageTile(tile) {
-		return false
-	}
-
-	inSight := false
-	fov.Compute(from, p.RangeTiles, terrain.IsOpaqueTile, func(t utils.Vec2i) {
-		inSight = inSight || t == tile
+	origin := utils.WorldPosToTilePos(from)
+	inSight := map[utils.Vec2i]bool{}
+	fov.Compute(origin, p.RangeTiles, terrain.IsOpaqueTile, func(t utils.Vec2i) {
+		inSight[t] = true
 	})
-	return inSight
+
+	target, found := utils.Vec2i{}, false
+	for _, t := range utils.TilesAlongSegment(from, aim) {
+		if p.canAffect(origin, t, inSight, terrain) {
+			target, found = t, true
+		}
+	}
+
+	return target, found
+}
+
+func (p *TileStrikeParams) canAffect(origin, tile utils.Vec2i, inSight map[utils.Vec2i]bool, terrain ecs.Terrain) bool {
+	if utils.Dist2(origin, tile) > p.RangeTiles*p.RangeTiles || !inSight[tile] {
+		return false
+	}
+
+	layer, ok := terrain.TileLayer(tile)
+	return ok && layer&p.Mask != 0 && terrain.CanDamageTile(tile)
 }
 
 func TileStrikeAbility(
@@ -68,9 +79,9 @@ func TileStrikeAbility(
 		return false, fmt.Errorf("error getting world position of entity %d for tile strike: %v", striker, err)
 	}
 
-	tile := utils.WorldPosToTilePos(target.Pos)
 	terrain := ecsContainer.Terrain()
-	if !p.CanTargetTile(utils.WorldPosToTilePos(strikerPos), tile, terrain) || !terrain.DamageTile(tile, p.Damage) {
+	tile, ok := p.TargetTile(strikerPos, target.Pos, terrain)
+	if !ok || !terrain.DamageTile(tile, p.Damage) {
 		return false, nil
 	}
 
