@@ -42,6 +42,9 @@ func HandleInputs(
 
 			if equipper, ok := ecsContainer.Equippers.Get(e); ok {
 				for _, eqE := range equipper.Equipment() {
+					if ecsContainer.IsDisabled(eqE) {
+						continue
+					}
 					face(eqE, eWorldPos, input.FacingDir, ecsContainer)
 				}
 			}

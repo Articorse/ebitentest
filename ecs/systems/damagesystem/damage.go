@@ -11,7 +11,7 @@ import (
 )
 
 func Tick(ecsCont *ecs.ECSContainer) {
-	for _, hp := range ecs.Query1(&ecsCont.Hitpoints) {
+	for _, hp := range ecs.Query1(&ecsCont.Hitpoints, ecs.Without(&ecsCont.Disabled)) {
 		hp.TickInvul()
 	}
 }
@@ -109,7 +109,7 @@ func DealContactDamage(
 
 	dealTileDamage(tileCollisions, tiles, ecsCont)
 
-	for e, cd := range ecs.Query1(&ecsCont.ContactDamages) {
+	for e, cd := range ecs.Query1(&ecsCont.ContactDamages, ecs.Without(&ecsCont.Disabled)) {
 		if !cd.SingleTick() {
 			continue
 		}

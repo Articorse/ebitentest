@@ -62,6 +62,7 @@ type ECSContainer struct {
 	Visions           Storage[Vision]
 	Items             Storage[Item]
 	Inventories       Storage[Inventory]
+	Disabled          Storage[Disabled]
 }
 
 func NewECSContainer() *ECSContainer {
@@ -91,6 +92,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&visionDto{})
 	gob.Register(&itemDto{})
 	gob.Register(&inventoryDto{})
+	gob.Register(&disabledDto{})
 
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
@@ -137,6 +139,7 @@ func NewECSContainer() *ECSContainer {
 		Visions:           newStorage[Vision](),
 		Items:             newStorage[Item](),
 		Inventories:       newStorage[Inventory](),
+		Disabled:          newStorage[Disabled](),
 	}
 
 	// The order decides the order of an entity's components in saved data
@@ -167,6 +170,7 @@ func NewECSContainer() *ECSContainer {
 		&x.Visions,
 		&x.Items,
 		&x.Inventories,
+		&x.Disabled,
 	}
 
 	return x

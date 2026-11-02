@@ -171,7 +171,7 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 	for _, e := range colliders.GetEntities() {
 		col, _ := colliders.Collider(e)
 		mask := col.Mask()
-		if !col.Enabled() || mask&(ecs.Layer_Terrain|ecs.Layer_Ground) == 0 || (include != nil && !include(e)) {
+		if ecsContainer.IsDisabled(e) || !col.Enabled() || mask&(ecs.Layer_Terrain|ecs.Layer_Ground) == 0 || (include != nil && !include(e)) {
 			continue
 		}
 

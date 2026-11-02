@@ -9,7 +9,7 @@ import (
 
 // Should be called before other systems modify Transforms or Velocities
 func Tick(ecsContainer *ecs.ECSContainer) error {
-	for _, c := range ecs.Query2(&ecsContainer.Transforms, &ecsContainer.Velocities) {
+	for _, c := range ecs.Query2(&ecsContainer.Transforms, &ecsContainer.Velocities, ecs.Without(&ecsContainer.Disabled)) {
 		t, v := c.A, c.B
 		localVelVec := v.LocalVector()
 

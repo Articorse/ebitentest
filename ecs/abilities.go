@@ -135,6 +135,10 @@ func (x *ECSContainer) ActivateAbility(
 		return false, fmt.Errorf("ability index %d is out of bounds", abiIdx)
 	}
 
+	if x.IsDisabled(e) {
+		return false, nil
+	}
+
 	abis, ok := x.Abilities.Get(e)
 	if !ok {
 		return false, fmt.Errorf("entity %d has no abilities", e)

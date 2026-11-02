@@ -57,7 +57,7 @@ func (x *ECSContainer) ActivateEquipmentAbility(
 	}
 
 	eqE, ok := equipper.InSlot(slot)
-	if !ok {
+	if !ok || x.IsDisabled(e) || x.IsDisabled(eqE) {
 		return false, nil
 	}
 

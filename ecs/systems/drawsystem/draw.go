@@ -32,7 +32,7 @@ func DrawSprites(
 		utils.Vec2f{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
 	}
 
-	for e, spr := range ecs.Query1(&ecsContainer.Sprites) {
+	for e, spr := range ecs.Query1(&ecsContainer.Sprites, ecs.Without(&ecsContainer.Disabled)) {
 		eWorldPos, err := ecsContainer.WorldPos(e)
 		if err != nil {
 			return fmt.Errorf("error getting ecs position of entity %d: %v", e, err)
@@ -212,6 +212,9 @@ func DrawSprites(
 
 func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECSContainer) error {
 	for _, e := range ecs.FloatingTexts.GetEntities() {
+		if ecs.IsDisabled(e) {
+			continue
+		}
 		ecsPos, err := ecs.WorldPos(e)
 		if err != nil {
 			return fmt.Errorf("error getting ecs position of floating text entity %d: %v", e, err)

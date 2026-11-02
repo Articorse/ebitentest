@@ -12,7 +12,7 @@ func Tick(
 	shg map[utils.Vec2i][]common.EntityId,
 	ecsContainer *ecs.ECSContainer,
 ) error {
-	for eA, aCol := range ecs.Query1(&ecsContainer.PlatformColliders) {
+	for eA, aCol := range ecs.Query1(&ecsContainer.PlatformColliders, ecs.Without(&ecsContainer.Disabled)) {
 		aAABB, err := ecsContainer.WorldAABB(eA, aCol.LocalAABB())
 		if err != nil {
 			log.Printf("error getting AABB of entity %d: %v", eA, err)

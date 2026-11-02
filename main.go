@@ -134,7 +134,7 @@ func (g *game) Update() error {
 	}
 
 	tickInputs := make(map[common.EntityId]ecs.InputState)
-	for eid, in := range ecs.Query1(&g.ecs.Inputs) {
+	for eid, in := range ecs.Query1(&g.ecs.Inputs, ecs.Without(&g.ecs.Disabled)) {
 		inputParams := in.Params()
 
 		inputSourceFunc, err := g.ecs.InputSourceFunc(in.Type())

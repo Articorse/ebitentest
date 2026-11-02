@@ -53,6 +53,9 @@ func DrawColliders(
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	for _, e := range colliders.GetEntities() {
+		if ecsContainer.IsDisabled(e) {
+			continue
+		}
 		col, _ := colliders.Collider(e)
 
 		worldPos, err := ecsContainer.WorldPos(e)
@@ -143,6 +146,9 @@ func DrawAABBs(
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	for _, e := range colliders.GetEntities() {
+		if ecsContainer.IsDisabled(e) {
+			continue
+		}
 		col, _ := colliders.Collider(e)
 
 		worldPos, err := ecsContainer.WorldPos(e)

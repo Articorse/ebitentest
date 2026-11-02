@@ -74,6 +74,8 @@ func TestProjectileDiesOnImpassableTiles(t *testing.T) {
 	})
 
 	hits := addProjectile(t, s.ECS, utils.TilePosToWorldPos(rock), ecs.Layer_Enemy|ecs.Layer_Terrain)
+	disabled := addProjectile(t, s.ECS, utils.TilePosToWorldPos(rock), ecs.Layer_Enemy|ecs.Layer_Terrain)
+	s.ECS.SetDisabled(disabled, true)
 	misses := addProjectile(t, s.ECS, utils.TilePosToWorldPos(open), ecs.Layer_Enemy|ecs.Layer_Terrain)
 	ignoresTerrain := addProjectile(t, s.ECS, utils.TilePosToWorldPos(rock), ecs.Layer_Enemy)
 
@@ -81,6 +83,9 @@ func TestProjectileDiesOnImpassableTiles(t *testing.T) {
 
 	if s.ECS.HasEntity(hits) {
 		t.Error("a projectile on rock survived")
+	}
+	if !s.ECS.HasEntity(disabled) {
+		t.Error("a disabled projectile on rock died")
 	}
 	if !s.ECS.HasEntity(misses) {
 		t.Error("a projectile away from rock died")
