@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	tileTargetColor        = color.RGBA{R: 255, A: 255}
-	tileTargetInvalidColor = color.RGBA{R: 90, G: 30, B: 30, A: 255}
+	tileTargetColor        = color.White
+	tileTargetInvalidColor = color.Black
 )
 
 // Outlines the tile the holder's tile-targeting item would hit, dimmed when using it there would do nothing
@@ -44,9 +44,19 @@ func DrawTileTarget(
 		clr = tileTargetColor
 	}
 
-	// Strokes are centered on the rectangle's edges, so it's inset by half a pixel to draw the outline inside the tile
+	// Strokes are centered on the rectangle's edges, so it's inset by half the width to draw the outline inside the tile
+	const width = 2
 	topLeft := utils.TilePosToWorldPos(tile).Subtract(utils.Vec2f{X: data.TileSize / 2, Y: data.TileSize / 2}).Subtract(camera)
-	vector.StrokeRect(screen, float32(topLeft.X)+0.5, float32(topLeft.Y)+0.5, data.TileSize-1, data.TileSize-1, 1, clr, false)
+	vector.StrokeRect(
+		screen,
+		float32(topLeft.X)+width/2,
+		float32(topLeft.Y)+width/2,
+		data.TileSize-width,
+		data.TileSize-width,
+		width,
+		clr,
+		false,
+	)
 
 	return nil
 }
