@@ -33,6 +33,17 @@ func (x *Swing) SetMirrored(mirrored bool) {
 	x.mirrored = mirrored
 }
 
+// From the moment the item is used until it's ready again
+func (x *ECSContainer) IsSwinging(e common.EntityId) bool {
+	eq, ok := x.Equipments.Get(e)
+	if !ok || !x.Swings.HasComponent(e) {
+		return false
+	}
+
+	state := eq.abilities[0].Status.State
+	return state == AbiAct_Active || state == AbiAct_OnCooldown
+}
+
 // Clockwise, in radians, and not mirrored
 func (x *ECSContainer) SwingAngle(e common.EntityId) float64 {
 	sw, swOk := x.Swings.Get(e)

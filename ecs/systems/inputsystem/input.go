@@ -54,7 +54,8 @@ func HandleInputs(
 						continue
 					}
 					face(eqE, eWorldPos, input.AimPos, ecsContainer)
-					if sw, ok := ecsContainer.Swings.Get(eqE); ok && (input.AimPos != utils.Vec2f{}) {
+					// Flipping mid-swing would snap the item to the other side while it's still coming back
+					if sw, ok := ecsContainer.Swings.Get(eqE); ok && (input.AimPos != utils.Vec2f{}) && !ecsContainer.IsSwinging(eqE) {
 						sw.SetMirrored(input.AimPos.X < eWorldPos.X)
 					}
 				}

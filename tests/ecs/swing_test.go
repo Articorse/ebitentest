@@ -96,3 +96,40 @@ func TestSwingIsSaved(t *testing.T) {
 		t.Fatalf("restored swing %+v (%v), want %+v", restored, ok, sw)
 	}
 }
+
+func TestSwingKeepsItsSideUntilItsReadyAgain(t *testing.T) {
+	x := testutil.NewECS(t)
+	tool, holder := addSwingingTool(t, x, 10*data.TickMs, ecs.NewSwingComponent(1, 0.5, utils.Vec2f{}))
+	sw, _ := x.Swings.Get(tool)
+	left, right := utils.Vec2f{X: -10}, utils.Vec2f{X: 10}
+	aim := func(pos utils.Vec2f, use bool) {
+		t.Helper()
+		input := ecs.InputState{AimPos: pos}
+		if use {
+			input.MainHandEqAbility1 = 1
+		}
+		if err := inputsystem.HandleInputs(utils.Vec2f{}, x, map[common.EntityId]ecs.InputState{holder: input}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	aim(left, true)
+	if !sw.Mirrored() || !x.IsSwinging(tool) {
+		t.Fatalf("used aiming left: mirrored %v, swinging %v, want both", sw.Mirrored(), x.IsSwinging(tool))
+	}
+
+	for range 11 {
+		aim(right, false)
+		if !sw.Mirrored() {
+			t.Fatal("the swing flipped sides before it was ready again")
+		}
+		if err := abilitysystem.Tick(x); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	aim(right, false)
+	if x.IsSwinging(tool) || sw.Mirrored() {
+		t.Fatalf("once ready: swinging %v, mirrored %v, want neither", x.IsSwinging(tool), sw.Mirrored())
+	}
+}
