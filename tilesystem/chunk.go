@@ -2,6 +2,7 @@ package tilesystem
 
 import (
 	"ebittest/data"
+	"ebittest/ecs"
 	"ebittest/utils"
 	"ebittest/worldgen"
 
@@ -41,17 +42,18 @@ func (x *chunk) getPromotedTiles() map[utils.Vec2i]promotedTile {
 	return x.promotedTiles
 }
 
-// Returns false for tiles that can't be damaged, or that aren't in an active chunk
-func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) bool {
+// Returns false for tiles that can't be damaged, or that aren't in an active chunk. Returns what the tile drops, if
+// this destroyed it.
+func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) (bool, *ecs.DropTable) {
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	if !ok {
-		return false
+		return false, nil
 	}
 
 	idx := c.tileIndex(t)
 	def, ok := cc.atlas[c.tiles[idx]]
 	if !ok || def.maxHealth <= 0 {
-		return false
+		return false, nil
 	}
 
 	health := def.maxHealth
@@ -62,14 +64,43 @@ func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) bool {
 
 	if health > 0 {
 		c.promotedTiles[t] = promotedTile{currentHealth: health}
-		return true
+		return true, nil
 	}
 
-	delete(c.promotedTiles, t)
-	c.tiles[idx] = def.destroyedInto
-	c.terrainModified = true
-	c.freeImage()
+	c.setTile(t, def.destroyedInto)
+	return true, def.drops
+}
+
+// Passable ground, loaded and without a feature on it
+func (cc *ChunkContainer) CanPlaceTile(t utils.Vec2i) bool {
+	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	if !ok {
+		return false
+	}
+	if _, hasFeature := c.features[t]; hasFeature {
+		return false
+	}
+	def, ok := cc.atlas[c.getTileDefId(t)]
+	return ok && def.passable
+}
+
+// Returns false where a tile can't be placed, or the tile isn't in the atlas
+func (cc *ChunkContainer) PlaceTile(t utils.Vec2i, tile data.TileEnum) bool {
+	if _, ok := cc.atlas[tile]; !ok || !cc.CanPlaceTile(t) {
+		return false
+	}
+
+	c := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	c.setTile(t, tile)
 	return true
+}
+
+// A new tile starts out undamaged, and the chunk's image is baked again to show it
+func (x *chunk) setTile(t utils.Vec2i, tile data.TileEnum) {
+	delete(x.promotedTiles, t)
+	x.tiles[x.tileIndex(t)] = tile
+	x.terrainModified = true
+	x.freeImage()
 }
 
 func (cc *ChunkContainer) CanDamageTile(t utils.Vec2i) bool {

@@ -256,7 +256,8 @@ func (x Item) Copy() Item {
 	return x
 }
 
-// A generic item gets its sprite from the atlas whenever it's added, spawned or loaded, since its sprite isn't saved
+// A generic item gets its sprite, and its equipment if it has a use, from the atlas whenever it's added, spawned or
+// loaded, since those aren't saved
 func (x Item) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.Items.addComponent(e, x.Copy())
 
@@ -267,6 +268,10 @@ func (x Item) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	if !ok {
 		log.Printf("item %d is of kind %v, which isn't in the item atlas", e, x.kind)
 		return
+	}
+
+	if eq, ok := ecsContainer.itemEquipment(def); ok {
+		ecsContainer.AddComponent(e, eq)
 	}
 
 	spr, err := NewSpriteComponent(def.imageAsset, data.ItemSpriteLayer, false)
@@ -305,4 +310,36 @@ func (x itemDto) toComponent() (Component, error) {
 		pickupDelayMs: x.PickupDelayMs,
 		pullSpeedPx:   x.PullSpeedPx,
 	}, nil
+}
+
+// Uses up one of the item. The last one leaves its holder's hand and inventory right away, rather than when it's
+// removed at the end of the tick, so that nothing can be put into its empty stack in the meantime.
+func (x *ECSContainer) ConsumeItem(item common.EntityId) error {
+	itemComp, ok := x.Items.Get(item)
+	if !ok {
+		return fmt.Errorf("entity %d isn't an item", item)
+	}
+	if itemComp.count <= 0 {
+		return fmt.Errorf("item %d is already used up", item)
+	}
+
+	itemComp.count--
+	if itemComp.count > 0 {
+		return nil
+	}
+
+	if holder := x.Parent(item); holder != -1 {
+		if equipper, ok := x.Equippers.Get(holder); ok {
+			for slot, eq := range equipper.equipment {
+				if eq == item {
+					equipper.Unequip(slot)
+				}
+			}
+		}
+		x.takeOutOfInventory(holder, item)
+	}
+	x.SetDisabled(item, true)
+	x.ScheduleRemoveEntity(item)
+
+	return nil
 }

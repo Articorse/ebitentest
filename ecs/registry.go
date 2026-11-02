@@ -36,3 +36,12 @@ func (x *ECSContainer) RegisterInputSource(id InputTypeEnum, inputSourceFunc Inp
 	x.inputSourceFuncs[id] = inputSourceFunc
 	return nil
 }
+
+func (x *ECSContainer) RegisterAbilityParamsDecoder(id AbilityEnum, decode AbilityParamsDecoder) error {
+	if _, ok := x.abilityParamsDecoders[id]; ok {
+		return fmt.Errorf("the params of ability %v already have a decoder", id)
+	}
+
+	x.abilityParamsDecoders[id] = decode
+	return nil
+}

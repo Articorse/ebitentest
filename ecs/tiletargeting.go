@@ -8,7 +8,7 @@ import (
 // Params of abilities aimed at a single tile, so that the tile they'd hit can be shown before they're used
 type TileTargeting interface {
 	// The tile used from the given position and aimed at the other would hit; false if it wouldn't hit anything
-	TargetTile(from, aim utils.Vec2f, terrain Terrain) (utils.Vec2i, bool)
+	TargetTile(from, aim utils.Vec2f, ecsContainer *ECSContainer) (utils.Vec2i, bool)
 }
 
 // The first tile-targeting ability of what the entity holds in its main hand

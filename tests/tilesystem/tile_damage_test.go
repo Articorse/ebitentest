@@ -35,14 +35,14 @@ func TestDamagedTilesKeepTheirHealthAndBecomeDirt(t *testing.T) {
 	grass := tileOf(t, s, data.Tile_Grass)
 	rock := tileOf(t, s, data.Tile_Rock)
 
-	if !s.Chunks.DamageTile(grass, 20) {
+	if ok, _ := s.Chunks.DamageTile(grass, 20); !ok {
 		t.Fatal("grass can't be damaged")
 	}
 	if health, _ := s.Chunks.TileHealth(grass); health != 30 {
 		t.Fatalf("grass has %d health after 20 damage, want 30", health)
 	}
 
-	if !s.Chunks.DamageTile(rock, 500) {
+	if ok, _ := s.Chunks.DamageTile(rock, 500); !ok {
 		t.Fatal("rock can't be damaged")
 	}
 	if s.Chunks.IsOpaqueTile(rock) {
@@ -51,7 +51,7 @@ func TestDamagedTilesKeepTheirHealthAndBecomeDirt(t *testing.T) {
 	if _, ok := s.Chunks.TileHealth(rock); ok {
 		t.Fatal("destroyed rock turned into something that can still be damaged, want dirt")
 	}
-	if s.Chunks.DamageTile(rock, 10) {
+	if ok, _ := s.Chunks.DamageTile(rock, 10); ok {
 		t.Fatal("dirt took damage")
 	}
 
@@ -177,7 +177,7 @@ func TestDamageableTileMustSayWhatItBecomes(t *testing.T) {
 	}
 	t.Chdir(testutil.RepoRoot())
 
-	if err := tilesystem.NewChunkContainer().GenerateTileAtlasFromJson(path); err == nil {
+	if err := tilesystem.NewChunkContainer().GenerateTileAtlasFromJson(path, testutil.ItemAtlas(t)); err == nil {
 		t.Fatal("a damageable tile without destroyedInto was accepted")
 	}
 }

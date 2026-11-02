@@ -30,10 +30,11 @@ func (p *TileStrikeParams) Copy() ecs.AbilityParams {
 // it can affect, so that aiming past a wall, such as at something behind it, hits the wall. Ground is only hit when aimed at
 // directly, since the ground in front of where the player aims gets in the way of every strike, and destroying it
 // moves the target closer with each one.
-func (p *TileStrikeParams) TargetTile(from, aim utils.Vec2f, terrain ecs.Terrain) (utils.Vec2i, bool) {
+func (p *TileStrikeParams) TargetTile(from, aim utils.Vec2f, ecsContainer *ecs.ECSContainer) (utils.Vec2i, bool) {
 	if p == nil {
 		return utils.Vec2i{}, false
 	}
+	terrain := ecsContainer.Terrain()
 
 	origin := utils.WorldPosToTilePos(from)
 	inSight := map[utils.Vec2i]bool{}
@@ -80,7 +81,7 @@ func strikeTile(tile utils.Vec2i, damage int, ecsContainer *ecs.ECSContainer) bo
 	if ecsContainer.Terrain().CanDamageFeature(tile) {
 		return ecsContainer.DamageFeature(tile, damage)
 	}
-	return ecsContainer.Terrain().DamageTile(tile, damage)
+	return ecsContainer.DamageTile(tile, damage)
 }
 
 func TileStrikeAbility(
@@ -108,8 +109,7 @@ func TileStrikeAbility(
 		return false, nil
 	}
 
-	terrain := ecsContainer.Terrain()
-	tile, ok := p.TargetTile(strikerPos, target.Pos, terrain)
+	tile, ok := p.TargetTile(strikerPos, target.Pos, ecsContainer)
 	if !ok || !strikeTile(tile, p.Damage, ecsContainer) {
 		return false, nil
 	}

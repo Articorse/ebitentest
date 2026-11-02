@@ -36,15 +36,23 @@ func NewECS(t testing.TB) *ecs.ECSContainer {
 	if err := content.Register(x); err != nil {
 		t.Fatal(err)
 	}
-	// From the repository, since tests run in their own package's directory unless they've moved to a temporary world
-	itemAtlas, err := ecs.LoadItemAtlasFromJson(filepath.Join(RepoRoot(), ItemAtlasPath))
-	if err != nil {
+	if err := x.SetItemAtlas(ItemAtlas(t)); err != nil {
 		t.Fatal(err)
 	}
-	x.SetItemAtlas(itemAtlas)
 	x.TickState = *common.NewTickState()
 
 	return x
+}
+
+// From the repository, since tests run in their own package's directory unless they've moved to a temporary world
+func ItemAtlas(t testing.TB) *ecs.ItemAtlas {
+	t.Helper()
+
+	atlas, err := ecs.LoadItemAtlasFromJson(filepath.Join(RepoRoot(), ItemAtlasPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return atlas
 }
 
 func Add(t testing.TB, x *ecs.ECSContainer, comps ...ecs.Component) common.EntityId {
@@ -191,7 +199,10 @@ func StartSession(t testing.TB) *Session {
 
 	x := NewECS(t)
 	cc := tilesystem.NewChunkContainer()
-	if err := cc.GenerateTileAtlasFromJson(AtlasPath); err != nil {
+	if err := cc.GenerateTileAtlasFromJson(AtlasPath, x.ItemAtlas()); err != nil {
+		t.Fatal(err)
+	}
+	if err := x.ItemAtlas().CheckPlacedTiles(cc.HasTile); err != nil {
 		t.Fatal(err)
 	}
 	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath, x.ItemAtlas()); err != nil {

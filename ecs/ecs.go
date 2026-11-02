@@ -34,9 +34,10 @@ type ECSContainer struct {
 
 	storages []componentStorage
 
-	abilityFuncs     map[AbilityEnum]AbilityFunc
-	timerFuncs       map[TimerFuncEnum]TimerFunc
-	inputSourceFuncs map[InputTypeEnum]InputSourceFunc
+	abilityFuncs          map[AbilityEnum]AbilityFunc
+	abilityParamsDecoders map[AbilityEnum]AbilityParamsDecoder
+	timerFuncs            map[TimerFuncEnum]TimerFunc
+	inputSourceFuncs      map[InputTypeEnum]InputSourceFunc
 
 	Inputs            Storage[Input]
 	Hierarchies       Storage[Hierarchy]
@@ -114,10 +115,11 @@ func NewECSContainer() *ECSContainer {
 		nextEntity:   0,
 		CameraFollow: true,
 
-		abilityFuncs:     make(map[AbilityEnum]AbilityFunc),
-		timerFuncs:       make(map[TimerFuncEnum]TimerFunc),
-		itemAtlas:        NewItemAtlas(),
-		inputSourceFuncs: make(map[InputTypeEnum]InputSourceFunc),
+		abilityFuncs:          make(map[AbilityEnum]AbilityFunc),
+		abilityParamsDecoders: make(map[AbilityEnum]AbilityParamsDecoder),
+		timerFuncs:            make(map[TimerFuncEnum]TimerFunc),
+		itemAtlas:             NewItemAtlas(),
+		inputSourceFuncs:      make(map[InputTypeEnum]InputSourceFunc),
 
 		Rng:       rand.New(rngSource),
 		rngSource: rngSource,
@@ -413,8 +415,8 @@ func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 	var comps []ComponentDto
 
 	for _, s := range x.storages {
-		// A generic item's sprite comes from the item atlas when it's loaded
-		if s == componentStorage(&x.Sprites) && x.isGenericItem(eId) {
+		// A generic item's sprite and equipment come from the item atlas when it's loaded
+		if (s == componentStorage(&x.Sprites) || s == componentStorage(&x.Equipments)) && x.isGenericItem(eId) {
 			continue
 		}
 

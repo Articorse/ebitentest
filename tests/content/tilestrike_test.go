@@ -19,6 +19,8 @@ type fakeTerrain struct {
 	damaged map[utils.Vec2i]int
 	// Trees damaged, apart from the ground under them
 	treesDamaged map[utils.Vec2i]int
+	// Placed tiles block like rock
+	placed map[utils.Vec2i]data.TileEnum
 }
 
 func newFakeTerrain(rock ...utils.Vec2i) *fakeTerrain {
@@ -28,6 +30,7 @@ func newFakeTerrain(rock ...utils.Vec2i) *fakeTerrain {
 		sturdy:       map[utils.Vec2i]bool{},
 		damaged:      map[utils.Vec2i]int{},
 		treesDamaged: map[utils.Vec2i]int{},
+		placed:       map[utils.Vec2i]data.TileEnum{},
 	}
 	for _, r := range rock {
 		f.rock[r] = true
@@ -74,11 +77,24 @@ func (f *fakeTerrain) CanDamageTile(t utils.Vec2i) bool {
 	return f.loaded(t) && !f.sturdy[t]
 }
 
-func (f *fakeTerrain) DamageTile(t utils.Vec2i, damage int) bool {
+func (f *fakeTerrain) DamageTile(t utils.Vec2i, damage int) (bool, *ecs.DropTable) {
 	if !f.CanDamageTile(t) {
-		return false
+		return false, nil
 	}
 	f.damaged[t] += damage
+	return true, nil
+}
+
+func (f *fakeTerrain) CanPlaceTile(t utils.Vec2i) bool {
+	return f.loaded(t) && !f.rock[t] && !f.trees[t]
+}
+
+func (f *fakeTerrain) PlaceTile(t utils.Vec2i, tile data.TileEnum) bool {
+	if !f.CanPlaceTile(t) {
+		return false
+	}
+	f.rock[t] = true
+	f.placed[t] = tile
 	return true
 }
 
@@ -152,7 +168,7 @@ func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 		x, holder := newMattockHolder(t, terrain, c.mask)
 
 		params := &abilities.TileStrikeParams{RangeTiles: 2, Mask: c.mask}
-		tile, ok := params.TargetTile(utils.Vec2f{}, utils.TilePosToWorldPos(c.aim), terrain)
+		tile, ok := params.TargetTile(utils.Vec2f{}, utils.TilePosToWorldPos(c.aim), x)
 		if !ok {
 			tile = none
 		}

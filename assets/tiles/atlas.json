@@ -42,5 +42,14 @@
     "maxHealth": -1,
     "passable": true,
     "opaque": false
+  },
+  {
+    "id": 6,
+    "imagePath": "assets/tiles/planks.png",
+    "maxHealth": 100,
+    "destroyedInto": 1,
+    "passable": false,
+    "opaque": true,
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 1 }] }]
   }
 ]

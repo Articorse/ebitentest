@@ -142,7 +142,7 @@ func dealTileDamage(collisions []common.TileCollision, ecsCont *ecs.ECSContainer
 			continue
 		}
 
-		if cd.CanHitTile(c.Tile) && ecsCont.Terrain().DamageTile(c.Tile, damageTiers[c.ShapeIdx]) {
+		if cd.CanHitTile(c.Tile) && ecsCont.DamageTile(c.Tile, damageTiers[c.ShapeIdx]) {
 			cd.RecordTileHit(c.Tile)
 			if err := effects.SpawnDamageNumber(utils.TilePosToWorldPos(c.Tile), damageTiers[c.ShapeIdx], ecsCont); err != nil {
 				log.Println(err)

@@ -72,15 +72,27 @@ func (x *ECSContainer) SpawnDrops(table *DropTable, pos utils.Vec2f) error {
 	return nil
 }
 
+// Damages the tile, and drops what it leaves behind if that destroyed it
+func (x *ECSContainer) DamageTile(t utils.Vec2i, damage int) bool {
+	damaged, drops := x.terrain.DamageTile(t, damage)
+	x.dropFrom(t, drops)
+	return damaged
+}
+
 // Damages the feature on the tile, and drops what it leaves behind if that destroyed it
 func (x *ECSContainer) DamageFeature(t utils.Vec2i, damage int) bool {
 	damaged, drops := x.terrain.DamageFeature(t, damage)
-	if drops != nil {
-		if err := x.SpawnDrops(drops, utils.TilePosToWorldPos(t)); err != nil {
-			log.Printf("error dropping what the feature at %v left behind: %v", t, err)
-		}
-	}
+	x.dropFrom(t, drops)
 	return damaged
+}
+
+func (x *ECSContainer) dropFrom(t utils.Vec2i, drops *DropTable) {
+	if drops == nil {
+		return
+	}
+	if err := x.SpawnDrops(drops, utils.TilePosToWorldPos(t)); err != nil {
+		log.Printf("error dropping what was destroyed at %v: %v", t, err)
+	}
 }
 
 func (x *DropTable) Copy() *DropTable {

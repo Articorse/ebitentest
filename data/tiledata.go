@@ -10,4 +10,5 @@ const (
 	Tile_Rock
 	Tile_WaterShallow
 	Tile_WaterDeep
+	Tile_Planks
 )

@@ -12,7 +12,7 @@ import (
 func TestNewWorldSpawnIsTheClosestFreeTileCenter(t *testing.T) {
 	testutil.TempWorld(t)
 	cc := tilesystem.NewChunkContainer()
-	if err := cc.GenerateTileAtlasFromJson(testutil.AtlasPath); err != nil {
+	if err := cc.GenerateTileAtlasFromJson(testutil.AtlasPath, testutil.ItemAtlas(t)); err != nil {
 		t.Fatal(err)
 	}
 	cc.SetSeed(testutil.WorldSeed)

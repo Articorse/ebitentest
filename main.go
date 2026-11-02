@@ -567,22 +567,28 @@ func main() {
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetTPS(data.TPS)
 
-	g.chunkContainer = tilesystem.NewChunkContainer()
-	err := g.chunkContainer.GenerateTileAtlasFromJson("assets/tiles/atlas.json")
-	if err != nil {
-		log.Fatal("error generating tile atlas from json: ", err)
+	// Content first, since the item atlas names its abilities
+	if err := content.Register(g.ecs); err != nil {
+		log.Fatal("error registering content: ", err)
 	}
+
 	itemAtlas, err := ecs.LoadItemAtlasFromJson("assets/items/items.json")
 	if err != nil {
 		log.Fatal("error loading item atlas from json: ", err)
 	}
-	g.ecs.SetItemAtlas(itemAtlas)
-	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json", itemAtlas); err != nil {
-		log.Fatal("error generating feature atlas from json: ", err)
+	if err := g.ecs.SetItemAtlas(itemAtlas); err != nil {
+		log.Fatal("error setting item atlas: ", err)
 	}
 
-	if err := content.Register(g.ecs); err != nil {
-		log.Fatal("error registering content: ", err)
+	g.chunkContainer = tilesystem.NewChunkContainer()
+	if err := g.chunkContainer.GenerateTileAtlasFromJson("assets/tiles/atlas.json", itemAtlas); err != nil {
+		log.Fatal("error generating tile atlas from json: ", err)
+	}
+	if err := itemAtlas.CheckPlacedTiles(g.chunkContainer.HasTile); err != nil {
+		log.Fatal("error checking the item atlas against the tile atlas: ", err)
+	}
+	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json", itemAtlas); err != nil {
+		log.Fatal("error generating feature atlas from json: ", err)
 	}
 
 	g.ecs.TickState = *common.NewTickState()

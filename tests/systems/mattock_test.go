@@ -1,6 +1,7 @@
 package systems_test
 
 import (
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
@@ -24,10 +25,14 @@ func (openGround) DamageFeature(utils.Vec2i, int) (bool, *ecs.DropTable) { retur
 
 func (openGround) CanDamageTile(utils.Vec2i) bool { return true }
 
-func (g openGround) DamageTile(t utils.Vec2i, damage int) bool {
+func (g openGround) DamageTile(t utils.Vec2i, damage int) (bool, *ecs.DropTable) {
 	g.damaged[t] += damage
-	return true
+	return true, nil
 }
+
+func (openGround) CanPlaceTile(utils.Vec2i) bool { return false }
+
+func (openGround) PlaceTile(utils.Vec2i, data.TileEnum) bool { return false }
 
 func TestTheMattockStrikesTheTileUnderTheCursor(t *testing.T) {
 	x, player, _, _, _ := newArmedPlayer(t)

@@ -18,6 +18,8 @@ type tileDef struct {
 	destroyedInto data.TileEnum
 	passable      bool
 	opaque        bool
+	// Nil for tiles that drop nothing when destroyed
+	drops *ecs.DropTable
 }
 
 type promotedTile struct {
@@ -29,12 +31,13 @@ type tileDefDTO struct {
 	ImagePath string `json:"imagePath"`
 	MaxHealth int    `json:"maxHealth"`
 	// Required for tiles that can be damaged
-	DestroyedInto *uint16 `json:"destroyedInto"`
-	Passable      bool    `json:"passable"`
-	Opaque        bool    `json:"opaque"`
+	DestroyedInto *uint16          `json:"destroyedInto"`
+	Passable      bool             `json:"passable"`
+	Opaque        bool             `json:"opaque"`
+	Drops         []dropOutcomeDTO `json:"drops"`
 }
 
-func dtosToDefsMap(dtos []tileDefDTO) (map[data.TileEnum]tileDef, error) {
+func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas) (map[data.TileEnum]tileDef, error) {
 	tileDefs := make(map[data.TileEnum]tileDef, len(dtos))
 	for _, dto := range dtos {
 		img, _, err := ebitenutil.NewImageFromFile(dto.ImagePath)
@@ -59,6 +62,12 @@ func dtosToDefsMap(dtos []tileDefDTO) (map[data.TileEnum]tileDef, error) {
 			}
 			def.destroyedInto = data.TileEnum(*dto.DestroyedInto)
 		}
+
+		drops, err := dropTableFromDtos(dto.Drops, items)
+		if err != nil {
+			return nil, fmt.Errorf("tile %d has an invalid drop table: %w", dto.Id, err)
+		}
+		def.drops = drops
 
 		tileDefs[data.TileEnum(dto.Id)] = def
 	}
@@ -117,4 +126,9 @@ func (cc *ChunkContainer) IsBlockedAt(pos utils.Vec2f) bool {
 
 	b, ok := cc.featureCollider(c, t)
 	return ok && pos.X >= b[0].X && pos.X <= b[1].X && pos.Y >= b[0].Y && pos.Y <= b[1].Y
+}
+
+func (cc *ChunkContainer) HasTile(id data.TileEnum) bool {
+	_, ok := cc.atlas[id]
+	return ok
 }

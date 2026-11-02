@@ -57,8 +57,6 @@ type featureColliderDTO struct {
 	Offset utils.Vec2f `json:"offset"`
 }
 
-// Drop tables are checked against the item atlas, so that one naming an item that doesn't exist fails here rather than
-// when the feature is destroyed
 func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.ItemAtlas) error {
 	f, err := os.ReadFile(input)
 	if err != nil {
@@ -95,23 +93,11 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.
 			def.destroyedInto = data.FeatureEnum(*dto.DestroyedInto)
 		}
 
-		if len(dto.Drops) > 0 {
-			outcomes := make([]ecs.DropOutcome, len(dto.Drops))
-			for i, o := range dto.Drops {
-				outcomes[i].ChancePercent = o.ChancePercent
-				for _, item := range o.Items {
-					if _, ok := items.Def(data.ItemEnum(item.Kind)); !ok {
-						return fmt.Errorf("feature %d drops item %d, which isn't in the item atlas", dto.Id, item.Kind)
-					}
-					outcomes[i].Items = append(outcomes[i].Items, ecs.ItemDrop{Kind: data.ItemEnum(item.Kind), Count: item.Count})
-				}
-			}
-			drops, err := ecs.NewDropTable(outcomes...)
-			if err != nil {
-				return fmt.Errorf("feature %d has an invalid drop table: %w", dto.Id, err)
-			}
-			def.drops = drops
+		drops, err := dropTableFromDtos(dto.Drops, items)
+		if err != nil {
+			return fmt.Errorf("feature %d has an invalid drop table: %w", dto.Id, err)
 		}
+		def.drops = drops
 
 		defs[data.FeatureEnum(dto.Id)] = def
 	}
@@ -262,4 +248,23 @@ func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f) []common.StaticS
 		sprites[i] = p.sprite
 	}
 	return sprites
+}
+
+// Nil for no outcomes. Every item is checked against the item atlas.
+func dropTableFromDtos(dtos []dropOutcomeDTO, items *ecs.ItemAtlas) (*ecs.DropTable, error) {
+	if len(dtos) == 0 {
+		return nil, nil
+	}
+
+	outcomes := make([]ecs.DropOutcome, len(dtos))
+	for i, o := range dtos {
+		outcomes[i].ChancePercent = o.ChancePercent
+		for _, item := range o.Items {
+			if _, ok := items.Def(data.ItemEnum(item.Kind)); !ok {
+				return nil, fmt.Errorf("item %d isn't in the item atlas", item.Kind)
+			}
+			outcomes[i].Items = append(outcomes[i].Items, ecs.ItemDrop{Kind: data.ItemEnum(item.Kind), Count: item.Count})
+		}
+	}
+	return ecs.NewDropTable(outcomes...)
 }
