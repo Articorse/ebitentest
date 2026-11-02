@@ -266,7 +266,7 @@ func spawnMattock(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Entit
 		Def:    ecs.NewAbilityDef(abilities.Ability_TileStrike, ecs.Ability_None, 400, 0),
 		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
 		Params: &abilities.TileStrikeParams{
-			RangeTiles: 2,
+			RangeTiles: 3,
 			Damage:     50,
 			Mask:       ecs.Layer_Terrain | ecs.Layer_Ground,
 		},

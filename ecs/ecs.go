@@ -103,6 +103,7 @@ func NewECSContainer() *ECSContainer {
 
 	x := &ECSContainer{
 		nextEntity: 0,
+		CameraFollow: true,
 
 		abilityFuncs:     make(map[AbilityEnum]AbilityFunc),
 		timerFuncs:       make(map[TimerFuncEnum]TimerFunc),
