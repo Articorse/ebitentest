@@ -125,7 +125,7 @@ func strike(t *testing.T, x *ecs.ECSContainer, holder common.EntityId, tile util
 }
 
 func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
-	both := ecs.Layer_Terrain | ecs.Layer_Ground
+	all := ecs.Layer_Terrain | ecs.Layer_Ground | ecs.Layer_Feature
 	none := utils.Vec2i{X: 99}
 	cases := []struct {
 		name   string
@@ -136,25 +136,26 @@ func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 		want   utils.Vec2i
 		trees  []utils.Vec2i
 	}{
-		{"its own tile", both, nil, nil, utils.Vec2i{}, utils.Vec2i{}, nil},
-		{"ground in range", both, nil, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, nil},
-		{"ground past the range", both, nil, nil, utils.Vec2i{X: 6}, none, nil},
-		{"past the range's circle", both, nil, nil, utils.Vec2i{X: 2, Y: 1}, none, nil},
-		{"rock past the range", both, []utils.Vec2i{{X: 2}, {X: 4}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}, nil},
-		{"rock with ground in front", both, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, nil},
-		{"ground behind rock", both, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}, nil},
-		{"far behind rock", both, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 1}, nil},
-		{"ground that can't be damaged", both, nil, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, none, nil},
-		{"rock that can't be damaged", both, []utils.Vec2i{{X: 1}, {X: 2}}, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}, nil},
+		{"its own tile", all, nil, nil, utils.Vec2i{}, utils.Vec2i{}, nil},
+		{"ground in range", all, nil, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, nil},
+		{"ground past the range", all, nil, nil, utils.Vec2i{X: 6}, none, nil},
+		{"past the range's circle", all, nil, nil, utils.Vec2i{X: 2, Y: 1}, none, nil},
+		{"rock past the range", all, []utils.Vec2i{{X: 2}, {X: 4}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}, nil},
+		{"rock with ground in front", all, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, nil},
+		{"ground behind rock", all, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}, nil},
+		{"far behind rock", all, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 1}, nil},
+		{"ground that can't be damaged", all, nil, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, none, nil},
+		{"rock that can't be damaged", all, []utils.Vec2i{{X: 1}, {X: 2}}, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}, nil},
 		{"rock past the aim", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 1}, none, nil},
 		{"rock on the way", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}, nil},
 		{"ground behind rock it can't affect", ecs.Layer_Ground, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 3}, none, nil},
-		{"a tree", both, nil, nil, utils.Vec2i{X: 1}, utils.Vec2i{X: 1}, []utils.Vec2i{{X: 1}}},
-		{"rock behind a tree", both, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 1}}},
-		{"ground behind a tree", both, nil, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 1}}},
-		{"a tree past the range", both, nil, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 2}}},
+		{"a tree", all, nil, nil, utils.Vec2i{X: 1}, utils.Vec2i{X: 1}, []utils.Vec2i{{X: 1}}},
+		{"rock behind a tree", all, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 1}}},
+		{"ground behind a tree", all, nil, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 1}}},
+		{"a tree past the range", all, nil, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 2}}},
 		{"a tree with a ground-only mask", ecs.Layer_Ground, nil, nil, utils.Vec2i{X: 1}, none, []utils.Vec2i{{X: 1}}},
-		{"a tree on ground that can't be damaged", both, nil, []utils.Vec2i{{X: 1}}, utils.Vec2i{X: 1}, utils.Vec2i{X: 1}, []utils.Vec2i{{X: 1}}},
+		{"a tree with a mask without features", ecs.Layer_Terrain | ecs.Layer_Ground, nil, nil, utils.Vec2i{X: 1}, none, []utils.Vec2i{{X: 1}}},
+		{"a tree on ground that can't be damaged", all, nil, []utils.Vec2i{{X: 1}}, utils.Vec2i{X: 1}, utils.Vec2i{X: 1}, []utils.Vec2i{{X: 1}}},
 	}
 
 	for _, c := range cases {
@@ -271,5 +272,23 @@ func TestTileStrikeShowsItsDamageOnlyWhenItLands(t *testing.T) {
 	}
 	if pos := testutil.WorldPos(t, x, numbers[0]); pos != utils.TilePosToWorldPos(utils.Vec2i{X: 1}) {
 		t.Fatalf("the damage number is at %v, want the struck tile", pos)
+	}
+}
+
+func TestTheStartingMattockStrikesTrees(t *testing.T) {
+	x, player, _ := newAxeHolder(t)
+	terrain := newFakeTerrain()
+	terrain.trees[utils.Vec2i{X: 1}] = true
+	x.SetTerrain(terrain)
+	if err := x.SelectInventorySlot(player, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	targeting, ok := x.HeldTileTargeting(player)
+	if !ok {
+		t.Fatal("the mattock in hand doesn't target tiles")
+	}
+	if tile, ok := targeting.TargetTile(utils.Vec2f{}, utils.TilePosToWorldPos(utils.Vec2i{X: 1}), x); !ok || tile != (utils.Vec2i{X: 1}) {
+		t.Fatalf("aiming at a tree, the mattock targets %v (%v), want the tree", tile, ok)
 	}
 }

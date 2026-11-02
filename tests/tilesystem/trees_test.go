@@ -84,7 +84,7 @@ func TestTrunksBlockMovementButNotTheRestOfTheirTile(t *testing.T) {
 	s := testutil.StartSession(t)
 	tree := utils.TilePosToWorldPos(findLoneTree(t, s))
 	mob := func(shape shapes.Shape) ecs.Component {
-		return ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Terrain, ecs.Collider_Mob, shape)
+		return ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Terrain|ecs.Layer_Feature, ecs.Collider_Mob, shape)
 	}
 
 	// The trunk is 8×6, centered 3px below the tile's center
@@ -108,7 +108,7 @@ func TestTrunksStopProjectiles(t *testing.T) {
 	s := testutil.StartSession(t)
 	tree := utils.TilePosToWorldPos(findLoneTree(t, s))
 	projectile := func(shape shapes.Shape) ecs.Component {
-		return ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Terrain, shape)
+		return ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Terrain|ecs.Layer_Feature, shape)
 	}
 	dies := func(shapes.Shape) ecs.Component { return ecs.NewContactDamageComponent(-1, 0, 10).WithDieOnContact() }
 
@@ -147,8 +147,8 @@ func TestHittingATrunkDamagesTheTreeButNotTheGroundUnderIt(t *testing.T) {
 	tree := findLoneTree(t, s)
 	groundBefore, _ := s.Chunks.TileHealth(tree)
 
-	// Like a rocket's body: it collides with terrain, which the trunk is, but not with the ground
-	shell := addExplosion(t, s.ECS, utils.TilePosToWorldPos(tree).Add(utils.Vec2f{Y: 3}), ecs.Layer_Terrain, []float64{1}, 30)
+	// Like a rocket's body: it collides with terrain and features, but not with the ground
+	shell := addExplosion(t, s.ECS, utils.TilePosToWorldPos(tree).Add(utils.Vec2f{Y: 3}), ecs.Layer_Terrain|ecs.Layer_Feature, []float64{1}, 30)
 	cols := touchTerrain(t, s)
 
 	hitTrunk := false
@@ -171,7 +171,7 @@ func TestAnExplosionDamagesBothATreeAndTheGroundUnderItOnce(t *testing.T) {
 	s := testutil.StartSession(t)
 	tree := findLoneTree(t, s)
 
-	explosion := addExplosion(t, s.ECS, utils.TilePosToWorldPos(tree), ecs.Layer_Terrain|ecs.Layer_Ground, []float64{6}, 20)
+	explosion := addExplosion(t, s.ECS, utils.TilePosToWorldPos(tree), ecs.Layer_Terrain|ecs.Layer_Ground|ecs.Layer_Feature, []float64{6}, 20)
 	cd, _ := s.ECS.ContactDamages.Get(explosion)
 	cd.WithActiveMs(0).WithRehitIntervalMs(0)
 	for range 3 {
@@ -208,7 +208,7 @@ func TestADestroyedTreeLeavesAStumpThatsOutOfTheWay(t *testing.T) {
 	}
 
 	mob := addCircle(t, s.ECS, center.Add(utils.Vec2f{Y: 3}), 3, func(shape shapes.Shape) ecs.Component {
-		return ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Terrain, ecs.Collider_Mob, shape)
+		return ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Terrain|ecs.Layer_Feature, ecs.Collider_Mob, shape)
 	})
 	resolveTerrain(t, s)
 	if got := testutil.WorldPos(t, s.ECS, mob); got != center.Add(utils.Vec2f{Y: 3}) {
@@ -351,5 +351,27 @@ func TestFeatureDropTablesMustAddUpAndDropKnownItems(t *testing.T) {
 		if err := tilesystem.NewChunkContainer().GenerateFeatureAtlasFromJson(path, items); err == nil {
 			t.Errorf("a drop table %s was accepted", c.name)
 		}
+	}
+}
+
+func TestTrunksAreOnTheirOwnLayer(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	tree := findLoneTree(t, s)
+	rock := tileOf(t, s, data.Tile_Rock)
+	trunk := utils.TilePosToWorldPos(tree).Add(utils.Vec2f{Y: 3})
+
+	terrainOnly := addExplosion(t, s.ECS, trunk, ecs.Layer_Terrain, []float64{1}, 30)
+	featuresOnly := addExplosion(t, s.ECS, utils.TilePosToWorldPos(rock), ecs.Layer_Feature, []float64{4}, 30)
+	for _, c := range touchTerrain(t, s) {
+		if c.E == terrainOnly || c.E == featuresOnly {
+			t.Errorf("entity %d collided with %+v", c.E, c)
+		}
+	}
+	if health, _ := s.Chunks.FeatureHealth(tree); health != 100 {
+		t.Fatalf("the tree has %d health after a hit that only collides with terrain, want 100", health)
+	}
+	if health, ok := s.Chunks.TileHealth(rock); !ok || health != 200 {
+		t.Fatalf("the rock has %d health after a hit that only collides with features", health)
 	}
 }

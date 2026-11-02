@@ -48,13 +48,15 @@ func press(t *testing.T, x *ecs.ECSContainer, player common.EntityId, input ecs.
 
 func TestOnlyTheSelectedItemIsInHandAndEnabled(t *testing.T) {
 	x, player, mattock, bazooka, gun := newArmedPlayer(t)
+	inv, _ := x.Inventories.Get(player)
+	axe, _ := inv.Slot(3)
 
 	check := func(wantInHand common.EntityId) {
 		t.Helper()
 		if got := inHand(x, player); got != wantInHand {
 			t.Fatalf("main hand holds %d, want %d", got, wantInHand)
 		}
-		for _, item := range []common.EntityId{mattock, bazooka, gun} {
+		for _, item := range []common.EntityId{mattock, bazooka, gun, axe} {
 			if x.IsDisabled(item) == (item == wantInHand) {
 				t.Fatalf("item %d disabled %v, but %d is in hand", item, x.IsDisabled(item), wantInHand)
 			}
@@ -70,11 +72,12 @@ func TestOnlyTheSelectedItemIsInHandAndEnabled(t *testing.T) {
 	press(t, x, player, ecs.InputState{SelectSlot: 3})
 	check(gun)
 	press(t, x, player, ecs.InputState{SelectSlot: 4})
+	check(axe)
+	press(t, x, player, ecs.InputState{SelectSlot: 5})
 	check(-1)
 	press(t, x, player, ecs.InputState{SelectSlot: 1})
 	check(mattock)
 
-	inv, _ := x.Inventories.Get(player)
 	if inv.Selected() != 0 {
 		t.Fatalf("slot %d is selected, want the first", inv.Selected())
 	}
@@ -123,5 +126,25 @@ func TestCooldownsKeepCountingWhileAnItemIsPutAway(t *testing.T) {
 
 	if fire() != 1 {
 		t.Fatal("the bazooka's cooldown didn't run out while it was put away")
+	}
+}
+
+func TestProjectilesHitTreesAndWalls(t *testing.T) {
+	x, player, _, _, _ := newArmedPlayer(t)
+	for _, slot := range []int{2, 3} {
+		press(t, x, player, ecs.InputState{SelectSlot: slot})
+		before := len(x.Transforms.GetEntities())
+		press(t, x, player, ecs.InputState{MainHandEqAbility1: 1})
+
+		spawned := x.Transforms.GetEntities()[before:]
+		if len(spawned) == 0 {
+			t.Fatalf("slot %d fired nothing", slot)
+		}
+		for _, e := range spawned {
+			hurtbox, ok := x.HurtboxColliders.Get(e)
+			if want := ecs.Layer_Terrain | ecs.Layer_Feature; !ok || hurtbox.Mask()&want != want {
+				t.Fatalf("what slot %d fires doesn't collide with both walls and trees", slot)
+			}
+		}
 	}
 }

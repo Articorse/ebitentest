@@ -14,6 +14,8 @@ const (
 	AssetSheetBullet           ImageAssetTag = "bullet"
 	AssetImageMattock          ImageAssetTag = "mattock"
 	AssetImagePlanks           ImageAssetTag = "planks"
+	AssetImageAxe              ImageAssetTag = "axe"
+	AssetImageSlash            ImageAssetTag = "slash"
 	AssetImagePlatform         ImageAssetTag = "platform"
 	AssetImageSlot             ImageAssetTag = "slot"
 	AssetImageSlotHighlight    ImageAssetTag = "slot_highlight"

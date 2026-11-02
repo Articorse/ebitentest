@@ -31,8 +31,8 @@ func TestPlayerTemplateWithStartingEquipment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(members) != 4 {
-		t.Fatalf("player stored with %d entities, want itself, the mattock, the bazooka and the gun", len(members))
+	if len(members) != 5 {
+		t.Fatalf("player stored with %d entities, want itself, the mattock, the bazooka, the gun and the axe", len(members))
 	}
 }
 
@@ -70,7 +70,7 @@ func TestPlayerStartsWithItsToolsInOrderAndTheMattockSelected(t *testing.T) {
 	if !ok || inv.Capacity() != data.HotbarSlots {
 		t.Fatalf("player inventory %v with %d slots, want %d", ok, inv.Capacity(), data.HotbarSlots)
 	}
-	for i, want := range []common.ImageAssetTag{common.AssetImageMattock, common.AssetSheetBazooka, common.AssetSheetGun} {
+	for i, want := range []common.ImageAssetTag{common.AssetImageMattock, common.AssetSheetBazooka, common.AssetSheetGun, common.AssetImageAxe} {
 		item, _ := inv.Slot(i)
 		if spr, ok := x.Sprites.Get(item); !ok || spr.ImageAsset() != want {
 			t.Fatalf("slot %d holds entity %d, want the %s", i, item, want)

@@ -47,6 +47,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		ecs.Layer_Enemy|
 			ecs.Layer_EnemyProjectile|
 			ecs.Layer_Terrain|
+			ecs.Layer_Feature|
 			ecs.Layer_Platform,
 		ecs.Collider_Mob,
 		pPhyColShape,
@@ -156,7 +157,8 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 	rocketHurtboxComp := ecs.NewHurtboxColliderComponent(
 		ecs.Layer_FriendlyProjectile,
 		ecs.Layer_Enemy|
-			ecs.Layer_Terrain,
+			ecs.Layer_Terrain|
+			ecs.Layer_Feature,
 		rocketHurtboxShape,
 	)
 	explosionAniFrames := []ecs.AnimationFrame{
@@ -250,6 +252,14 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		return fmt.Errorf("error putting gun in the player's inventory: %w", err)
 	}
 
+	axe, err := spawnAxe(ecsContainer, playerPos)
+	if err != nil {
+		return fmt.Errorf("error spawning axe: %w", err)
+	}
+	if err := ecsContainer.PutInInventory(player, 3, axe); err != nil {
+		return fmt.Errorf("error putting axe in the player's inventory: %w", err)
+	}
+
 	if err := ecsContainer.SelectInventorySlot(player, 0); err != nil {
 		return fmt.Errorf("error selecting the player's first slot: %w", err)
 	}
@@ -270,7 +280,43 @@ func spawnMattock(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Entit
 		Params: &abilities.TileStrikeParams{
 			RangeTiles: 3,
 			Damage:     50,
-			Mask:       ecs.Layer_Terrain | ecs.Layer_Ground,
+			Mask:       ecs.Layer_Terrain | ecs.Layer_Ground | ecs.Layer_Feature,
+		},
+	}
+
+	return ecsContainer.AddNewEntity(
+		ecs.NewHierarchyComponent(),
+		ecs.NewTransformComponent(pos, 1, 0),
+		ecs.NewDefaultVelocityComponent(),
+		sprComp,
+		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, abis),
+		ecs.NewSwingComponent(2*math.Pi/3, 0.15, utils.Vec2f{X: 15.5, Y: 21.5}),
+		ecs.NewItemComponent(),
+		ecs.NewPersistentComponent(),
+	)
+}
+
+func spawnAxe(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.EntityId, error) {
+	sprComp, err := ecs.NewSpriteComponent(common.AssetImageAxe, 20, false)
+	if err != nil {
+		return -1, err
+	}
+
+	abis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
+	abis[0] = ecs.EntityAbility{
+		Def:    ecs.NewAbilityDef(abilities.Ability_Slash, ecs.Ability_None, 600, 0),
+		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+		Params: &abilities.SlashParams{
+			Image: common.AssetImageSlash,
+			// Around the crescent in slash.png, which is 20×36
+			Hull: []utils.Vec2f{
+				{X: -10, Y: -18}, {X: -7, Y: -18}, {X: -1, Y: -16}, {X: 1, Y: -15}, {X: 8, Y: -8}, {X: 9, Y: -6}, {X: 10, Y: -3},
+				{X: 10, Y: 3}, {X: 9, Y: 6}, {X: 8, Y: 8}, {X: 1, Y: 15}, {X: -1, Y: 16}, {X: -7, Y: 18}, {X: -10, Y: 18},
+			},
+			ReachPx:    14,
+			Damage:     50,
+			Mask:       ecs.Layer_Enemy | ecs.Layer_Feature,
+			DurationMs: 150,
 		},
 	}
 
@@ -330,7 +376,8 @@ func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.
 	bulletHurtboxComp := ecs.NewHurtboxColliderComponent(
 		ecs.Layer_FriendlyProjectile,
 		ecs.Layer_Enemy|
-			ecs.Layer_Terrain,
+			ecs.Layer_Terrain|
+			ecs.Layer_Feature,
 		bulletHurtboxShape,
 	)
 

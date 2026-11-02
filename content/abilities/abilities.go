@@ -14,6 +14,7 @@ const (
 	Ability_Explode    ecs.AbilityEnum = 4
 	Ability_TileStrike ecs.AbilityEnum = 5
 	Ability_PlaceTile  ecs.AbilityEnum = 6
+	Ability_Slash      ecs.AbilityEnum = 7
 )
 
 func Register(ecsContainer *ecs.ECSContainer) error {
@@ -21,6 +22,7 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 	gob.Register(&ExplodeParams{})
 	gob.Register(&TileStrikeParams{})
 	gob.Register(&PlaceTileParams{})
+	gob.Register(&SlashParams{})
 
 	abilityFuncs := []struct {
 		id          ecs.AbilityEnum
@@ -32,6 +34,7 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 		{Ability_Explode, ExplodeAbility},
 		{Ability_TileStrike, TileStrikeAbility},
 		{Ability_PlaceTile, PlaceTileAbility},
+		{Ability_Slash, SlashAbility},
 	}
 
 	for _, a := range abilityFuncs {

@@ -8,7 +8,8 @@ import (
 // The tiles the simulation runs on, so that systems and abilities can query and change them
 type Terrain interface {
 	IsOpaqueTile(t utils.Vec2i) bool
-	// Layer_Terrain for impassable tiles and Layer_Ground for passable ones; false if the tile isn't loaded
+	// Layer_Terrain for impassable tiles and Layer_Ground for passable ones, whatever stands on them; false if the tile
+	// isn't loaded
 	TileLayer(t utils.Vec2i) (LayerMask, bool)
 	// Inside an impassable tile, a feature's collider, or where nothing is loaded
 	IsBlockedAt(pos utils.Vec2f) bool

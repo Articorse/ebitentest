@@ -60,6 +60,12 @@ func (v Vec2f) Length() float64 {
 	return math.Sqrt(v.X*v.X + v.Y*v.Y)
 }
 
+// Clockwise on screen, where Y points down
+func (v Vec2f) Rotated(angle float64) Vec2f {
+	sin, cos := math.Sincos(angle)
+	return Vec2f{X: v.X*cos - v.Y*sin, Y: v.X*sin + v.Y*cos}
+}
+
 func (v Vec2f) IsZero() bool {
 	return v.X == 0 && v.Y == 0
 }
