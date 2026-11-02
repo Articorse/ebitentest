@@ -9,6 +9,7 @@ import (
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"fmt"
+	"math"
 )
 
 func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
@@ -278,6 +279,7 @@ func spawnMattock(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Entit
 		ecs.NewDefaultVelocityComponent(),
 		sprComp,
 		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, abis),
+		ecs.NewSwingComponent(2*math.Pi/3, 0.15, utils.Vec2f{X: 15.5, Y: 21.5}),
 		ecs.NewItemComponent(),
 		ecs.NewPersistentComponent(),
 	)

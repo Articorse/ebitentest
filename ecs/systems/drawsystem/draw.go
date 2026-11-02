@@ -190,6 +190,9 @@ func DrawSprites(
 				w, h := img.Bounds().Dx(), img.Bounds().Dy()
 				opts.GeoM.Scale(s, s)
 				opts.GeoM.Translate(-float64(w)*s/2, -float64(h)*s/2)
+				if sw, ok := ecsContainer.Swings.Get(batchEntity); ok {
+					applySwing(&opts.GeoM, sw, ecsContainer.SwingAngle(batchEntity), w, h, s)
+				}
 				opts.GeoM.Rotate(r)
 				opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
 
@@ -355,4 +358,17 @@ func getNeighborsRecursive(
 	}
 
 	return neighbors, visitedEntities, nil
+}
+
+// Turns and flips the item around its grip, so that the grip stays where it's held
+func applySwing(geoM *ebiten.GeoM, sw *ecs.Swing, angle float64, w, h int, scale float64) {
+	grip := sw.Grip().Subtract(utils.Vec2f{X: float64(w) / 2, Y: float64(h) / 2}).Multiply(scale)
+
+	geoM.Translate(-grip.X, -grip.Y)
+	if sw.Mirrored() {
+		geoM.Scale(-1, 1)
+		angle = -angle
+	}
+	geoM.Rotate(angle)
+	geoM.Translate(grip.X, grip.Y)
 }

@@ -54,6 +54,9 @@ func HandleInputs(
 						continue
 					}
 					face(eqE, eWorldPos, input.AimPos, ecsContainer)
+					if sw, ok := ecsContainer.Swings.Get(eqE); ok && (input.AimPos != utils.Vec2f{}) {
+						sw.SetMirrored(input.AimPos.X < eWorldPos.X)
+					}
 				}
 			}
 		}

@@ -63,6 +63,7 @@ type ECSContainer struct {
 	Visions           Storage[Vision]
 	Items             Storage[Item]
 	Inventories       Storage[Inventory]
+	Swings            Storage[Swing]
 	Disabled          Storage[Disabled]
 }
 
@@ -91,6 +92,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&persistentDto{})
 	gob.Register(&tetherDto{})
 	gob.Register(&visionDto{})
+	gob.Register(&swingDto{})
 	gob.Register(&itemDto{})
 	gob.Register(&inventoryDto{})
 	gob.Register(&disabledDto{})
@@ -102,7 +104,7 @@ func NewECSContainer() *ECSContainer {
 	rngSource := rand.NewPCG(0, 0)
 
 	x := &ECSContainer{
-		nextEntity: 0,
+		nextEntity:   0,
 		CameraFollow: true,
 
 		abilityFuncs:     make(map[AbilityEnum]AbilityFunc),
@@ -143,6 +145,7 @@ func NewECSContainer() *ECSContainer {
 		Visions:           newStorage[Vision](),
 		Items:             newStorage[Item](),
 		Inventories:       newStorage[Inventory](),
+		Swings:            newStorage[Swing](),
 		Disabled:          newStorage[Disabled](),
 	}
 
@@ -174,6 +177,7 @@ func NewECSContainer() *ECSContainer {
 		&x.Visions,
 		&x.Items,
 		&x.Inventories,
+		&x.Swings,
 		&x.Disabled,
 	}
 
