@@ -122,7 +122,7 @@ func GetAABBCollisions(
 			continue
 		}
 
-		eAABB, err := ecsContainer.WorldAABB(et.E, col.LocalPaddedAABB())
+		eAABB, err := ecsContainer.ColliderPaddedWorldAABB(et.E, col)
 		if err != nil {
 			log.Printf("Error getting AABB for entity %d: %v\n", et.E, err)
 			continue
@@ -182,7 +182,7 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 			continue
 		}
 
-		worldAABB, err := ecsContainer.WorldAABB(e, col.LocalAABB())
+		worldAABB, err := ecsContainer.ColliderWorldAABB(e, col)
 		if err != nil {
 			log.Printf("error getting world AABB of entity %d: %v", e, err)
 			continue

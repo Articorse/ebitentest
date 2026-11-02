@@ -53,6 +53,12 @@ func firstShapeCollision(
 
 // The vector is how far B has to move out of A, or zero without a collision. Pass -1 for a shape without an entity.
 func ShapeCollision(eA, eB common.EntityId, aShape, bShape shapes.Shape, ecsContainer *ecs.ECSContainer) utils.Vec2f {
+	aShape, aOk := entityShape(eA, aShape, ecsContainer)
+	bShape, bOk := entityShape(eB, bShape, ecsContainer)
+	if !aOk || !bOk {
+		return utils.Vec2f{}
+	}
+
 	switch aS := aShape.(type) {
 	case *shapes.RectangleShape:
 		switch bS := bShape.(type) {
@@ -142,17 +148,30 @@ func aabbsCollide(
 		return false
 	}
 
-	aAABB, err := ecsContainer.WorldAABB(pair.A, aCol.LocalPaddedAABB())
+	aAABB, err := ecsContainer.ColliderPaddedWorldAABB(pair.A, aCol)
 	if err != nil {
 		log.Printf("Error getting AABB for entity %d: %v\n", pair.A, err)
 		return false
 	}
 
-	bAABB, err := ecsContainer.WorldAABB(pair.B, bCol.LocalPaddedAABB())
+	bAABB, err := ecsContainer.ColliderPaddedWorldAABB(pair.B, bCol)
 	if err != nil {
 		log.Printf("Error getting AABB for entity %d: %v\n", pair.B, err)
 		return false
 	}
 
 	return utils.DetectAABBCollision(aAABB, bAABB)
+}
+
+// A shape without an entity is already where it is in the world
+func entityShape(e common.EntityId, s shapes.Shape, ecsContainer *ecs.ECSContainer) (shapes.Shape, bool) {
+	if e == -1 {
+		return s, true
+	}
+	t, err := ecsContainer.TransformShape(e, s)
+	if err != nil {
+		log.Printf("error turning and scaling a shape of entity %d: %v", e, err)
+		return nil, false
+	}
+	return t, true
 }

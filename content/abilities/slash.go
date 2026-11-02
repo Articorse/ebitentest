@@ -62,12 +62,7 @@ func SlashAbility(
 	toAim := target.Pos.Subtract(slasherPos)
 	angle := math.Atan2(toAim.Y, toAim.X)
 
-	// Colliders don't turn with their entity, so the hull is turned once, here
-	hull := make([]utils.Vec2f, len(p.Hull))
-	for i, v := range p.Hull {
-		hull[i] = v.Rotated(angle)
-	}
-	shape, err := shapes.NewPolygonShape(hull, utils.Vec2f{})
+	shape, err := shapes.NewPolygonShape(slices.Clone(p.Hull), utils.Vec2f{})
 	if err != nil || shape == nil {
 		return false, fmt.Errorf("error creating the hull of a slash from %v: %v", p.Hull, err)
 	}

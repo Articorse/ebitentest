@@ -5,8 +5,10 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/ecs/shapes"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
+	"math"
 	"testing"
 )
 
@@ -80,5 +82,30 @@ func TestThePlayerIsBlockedByTrunks(t *testing.T) {
 
 	if got := testutil.WorldPos(t, s.ECS, player); got.X >= againstTrunk.X {
 		t.Fatalf("the player overlapping a trunk from the left moved from %v to %v, want it pushed left", againstTrunk, got)
+	}
+}
+
+func TestTurnedHurtboxesHitTheTilesTheyCover(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	rock := tileOf(t, s, data.Tile_Rock)
+	bar, err := shapes.NewPolygonShape([]utils.Vec2f{{X: 0, Y: -1}, {X: 3 * data.TileSize, Y: -1}, {X: 3 * data.TileSize, Y: 1}, {X: 0, Y: 1}}, utils.Vec2f{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Pointing up from two tiles below the rock, so that only turned does it reach it
+	e := testutil.AddMovable(t, s.ECS, utils.TilePosToWorldPos(utils.Vec2i{X: rock.X, Y: rock.Y + 2}), false,
+		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Terrain, bar),
+		ecs.NewContactDamageComponent(-1, 0, 10))
+	tr, _ := s.ECS.Transforms.Get(e)
+	tr.SetLocalRotation(-math.Pi / 2)
+
+	hit := false
+	for _, c := range touchTerrain(t, s) {
+		hit = hit || (c.E == e && c.Tile == rock)
+	}
+	if !hit {
+		t.Fatal("a bar turned to point up at the rock didn't hit it")
 	}
 }

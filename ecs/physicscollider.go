@@ -48,8 +48,6 @@ func (x PhysicsCollider) Copy() PhysicsCollider {
 			enabled:        x.enabled,
 			shapes:         colShapesCopy,
 			center:         x.center,
-			aabb:           x.aabb,
-			paddedAabb:     x.paddedAabb,
 			collisionLayer: x.collisionLayer,
 			collisionMask:  x.collisionMask,
 		},
@@ -65,8 +63,6 @@ type physicsColliderDto struct {
 	Enabled        bool
 	Shapes         []shapes.ShapeDto
 	Center         utils.Vec2f
-	Aabb           [2]utils.Vec2f
-	PaddedAabb     [2]utils.Vec2f
 	CollisionLayer LayerMask
 	CollisionMask  LayerMask
 }
@@ -86,8 +82,6 @@ func (x PhysicsCollider) toDto() (ComponentDto, error) {
 		Enabled:        x.enabled,
 		Shapes:         shapesDto,
 		Center:         x.center,
-		Aabb:           x.aabb,
-		PaddedAabb:     x.paddedAabb,
 		CollisionLayer: x.collisionLayer,
 		CollisionMask:  x.collisionMask,
 	}, nil
@@ -109,8 +103,6 @@ func (x *physicsColliderDto) toComponent() (Component, error) {
 			enabled:        x.Enabled,
 			shapes:         shapesList,
 			center:         x.Center,
-			aabb:           x.Aabb,
-			paddedAabb:     x.PaddedAabb,
 			collisionLayer: x.CollisionLayer,
 			collisionMask:  x.CollisionMask,
 		},

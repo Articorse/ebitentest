@@ -60,7 +60,7 @@ func (x *ECSContainer) IsTileOccupied(t utils.Vec2i) bool {
 	// Strictly inside, since something pressed flat against the tile, such as a player walking along a wall, isn't in
 	// the way
 	for e, col := range Query1(&x.PhysicsColliders, Without(&x.Disabled)) {
-		aabb, err := x.WorldAABB(e, col.LocalAABB())
+		aabb, err := x.ColliderWorldAABB(e, col)
 		if err == nil && aabb[0].X < hi.X && aabb[1].X > lo.X && aabb[0].Y < hi.Y && aabb[1].Y > lo.Y {
 			return true
 		}

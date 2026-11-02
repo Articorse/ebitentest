@@ -83,6 +83,10 @@ func DrawColliders(
 		}
 
 		for _, shape := range col.Shapes() {
+			shape, ok := entityShape(e, shape, ecsContainer)
+			if !ok {
+				continue
+			}
 			switch h := shape.(type) {
 			case *shapes.RectangleShape:
 				verts := []utils.Vec2f{
@@ -175,7 +179,7 @@ func DrawAABBs(
 			lineColor = collidedColor
 		}
 
-		aabb, err := ecsContainer.WorldAABB(e, col.LocalPaddedAABB())
+		aabb, err := ecsContainer.ColliderPaddedWorldAABB(e, col)
 		if err != nil {
 			log.Printf("Error getting AABB for entity %d: %v\n", e, err)
 			continue

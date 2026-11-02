@@ -13,7 +13,7 @@ func Tick(
 	ecsContainer *ecs.ECSContainer,
 ) error {
 	for eA, aCol := range ecs.Query1(&ecsContainer.PlatformColliders, ecs.Without(&ecsContainer.Disabled)) {
-		aAABB, err := ecsContainer.WorldAABB(eA, aCol.LocalAABB())
+		aAABB, err := ecsContainer.ColliderWorldAABB(eA, aCol)
 		if err != nil {
 			log.Printf("error getting AABB of entity %d: %v", eA, err)
 			continue

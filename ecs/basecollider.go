@@ -25,8 +25,6 @@ type baseCollider struct {
 	enabled        bool
 	shapes         []shapes.Shape
 	center         utils.Vec2f
-	aabb           [2]utils.Vec2f
-	paddedAabb     [2]utils.Vec2f
 	collisionLayer LayerMask
 	collisionMask  LayerMask
 }
@@ -39,43 +37,6 @@ func newBaseCollider(
 	c := baseCollider{enabled: true, shapes: colShapes, collisionLayer: collisionLayer, collisionMask: collisionMask}
 
 	c.center = shapes.CalculateCenter(colShapes)
-
-	if len(colShapes) == 0 {
-		c.aabb = [2]utils.Vec2f{
-			utils.Vec2f{X: 0, Y: 0},
-			utils.Vec2f{X: 0, Y: 0},
-		}
-	} else {
-		firstAABB := colShapes[0].GetAABB()
-		minX, minY := firstAABB[0].X, firstAABB[0].Y
-		maxX, maxY := firstAABB[1].X, firstAABB[1].Y
-
-		for _, shape := range colShapes {
-			aabb := shape.GetAABB()
-			if aabb[0].X < minX {
-				minX = aabb[0].X
-			}
-			if aabb[0].Y < minY {
-				minY = aabb[0].Y
-			}
-			if aabb[1].X > maxX {
-				maxX = aabb[1].X
-			}
-			if aabb[1].Y > maxY {
-				maxY = aabb[1].Y
-			}
-		}
-
-		c.aabb = [2]utils.Vec2f{
-			utils.Vec2f{X: minX, Y: minY},
-			utils.Vec2f{X: maxX, Y: maxY},
-		}
-	}
-
-	c.paddedAabb = [2]utils.Vec2f{
-		utils.Vec2f{X: c.aabb[0].X - data.AABBPadding, Y: c.aabb[0].Y - data.AABBPadding},
-		utils.Vec2f{X: c.aabb[1].X + data.AABBPadding, Y: c.aabb[1].Y + data.AABBPadding},
-	}
 
 	return c
 }
@@ -96,15 +57,6 @@ func (x *baseCollider) Center() utils.Vec2f {
 	return x.center
 }
 
-func (x *baseCollider) LocalAABB() [2]utils.Vec2f {
-	return x.aabb
-}
-
-// Padded by data.AABBPadding, so that the broad phase also catches shapes that are about to touch
-func (x *baseCollider) LocalPaddedAABB() [2]utils.Vec2f {
-	return x.paddedAabb
-}
-
 func (x *baseCollider) Layer() LayerMask {
 	return x.collisionLayer
 }
@@ -118,8 +70,6 @@ type Collider interface {
 	SetEnabled(enabled bool)
 	Shapes() []shapes.Shape
 	Center() utils.Vec2f
-	LocalAABB() [2]utils.Vec2f
-	LocalPaddedAABB() [2]utils.Vec2f
 	Layer() LayerMask
 	Mask() LayerMask
 }
@@ -156,11 +106,41 @@ func (x colliderSet[T, PT]) Collider(e common.EntityId) (Collider, bool) {
 	return PT(c), true
 }
 
-func (x *ECSContainer) WorldAABB(e common.EntityId, localAABB [2]utils.Vec2f) ([2]utils.Vec2f, error) {
+// Turned and scaled with the entity, but still around its position, as the shapes of its colliders are
+func (x *ECSContainer) TransformShape(e common.EntityId, s shapes.Shape) (shapes.Shape, error) {
+	rotation, err := x.WorldRotation(e)
+	if err != nil {
+		return nil, fmt.Errorf("error getting world rotation of entity %d: %v", e, err)
+	}
+	scale, err := x.WorldScale(e)
+	if err != nil {
+		return nil, fmt.Errorf("error getting world scale of entity %d: %v", e, err)
+	}
+
+	return shapes.Transform(s, rotation, scale), nil
+}
+
+// Around the collider's shapes as they're turned and scaled with the entity
+func (x *ECSContainer) ColliderWorldAABB(e common.EntityId, col Collider) ([2]utils.Vec2f, error) {
 	worldPos, err := x.WorldPos(e)
 	if err != nil {
 		return [2]utils.Vec2f{}, fmt.Errorf("error getting world position of entity %d: %v", e, err)
 	}
 
-	return [2]utils.Vec2f{localAABB[0].Add(worldPos), localAABB[1].Add(worldPos)}, nil
+	local := make([]shapes.Shape, len(col.Shapes()))
+	for i, s := range col.Shapes() {
+		if local[i], err = x.TransformShape(e, s); err != nil {
+			return [2]utils.Vec2f{}, err
+		}
+	}
+
+	aabb := shapes.BoundingAABB(local)
+	return [2]utils.Vec2f{aabb[0].Add(worldPos), aabb[1].Add(worldPos)}, nil
+}
+
+// Padded by data.AABBPadding, so that the broad phase also catches shapes that are about to touch
+func (x *ECSContainer) ColliderPaddedWorldAABB(e common.EntityId, col Collider) ([2]utils.Vec2f, error) {
+	aabb, err := x.ColliderWorldAABB(e, col)
+	padding := utils.Vec2f{X: data.AABBPadding, Y: data.AABBPadding}
+	return [2]utils.Vec2f{aabb[0].Subtract(padding), aabb[1].Add(padding)}, err
 }
