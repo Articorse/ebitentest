@@ -26,8 +26,10 @@ func (p *TileStrikeParams) Copy() ecs.AbilityParams {
 	return &c
 }
 
-// The last tile between from and aim that the strike can affect, so that aiming past a tile, such as at something
-// behind it, still hits it, but aiming at a tile doesn't hit the one in front of it instead
+// The tile under the aim if the strike can affect it. Otherwise the last terrain tile between from and aim that it can
+// affect, so that aiming past a wall, such as at something behind it, hits the wall. Ground is only hit when aimed at
+// directly, since the ground in front of where the player aims gets in the way of every strike, and destroying it
+// moves the target closer with each one.
 func (p *TileStrikeParams) TargetTile(from, aim utils.Vec2f, terrain ecs.Terrain) (utils.Vec2i, bool) {
 	if p == nil {
 		return utils.Vec2i{}, false
@@ -39,9 +41,13 @@ func (p *TileStrikeParams) TargetTile(from, aim utils.Vec2f, terrain ecs.Terrain
 		inSight[t] = true
 	})
 
+	if aimed := utils.WorldPosToTilePos(aim); p.canAffect(origin, aimed, inSight, terrain) {
+		return aimed, true
+	}
+
 	target, found := utils.Vec2i{}, false
 	for _, t := range utils.TilesAlongSegment(from, aim) {
-		if p.canAffect(origin, t, inSight, terrain) {
+		if layer, _ := terrain.TileLayer(t); layer == ecs.Layer_Terrain && p.canAffect(origin, t, inSight, terrain) {
 			target, found = t, true
 		}
 	}

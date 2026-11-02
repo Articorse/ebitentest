@@ -82,7 +82,7 @@ func strike(t *testing.T, x *ecs.ECSContainer, holder common.EntityId, tile util
 	return used
 }
 
-func TestTileStrikeHitsTheLastTileItCanAffectOnTheWayToTheAim(t *testing.T) {
+func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 	both := ecs.Layer_Terrain | ecs.Layer_Ground
 	none := utils.Vec2i{X: 99}
 	cases := []struct {
@@ -95,15 +95,17 @@ func TestTileStrikeHitsTheLastTileItCanAffectOnTheWayToTheAim(t *testing.T) {
 	}{
 		{"its own tile", both, nil, nil, utils.Vec2i{}, utils.Vec2i{}},
 		{"ground in range", both, nil, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}},
-		{"ground past the range", both, nil, nil, utils.Vec2i{X: 6}, utils.Vec2i{X: 2}},
-		{"past the range's circle", both, nil, nil, utils.Vec2i{X: 2, Y: 1}, utils.Vec2i{X: 1, Y: 1}},
+		{"ground past the range", both, nil, nil, utils.Vec2i{X: 6}, none},
+		{"past the range's circle", both, nil, nil, utils.Vec2i{X: 2, Y: 1}, none},
+		{"rock past the range", both, []utils.Vec2i{{X: 2}, {X: 4}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}},
 		{"rock with ground in front", both, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}},
 		{"ground behind rock", both, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}},
 		{"far behind rock", both, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 1}},
-		{"a tile that can't be damaged", both, nil, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}},
+		{"ground that can't be damaged", both, nil, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, none},
+		{"rock that can't be damaged", both, []utils.Vec2i{{X: 1}, {X: 2}}, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}},
 		{"rock past the aim", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 1}, none},
 		{"rock on the way", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}},
-		{"ground behind rock it can't affect", ecs.Layer_Ground, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 3}, utils.Vec2i{}},
+		{"ground behind rock it can't affect", ecs.Layer_Ground, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 3}, none},
 	}
 
 	for _, c := range cases {
