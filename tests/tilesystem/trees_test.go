@@ -1,6 +1,7 @@
 package tilesystem_test
 
 import (
+	"ebittest/content/items"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -8,6 +9,8 @@ import (
 	"ebittest/tests/testutil"
 	"ebittest/tilesystem"
 	"ebittest/utils"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -189,13 +192,13 @@ func TestADestroyedTreeLeavesAStumpThatsOutOfTheWay(t *testing.T) {
 	s := testutil.StartSession(t)
 	tree := findLoneTree(t, s)
 
-	if !s.Chunks.DamageFeature(tree, 60) || !s.Chunks.DamageFeature(tree, 40) {
+	if !s.ECS.DamageFeature(tree, 60) || !s.ECS.DamageFeature(tree, 40) {
 		t.Fatal("the tree couldn't be damaged")
 	}
 	if f, _ := s.Chunks.FeatureAt(tree); f != data.Feature_Stump {
 		t.Fatalf("after 100 damage the tree is %v, want a stump", f)
 	}
-	if s.Chunks.CanDamageFeature(tree) || s.Chunks.DamageFeature(tree, 10) {
+	if s.Chunks.CanDamageFeature(tree) || s.ECS.DamageFeature(tree, 10) {
 		t.Fatal("the stump can be damaged")
 	}
 
@@ -241,7 +244,7 @@ func TestDamagedTreesAndStumpsAreSaved(t *testing.T) {
 		return ok && f == data.Feature_Tree && tile != damaged
 	})
 
-	if !s.Chunks.DamageFeature(damaged, 30) || !s.Chunks.DamageFeature(felled, 100) {
+	if !s.ECS.DamageFeature(damaged, 30) || !s.ECS.DamageFeature(felled, 100) {
 		t.Fatal("the trees couldn't be damaged")
 	}
 
@@ -275,5 +278,67 @@ func TestTerrainBlocksTossesWhereItsImpassable(t *testing.T) {
 		if got := s.Chunks.IsBlockedAt(c.pos); got != c.want {
 			t.Errorf("%s at %v: blocked %v, want %v", c.name, c.pos, got, c.want)
 		}
+	}
+}
+
+func TestFelledTreesDropPlanks(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+
+	trees := []utils.Vec2i{}
+	center := utils.WorldPosToTilePos(testutil.PlayerStart)
+	for dy := -24; dy <= 24; dy++ {
+		for dx := -24; dx <= 24; dx++ {
+			tile := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
+			if f, ok := s.Chunks.FeatureAt(tile); ok && f == data.Feature_Tree {
+				trees = append(trees, tile)
+			}
+		}
+	}
+	if len(trees) < 5 {
+		t.Fatalf("only %d trees in the active chunks, too few to see what they drop", len(trees))
+	}
+
+	dropCounts := map[int]int{}
+	for _, tree := range trees {
+		before := len(s.ECS.Items.GetEntities())
+		if !s.ECS.DamageFeature(tree, 100) {
+			t.Fatalf("couldn't fell the tree at %v", tree)
+		}
+
+		dropped := s.ECS.Items.GetEntities()[before:]
+		dropCounts[len(dropped)]++
+		for _, e := range dropped {
+			item, _ := s.ECS.Items.Get(e)
+			if item.Kind() != items.ItemKind_Planks || item.Count() != 1 || !s.ECS.Tosses.HasComponent(e) {
+				t.Fatalf("the tree at %v dropped a %v of kind %v, tossed %v; want single planks, each tossed",
+					tree, item.Count(), item.Kind(), s.ECS.Tosses.HasComponent(e))
+			}
+			if pos := testutil.WorldPos(t, s.ECS, e); pos != utils.TilePosToWorldPos(tree) {
+				t.Fatalf("a plank was dropped at %v, want from the tree at %v", pos, utils.TilePosToWorldPos(tree))
+			}
+		}
+	}
+
+	for n := range dropCounts {
+		if n > 2 {
+			t.Fatalf("drop counts %v, want only 0, 1 or 2 planks per tree", dropCounts)
+		}
+	}
+	if dropCounts[1] == 0 || dropCounts[2] == 0 {
+		t.Fatalf("over %d trees, drop counts were %v; want some to drop one and some two", len(trees), dropCounts)
+	}
+}
+
+func TestFeatureDropTablesMustAddUp(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "features.json")
+	atlas := `[{"id": 1, "imageAsset": "tree", "maxHealth": 10, "destroyedInto": 1,
+		"drops": [{"chance": 60, "items": [{"kind": 1, "count": 1}]}, {"chance": 50, "items": [{"kind": 1, "count": 2}]}]}]`
+	if err := os.WriteFile(path, []byte(atlas), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := tilesystem.NewChunkContainer().GenerateFeatureAtlasFromJson(path); err == nil {
+		t.Fatal("a drop table adding up to 110% was accepted")
 	}
 }

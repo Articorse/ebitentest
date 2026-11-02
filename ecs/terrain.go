@@ -14,8 +14,8 @@ type Terrain interface {
 	DamageTile(t utils.Vec2i, damage int) bool
 	// Features, such as trees, stand on a tile without replacing it, and are damaged separately from it
 	CanDamageFeature(t utils.Vec2i) bool
-	// False if there's no feature on the tile, or it can't be damaged
-	DamageFeature(t utils.Vec2i, damage int) bool
+	// False if there's no feature on the tile, or it can't be damaged. What the feature drops, if this destroyed it.
+	DamageFeature(t utils.Vec2i, damage int) (damaged bool, drops *DropTable)
 }
 
 type noTerrain struct{}
@@ -26,7 +26,9 @@ func (noTerrain) IsBlockedAt(utils.Vec2f) bool            { return false }
 func (noTerrain) CanDamageTile(utils.Vec2i) bool          { return false }
 func (noTerrain) DamageTile(utils.Vec2i, int) bool        { return false }
 func (noTerrain) CanDamageFeature(utils.Vec2i) bool       { return false }
-func (noTerrain) DamageFeature(utils.Vec2i, int) bool     { return false }
+func (noTerrain) DamageFeature(utils.Vec2i, int) (bool, *DropTable) {
+	return false, nil
+}
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {
 	x.terrain = terrain

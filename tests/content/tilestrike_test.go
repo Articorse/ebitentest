@@ -62,12 +62,12 @@ func (f *fakeTerrain) CanDamageFeature(t utils.Vec2i) bool {
 	return f.trees[t]
 }
 
-func (f *fakeTerrain) DamageFeature(t utils.Vec2i, damage int) bool {
+func (f *fakeTerrain) DamageFeature(t utils.Vec2i, damage int) (bool, *ecs.DropTable) {
 	if !f.trees[t] {
-		return false
+		return false, nil
 	}
 	f.treesDamaged[t] += damage
-	return true
+	return true, nil
 }
 
 func (f *fakeTerrain) CanDamageTile(t utils.Vec2i) bool {

@@ -76,11 +76,11 @@ func struckLayer(tile utils.Vec2i, terrain ecs.Terrain) (ecs.LayerMask, bool) {
 	return terrain.TileLayer(tile)
 }
 
-func strikeTile(tile utils.Vec2i, damage int, terrain ecs.Terrain) bool {
-	if terrain.CanDamageFeature(tile) {
-		return terrain.DamageFeature(tile, damage)
+func strikeTile(tile utils.Vec2i, damage int, ecsContainer *ecs.ECSContainer) bool {
+	if ecsContainer.Terrain().CanDamageFeature(tile) {
+		return ecsContainer.DamageFeature(tile, damage)
 	}
-	return terrain.DamageTile(tile, damage)
+	return ecsContainer.Terrain().DamageTile(tile, damage)
 }
 
 func TileStrikeAbility(
@@ -110,7 +110,7 @@ func TileStrikeAbility(
 
 	terrain := ecsContainer.Terrain()
 	tile, ok := p.TargetTile(strikerPos, target.Pos, terrain)
-	if !ok || !strikeTile(tile, p.Damage, terrain) {
+	if !ok || !strikeTile(tile, p.Damage, ecsContainer) {
 		return false, nil
 	}
 

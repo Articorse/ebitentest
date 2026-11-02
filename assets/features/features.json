@@ -6,7 +6,11 @@
     "spriteLayer": 20,
     "collider": { "width": 8, "height": 6, "offset": { "x": 0, "y": 3 } },
     "maxHealth": 100,
-    "destroyedInto": 2
+    "destroyedInto": 2,
+    "drops": [
+      { "chance": 30, "items": [{ "kind": 1, "count": 2 }] },
+      { "chance": 50, "items": [{ "kind": 1, "count": 1 }] }
+    ]
   },
   {
     "id": 2,

@@ -2,7 +2,7 @@ package ecs
 
 import "fmt"
 
-// Saved components refer to abilities, timer functions and input sources by ID, so an ID that's taken twice is refused
+// Saved components refer to abilities, timer functions, input sources and item kinds by ID, so an ID that's taken twice is refused
 // rather than silently changing what saves refer to
 func (x *ECSContainer) RegisterAbility(id AbilityEnum, abilityFunc AbilityFunc) error {
 	if id == Ability_None {
@@ -34,5 +34,17 @@ func (x *ECSContainer) RegisterInputSource(id InputTypeEnum, inputSourceFunc Inp
 	}
 
 	x.inputSourceFuncs[id] = inputSourceFunc
+	return nil
+}
+
+func (x *ECSContainer) RegisterItem(kind ItemKindEnum, spawn ItemSpawnFunc) error {
+	if kind == ItemKind_None {
+		return fmt.Errorf("cannot register an item as none")
+	}
+	if _, ok := x.itemSpawnFuncs[kind]; ok {
+		return fmt.Errorf("item kind %v is already registered", kind)
+	}
+
+	x.itemSpawnFuncs[kind] = spawn
 	return nil
 }

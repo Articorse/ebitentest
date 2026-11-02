@@ -133,7 +133,7 @@ func dealTileDamage(collisions []common.TileCollision, ecsCont *ecs.ECSContainer
 
 		// Hitting a feature's collider only damages the feature, not the ground it stands on
 		if c.Feature {
-			if cd.CanHitFeature(c.Tile) && ecsCont.Terrain().DamageFeature(c.Tile, damageTiers[c.ShapeIdx]) {
+			if cd.CanHitFeature(c.Tile) && ecsCont.DamageFeature(c.Tile, damageTiers[c.ShapeIdx]) {
 				cd.RecordFeatureHit(c.Tile)
 				if err := effects.SpawnDamageNumber(utils.TilePosToWorldPos(c.Tile), damageTiers[c.ShapeIdx], ecsCont); err != nil {
 					log.Println(err)

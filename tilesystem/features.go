@@ -3,6 +3,7 @@ package tilesystem
 import (
 	"cmp"
 	"ebittest/data"
+	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"encoding/json"
@@ -24,6 +25,8 @@ type featureDef struct {
 	// Not positive for features that can't be damaged
 	maxHealth     int
 	destroyedInto data.FeatureEnum
+	// Nil for features that drop nothing when destroyed
+	drops *ecs.DropTable
 }
 
 type featureDefDTO struct {
@@ -34,7 +37,18 @@ type featureDefDTO struct {
 	Collider    *featureColliderDTO `json:"collider"`
 	MaxHealth   int                 `json:"maxHealth"`
 	// Required for features that can be damaged
-	DestroyedInto *uint16 `json:"destroyedInto"`
+	DestroyedInto *uint16          `json:"destroyedInto"`
+	Drops         []dropOutcomeDTO `json:"drops"`
+}
+
+type dropOutcomeDTO struct {
+	ChancePercent float64       `json:"chance"`
+	Items         []itemDropDTO `json:"items"`
+}
+
+type itemDropDTO struct {
+	Kind  uint16 `json:"kind"`
+	Count int    `json:"count"`
 }
 
 type featureColliderDTO struct {
@@ -79,6 +93,21 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string) error {
 			def.destroyedInto = data.FeatureEnum(*dto.DestroyedInto)
 		}
 
+		if len(dto.Drops) > 0 {
+			outcomes := make([]ecs.DropOutcome, len(dto.Drops))
+			for i, o := range dto.Drops {
+				outcomes[i].ChancePercent = o.ChancePercent
+				for _, item := range o.Items {
+					outcomes[i].Items = append(outcomes[i].Items, ecs.ItemDrop{Kind: ecs.ItemKindEnum(item.Kind), Count: item.Count})
+				}
+			}
+			drops, err := ecs.NewDropTable(outcomes...)
+			if err != nil {
+				return fmt.Errorf("feature %d has an invalid drop table: %w", dto.Id, err)
+			}
+			def.drops = drops
+		}
+
 		defs[data.FeatureEnum(dto.Id)] = def
 	}
 
@@ -109,11 +138,12 @@ func (cc *ChunkContainer) FeatureHealth(t utils.Vec2i) (health int, ok bool) {
 	return def.maxHealth, true
 }
 
-// Returns false for features that can't be damaged, or tiles without one in an active chunk
-func (cc *ChunkContainer) DamageFeature(t utils.Vec2i, damage int) bool {
+// Returns false for features that can't be damaged, or tiles without one in an active chunk. Returns what the feature
+// drops, if this destroyed it.
+func (cc *ChunkContainer) DamageFeature(t utils.Vec2i, damage int) (bool, *ecs.DropTable) {
 	c, def, ok := cc.featureOn(t)
 	if !ok || def.maxHealth <= 0 {
-		return false
+		return false, nil
 	}
 
 	health := def.maxHealth
@@ -125,12 +155,12 @@ func (cc *ChunkContainer) DamageFeature(t utils.Vec2i, damage int) bool {
 
 	if health > 0 {
 		c.featureHealth[t] = health
-		return true
+		return true, nil
 	}
 
 	delete(c.featureHealth, t)
 	c.features[t] = def.destroyedInto
-	return true
+	return true, def.drops
 }
 
 func (cc *ChunkContainer) featureOn(t utils.Vec2i) (*chunk, featureDef, bool) {

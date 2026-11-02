@@ -20,7 +20,7 @@ func (openGround) IsBlockedAt(utils.Vec2f) bool { return false }
 
 func (openGround) CanDamageFeature(utils.Vec2i) bool { return false }
 
-func (openGround) DamageFeature(utils.Vec2i, int) bool { return false }
+func (openGround) DamageFeature(utils.Vec2i, int) (bool, *ecs.DropTable) { return false, nil }
 
 func (openGround) CanDamageTile(utils.Vec2i) bool { return true }
 

@@ -29,12 +29,8 @@ func Tick(ecsContainer *ecs.ECSContainer) {
 		item.TickPickupDelay()
 	}
 
-	// Only those with room, since an item that can't be picked up isn't pulled in either
 	collectors := []collector{}
-	for e, inv := range ecs.Query1(&ecsContainer.Inventories, ecs.With(&ecsContainer.Transforms), ecs.Without(&ecsContainer.Disabled)) {
-		if inv.FirstFreeSlot() == -1 {
-			continue
-		}
+	for e := range ecs.Query1(&ecsContainer.Inventories, ecs.With(&ecsContainer.Transforms), ecs.Without(&ecsContainer.Disabled)) {
 		pos, err := ecsContainer.WorldPos(e)
 		if err != nil {
 			log.Printf("error getting world position of entity %d to pick up items: %v", e, err)
@@ -47,10 +43,10 @@ func Tick(ecsContainer *ecs.ECSContainer) {
 	pickUpItems(collectors, ecsContainer)
 }
 
-// Towards the closest collector in reach, and only while one is
+// Towards the closest collector in reach that could pick it up, and only while one is
 func pullItems(collectors []collector, ecsContainer *ecs.ECSContainer) {
 	for e, item := range ecs.Query1(&ecsContainer.Items, ecs.With(&ecsContainer.Transforms), ecs.Without(&ecsContainer.Disabled)) {
-		if ecsContainer.Parent(e) != -1 || !item.CanBePickedUp() || ecsContainer.Tosses.HasComponent(e) {
+		if ecsContainer.Parent(e) != -1 {
 			item.StopPull()
 			continue
 		}
@@ -63,6 +59,9 @@ func pullItems(collectors []collector, ecsContainer *ecs.ECSContainer) {
 
 		closest, closestDist2 := -1, float64(data.ItemPullReachPx*data.ItemPullReachPx)
 		for i, c := range collectors {
+			if !ecsContainer.CanPickUp(c.e, e) {
+				continue
+			}
 			if d := c.pos.Subtract(pos); d.X*d.X+d.Y*d.Y <= closestDist2 && (closest == -1 || d.X*d.X+d.Y*d.Y < closestDist2) {
 				closest, closestDist2 = i, d.X*d.X+d.Y*d.Y
 			}
@@ -80,8 +79,8 @@ func pickUpItems(collectors []collector, ecsContainer *ecs.ECSContainer) {
 	type pickup struct{ collector, item common.EntityId }
 	pickups := []pickup{}
 	for _, c := range collectors {
-		for e, item := range ecs.Query1(&ecsContainer.Items, ecs.With(&ecsContainer.Transforms), ecs.Without(&ecsContainer.Disabled)) {
-			if ecsContainer.Parent(e) != -1 || !item.CanBePickedUp() {
+		for e := range ecs.Query1(&ecsContainer.Items, ecs.With(&ecsContainer.Transforms), ecs.Without(&ecsContainer.Disabled)) {
+			if !ecsContainer.CanPickUp(c.e, e) {
 				continue
 			}
 

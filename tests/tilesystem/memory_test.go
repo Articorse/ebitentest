@@ -135,7 +135,7 @@ func TestTreesAreRememberedAsTheyWereLastSeen(t *testing.T) {
 		t.Fatal("the grass beside the tree is remembered with a feature")
 	}
 
-	if !s.Chunks.DamageFeature(tree, 100) {
+	if !s.ECS.DamageFeature(tree, 100) {
 		t.Fatal("couldn't fell the tree")
 	}
 	if f, _ := s.Chunks.RecallFeature(tree); f != data.Feature_Tree {

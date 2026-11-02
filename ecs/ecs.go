@@ -35,6 +35,7 @@ type ECSContainer struct {
 
 	abilityFuncs     map[AbilityEnum]AbilityFunc
 	timerFuncs       map[TimerFuncEnum]TimerFunc
+	itemSpawnFuncs   map[ItemKindEnum]ItemSpawnFunc
 	inputSourceFuncs map[InputTypeEnum]InputSourceFunc
 
 	Inputs            Storage[Input]
@@ -66,6 +67,7 @@ type ECSContainer struct {
 	Inventories       Storage[Inventory]
 	Swings            Storage[Swing]
 	Tosses            Storage[Toss]
+	DropTables        Storage[DropTable]
 	Disabled          Storage[Disabled]
 }
 
@@ -97,6 +99,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&visionDto{})
 	gob.Register(&swingDto{})
 	gob.Register(&tossDto{})
+	gob.Register(&dropTableDto{})
 	gob.Register(&itemDto{})
 	gob.Register(&inventoryDto{})
 	gob.Register(&disabledDto{})
@@ -113,6 +116,7 @@ func NewECSContainer() *ECSContainer {
 
 		abilityFuncs:     make(map[AbilityEnum]AbilityFunc),
 		timerFuncs:       make(map[TimerFuncEnum]TimerFunc),
+		itemSpawnFuncs:   make(map[ItemKindEnum]ItemSpawnFunc),
 		inputSourceFuncs: make(map[InputTypeEnum]InputSourceFunc),
 
 		Rng:       rand.New(rngSource),
@@ -152,6 +156,7 @@ func NewECSContainer() *ECSContainer {
 		Inventories:       newStorage[Inventory](),
 		Swings:            newStorage[Swing](),
 		Tosses:            newStorage[Toss](),
+		DropTables:        newStorage[DropTable](),
 		Disabled:          newStorage[Disabled](),
 	}
 
@@ -186,6 +191,7 @@ func NewECSContainer() *ECSContainer {
 		&x.Inventories,
 		&x.Swings,
 		&x.Tosses,
+		&x.DropTables,
 		&x.Disabled,
 	}
 
@@ -323,6 +329,13 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 			err := x.runDeathrattle(e)
 			if err != nil {
 				log.Printf("Error executing deathrattle for entity %d: %v\n", e, err)
+			}
+		}
+		if table, ok := x.DropTables.Get(e); ok {
+			if pos, err := x.WorldPos(e); err != nil {
+				log.Printf("Error getting world position of entity %d to drop its loot: %v\n", e, err)
+			} else if err := x.SpawnDrops(table, pos); err != nil {
+				log.Printf("Error dropping the loot of entity %d: %v\n", e, err)
 			}
 		}
 	}
