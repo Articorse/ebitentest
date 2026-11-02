@@ -140,3 +140,24 @@ func TestInventorySurvivesSaving(t *testing.T) {
 	}
 	checkConsistency(t, y)
 }
+
+func TestTheItemsPickupDelayIsSaved(t *testing.T) {
+	x := testutil.NewECS(t)
+	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(1))
+	item := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewItemComponent())
+	if err := x.PutInInventory(owner, 0, item); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := x.DropSelectedItem(owner); err != nil {
+		t.Fatal(err)
+	}
+
+	members, err := x.GetCompositionComponents(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, _ := testutil.Restore(t, members).Items.Get(item)
+	if restored == nil || restored.CanBePickedUp() {
+		t.Fatal("a just dropped item can be picked up after being saved and loaded")
+	}
+}

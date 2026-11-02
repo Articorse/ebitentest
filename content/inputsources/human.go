@@ -35,6 +35,8 @@ func HumanInputSource(
 		Ability2:           in.Value(ecs.Input_Ability2),
 	}
 
+	is.DropItem = in.JustPressed(ecs.Input_DropItem)
+
 	for i := range 9 {
 		if in.Value(ecs.Input_SelectSlot1+ecs.InputType(i)) > 0 {
 			is.SelectSlot = i + 1

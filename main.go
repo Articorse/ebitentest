@@ -15,6 +15,7 @@ import (
 	"ebittest/ecs/systems/damagesystem"
 	"ebittest/ecs/systems/drawsystem"
 	"ebittest/ecs/systems/inputsystem"
+	"ebittest/ecs/systems/itemsystem"
 	"ebittest/ecs/systems/movementsystem"
 	"ebittest/ecs/systems/platformsystem"
 	"ebittest/ecs/systems/timersystem"
@@ -111,6 +112,7 @@ func (g *game) Update() error {
 		pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(ebiten.KeyD, ebiten.KeyA)
 		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewMouseInputKey(ebiten.MouseButtonLeft, -1)
 		pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(ebiten.KeySpace, -1)
+		pInputConfig[ecs.Input_DropItem] = ecs.NewKeyboardInputKey(ebiten.KeyQ, -1)
 		for i, key := range []ebiten.Key{
 			ebiten.KeyDigit1, ebiten.KeyDigit2, ebiten.KeyDigit3, ebiten.KeyDigit4, ebiten.KeyDigit5,
 			ebiten.KeyDigit6, ebiten.KeyDigit7, ebiten.KeyDigit8, ebiten.KeyDigit9,
@@ -307,6 +309,8 @@ func (g *game) Update() error {
 	if err != nil {
 		log.Println("error during tile collision resolution: ", err)
 	}
+
+	itemsystem.Tick(g.ecs)
 
 	err = abilitysystem.Tick(g.ecs)
 	if err != nil {

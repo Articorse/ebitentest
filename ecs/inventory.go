@@ -32,6 +32,11 @@ func (x *Inventory) Slot(i int) (common.EntityId, bool) {
 	return x.slots[i], true
 }
 
+// -1 if every slot holds an item
+func (x *Inventory) FirstFreeSlot() int {
+	return slices.Index(x.slots, -1)
+}
+
 func (x *Inventory) Selected() int {
 	return x.selected
 }

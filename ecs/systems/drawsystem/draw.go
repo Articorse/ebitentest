@@ -291,7 +291,8 @@ func drawEntitySprite(
 	w, h := img.Bounds().Dx(), img.Bounds().Dy()
 	opts.GeoM.Scale(s, s)
 	opts.GeoM.Translate(-float64(w)*s/2, -float64(h)*s/2)
-	if sw, ok := ecsContainer.Swings.Get(e); ok {
+	// Lying on the ground, an item stays upright, even while its cooldown, which the swing follows, runs out
+	if sw, ok := ecsContainer.Swings.Get(e); ok && ecsContainer.Parent(e) != -1 {
 		applySwing(&opts.GeoM, sw, ecsContainer.SwingAngle(e), w, h, s)
 	}
 	opts.GeoM.Rotate(r)

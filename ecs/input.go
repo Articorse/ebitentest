@@ -37,6 +37,7 @@ const (
 	Input_SelectSlot7
 	Input_SelectSlot8
 	Input_SelectSlot9
+	Input_DropItem
 )
 
 type InputSourceFunc func(
@@ -134,6 +135,8 @@ type Input struct {
 	facingInput   FacingInputEnum
 	params        InputParams
 	lastFacingDir utils.Vec2f
+	// Not saved: a key held through loading only counts as pressed once more
+	held map[InputType]bool
 }
 
 func newUnsetInputKey() InputKey {
@@ -167,6 +170,7 @@ type InputState struct {
 	HasAim bool
 	// 1-based, so that the zero value selects nothing
 	SelectSlot int
+	DropItem   bool
 }
 
 func NewInputComponent(config map[InputType]InputKey, inputType InputTypeEnum, params InputParams, facingInput FacingInputEnum) *Input {
@@ -188,6 +192,18 @@ func (x *Input) Params() InputParams {
 
 func (x *Input) Type() InputTypeEnum {
 	return x.inputType
+}
+
+// True only on the tick the input goes from released to held, so that holding it down acts once
+func (x *Input) JustPressed(inputType InputType) bool {
+	if x.held == nil {
+		x.held = make(map[InputType]bool)
+	}
+
+	held := x.Value(inputType) > 0
+	wasHeld := x.held[inputType]
+	x.held[inputType] = held
+	return held && !wasHeld
 }
 
 func (x *Input) FacingInput() FacingInputEnum {

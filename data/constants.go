@@ -56,6 +56,8 @@ const (
 	HotbarSlots                    = 9
 	HotbarMarginPx                 = 5
 	HotbarSlotGapPx                = 1
+	ItemPickupDelayMs              = 2000
+	ItemPickupReachPx              = 8
 )
 
 var (
