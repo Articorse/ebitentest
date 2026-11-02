@@ -35,6 +35,13 @@ func HumanInputSource(
 		Ability2:           in.Value(ecs.Input_Ability2),
 	}
 
+	for i := range 9 {
+		if in.Value(ecs.Input_SelectSlot1+ecs.InputType(i)) > 0 {
+			is.SelectSlot = i + 1
+			break
+		}
+	}
+
 	lastFacingDir := in.LastFacingDir()
 	worldPos, err := ecsContainer.WorldPos(e)
 

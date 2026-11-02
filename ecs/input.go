@@ -27,6 +27,16 @@ const (
 	Input_OffHandAbility2
 	Input_Ability1
 	Input_Ability2
+	// One per hotbar slot, in order
+	Input_SelectSlot1
+	Input_SelectSlot2
+	Input_SelectSlot3
+	Input_SelectSlot4
+	Input_SelectSlot5
+	Input_SelectSlot6
+	Input_SelectSlot7
+	Input_SelectSlot8
+	Input_SelectSlot9
 )
 
 type InputSourceFunc func(
@@ -153,6 +163,8 @@ type InputState struct {
 	Ability1           float64
 	Ability2           float64
 	FacingDir          utils.Vec2f
+	// 1-based, so that the zero value selects nothing
+	SelectSlot int
 }
 
 func NewInputComponent(config map[InputType]InputKey, inputType InputTypeEnum, params InputParams, facingInput FacingInputEnum) *Input {

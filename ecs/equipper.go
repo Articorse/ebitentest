@@ -27,6 +27,14 @@ func NewEquipperComponent(equipment map[EquipSlotEnum]common.EntityId) *Equipper
 	}
 }
 
+func (x *Equipper) Equip(slot EquipSlotEnum, e common.EntityId) {
+	x.equipment[slot] = e
+}
+
+func (x *Equipper) Unequip(slot EquipSlotEnum) {
+	delete(x.equipment, slot)
+}
+
 // In slot order, so that iterating them doesn't depend on map order
 func (x *Equipper) Equipment() []common.EntityId {
 	equipment := make([]common.EntityId, 0, len(x.equipment))

@@ -71,7 +71,7 @@ func TestDisabledTimersDontRun(t *testing.T) {
 	}
 }
 
-func TestDisabledAbilitiesNeitherActivateNorTick(t *testing.T) {
+func TestDisabledAbilitiesCantStartButFinishWhatTheyStarted(t *testing.T) {
 	x := testutil.NewECS(t)
 	const abilityId, postId = ecs.AbilityEnum(1001), ecs.AbilityEnum(1002)
 	activated, ended := []common.EntityId{}, []common.EntityId{}
@@ -88,11 +88,8 @@ func TestDisabledAbilitiesNeitherActivateNorTick(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newAbilities := func() []ecs.Component {
-		abis := [data.MaxAbilitySlots]ecs.EntityAbility{{Def: ecs.NewAbilityDef(abilityId, postId, 0, 2*data.TickMs)}}
-		return []ecs.Component{ecs.NewAbilitiesComponent(abis)}
-	}
-	e := testutil.AddMovable(t, x, utils.Vec2f{}, false, newAbilities()...)
+	abis := [data.MaxAbilitySlots]ecs.EntityAbility{{Def: ecs.NewAbilityDef(abilityId, postId, 2*data.TickMs, 2*data.TickMs)}}
+	e := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewAbilitiesComponent(abis))
 	if ok, err := x.ActivateAbility(e, nil, utils.Vec2f{}, 0); err != nil || !ok {
 		t.Fatalf("activation %v, error %v", ok, err)
 	}
@@ -101,23 +98,21 @@ func TestDisabledAbilitiesNeitherActivateNorTick(t *testing.T) {
 	if ok, err := x.ActivateAbility(e, nil, utils.Vec2f{}, 0); err != nil || ok {
 		t.Fatalf("a disabled entity's ability activated %v, error %v", ok, err)
 	}
-	for range 5 {
+	for range 6 {
 		if err := abilitysystem.Tick(x); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if len(ended) != 0 {
-		t.Fatal("a disabled entity's active ability ran out")
+	if !slices.Equal(ended, []common.EntityId{e}) {
+		t.Fatalf("the ability ended for %v while its entity was disabled, want it to finish once", ended)
 	}
 
 	x.SetDisabled(e, false)
-	for range 5 {
-		if err := abilitysystem.Tick(x); err != nil {
-			t.Fatal(err)
-		}
+	if ok, err := x.ActivateAbility(e, nil, utils.Vec2f{}, 0); err != nil || !ok {
+		t.Fatalf("the cooldown didn't run out while disabled: activated %v, error %v", ok, err)
 	}
-	if !slices.Equal(activated, []common.EntityId{e}) || !slices.Equal(ended, []common.EntityId{e}) {
-		t.Fatalf("activated %v and ended %v, want entity %d once each", activated, ended, e)
+	if !slices.Equal(activated, []common.EntityId{e, e}) {
+		t.Fatalf("activated %v, want entity %d twice", activated, e)
 	}
 }
 

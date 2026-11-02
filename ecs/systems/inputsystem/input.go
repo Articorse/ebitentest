@@ -31,6 +31,14 @@ func HandleInputs(
 	// In entity order, so that abilities activate, and spawned entities get their IDs, the same way every run
 	for _, e := range slices.Sorted(maps.Keys(allInputs)) {
 		input := allInputs[e]
+
+		// Before facing and using equipment, so that a newly selected item is aimed before its first use
+		if inv, ok := ecsContainer.Inventories.Get(e); ok && input.SelectSlot > 0 && input.SelectSlot-1 != inv.Selected() {
+			if err := ecsContainer.SelectInventorySlot(e, input.SelectSlot-1); err != nil {
+				log.Printf("error selecting slot %d of entity %d: %v\n", input.SelectSlot, e, err)
+			}
+		}
+
 		if ecsContainer.Transforms.HasComponent(e) {
 			eWorldPos, err := ecsContainer.WorldPos(e)
 			if err != nil {

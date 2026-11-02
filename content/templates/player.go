@@ -97,101 +97,6 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		return -1, fmt.Errorf("error spawning player: %w", err)
 	}
 
-	// // Gun
-	// gunParComp := ecs.NewParentComponent()
-	// gunTraComp := ecs.NewTransformComponent(utils.Vec2{X: 100, Y: 100}, 1, 0)
-	// gunVelComp := ecs.NewDefaultVelocityComponent()
-	// gunSprComp, err := ecs.NewSpriteComponent("assets/sprites/gun.png", 20, true)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// gunAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	// gunAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-	// 	{FrameIdx: 0, DurationMs: 1000},
-	// }
-	// gunAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
-	// 	{FrameIdx: 1, DurationMs: 100},
-	// }
-	// gunAniComp, err := ecs.NewAnimationComponent("assets/sprites/gun_ss.png", utils.Vec2{X: 32, Y: 32}, gunAniStateFrames)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// gunFPComp := ecs.NewFacePositionComponent(utils.Vec2{}, true)
-	//
-	// bulletTraComp := ecs.NewTransformComponent(utils.Vec2{}, 1, 0)
-	// bulletVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2{X: 5, Y: 0}, 0, 1)
-	// bulletTimerComp, err := ecs.NewTimerComponent(500, 1, timerfuncs.Selfdestruct)
-	// if err != nil {
-	// 	log.Fatal("error creating bullet timer component: ", err)
-	// }
-	// bulletDmgComp := ecs.NewContactDamageComponent(g.playerEntity, 10, true, true, 5)
-	// bulletSprComp, err := ecs.NewSpriteComponent("assets/sprites/bullet.png", 20, false)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// bulletAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	// bulletAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-	// 	{FrameIdx: 0, DurationMs: 50},
-	// 	{FrameIdx: 1, DurationMs: 50},
-	// 	{FrameIdx: 2, DurationMs: 50},
-	// 	{FrameIdx: 1, DurationMs: 50},
-	// }
-	// bulletAniComp, err := ecs.NewAnimationComponent("assets/sprites/bullet_ss.png", utils.Vec2{X: 32, Y: 32}, bulletAniStateFrames)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// bulletHurtboxShape, err := shapes.NewCircleShape(3, utils.Vec2{X: 0, Y: 0})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// bulletHurtboxComp := ecs.NewHurtboxColliderComponent(
-	// 	ecs.Layer_FriendlyProjectile,
-	// 	ecs.Layer_Enemy|
-	// 		ecs.Layer_Terrain,
-	// 	bulletHurtboxShape,
-	// )
-	//
-	// gunSpaComp, err := ecs.NewSpawnerComponent(
-	// 	utils.Vec2{X: 13, Y: 0},
-	// 	ecs.SpawnerType_Point,
-	// 	nil,
-	// 	bulletTraComp, bulletSprComp, bulletVelComp, bulletDmgComp, bulletHurtboxComp, bulletAniComp, bulletTimerComp,
-	// )
-	// if err != nil {
-	// 	log.Fatal("error creating gun spawner component: ", err)
-	// }
-	//
-	// spawnName, spawnDef := abilitydefs.SpawnAbility(200)
-	// gunAbis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
-	// gunAbis[0] = ecs.EntityAbility{
-	// 	Name:   spawnName,
-	// 	Def:    spawnDef,
-	// 	Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
-	// }
-	// gunEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis)
-	//
-	// gun := g.ecs.AddEntity(
-	// 	gunParComp,
-	// 	gunTraComp,
-	// 	gunVelComp,
-	// 	gunSprComp,
-	// 	gunAniComp,
-	// 	gunSpaComp,
-	// 	gunFPComp,
-	// 	gunEquipmentComp,
-	// )
-	//
-	// pEquipperComp := ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{
-	// 	ecs.Equip_MainHand: gun,
-	// })
-	//
-	// g.ecs.AddComponent(g.playerEntity, pEquipperComp)
-	//
-	// err = pm.Attach(gun, g.playerEntity, g.ecs)
-	// if err != nil {
-	// 	log.Fatal("error attaching gun to player: ", err)
-	// }
-
 	return player, nil
 }
 
@@ -336,5 +241,102 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		return fmt.Errorf("error putting bazooka in the player's inventory: %w", err)
 	}
 
+	gun, err := spawnGun(ecsContainer, player, playerPos)
+	if err != nil {
+		return fmt.Errorf("error spawning gun: %w", err)
+	}
+	if err := ecsContainer.PutInInventory(player, 1, gun); err != nil {
+		return fmt.Errorf("error putting gun in the player's inventory: %w", err)
+	}
+
+	if err := ecsContainer.SelectInventorySlot(player, 0); err != nil {
+		return fmt.Errorf("error selecting the player's first slot: %w", err)
+	}
+
 	return nil
+}
+
+func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.Vec2f) (common.EntityId, error) {
+	gunSprComp, err := ecs.NewSpriteComponent(common.AssetSheetGun, 20, true)
+	if err != nil {
+		return -1, err
+	}
+	gunAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	gunAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+		{FrameIdx: 0, DurationMs: 1000},
+	}
+	gunAniStateFrames[ecs.Anim_Use] = []ecs.AnimationFrame{
+		{FrameIdx: 1, DurationMs: 100},
+	}
+	gunAniComp, err := ecs.NewAnimationComponent(common.AssetSheetGun, gunAniStateFrames)
+	if err != nil {
+		return -1, err
+	}
+
+	bulletTimerComp, err := ecs.NewTimerComponent(500, 1, timerfuncs.TimerFunc_Selfdestruct)
+	if err != nil {
+		return -1, fmt.Errorf("error creating bullet timer component: %w", err)
+	}
+	// Not single-tick: a single-tick hurtbox only lasts its first tick, and the bullet already dies on contact
+	bulletDmgComp := ecs.NewContactDamageComponent(player, 10, true, false, 5)
+	bulletSprComp, err := ecs.NewSpriteComponent(common.AssetSheetBullet, 20, false)
+	if err != nil {
+		return -1, err
+	}
+	bulletAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	bulletAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+		{FrameIdx: 0, DurationMs: 50},
+		{FrameIdx: 1, DurationMs: 50},
+		{FrameIdx: 2, DurationMs: 50},
+		{FrameIdx: 1, DurationMs: 50},
+	}
+	bulletAniComp, err := ecs.NewAnimationComponent(common.AssetSheetBullet, bulletAniStateFrames)
+	if err != nil {
+		return -1, err
+	}
+	bulletHurtboxShape, err := shapes.NewCircleShape(3, utils.Vec2f{X: 0, Y: 0})
+	if err != nil {
+		return -1, err
+	}
+	bulletHurtboxComp := ecs.NewHurtboxColliderComponent(
+		ecs.Layer_FriendlyProjectile,
+		ecs.Layer_Enemy|
+			ecs.Layer_Terrain,
+		bulletHurtboxShape,
+	)
+
+	gunSpaComp, err := ecs.NewSpawnerComponent(
+		utils.Vec2f{X: 13, Y: 0},
+		ecs.SpawnerType_Point,
+		nil,
+		ecs.NewTransformComponent(utils.Vec2f{}, 1, 0),
+		bulletSprComp,
+		ecs.NewVelocityComponentWithParams(utils.Vec2f{X: 5, Y: 0}, 0, 1),
+		bulletDmgComp,
+		bulletHurtboxComp,
+		bulletAniComp,
+		bulletTimerComp,
+	)
+	if err != nil {
+		return -1, fmt.Errorf("error creating gun spawner component: %w", err)
+	}
+
+	gunAbis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}
+	gunAbis[0] = ecs.EntityAbility{
+		Def:    ecs.NewAbilityDef(abilities.Ability_Spawn, ecs.Ability_None, 200, 0),
+		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
+	}
+
+	return ecsContainer.AddNewEntity(
+		ecs.NewHierarchyComponent(),
+		ecs.NewTransformComponent(pos, 1, 0),
+		ecs.NewDefaultVelocityComponent(),
+		gunSprComp,
+		gunAniComp,
+		gunSpaComp,
+		ecs.NewFacePositionComponent(utils.Vec2f{}, true),
+		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis),
+		ecs.NewItemComponent(),
+		ecs.NewPersistentComponent(),
+	)
 }

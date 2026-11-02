@@ -30,8 +30,8 @@ func TestPlayerTemplateWithStartingEquipment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(members) != 2 {
-		t.Fatalf("player stored with %d entities, want itself and its equipment", len(members))
+	if len(members) != 3 {
+		t.Fatalf("player stored with %d entities, want itself, the bazooka and the gun", len(members))
 	}
 }
 

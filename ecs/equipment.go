@@ -40,6 +40,10 @@ func NewEquipmentComponent(slot EquipableSlotEnum, abilities [data.MaxEquipmentA
 	}
 }
 
+func (x *Equipment) Fits(slot EquipSlotEnum) bool {
+	return x.slot&(1<<slot) != 0
+}
+
 func (x *ECSContainer) ActivateEquipmentAbility(
 	e common.EntityId,
 	slot EquipSlotEnum,

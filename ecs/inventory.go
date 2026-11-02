@@ -77,6 +77,38 @@ func (x *ECSContainer) PutInInventory(owner common.EntityId, slot int, item comm
 	return nil
 }
 
+// Only the selected item is enabled, and in the owner's main hand if it fits there. The rest are disabled, so that
+// what's carried but not in hand isn't drawn or used.
+func (x *ECSContainer) SelectInventorySlot(owner common.EntityId, slot int) error {
+	inv, ok := x.Inventories.Get(owner)
+	if !ok {
+		return fmt.Errorf("entity %d has no inventory", owner)
+	}
+	if err := inv.Select(slot); err != nil {
+		return err
+	}
+
+	for i, item := range inv.slots {
+		if item != -1 {
+			x.SetDisabled(item, i != slot)
+		}
+	}
+
+	equipper, ok := x.Equippers.Get(owner)
+	if !ok {
+		return nil
+	}
+
+	equipper.Unequip(Equip_MainHand)
+	if item, ok := inv.Slot(slot); ok {
+		if eq, ok := x.Equipments.Get(item); ok && eq.Fits(Equip_MainHand) {
+			equipper.Equip(Equip_MainHand, item)
+		}
+	}
+
+	return nil
+}
+
 // An item that stops being held by its owner leaves the owner's inventory with it
 func (x *ECSContainer) takeOutOfInventory(owner, item common.EntityId) {
 	inv, ok := x.Inventories.Get(owner)

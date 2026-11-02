@@ -7,6 +7,8 @@ import (
 	"fmt"
 )
 
+// Also runs for disabled owners, so that an item put away finishes what it started and cools down; it only can't
+// start anything
 func tickAbilityState(owner common.EntityId, abi *EntityAbility, ecsContainer *ECSContainer) error {
 	switch abi.Status.State {
 	case AbiAct_Active:
