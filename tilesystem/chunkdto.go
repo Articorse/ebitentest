@@ -6,6 +6,7 @@ import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/utils"
+	"ebittest/worldgen"
 	"fmt"
 	"maps"
 	"slices"
@@ -67,7 +68,7 @@ func (cc *ChunkContainer) chunkToDto(
 	}, nil
 }
 
-func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
+func (cc *ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 	promotedTiles := make(map[utils.Vec2i]promotedTile)
 	for _, pDto := range dto.PromotedTiles {
 		promotedTiles[utils.Vec2i{X: pDto.X, Y: pDto.Y}] = promotedTile{
@@ -78,6 +79,7 @@ func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 	chunk := &chunk{
 		tiles:           dto.Tiles,
 		promotedTiles:   promotedTiles,
+		features:        worldgen.ChunkFeatures(cc.seed, utils.Vec2i{X: dto.X, Y: dto.Y}),
 		terrainModified: dto.TerrainModified,
 	}
 	return chunk

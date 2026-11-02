@@ -418,7 +418,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 	if err := drawsystem.DrawSprites(
 		screen,
 		g.ecs.Camera,
-		g.ecs.TickState.CollisionGrid,
+		g.chunkContainer.FeatureSprites(drawsystem.DrawWindow(g.ecs.Camera)),
 		g.ecs,
 		g.assetmanager,
 	); err != nil {
@@ -557,6 +557,9 @@ func main() {
 	err := g.chunkContainer.GenerateTileAtlasFromJson("assets/tiles/atlas.json")
 	if err != nil {
 		log.Fatal("error generating tile atlas from json: ", err)
+	}
+	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json"); err != nil {
+		log.Fatal("error generating feature atlas from json: ", err)
 	}
 
 	if err := content.Register(g.ecs); err != nil {

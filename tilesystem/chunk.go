@@ -9,15 +9,17 @@ import (
 )
 
 type chunk struct {
-	tiles           [data.ChunkSize * data.ChunkSize]data.TileEnum
-	promotedTiles   map[utils.Vec2i]promotedTile
+	tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
+	promotedTiles map[utils.Vec2i]promotedTile
+	// Generated again whenever the chunk is loaded rather than saved, since nothing can change them yet
+	features        map[utils.Vec2i]data.FeatureEnum
 	terrainModified bool
 
 	Image *ebiten.Image
 }
 
 func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
-	c := chunk{tiles: worldgen.ChunkTiles(cc.seed, pos)}
+	c := chunk{tiles: worldgen.ChunkTiles(cc.seed, pos), features: worldgen.ChunkFeatures(cc.seed, pos)}
 	c.promotedTiles = make(map[utils.Vec2i]promotedTile)
 
 	return &c, nil
@@ -33,6 +35,12 @@ func (x *chunk) tileIndex(cellKey utils.Vec2i) int {
 	return localY*data.ChunkSize + localX
 }
 
+// The ground under a feature can't be damaged while the feature stands on it
+func (x *chunk) protectsGround(t utils.Vec2i) bool {
+	_, ok := x.features[t]
+	return ok
+}
+
 func (x *chunk) getPromotedTiles() map[utils.Vec2i]promotedTile {
 	return x.promotedTiles
 }
@@ -46,7 +54,7 @@ func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) bool {
 
 	idx := c.tileIndex(t)
 	def, ok := cc.atlas[c.tiles[idx]]
-	if !ok || def.maxHealth <= 0 {
+	if !ok || def.maxHealth <= 0 || c.protectsGround(t) {
 		return false
 	}
 
@@ -80,7 +88,7 @@ func (cc *ChunkContainer) TileHealth(t utils.Vec2i) (health int, ok bool) {
 	}
 
 	def, ok := cc.atlas[c.getTileDefId(t)]
-	if !ok || def.maxHealth <= 0 {
+	if !ok || def.maxHealth <= 0 || c.protectsGround(t) {
 		return 0, false
 	}
 

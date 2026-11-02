@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "imageAsset": "tree",
+    "imageOffset": { "x": 1, "y": -7 },
+    "spriteLayer": 20,
+    "collider": { "width": 8, "height": 6, "offset": { "x": 0, "y": 3 } }
+  }
+]

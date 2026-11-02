@@ -20,6 +20,7 @@ import (
 
 const (
 	AtlasPath          = "assets/tiles/atlas.json"
+	FeatureAtlasPath   = "assets/features/features.json"
 	PlayerLoaderRadius = 3
 	// Fixed rather than random like the game's, so that a failing test fails the same way every time
 	WorldSeed uint64 = 0x5EED
@@ -184,6 +185,9 @@ func StartSession(t testing.TB) *Session {
 	x := NewECS(t)
 	cc := tilesystem.NewChunkContainer()
 	if err := cc.GenerateTileAtlasFromJson(AtlasPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath); err != nil {
 		t.Fatal(err)
 	}
 	x.SetSimulatedPosCheck(cc.IsActiveWorldPos)

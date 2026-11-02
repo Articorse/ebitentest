@@ -11,10 +11,26 @@ import (
 	"math"
 )
 
+// What an entity may collide with on each tile, in matching order: the tile itself, or the collider of a feature on it
 type EntityTiles struct {
 	E          common.EntityId
 	Tiles      []utils.Vec2i
 	Impassable []bool
+	// World-space bounds of what's collided with
+	Bounds [][2]utils.Vec2f
+}
+
+func (et *EntityTiles) add(t utils.Vec2i, impassable bool, bounds [2]utils.Vec2f) {
+	et.Tiles = append(et.Tiles, t)
+	et.Impassable = append(et.Impassable, impassable)
+	et.Bounds = append(et.Bounds, bounds)
+}
+
+func tileBounds(t utils.Vec2i) [2]utils.Vec2f {
+	return [2]utils.Vec2f{
+		{X: (float64(t.X) - 0.5) * data.TileSize, Y: (float64(t.Y) - 0.5) * data.TileSize},
+		{X: (float64(t.X) + 0.5) * data.TileSize, Y: (float64(t.Y) + 0.5) * data.TileSize},
+	}
 }
 
 // Pushes each entity out by the sum of its tile collisions, which are grouped by entity
@@ -65,14 +81,8 @@ func GetCollisions(
 		}
 
 		for i, t := range et.Tiles {
-			tShape, err := shapes.NewRectangleShape(
-				data.TileSize,
-				data.TileSize,
-				utils.Vec2f{
-					X: float64(t.X) * data.TileSize,
-					Y: float64(t.Y) * data.TileSize,
-				},
-			)
+			b := et.Bounds[i]
+			tShape, err := shapes.NewRectangleShape(b[1].X-b[0].X, b[1].Y-b[0].Y, b[0].Add(b[1]).Multiply(0.5))
 			if err != nil {
 				log.Printf("Error creating rectangle shape for tile at grid position %v: %v\n", t, err)
 				continue
@@ -117,14 +127,8 @@ func GetAABBCollisions(
 
 		collided := EntityTiles{E: et.E}
 		for i, t := range et.Tiles {
-			tAABB := [2]utils.Vec2f{
-				{X: (float64(t.X) - 0.5) * data.TileSize, Y: (float64(t.Y) - 0.5) * data.TileSize},
-				{X: (float64(t.X) + 0.5) * data.TileSize, Y: (float64(t.Y) + 0.5) * data.TileSize},
-			}
-
-			if utils.DetectAABBCollision(eAABB, tAABB) {
-				collided.Tiles = append(collided.Tiles, t)
-				collided.Impassable = append(collided.Impassable, et.Impassable[i])
+			if utils.DetectAABBCollision(eAABB, et.Bounds[i]) {
+				collided.add(t, et.Impassable[i], et.Bounds[i])
 			}
 		}
 
@@ -137,7 +141,7 @@ func GetAABBCollisions(
 }
 
 // A tile is on Layer_Terrain if it's impassable and on Layer_Ground otherwise, and collides with colliders whose mask
-// has its layer. Unloaded tiles count as impassable, so that nothing walks out of the simulated area.
+// has its layer. A feature's collider is on Layer_Terrain. Unloaded tiles count as impassable, so that nothing walks out of the simulated area.
 func (cc *ChunkContainer) GetTilesWithPotentialPhysicsCollisions(ecsContainer *ecs.ECSContainer) ([]EntityTiles, error) {
 	return cc.getTilesWithPotentialCollisions(ecs.Colliders(&ecsContainer.PhysicsColliders), true, ecsContainer, func(e common.EntityId) bool {
 		pc, _ := ecsContainer.PhysicsColliders.Get(e)
@@ -182,10 +186,9 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 		}
 
 		et := EntityTiles{E: e}
-		add := func(t utils.Vec2i, impassable bool) {
+		add := func(t utils.Vec2i, impassable bool, bounds [2]utils.Vec2f) {
 			if mask&tileLayer(impassable) != 0 {
-				et.Tiles = append(et.Tiles, t)
-				et.Impassable = append(et.Impassable, impassable)
+				et.add(t, impassable, bounds)
 			}
 		}
 
@@ -201,7 +204,7 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 				chunk, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 				if !ok {
 					if unloadedImpassable {
-						add(t, true)
+						add(t, true, tileBounds(t))
 					}
 					continue
 				}
@@ -213,7 +216,11 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 					continue
 				}
 
-				add(t, !tileDef.passable)
+				add(t, !tileDef.passable, tileBounds(t))
+				// Colliders of features are impassable, like terrain, but only where they are on the tile
+				if bounds, ok := cc.featureCollider(chunk, t); ok {
+					add(t, true, bounds)
+				}
 			}
 		}
 

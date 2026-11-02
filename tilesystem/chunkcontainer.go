@@ -11,8 +11,9 @@ import (
 
 type ChunkContainer struct {
 	// Active chunks, the only ones the simulation sees
-	chunks map[utils.Vec2i]*chunk
-	atlas  map[data.TileEnum]tileDef
+	chunks       map[utils.Vec2i]*chunk
+	atlas        map[data.TileEnum]tileDef
+	featureAtlas map[data.FeatureEnum]featureDef
 
 	ioRequests *ioQueue
 	ioResults  chan ioResult

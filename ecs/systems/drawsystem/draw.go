@@ -2,6 +2,7 @@ package drawsystem
 
 import (
 	"bytes"
+	"cmp"
 	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs"
@@ -9,6 +10,7 @@ import (
 	"ebittest/utils"
 	"fmt"
 	"maps"
+	"math"
 	"os"
 	"slices"
 
@@ -16,200 +18,236 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// TODO: This could be optimized further by only ordering the drawing of sprites that overlap, possibly via AABBs?
+// Sprites in view, drawn layer by layer. Within a layer, what touches the ground further down the screen is drawn over
+// what's behind it, whether it's an entity or a static sprite such as a tree.
 func DrawSprites(
 	screen *ebiten.Image,
 	camera utils.Vec2f,
-	shg map[utils.Vec2i][]common.EntityId,
+	staticSprites []common.StaticSprite,
 	ecsContainer *ecs.ECSContainer,
 	assetManager *assetmanager.AssetManager,
 ) error {
-	batches := make(map[uint8][][]common.EntityId)
-	visitedSprites := make(map[common.EntityId]struct{})
-	layerIdxMap := make(map[uint8]uint64)
-	drawWindow := [2]utils.Vec2f{
-		utils.Vec2f{X: camera.X - data.SpatialHashGridCellSize, Y: camera.Y - data.SpatialHashGridCellSize},
-		utils.Vec2f{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
+	order, err := SpriteDrawOrder(camera, staticSprites, ecsContainer, assetManager)
+	if err != nil {
+		return err
 	}
 
-	for e, spr := range ecs.Query1(&ecsContainer.Sprites, ecs.Without(&ecsContainer.Disabled)) {
-		eWorldPos, err := ecsContainer.WorldPos(e)
-		if err != nil {
-			return fmt.Errorf("error getting ecs position of entity %d: %v", e, err)
-		}
-
-		if eWorldPos.X < drawWindow[0].X ||
-			eWorldPos.X > drawWindow[1].X ||
-			eWorldPos.Y < drawWindow[0].Y ||
-			eWorldPos.Y > drawWindow[1].Y {
-			continue
-		}
-
-		if _, ok := visitedSprites[e]; ok {
-			continue
-		}
-		visitedSprites[e] = struct{}{}
-
-		sprImg, err := spr.CurrentFrame(assetManager)
-		if err != nil {
-			return fmt.Errorf("error getting sprite image for entity %d: %v", e, err)
-		}
-
-		if sprImg == nil {
-			continue
-		}
-
-		layer := spr.Layer()
-
-		var i uint64
-		_, ok := layerIdxMap[layer]
-		if !ok {
-			layerIdxMap[layer] = 0
-			i = 0
-		} else {
-			layerIdxMap[layer] = layerIdxMap[layer] + 1
-			i = layerIdxMap[layer]
-		}
-
-		batches[layer] = append(batches[layer], []common.EntityId{})
-		batches[layer][i] = append(batches[layer][i], e)
-
-		neighbors, err := getNeighborBatch(e, shg, ecsContainer)
-		if err != nil {
-			return err
-		}
-
-		for j, n := range neighbors {
-			visitedSprites[neighbors[j]] = struct{}{}
-
-			nSpr, ok := ecsContainer.Sprites.Get(n)
-			if !ok {
-				continue
-			}
-
-			nSprImg, err := nSpr.CurrentFrame(assetManager)
-			if err != nil {
-				return fmt.Errorf("error getting sprite image for neighbor entity %d: %v", n, err)
-			}
-
-			if nSprImg == nil {
-				continue
-			}
-
-			batches[layer][i] = append(batches[layer][i], n)
-		}
-
-		if len(batches[layer][i]) > 1 {
-			var err error
-
-			hierarchies, err := ecsContainer.OrderedHierarchies(batches[layer][i])
-			if err != nil {
-				return fmt.Errorf("error getting ordered hierarchies for batch in layer %d: %v", layer, err)
-			}
-
-			slices.SortStableFunc(hierarchies, func(aRoot, bRoot [][]common.EntityId) int {
-				a := aRoot[0][0]
-				b := bRoot[0][0]
-
-				aTotalY, err := ecsContainer.SpriteWorldLayerYOffset(a, assetManager)
-				if err != nil {
-					return -1
-				}
-
-				bTotalY, err := ecsContainer.SpriteWorldLayerYOffset(b, assetManager)
-				if err != nil {
-					return -1
-				}
-
-				if aTotalY == bTotalY {
-					return int(b - a)
-				}
-
-				lower := aTotalY > bTotalY
-				if lower {
-					return 1
-				}
-				return -1
-			})
-			if err != nil {
+	for _, d := range order {
+		if d.Entity == -1 {
+			if err := drawStaticSprite(screen, camera, d.Static, assetManager); err != nil {
 				return err
 			}
+			continue
+		}
 
-			flatOrder := []common.EntityId{}
-			for _, hBatch := range hierarchies {
-				for _, hLevel := range hBatch {
-					slices.SortStableFunc(hLevel, func(a common.EntityId, b common.EntityId) int { return int(b - a) })
-					flatOrder = append(flatOrder, hLevel...)
-				}
-			}
-
-			batches[layer][i] = flatOrder
+		if err := drawEntitySprite(screen, camera, d.Entity, ecsContainer, assetManager); err != nil {
+			return err
 		}
 	}
 
-	batchKeys := maps.Keys(batches)
-	var orderedKeys []uint8
-	for layerNum := range batchKeys {
-		orderedKeys = append(orderedKeys, layerNum)
+	return nil
+}
+
+// Where sprites have to be to be drawn. It reaches past the screen, since a sprite's position is its center.
+func DrawWindow(camera utils.Vec2f) [2]utils.Vec2f {
+	return [2]utils.Vec2f{
+		{X: camera.X - data.SpatialHashGridCellSize, Y: camera.Y - data.SpatialHashGridCellSize},
+		{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
+	}
+}
+
+type SpriteDraw struct {
+	// -1 for a static sprite
+	Entity common.EntityId
+	Static common.StaticSprite
+}
+
+// An entity together with the entities in the same layer attached to it, drawn one after the other, or a static sprite
+type spriteGroup struct {
+	key     int64
+	root    common.EntityId
+	members []common.EntityId
+	// The static sprite's place among the static sprites given
+	staticIdx int
+}
+
+func SpriteDrawOrder(
+	camera utils.Vec2f,
+	staticSprites []common.StaticSprite,
+	ecsContainer *ecs.ECSContainer,
+	assetManager *assetmanager.AssetManager,
+) ([]SpriteDraw, error) {
+	window := DrawWindow(camera)
+	inWindow := func(p utils.Vec2f) bool {
+		return p.X >= window[0].X && p.X <= window[1].X && p.Y >= window[0].Y && p.Y <= window[1].Y
 	}
 
-	slices.Sort(orderedKeys)
+	visible := map[common.EntityId]uint8{}
+	for e, spr := range ecs.Query1(&ecsContainer.Sprites, ecs.Without(&ecsContainer.Disabled)) {
+		pos, err := ecsContainer.WorldPos(e)
+		if err != nil {
+			return nil, fmt.Errorf("error getting world position of entity %d: %v", e, err)
+		}
+		if !inWindow(pos) {
+			continue
+		}
 
-	for _, layer := range orderedKeys {
-		for _, batch := range batches[layer] {
-			for _, batchEntity := range batch {
-				spr, ok := ecsContainer.Sprites.Get(batchEntity)
-				if !ok {
-					return fmt.Errorf("batchEntity %d has no sprite", batchEntity)
+		img, err := spr.CurrentFrame(assetManager)
+		if err != nil {
+			return nil, fmt.Errorf("error getting sprite image for entity %d: %v", e, err)
+		}
+		if img != nil {
+			visible[e] = spr.Layer()
+		}
+	}
+
+	type member struct {
+		e     common.EntityId
+		depth int
+	}
+	groupMembers := map[common.EntityId][]member{}
+	for e, layer := range visible {
+		root, depth := e, 0
+		for p := ecsContainer.Parent(root); p != -1; p = ecsContainer.Parent(root) {
+			if pLayer, ok := visible[p]; !ok || pLayer != layer {
+				break
+			}
+			root, depth = p, depth+1
+		}
+		groupMembers[root] = append(groupMembers[root], member{e, depth})
+	}
+
+	layers := map[uint8][]spriteGroup{}
+	for root, members := range groupMembers {
+		// Parents before their children, so that what's held is drawn over what holds it
+		slices.SortFunc(members, func(a, b member) int {
+			return cmp.Or(cmp.Compare(a.depth, b.depth), cmp.Compare(b.e, a.e))
+		})
+
+		key, err := ecsContainer.SpriteWorldLayerYOffset(root, assetManager)
+		if err != nil {
+			return nil, fmt.Errorf("error getting the ground position of entity %d's sprite: %v", root, err)
+		}
+
+		g := spriteGroup{key: key, root: root}
+		for _, m := range members {
+			g.members = append(g.members, m.e)
+		}
+		layers[visible[root]] = append(layers[visible[root]], g)
+	}
+
+	for i, s := range staticSprites {
+		if !inWindow(s.Pos) {
+			continue
+		}
+
+		asset, err := assetManager.GetAsset(s.ImageAsset)
+		if err != nil {
+			return nil, fmt.Errorf("error getting image of static sprite at %v: %v", s.Pos, err)
+		}
+
+		key := int64(math.Floor(s.Pos.Y + float64(asset.LayerYOffset)))
+		layers[s.Layer] = append(layers[s.Layer], spriteGroup{key: key, root: -1, staticIdx: i})
+	}
+
+	order := []SpriteDraw{}
+	for _, layer := range slices.Sorted(maps.Keys(layers)) {
+		groups := layers[layer]
+		// On the same row, static sprites go behind entities, and newer entities behind older ones
+		slices.SortFunc(groups, func(a, b spriteGroup) int {
+			if c := cmp.Compare(a.key, b.key); c != 0 {
+				return c
+			}
+			if (a.root == -1) != (b.root == -1) {
+				if a.root == -1 {
+					return -1
 				}
+				return 1
+			}
+			if a.root == -1 {
+				return cmp.Compare(a.staticIdx, b.staticIdx)
+			}
+			return cmp.Compare(b.root, a.root)
+		})
 
-				v, err := ecsContainer.SpriteWorldOffsetPos(batchEntity)
-				if err != nil {
-					return fmt.Errorf("error getting ecs offset position of batchEntity %d: %v", batchEntity, err)
-				}
-
-				r := 0.0
-				if spr.AllowRotation() {
-					r, err = ecsContainer.SpriteWorldOffsetRotation(batchEntity)
-					if err != nil {
-						return fmt.Errorf("error getting ecs offset rotation of batchEntity %d: %v", batchEntity, err)
-					}
-				}
-
-				s, err := ecsContainer.SpriteWorldOffsetScale(batchEntity)
-				if err != nil {
-					return fmt.Errorf("error getting ecs offset scale of batchEntity %d: %v", batchEntity, err)
-				}
-
-				img, err := spr.CurrentFrame(assetManager)
-				if err != nil {
-					return fmt.Errorf("error getting sprite image for batchEntity %d: %v", batchEntity, err)
-				}
-
-				opts := ebiten.DrawImageOptions{}
-				w, h := img.Bounds().Dx(), img.Bounds().Dy()
-				opts.GeoM.Scale(s, s)
-				opts.GeoM.Translate(-float64(w)*s/2, -float64(h)*s/2)
-				if sw, ok := ecsContainer.Swings.Get(batchEntity); ok {
-					applySwing(&opts.GeoM, sw, ecsContainer.SwingAngle(batchEntity), w, h, s)
-				}
-				opts.GeoM.Rotate(r)
-				opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
-
-				if color, ok := spr.CurrentColor(); ok {
-					opts.ColorScale.Scale(
-						color.R,
-						color.G,
-						color.B,
-						color.A,
-					)
-				}
-
-				screen.DrawImage(img, &opts)
+		for _, g := range groups {
+			if g.root == -1 {
+				order = append(order, SpriteDraw{Entity: -1, Static: staticSprites[g.staticIdx]})
+				continue
+			}
+			for _, e := range g.members {
+				order = append(order, SpriteDraw{Entity: e})
 			}
 		}
 	}
 
+	return order, nil
+}
+
+func drawStaticSprite(screen *ebiten.Image, camera utils.Vec2f, s common.StaticSprite, assetManager *assetmanager.AssetManager) error {
+	asset, err := assetManager.GetAsset(s.ImageAsset)
+	if err != nil {
+		return fmt.Errorf("error getting image of static sprite at %v: %v", s.Pos, err)
+	}
+
+	img := asset.Frames[0]
+	opts := ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(s.Pos.X-camera.X-float64(img.Bounds().Dx())/2, s.Pos.Y-camera.Y-float64(img.Bounds().Dy())/2)
+	screen.DrawImage(img, &opts)
+
+	return nil
+}
+
+func drawEntitySprite(
+	screen *ebiten.Image,
+	camera utils.Vec2f,
+	e common.EntityId,
+	ecsContainer *ecs.ECSContainer,
+	assetManager *assetmanager.AssetManager,
+) error {
+	spr, ok := ecsContainer.Sprites.Get(e)
+	if !ok {
+		return fmt.Errorf("entity %d has no sprite", e)
+	}
+
+	v, err := ecsContainer.SpriteWorldOffsetPos(e)
+	if err != nil {
+		return fmt.Errorf("error getting ecs offset position of entity %d: %v", e, err)
+	}
+
+	r := 0.0
+	if spr.AllowRotation() {
+		r, err = ecsContainer.SpriteWorldOffsetRotation(e)
+		if err != nil {
+			return fmt.Errorf("error getting ecs offset rotation of entity %d: %v", e, err)
+		}
+	}
+
+	s, err := ecsContainer.SpriteWorldOffsetScale(e)
+	if err != nil {
+		return fmt.Errorf("error getting ecs offset scale of entity %d: %v", e, err)
+	}
+
+	img, err := spr.CurrentFrame(assetManager)
+	if err != nil {
+		return fmt.Errorf("error getting sprite image for entity %d: %v", e, err)
+	}
+
+	opts := ebiten.DrawImageOptions{}
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	opts.GeoM.Scale(s, s)
+	opts.GeoM.Translate(-float64(w)*s/2, -float64(h)*s/2)
+	if sw, ok := ecsContainer.Swings.Get(e); ok {
+		applySwing(&opts.GeoM, sw, ecsContainer.SwingAngle(e), w, h, s)
+	}
+	opts.GeoM.Rotate(r)
+	opts.GeoM.Translate(v.X-camera.X, v.Y-camera.Y)
+
+	if color, ok := spr.CurrentColor(); ok {
+		opts.ColorScale.Scale(color.R, color.G, color.B, color.A)
+	}
+
+	screen.DrawImage(img, &opts)
 	return nil
 }
 
@@ -277,87 +315,6 @@ func floatingTextFace(size float64) (*text.GoTextFace, error) {
 		f.faces[size] = face
 	}
 	return face, nil
-}
-
-func getNeighborBatch(
-	eA common.EntityId,
-	shg map[utils.Vec2i][]common.EntityId,
-	ecs *ecs.ECSContainer,
-) ([]common.EntityId, error) {
-	if !ecs.Sprites.HasComponent(eA) {
-		return nil, fmt.Errorf("entity %d does not have a sprite component", eA)
-	}
-
-	visitedEntities := make(map[common.EntityId]struct{})
-	neighbors, _, err := getNeighborsRecursive(eA, shg, visitedEntities, ecs)
-	if err != nil {
-		return nil, err
-	}
-
-	return neighbors, nil
-}
-
-func getNeighborsRecursive(
-	eA common.EntityId,
-	shg map[utils.Vec2i][]common.EntityId,
-	visitedEntities map[common.EntityId]struct{},
-	ecs *ecs.ECSContainer,
-) (neighbors []common.EntityId, _visited map[common.EntityId]struct{}, err error) {
-	aSpr, ok := ecs.Sprites.Get(eA)
-	if !ok {
-		return nil, nil, fmt.Errorf("entity %d does not have a sprite component", eA)
-	}
-
-	visitedEntities[eA] = struct{}{}
-
-	aWorldPos, err := ecs.WorldPos(eA)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error getting ecs position of entity %d: %v", eA, err)
-	}
-
-	aLayer := aSpr.Layer()
-
-	startCellX := int(aWorldPos.X / data.SpatialHashGridCellSize)
-	startCellY := int(aWorldPos.Y / data.SpatialHashGridCellSize)
-
-	for dx := -1; dx <= 1; dx++ {
-		for dy := -1; dy <= 1; dy++ {
-			for _, eB := range shg[utils.Vec2i{X: startCellX + dx, Y: startCellY + dy}] {
-				bSpr, ok := ecs.Sprites.Get(eB)
-				if !ok {
-					return nil, nil, nil
-				}
-
-				if eA == eB {
-					continue
-				}
-
-				if slices.Contains(neighbors, eB) {
-					continue
-				}
-
-				if _, ok := visitedEntities[eB]; ok {
-					continue
-				}
-				visitedEntities[eB] = struct{}{}
-
-				if aLayer != bSpr.Layer() {
-					continue
-				}
-
-				n, v, err := getNeighborsRecursive(eB, shg, visitedEntities, ecs)
-				if err != nil {
-					return nil, nil, err
-				}
-
-				maps.Copy(visitedEntities, v)
-				neighbors = append(neighbors, eB)
-				neighbors = slices.Concat(neighbors, n)
-			}
-		}
-	}
-
-	return neighbors, visitedEntities, nil
 }
 
 // Turns and flips the item around its grip, so that the grip stays where it's held

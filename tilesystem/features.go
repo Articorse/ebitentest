@@ -1,0 +1,144 @@
+package tilesystem
+
+import (
+	"cmp"
+	"ebittest/data"
+	"ebittest/ecs/common"
+	"ebittest/utils"
+	"encoding/json"
+	"fmt"
+	"os"
+	"slices"
+)
+
+type featureDef struct {
+	imageAsset common.ImageAssetTag
+	// Where the image's center is, relative to the center of the feature's tile
+	imageOffset utils.Vec2f
+	spriteLayer uint8
+
+	hasCollider bool
+	// World-space bounds relative to the center of the feature's tile
+	colliderMin, colliderMax utils.Vec2f
+}
+
+type featureDefDTO struct {
+	Id          uint16              `json:"id"`
+	ImageAsset  string              `json:"imageAsset"`
+	ImageOffset utils.Vec2f         `json:"imageOffset"`
+	SpriteLayer uint8               `json:"spriteLayer"`
+	Collider    *featureColliderDTO `json:"collider"`
+}
+
+type featureColliderDTO struct {
+	Width  float64     `json:"width"`
+	Height float64     `json:"height"`
+	Offset utils.Vec2f `json:"offset"`
+}
+
+func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string) error {
+	f, err := os.ReadFile(input)
+	if err != nil {
+		return fmt.Errorf("error reading feature atlas json file: %w", err)
+	}
+
+	var dtos []featureDefDTO
+	if err := json.Unmarshal(f, &dtos); err != nil {
+		return fmt.Errorf("error unmarshalling feature atlas json: %w", err)
+	}
+
+	defs := make(map[data.FeatureEnum]featureDef, len(dtos))
+	for _, dto := range dtos {
+		def := featureDef{
+			imageAsset:  common.ImageAssetTag(dto.ImageAsset),
+			imageOffset: dto.ImageOffset,
+			spriteLayer: dto.SpriteLayer,
+		}
+
+		if c := dto.Collider; c != nil {
+			if c.Width <= 0 || c.Height <= 0 {
+				return fmt.Errorf("feature %d has a collider of %v×%v, which isn't positive", dto.Id, c.Width, c.Height)
+			}
+			def.hasCollider = true
+			def.colliderMin = c.Offset.Subtract(utils.Vec2f{X: c.Width / 2, Y: c.Height / 2})
+			def.colliderMax = c.Offset.Add(utils.Vec2f{X: c.Width / 2, Y: c.Height / 2})
+		}
+
+		defs[data.FeatureEnum(dto.Id)] = def
+	}
+
+	cc.featureAtlas = defs
+	return nil
+}
+
+func (cc *ChunkContainer) FeatureAt(t utils.Vec2i) (data.FeatureEnum, bool) {
+	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	if !ok {
+		return data.Feature_None, false
+	}
+
+	f, ok := c.features[t]
+	return f, ok
+}
+
+// The world-space bounds of the collider of the feature on the tile, if it has one
+func (cc *ChunkContainer) featureCollider(c *chunk, t utils.Vec2i) ([2]utils.Vec2f, bool) {
+	f, ok := c.features[t]
+	if !ok {
+		return [2]utils.Vec2f{}, false
+	}
+
+	def, ok := cc.featureAtlas[f]
+	if !ok || !def.hasCollider {
+		return [2]utils.Vec2f{}, false
+	}
+
+	center := utils.TilePosToWorldPos(t)
+	return [2]utils.Vec2f{center.Add(def.colliderMin), center.Add(def.colliderMax)}, true
+}
+
+// The sprites of the features in the active chunks whose tiles are within the bounds, in tile order so that drawing
+// them is the same every frame
+func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f) []common.StaticSprite {
+	minTile, maxTile := utils.WorldPosToTilePos(bounds[0]), utils.WorldPosToTilePos(bounds[1])
+	minChunk := utils.Vec2i{X: floorDiv(minTile.X, data.ChunkSize), Y: floorDiv(minTile.Y, data.ChunkSize)}
+	maxChunk := utils.Vec2i{X: floorDiv(maxTile.X, data.ChunkSize), Y: floorDiv(maxTile.Y, data.ChunkSize)}
+
+	type placed struct {
+		tile   utils.Vec2i
+		sprite common.StaticSprite
+	}
+	found := []placed{}
+
+	for cy := minChunk.Y; cy <= maxChunk.Y; cy++ {
+		for cx := minChunk.X; cx <= maxChunk.X; cx++ {
+			c, ok := cc.chunks[utils.Vec2i{X: cx, Y: cy}]
+			if !ok {
+				continue
+			}
+
+			for t, f := range c.features {
+				def, ok := cc.featureAtlas[f]
+				if !ok || t.X < minTile.X || t.X > maxTile.X || t.Y < minTile.Y || t.Y > maxTile.Y {
+					continue
+				}
+
+				found = append(found, placed{t, common.StaticSprite{
+					ImageAsset: def.imageAsset,
+					Pos:        utils.TilePosToWorldPos(t).Add(def.imageOffset),
+					Layer:      def.spriteLayer,
+				}})
+			}
+		}
+	}
+
+	slices.SortFunc(found, func(a, b placed) int {
+		return cmp.Or(cmp.Compare(a.tile.Y, b.tile.Y), cmp.Compare(a.tile.X, b.tile.X))
+	})
+
+	sprites := make([]common.StaticSprite, len(found))
+	for i, p := range found {
+		sprites[i] = p.sprite
+	}
+	return sprites
+}

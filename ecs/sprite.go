@@ -231,7 +231,8 @@ func (x *ECSContainer) SpriteWorldOffsetScale(e common.EntityId) (float64, error
 	return pWorldScale * s.offsetScale, nil
 }
 
-func (x *ECSContainer) SpriteWorldLayerYOffset(e common.EntityId, assetManager *assetmanager.AssetManager) (uint16, error) {
+// Rounded down rather than truncated, so that sprites just above the world's origin sort above those just below it
+func (x *ECSContainer) SpriteWorldLayerYOffset(e common.EntityId, assetManager *assetmanager.AssetManager) (int64, error) {
 	s, ok := x.Sprites.Get(e)
 	if !ok {
 		return 0, fmt.Errorf("entity %d has no sprite", e)
@@ -255,7 +256,7 @@ func (x *ECSContainer) SpriteWorldLayerYOffset(e common.EntityId, assetManager *
 		return 0, fmt.Errorf("could not get image asset for entity %d: %v", e, err)
 	}
 
-	return uint16(worldPos.Y + (float64(imgAsset.LayerYOffset)*sin + float64(imgAsset.LayerYOffset)*cos)), nil
+	return int64(math.Floor(worldPos.Y + (float64(imgAsset.LayerYOffset)*sin + float64(imgAsset.LayerYOffset)*cos))), nil
 }
 
 func (x Sprite) Copy() Sprite {

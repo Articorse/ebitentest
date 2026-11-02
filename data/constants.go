@@ -42,6 +42,10 @@ const (
 	WorldgenRockWarpTiles          = 2.0
 	WorldgenRockWarpScaleTiles     = 5.0
 	WorldgenSpawnSearchRadiusTiles = 64
+	WorldgenForestScaleTiles       = 24.0
+	WorldgenForestEdge             = 0.0
+	WorldgenForestFadeWidth        = 0.25
+	WorldgenForestMaxTreeChance    = 1.0
 	PlayerVisionRadiusTiles        = 12
 	VisionCircleMarginTiles        = 1.5
 	VisionCircleFadeTiles          = 0.5
