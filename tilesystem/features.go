@@ -71,6 +71,11 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string) error {
 	return nil
 }
 
+func (cc *ChunkContainer) HasFeature(t utils.Vec2i) bool {
+	_, ok := cc.FeatureAt(t)
+	return ok
+}
+
 func (cc *ChunkContainer) FeatureAt(t utils.Vec2i) (data.FeatureEnum, bool) {
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	if !ok {

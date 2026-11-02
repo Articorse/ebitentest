@@ -123,23 +123,41 @@ func TestTrunksStopProjectiles(t *testing.T) {
 	}
 }
 
-func TestTheGroundUnderATreeCantBeDamaged(t *testing.T) {
+func TestAnExplosionTurnsTheGrassUnderATreeIntoDirtAndTheTreeStays(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	tree := findLoneTree(t, s)
-	grass := findTile(t, s, func(tile utils.Vec2i) bool {
-		_, hasFeature := s.Chunks.FeatureAt(tile)
-		return !hasFeature && !isRock(tile) && s.Chunks.CanDamageTile(tile)
-	})
 
-	if s.Chunks.CanDamageTile(tree) || s.Chunks.DamageTile(tree, 100) {
-		t.Fatal("the grass under a tree can be damaged")
+	addExplosion(t, s.ECS, utils.TilePosToWorldPos(tree), ecs.Layer_Terrain|ecs.Layer_Ground, []float64{4}, 50)
+	touchTerrain(t, s)
+
+	if got := currentTile(s, tree); got != data.Tile_Dirt {
+		t.Fatalf("the grass under the tree is %v after a 50-damage explosion, want dirt", got)
 	}
-	if _, ok := s.Chunks.TileHealth(tree); ok {
-		t.Fatal("the grass under a tree has health")
+	if f, ok := s.Chunks.FeatureAt(tree); !ok || f != data.Feature_Tree {
+		t.Fatal("the tree went with the grass under it")
 	}
-	if !s.Chunks.CanDamageTile(grass) {
-		t.Fatal("grass without a tree can't be damaged either")
+}
+
+func TestHittingATrunkDoesntDamageTheGroundUnderIt(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	tree := findLoneTree(t, s)
+	before, _ := s.Chunks.TileHealth(tree)
+
+	// Like a rocket's body: it collides with terrain, which the trunk is, but not with the ground
+	shell := addExplosion(t, s.ECS, utils.TilePosToWorldPos(tree).Add(utils.Vec2f{Y: 3}), ecs.Layer_Terrain, []float64{1}, 50)
+	cols := touchTerrain(t, s)
+
+	hitTrunk := false
+	for _, c := range cols {
+		hitTrunk = hitTrunk || (c.E == shell && c.Tile == tree && c.Feature)
+	}
+	if !hitTrunk {
+		t.Fatalf("collisions %+v don't say the trunk was hit", cols)
+	}
+	if after, _ := s.Chunks.TileHealth(tree); after != before {
+		t.Fatalf("the grass under the trunk went from %d to %d health", before, after)
 	}
 }
 
@@ -186,5 +204,18 @@ func TestTreesStayAfterTheirChunkIsSavedAndLoaded(t *testing.T) {
 	}
 	if health, ok := r.Chunks.TileHealth(neighbor); !ok || health != 40 {
 		t.Fatalf("after restarting, the damaged grass has %d health (%v), so its chunk wasn't the saved one", health, ok)
+	}
+}
+
+func TestTheTerrainKnowsWhichTilesHaveTrees(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	tree := findLoneTree(t, s)
+
+	if !s.Chunks.HasFeature(tree) {
+		t.Fatal("the tree's tile has no feature")
+	}
+	if beside := (utils.Vec2i{X: tree.X + 1, Y: tree.Y}); s.Chunks.HasFeature(beside) {
+		t.Fatalf("the tile beside the tree, %v, has a feature", beside)
 	}
 }

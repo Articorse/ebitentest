@@ -60,6 +60,11 @@ func (p *TileStrikeParams) canAffect(origin, tile utils.Vec2i, inSight map[utils
 		return false
 	}
 
+	// A strike aimed at a feature hits the feature rather than the ground under it, and no feature can be damaged yet
+	if terrain.HasFeature(tile) {
+		return false
+	}
+
 	layer, ok := terrain.TileLayer(tile)
 	return ok && layer&p.Mask != 0 && terrain.CanDamageTile(tile)
 }

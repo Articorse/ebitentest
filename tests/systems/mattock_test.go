@@ -16,6 +16,8 @@ func (openGround) IsOpaqueTile(utils.Vec2i) bool { return false }
 
 func (openGround) TileLayer(utils.Vec2i) (ecs.LayerMask, bool) { return ecs.Layer_Ground, true }
 
+func (openGround) HasFeature(utils.Vec2i) bool { return false }
+
 func (openGround) CanDamageTile(utils.Vec2i) bool { return true }
 
 func (g openGround) DamageTile(t utils.Vec2i, damage int) bool {

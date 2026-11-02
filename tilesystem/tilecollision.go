@@ -16,13 +16,15 @@ type EntityTiles struct {
 	E          common.EntityId
 	Tiles      []utils.Vec2i
 	Impassable []bool
+	Feature    []bool
 	// World-space bounds of what's collided with
 	Bounds [][2]utils.Vec2f
 }
 
-func (et *EntityTiles) add(t utils.Vec2i, impassable bool, bounds [2]utils.Vec2f) {
+func (et *EntityTiles) add(t utils.Vec2i, impassable, feature bool, bounds [2]utils.Vec2f) {
 	et.Tiles = append(et.Tiles, t)
 	et.Impassable = append(et.Impassable, impassable)
+	et.Feature = append(et.Feature, feature)
 	et.Bounds = append(et.Bounds, bounds)
 }
 
@@ -96,6 +98,7 @@ func GetCollisions(
 						Vector:     v,
 						ShapeIdx:   shapeIdx,
 						Impassable: et.Impassable[i],
+						Feature:    et.Feature[i],
 					})
 					break
 				}
@@ -128,7 +131,7 @@ func GetAABBCollisions(
 		collided := EntityTiles{E: et.E}
 		for i, t := range et.Tiles {
 			if utils.DetectAABBCollision(eAABB, et.Bounds[i]) {
-				collided.add(t, et.Impassable[i], et.Bounds[i])
+				collided.add(t, et.Impassable[i], et.Feature[i], et.Bounds[i])
 			}
 		}
 
@@ -186,9 +189,9 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 		}
 
 		et := EntityTiles{E: e}
-		add := func(t utils.Vec2i, impassable bool, bounds [2]utils.Vec2f) {
+		add := func(t utils.Vec2i, impassable, feature bool, bounds [2]utils.Vec2f) {
 			if mask&tileLayer(impassable) != 0 {
-				et.add(t, impassable, bounds)
+				et.add(t, impassable, feature, bounds)
 			}
 		}
 
@@ -204,7 +207,7 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 				chunk, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 				if !ok {
 					if unloadedImpassable {
-						add(t, true, tileBounds(t))
+						add(t, true, false, tileBounds(t))
 					}
 					continue
 				}
@@ -216,10 +219,10 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 					continue
 				}
 
-				add(t, !tileDef.passable, tileBounds(t))
+				add(t, !tileDef.passable, false, tileBounds(t))
 				// Colliders of features are impassable, like terrain, but only where they are on the tile
 				if bounds, ok := cc.featureCollider(chunk, t); ok {
-					add(t, true, bounds)
+					add(t, true, true, bounds)
 				}
 			}
 		}

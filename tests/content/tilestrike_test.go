@@ -14,12 +14,13 @@ import (
 // Ground everywhere within 5 tiles of the origin, with rock where it's told to be
 type fakeTerrain struct {
 	rock    map[utils.Vec2i]bool
+	trees   map[utils.Vec2i]bool
 	damaged map[utils.Vec2i]int
 	sturdy  map[utils.Vec2i]bool
 }
 
 func newFakeTerrain(rock ...utils.Vec2i) *fakeTerrain {
-	f := &fakeTerrain{rock: map[utils.Vec2i]bool{}, damaged: map[utils.Vec2i]int{}, sturdy: map[utils.Vec2i]bool{}}
+	f := &fakeTerrain{rock: map[utils.Vec2i]bool{}, trees: map[utils.Vec2i]bool{}, damaged: map[utils.Vec2i]int{}, sturdy: map[utils.Vec2i]bool{}}
 	for _, r := range rock {
 		f.rock[r] = true
 	}
@@ -42,6 +43,10 @@ func (f *fakeTerrain) TileLayer(t utils.Vec2i) (ecs.LayerMask, bool) {
 		return ecs.Layer_Terrain, true
 	}
 	return ecs.Layer_Ground, true
+}
+
+func (f *fakeTerrain) HasFeature(t utils.Vec2i) bool {
+	return f.trees[t]
 }
 
 func (f *fakeTerrain) CanDamageTile(t utils.Vec2i) bool {
@@ -92,26 +97,32 @@ func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 		sturdy []utils.Vec2i
 		aim    utils.Vec2i
 		want   utils.Vec2i
+		trees  []utils.Vec2i
 	}{
-		{"its own tile", both, nil, nil, utils.Vec2i{}, utils.Vec2i{}},
-		{"ground in range", both, nil, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}},
-		{"ground past the range", both, nil, nil, utils.Vec2i{X: 6}, none},
-		{"past the range's circle", both, nil, nil, utils.Vec2i{X: 2, Y: 1}, none},
-		{"rock past the range", both, []utils.Vec2i{{X: 2}, {X: 4}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}},
-		{"rock with ground in front", both, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}},
-		{"ground behind rock", both, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}},
-		{"far behind rock", both, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 1}},
-		{"ground that can't be damaged", both, nil, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, none},
-		{"rock that can't be damaged", both, []utils.Vec2i{{X: 1}, {X: 2}}, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}},
-		{"rock past the aim", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 1}, none},
-		{"rock on the way", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}},
-		{"ground behind rock it can't affect", ecs.Layer_Ground, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 3}, none},
+		{"its own tile", both, nil, nil, utils.Vec2i{}, utils.Vec2i{}, nil},
+		{"ground in range", both, nil, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, nil},
+		{"ground past the range", both, nil, nil, utils.Vec2i{X: 6}, none, nil},
+		{"past the range's circle", both, nil, nil, utils.Vec2i{X: 2, Y: 1}, none, nil},
+		{"rock past the range", both, []utils.Vec2i{{X: 2}, {X: 4}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}, nil},
+		{"rock with ground in front", both, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, nil},
+		{"ground behind rock", both, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}, nil},
+		{"far behind rock", both, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 1}, nil},
+		{"ground that can't be damaged", both, nil, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, none, nil},
+		{"rock that can't be damaged", both, []utils.Vec2i{{X: 1}, {X: 2}}, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}, nil},
+		{"rock past the aim", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 1}, none, nil},
+		{"rock on the way", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}, nil},
+		{"ground behind rock it can't affect", ecs.Layer_Ground, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 3}, none, nil},
+		{"a tree", both, nil, nil, utils.Vec2i{X: 1}, none, []utils.Vec2i{{X: 1}}},
+		{"rock behind a tree", both, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 1}}},
 	}
 
 	for _, c := range cases {
 		terrain := newFakeTerrain(c.rock...)
 		for _, s := range c.sturdy {
 			terrain.sturdy[s] = true
+		}
+		for _, tree := range c.trees {
+			terrain.trees[tree] = true
 		}
 		x, holder := newMattockHolder(t, terrain, c.mask)
 

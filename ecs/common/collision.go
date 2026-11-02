@@ -22,4 +22,6 @@ type TileCollision struct {
 	Vector   utils.Vec2f
 	ShapeIdx int
 	Impassable bool
+	// The collider of a feature on the tile, rather than the tile itself
+	Feature bool
 }
