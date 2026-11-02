@@ -22,8 +22,8 @@ func NewTossComponent(distance utils.Vec2f, durationMs int, heightPx float64) *T
 	return &Toss{step: distance.Multiply(1 / float64(ticks)), durationMs: durationMs, heightPx: heightPx}
 }
 
-// Moves the entity one tick along its toss. Each axis is blocked on its own, so that meeting terrain stops the part of
-// the movement towards it, while the rest of the toss, and its arc, carries on.
+// Moves the entity one tick along its toss. Meeting terrain stops the part of the toss towards it for good, while the
+// rest of it, and its arc, carries on.
 func (x *ECSContainer) TickToss(e common.EntityId) {
 	toss, ok := x.Tosses.Get(e)
 	if !ok {
@@ -35,18 +35,13 @@ func (x *ECSContainer) TickToss(e common.EntityId) {
 		return
 	}
 
-	pos := t.LocalPos()
-	if next := pos.Add(utils.Vec2f{X: toss.step.X}); toss.step.X != 0 && x.terrain.IsBlockedAt(next) {
+	blockedX, blockedY := moveOnGround(t, toss.step, x.terrain)
+	if blockedX {
 		toss.step.X = 0
-	} else {
-		pos = next
 	}
-	if next := pos.Add(utils.Vec2f{Y: toss.step.Y}); toss.step.Y != 0 && x.terrain.IsBlockedAt(next) {
+	if blockedY {
 		toss.step.Y = 0
-	} else {
-		pos = next
 	}
-	t.SetLocalPos(pos)
 
 	toss.elapsedMs += data.TickMs
 	if toss.elapsedMs >= toss.durationMs {
@@ -58,6 +53,24 @@ func (x *ECSContainer) TickToss(e common.EntityId) {
 		progress := float64(toss.elapsedMs) / float64(toss.durationMs)
 		spr.SetLocalOffsetPos(utils.Vec2f{Y: -4 * toss.heightPx * progress * (1 - progress)})
 	}
+}
+
+// Moves a root entity by step, an axis at a time, leaving out an axis whose next point is blocked, so that meeting
+// terrain stops only the movement towards it
+func moveOnGround(t *Transform, step utils.Vec2f, terrain Terrain) (blockedX, blockedY bool) {
+	pos := t.LocalPos()
+	if next := pos.Add(utils.Vec2f{X: step.X}); step.X != 0 && terrain.IsBlockedAt(next) {
+		blockedX = true
+	} else {
+		pos = next
+	}
+	if next := pos.Add(utils.Vec2f{Y: step.Y}); step.Y != 0 && terrain.IsBlockedAt(next) {
+		blockedY = true
+	} else {
+		pos = next
+	}
+	t.SetLocalPos(pos)
+	return blockedX, blockedY
 }
 
 // Puts the entity down where it is

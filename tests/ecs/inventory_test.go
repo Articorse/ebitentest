@@ -1,10 +1,12 @@
 package ecs_test
 
 import (
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
+	"math"
 	"testing"
 )
 
@@ -141,7 +143,7 @@ func TestInventorySurvivesSaving(t *testing.T) {
 	checkConsistency(t, y)
 }
 
-func TestTheItemsPickupDelayIsSaved(t *testing.T) {
+func TestTheItemsPickupDelayAndPullAreSaved(t *testing.T) {
 	x := testutil.NewECS(t)
 	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(1))
 	item := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewItemComponent())
@@ -151,13 +153,23 @@ func TestTheItemsPickupDelayIsSaved(t *testing.T) {
 	if _, _, err := x.DropSelectedItem(owner); err != nil {
 		t.Fatal(err)
 	}
+	x.PullItem(item, utils.Vec2f{X: 100})
+	x.PullItem(item, utils.Vec2f{X: 100})
 
 	members, err := x.GetCompositionComponents(item)
 	if err != nil {
 		t.Fatal(err)
 	}
-	restored, _ := testutil.Restore(t, members).Items.Get(item)
+	y := testutil.Restore(t, members)
+	restored, _ := y.Items.Get(item)
 	if restored == nil || restored.CanBePickedUp() {
 		t.Fatal("a just dropped item can be picked up after being saved and loaded")
+	}
+
+	// Two ticks of pulling built up speed, which carries on after loading rather than starting over
+	before := testutil.WorldPos(t, y, item)
+	y.PullItem(item, utils.Vec2f{X: 100})
+	if moved := testutil.WorldPos(t, y, item).X - before.X; math.Abs(moved-(data.ItemPullStartSpeedPx+2*data.ItemPullAccelerationPx)) > 1e-9 {
+		t.Fatalf("after loading, a pulled item moved %v in a tick, want the speed it had built up", moved)
 	}
 }

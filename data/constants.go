@@ -58,14 +58,15 @@ const (
 	HotbarMarginPx                 = 5
 	HotbarSlotGapPx                = 1
 	ItemPickupDelayMs              = 2000
-	ItemPickupReachPx              = 8
+	ItemPickupReachPx              = 3
 	ItemTossDistancePx             = 24.0
-	// Either way, as a share of the distance
-	ItemTossDistanceVariation = 0.15
-	// Either way
-	ItemTossAngleVariationRad = 10 * math.Pi / 180
-	ItemTossDurationMs        = 300
-	ItemTossHeightPx          = 6.0
+	ItemTossDistanceVariation      = 0.15
+	ItemTossAngleVariationRad      = 10 * math.Pi / 180
+	ItemTossDurationMs             = 300
+	ItemTossHeightPx               = 6.0
+	ItemPullReachPx                = 25
+	ItemPullStartSpeedPx           = 0.25
+	ItemPullAccelerationPx         = 0.1
 )
 
 var (

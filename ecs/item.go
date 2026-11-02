@@ -13,6 +13,8 @@ import (
 type Item struct {
 	// So that what was just dropped isn't picked straight back up by whoever dropped it
 	pickupDelayMs int
+	// 0 while nothing pulls it in
+	pullSpeedPx float64
 }
 
 func NewItemComponent() *Item {
@@ -25,6 +27,31 @@ func (x *Item) CanBePickedUp() bool {
 
 func (x *Item) TickPickupDelay() {
 	x.pickupDelayMs = max(x.pickupDelayMs-data.TickMs, 0)
+}
+
+// Pulls the loose item a tick towards target, faster each tick it's pulled, without passing it or going through
+// terrain
+func (x *ECSContainer) PullItem(e common.EntityId, target utils.Vec2f) {
+	item, itemOk := x.Items.Get(e)
+	t, traOk := x.Transforms.Get(e)
+	if !itemOk || !traOk || x.Parent(e) != -1 {
+		return
+	}
+
+	if item.pullSpeedPx == 0 {
+		item.pullSpeedPx = data.ItemPullStartSpeedPx
+	} else {
+		item.pullSpeedPx += data.ItemPullAccelerationPx
+	}
+
+	toTarget := target.Subtract(t.LocalPos())
+	if distance := toTarget.Length(); distance > 0 {
+		moveOnGround(t, toTarget.Multiply(min(item.pullSpeedPx, distance)/distance), x.terrain)
+	}
+}
+
+func (x *Item) StopPull() {
+	x.pullSpeedPx = 0
 }
 
 // Puts the selected item on the ground where its owner stands, upright, and returns it
@@ -102,6 +129,7 @@ func (x *ECSContainer) PickUpItem(collector, item common.EntityId) (bool, error)
 	}
 
 	x.EndToss(item)
+	itemComp.StopPull()
 	if err := x.PutInInventory(collector, slot, item); err != nil {
 		return false, err
 	}
@@ -128,12 +156,13 @@ func (x Item) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 
 type itemDto struct {
 	PickupDelayMs int
+	PullSpeedPx   float64
 }
 
 func (x Item) toDto() (ComponentDto, error) {
-	return &itemDto{PickupDelayMs: x.pickupDelayMs}, nil
+	return &itemDto{PickupDelayMs: x.pickupDelayMs, PullSpeedPx: x.pullSpeedPx}, nil
 }
 
 func (x itemDto) toComponent() (Component, error) {
-	return &Item{pickupDelayMs: x.PickupDelayMs}, nil
+	return &Item{pickupDelayMs: x.PickupDelayMs, pullSpeedPx: x.PullSpeedPx}, nil
 }

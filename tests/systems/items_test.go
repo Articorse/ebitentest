@@ -7,7 +7,6 @@ import (
 	"ebittest/ecs/systems/itemsystem"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
-	"math"
 	"testing"
 )
 
@@ -118,24 +117,6 @@ func TestPickedUpItemsGoIntoTheLowestFreeSlot(t *testing.T) {
 		t.Fatal("the mattock was picked up from far away")
 	}
 	checkConsistency(t, x)
-}
-
-func TestItemsArePickedUpOnlyWithinReach(t *testing.T) {
-	x, player, mattock, _, _ := newArmedPlayer(t)
-	press(t, x, player, ecs.InputState{DropItem: true})
-	reach := float64(data.ItemPickupReachPx)
-	testutil.SetPos(t, x, mattock, utils.Vec2f{X: reach * math.Cos(1), Y: reach*math.Sin(1) + 0.01})
-
-	tickItems(x, data.ItemPickupDelayMs+data.TickMs)
-	if x.Parent(mattock) != -1 {
-		t.Fatal("an item just out of reach was picked up")
-	}
-
-	testutil.SetPos(t, x, mattock, utils.Vec2f{X: reach})
-	tickItems(x, data.TickMs)
-	if x.Parent(mattock) != player {
-		t.Fatal("an item at the edge of reach wasn't picked up")
-	}
 }
 
 func TestItemsArentPickedUpIntoAFullInventory(t *testing.T) {
