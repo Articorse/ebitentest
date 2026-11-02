@@ -174,6 +174,19 @@ func (cc *ChunkContainer) featureCollider(c *chunk, t utils.Vec2i) ([2]utils.Vec
 	return [2]utils.Vec2f{center.Add(def.colliderMin), center.Add(def.colliderMax)}, true
 }
 
+func (cc *ChunkContainer) featureSprite(t utils.Vec2i, f data.FeatureEnum) (common.StaticSprite, bool) {
+	def, ok := cc.featureAtlas[f]
+	if !ok {
+		return common.StaticSprite{}, false
+	}
+
+	return common.StaticSprite{
+		ImageAsset: def.imageAsset,
+		Pos:        utils.TilePosToWorldPos(t).Add(def.imageOffset),
+		Layer:      def.spriteLayer,
+	}, true
+}
+
 // The sprites of the features in the active chunks whose tiles are within the bounds, in tile order so that drawing
 // them is the same every frame
 func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f) []common.StaticSprite {
@@ -195,16 +208,12 @@ func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f) []common.StaticS
 			}
 
 			for t, f := range c.features {
-				def, ok := cc.featureAtlas[f]
-				if !ok || t.X < minTile.X || t.X > maxTile.X || t.Y < minTile.Y || t.Y > maxTile.Y {
+				if t.X < minTile.X || t.X > maxTile.X || t.Y < minTile.Y || t.Y > maxTile.Y {
 					continue
 				}
-
-				found = append(found, placed{t, common.StaticSprite{
-					ImageAsset: def.imageAsset,
-					Pos:        utils.TilePosToWorldPos(t).Add(def.imageOffset),
-					Layer:      def.spriteLayer,
-				}})
+				if sprite, ok := cc.featureSprite(t, f); ok {
+					found = append(found, placed{t, sprite})
+				}
 			}
 		}
 	}

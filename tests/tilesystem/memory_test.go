@@ -3,6 +3,7 @@ package tilesystem_test
 import (
 	"ebittest/data"
 	"ebittest/ecs"
+	"ebittest/ecs/common"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"ebittest/worldgen"
@@ -114,4 +115,60 @@ func rememberedAround(s *testutil.Session, pos utils.Vec2f) map[utils.Vec2i]bool
 		}
 	}
 	return remembered
+}
+
+func TestTreesAreRememberedAsTheyWereLastSeen(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	tree := findLoneTree(t, s)
+
+	if _, ok := s.Chunks.RecallFeature(tree); ok {
+		t.Fatal("a tree is remembered before it was seen")
+	}
+
+	treePos := utils.TilePosToWorldPos(tree)
+	see(s, treePos)
+	if f, ok := s.Chunks.RecallFeature(tree); !ok || f != data.Feature_Tree {
+		t.Fatalf("after seeing it, the tree is remembered as %v (%v)", f, ok)
+	}
+	if _, ok := s.Chunks.RecallFeature(utils.Vec2i{X: tree.X + 1, Y: tree.Y}); ok {
+		t.Fatal("the grass beside the tree is remembered with a feature")
+	}
+
+	if !s.Chunks.DamageFeature(tree, 100) {
+		t.Fatal("couldn't fell the tree")
+	}
+	if f, _ := s.Chunks.RecallFeature(tree); f != data.Feature_Tree {
+		t.Fatalf("the felled tree is remembered as %v before it was seen again, want the tree", f)
+	}
+
+	see(s, treePos)
+	if f, _ := s.Chunks.RecallFeature(tree); f != data.Feature_Stump {
+		t.Fatalf("after seeing it again, the felled tree is remembered as %v, want a stump", f)
+	}
+}
+
+func TestRememberedTreesSurviveARestartAndAreDrawn(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	tree := findLoneTree(t, s)
+	treePos := utils.TilePosToWorldPos(tree)
+	see(s, treePos)
+	s.Commit()
+
+	r := testutil.StartSession(t)
+	if f, ok := r.Chunks.RecallFeature(tree); !ok || f != data.Feature_Tree {
+		t.Fatalf("after restarting, the tree is remembered as %v (%v)", f, ok)
+	}
+
+	sprites := r.Chunks.RememberedFeatureSprites([2]utils.Vec2f{treePos, treePos})
+	want := common.StaticSprite{ImageAsset: common.AssetImageTree, Pos: treePos.Add(utils.Vec2f{X: 1, Y: -7}), Layer: 20}
+	if len(sprites) != 1 || sprites[0] != want {
+		t.Fatalf("remembered sprites on the tree's tile are %+v, want %+v", sprites, want)
+	}
+
+	away := treePos.Add(utils.Vec2f{X: 3000})
+	if sprites := r.Chunks.RememberedFeatureSprites([2]utils.Vec2f{away, away}); len(sprites) != 0 {
+		t.Fatalf("remembered sprites where nothing was seen: %+v", sprites)
+	}
 }

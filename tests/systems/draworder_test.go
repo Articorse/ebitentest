@@ -100,3 +100,22 @@ func TestSpritesJustNorthOfTheOriginAreDrawnBehindThoseJustSouthOfIt(t *testing.
 		t.Fatalf("drawn in order %v, want %v", got, want)
 	}
 }
+
+func TestStaticSpritesOnTheirOwnAreDrawnFromTheBackToTheFront(t *testing.T) {
+	t.Chdir(testutil.RepoRoot())
+	stumpBottom := bottomRow(t, common.AssetImageTreeStump)
+	stump := func(groundY float64, layer uint8) common.StaticSprite {
+		return common.StaticSprite{ImageAsset: common.AssetImageTreeStump, Pos: utils.Vec2f{Y: groundY - stumpBottom}, Layer: layer}
+	}
+
+	front, behind, level, above := tree(t, 120, 20), stump(100, 20), tree(t, 100, 20), tree(t, 0, 25)
+	got, err := drawsystem.StaticSpriteDrawOrder([]common.StaticSprite{above, front, level, behind}, assetmanager.NewAssetManager())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The tree and the stump touch the ground on the same row, so they keep the order they were given in
+	if want := []common.StaticSprite{level, behind, front, above}; !slices.Equal(got, want) {
+		t.Fatalf("drawn in order %+v, want %+v", got, want)
+	}
+}

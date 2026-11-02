@@ -34,7 +34,7 @@ func DrawSprites(
 
 	for _, d := range order {
 		if d.Entity == -1 {
-			if err := drawStaticSprite(screen, camera, d.Static, assetManager); err != nil {
+			if err := drawStaticSprite(screen, camera, d.Static, 1, assetManager); err != nil {
 				return err
 			}
 			continue
@@ -141,12 +141,10 @@ func SpriteDrawOrder(
 			continue
 		}
 
-		asset, err := assetManager.GetAsset(s.ImageAsset)
+		key, err := staticSpriteKey(s, assetManager)
 		if err != nil {
-			return nil, fmt.Errorf("error getting image of static sprite at %v: %v", s.Pos, err)
+			return nil, err
 		}
-
-		key := int64(math.Floor(s.Pos.Y + float64(asset.LayerYOffset)))
 		layers[s.Layer] = append(layers[s.Layer], spriteGroup{key: key, root: -1, staticIdx: i})
 	}
 
@@ -184,7 +182,62 @@ func SpriteDrawOrder(
 	return order, nil
 }
 
-func drawStaticSprite(screen *ebiten.Image, camera utils.Vec2f, s common.StaticSprite, assetManager *assetmanager.AssetManager) error {
+// Static sprites on their own, such as remembered features, in the order DrawSprites would draw them, and scaled by
+// the brightness
+func DrawStaticSprites(
+	dst *ebiten.Image,
+	camera utils.Vec2f,
+	sprites []common.StaticSprite,
+	brightness float32,
+	assetManager *assetmanager.AssetManager,
+) error {
+	ordered, err := StaticSpriteDrawOrder(sprites, assetManager)
+	if err != nil {
+		return err
+	}
+
+	for _, s := range ordered {
+		if err := drawStaticSprite(dst, camera, s, brightness, assetManager); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// By layer, then from the back to the front, keeping the given order where that's the same
+func StaticSpriteDrawOrder(sprites []common.StaticSprite, assetManager *assetmanager.AssetManager) ([]common.StaticSprite, error) {
+	keys := make(map[common.StaticSprite]int64, len(sprites))
+	for _, s := range sprites {
+		key, err := staticSpriteKey(s, assetManager)
+		if err != nil {
+			return nil, err
+		}
+		keys[s] = key
+	}
+
+	ordered := slices.Clone(sprites)
+	slices.SortStableFunc(ordered, func(a, b common.StaticSprite) int {
+		return cmp.Or(cmp.Compare(a.Layer, b.Layer), cmp.Compare(keys[a], keys[b]))
+	})
+	return ordered, nil
+}
+
+// Where the static sprite touches the ground, worked out like an entity sprite's
+func staticSpriteKey(s common.StaticSprite, assetManager *assetmanager.AssetManager) (int64, error) {
+	asset, err := assetManager.GetAsset(s.ImageAsset)
+	if err != nil {
+		return 0, fmt.Errorf("error getting image of static sprite at %v: %v", s.Pos, err)
+	}
+	return int64(math.Floor(s.Pos.Y + float64(asset.LayerYOffset))), nil
+}
+
+func drawStaticSprite(
+	screen *ebiten.Image,
+	camera utils.Vec2f,
+	s common.StaticSprite,
+	brightness float32,
+	assetManager *assetmanager.AssetManager,
+) error {
 	asset, err := assetManager.GetAsset(s.ImageAsset)
 	if err != nil {
 		return fmt.Errorf("error getting image of static sprite at %v: %v", s.Pos, err)
@@ -193,6 +246,7 @@ func drawStaticSprite(screen *ebiten.Image, camera utils.Vec2f, s common.StaticS
 	img := asset.Frames[0]
 	opts := ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(s.Pos.X-camera.X-float64(img.Bounds().Dx())/2, s.Pos.Y-camera.Y-float64(img.Bounds().Dy())/2)
+	opts.ColorScale.Scale(brightness, brightness, brightness, 1)
 	screen.DrawImage(img, &opts)
 
 	return nil

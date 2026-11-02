@@ -439,7 +439,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
 		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
-			g.visionOverlay.Draw(screen, g.ecs.Camera, pos, vision, g.chunkContainer.DrawMemory)
+			g.visionOverlay.Draw(screen, g.ecs.Camera, pos, vision, g.drawMemory)
 		}
 	}
 
@@ -452,6 +452,16 @@ func (g *game) Draw(screen *ebiten.Image) {
 	}
 
 	g.DrawDebug(screen)
+}
+
+// Entities are never remembered, only the terrain and the features on it
+func (g *game) drawMemory(dst *ebiten.Image, camera utils.Vec2f) {
+	g.chunkContainer.DrawMemory(dst, camera)
+
+	features := g.chunkContainer.RememberedFeatureSprites(drawsystem.DrawWindow(camera))
+	if err := drawsystem.DrawStaticSprites(dst, camera, features, data.MemoryBrightness, g.assetmanager); err != nil {
+		log.Println("error while drawing remembered features: ", err)
+	}
 }
 
 func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

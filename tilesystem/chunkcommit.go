@@ -93,7 +93,12 @@ func (cc *ChunkContainer) StartCommit(header world.Header, ecsCont *ecs.ECSConta
 			continue
 		}
 		// Copied, since the main thread keeps remembering while the commit is written
-		req.memory[pos] = memoryRegionDto{X: pos.X, Y: pos.Y, Tiles: append([]data.TileEnum(nil), r.tiles[:]...)}
+		req.memory[pos] = memoryRegionDto{
+			X:        pos.X,
+			Y:        pos.Y,
+			Tiles:    append([]data.TileEnum(nil), r.tiles[:]...),
+			Features: append([]data.FeatureEnum(nil), r.features[:]...),
+		}
 		inFlight.memoryVersions[pos] = r.version
 	}
 
