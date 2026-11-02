@@ -52,7 +52,8 @@ type ECSContainer struct {
 	Hitpoints         Storage[Hitpoints]
 	ContactDamages    Storage[ContactDamage]
 	Abilities         Storage[Abilities]
-	FacePositions     Storage[FacePosition]
+	Aims              Storage[Aim]
+	Facings           Storage[Facing]
 	Equipments        Storage[Equipment]
 	Equippers         Storage[Equipper]
 	Deathrattles      Storage[Deathrattle]
@@ -83,7 +84,8 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&hitpointsDto{})
 	gob.Register(&contactDamageDto{})
 	gob.Register(&abilitiesDto{})
-	gob.Register(&facePositionDto{})
+	gob.Register(&aimDto{})
+	gob.Register(&facingDto{})
 	gob.Register(&equipmentDto{})
 	gob.Register(&equipperDto{})
 	gob.Register(&deathrattleDto{})
@@ -134,7 +136,8 @@ func NewECSContainer() *ECSContainer {
 		Hitpoints:         newStorage[Hitpoints](),
 		ContactDamages:    newStorage[ContactDamage](),
 		Abilities:         newStorage[Abilities](),
-		FacePositions:     newStorage[FacePosition](),
+		Aims:              newStorage[Aim](),
+		Facings:           newStorage[Facing](),
 		Equipments:        newStorage[Equipment](),
 		Equippers:         newStorage[Equipper](),
 		Deathrattles:      newStorage[Deathrattle](),
@@ -166,7 +169,8 @@ func NewECSContainer() *ECSContainer {
 		&x.ContactDamages,
 		&x.Inputs,
 		&x.Abilities,
-		&x.FacePositions,
+		&x.Aims,
+		&x.Facings,
 		&x.Equipments,
 		&x.Equippers,
 		&x.Deathrattles,

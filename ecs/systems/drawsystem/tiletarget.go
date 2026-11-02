@@ -21,10 +21,10 @@ func DrawTileTarget(
 	screen *ebiten.Image,
 	camera utils.Vec2f,
 	holder common.EntityId,
-	aimPos utils.Vec2f,
 	ecsContainer *ecs.ECSContainer,
 ) error {
-	if ecsContainer.IsDisabled(holder) {
+	aimPos, hasAim := ecsContainer.AimOf(holder)
+	if !hasAim || ecsContainer.IsDisabled(holder) {
 		return nil
 	}
 

@@ -31,7 +31,7 @@ func TestTheMattockStrikesTheTileUnderTheCursor(t *testing.T) {
 	testutil.SetPos(t, x, player, spawn)
 
 	cursor := spawn.Add(utils.Vec2f{X: 30, Y: -5})
-	press(t, x, player, ecs.InputState{MainHandEqAbility1: 1, AimPos: cursor})
+	press(t, x, player, ecs.InputState{MainHandEqAbility1: 1, AimPos: cursor, HasAim: true})
 
 	if want := map[utils.Vec2i]int{utils.WorldPosToTilePos(cursor): 50}; !maps.Equal(ground.damaged, want) {
 		t.Fatalf("damaged %v, want %v", ground.damaged, want)

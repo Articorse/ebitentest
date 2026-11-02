@@ -3,6 +3,7 @@ package inputsystem
 import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/ecs/systems/facingsystem"
 	"ebittest/utils"
 	"log"
 	"maps"
@@ -23,13 +24,17 @@ type selfTrigger struct {
 	label  string
 }
 
+// Facing is updated between taking aim and using abilities, so that what's used this tick points where it turned to
+// this tick
 func HandleInputs(
 	camera utils.Vec2f,
 	ecsContainer *ecs.ECSContainer,
 	allInputs map[common.EntityId]ecs.InputState,
 ) error {
 	// In entity order, so that abilities activate, and spawned entities get their IDs, the same way every run
-	for _, e := range slices.Sorted(maps.Keys(allInputs)) {
+	entities := slices.Sorted(maps.Keys(allInputs))
+
+	for _, e := range entities {
 		input := allInputs[e]
 
 		// Before facing and using equipment, so that a newly selected item is aimed before its first use
@@ -39,26 +44,11 @@ func HandleInputs(
 			}
 		}
 
-		if ecsContainer.Transforms.HasComponent(e) {
-			eWorldPos, err := ecsContainer.WorldPos(e)
-			if err != nil {
-				log.Printf("Error getting world position for entity %d: %v\n", e, err)
-				continue
-			}
-
-			face(e, eWorldPos, input.AimPos, ecsContainer)
-
-			if equipper, ok := ecsContainer.Equippers.Get(e); ok {
-				for _, eqE := range equipper.Equipment() {
-					if ecsContainer.IsDisabled(eqE) {
-						continue
-					}
-					face(eqE, eWorldPos, input.AimPos, ecsContainer)
-					// Flipping mid-swing would snap the item to the other side while it's still coming back
-					if sw, ok := ecsContainer.Swings.Get(eqE); ok && (input.AimPos != utils.Vec2f{}) && !ecsContainer.IsSwinging(eqE) {
-						sw.SetMirrored(input.AimPos.X < eWorldPos.X)
-					}
-				}
+		if aim, ok := ecsContainer.Aims.Get(e); ok {
+			if input.HasAim {
+				aim.SetTarget(input.AimPos)
+			} else {
+				aim.ClearTarget()
 			}
 		}
 
@@ -66,58 +56,52 @@ func HandleInputs(
 			dir := utils.Vec2f{X: input.Analog1X, Y: input.Analog1Y}.Normalized()
 			vel.AddForce(dir.Multiply(vel.Acceleration()))
 		}
+	}
 
-		target := ecs.AbilityTarget{Pos: input.AimPos}
+	facingsystem.Tick(ecsContainer)
 
-		equipTriggers := []equipTrigger{
-			{input.MainHandEqAbility1, ecs.Equip_MainHand, 0, "main hand ability 1"},
-			{input.MainHandEqAbility2, ecs.Equip_MainHand, 1, "main hand ability 2"},
-			{input.OffHandEqAbility1, ecs.Equip_OffHand, 0, "off hand ability 1"},
-			{input.OffHandEqAbility2, ecs.Equip_OffHand, 1, "off hand ability 2"},
-		}
-
-		if ecsContainer.Equippers.HasComponent(e) {
-			for _, t := range equipTriggers {
-				if math.Abs(t.value) <= 0 {
-					continue
-				}
-				if _, err := ecsContainer.ActivateEquipmentAbility(e, t.slot, target, t.abiIdx); err != nil {
-					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
-				}
-			}
-		}
-
-		selfTriggers := []selfTrigger{
-			{input.Ability1, 0, "ability 1"},
-			{input.Ability2, 1, "ability 2"},
-		}
-
-		if ecsContainer.Abilities.HasComponent(e) {
-			for _, t := range selfTriggers {
-				if math.Abs(t.value) <= 0 {
-					continue
-				}
-				if _, err := ecsContainer.ActivateAbility(e, target, t.abiIdx); err != nil {
-					log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
-				}
-			}
-		}
+	for _, e := range entities {
+		useAbilities(e, allInputs[e], ecsContainer)
 	}
 
 	return nil
 }
 
-func face(e common.EntityId, from utils.Vec2f, target utils.Vec2f, ecsContainer *ecs.ECSContainer) {
-	fp, ok := ecsContainer.FacePositions.Get(e)
-	if !ok || !fp.Enabled() || (target.X == 0 && target.Y == 0) {
-		return
+func useAbilities(e common.EntityId, input ecs.InputState, ecsContainer *ecs.ECSContainer) {
+	target := ecs.AbilityTarget{}
+	target.Pos, target.HasPos = ecsContainer.AimOf(e)
+
+	equipTriggers := []equipTrigger{
+		{input.MainHandEqAbility1, ecs.Equip_MainHand, 0, "main hand ability 1"},
+		{input.MainHandEqAbility2, ecs.Equip_MainHand, 1, "main hand ability 2"},
+		{input.OffHandEqAbility1, ecs.Equip_OffHand, 0, "off hand ability 1"},
+		{input.OffHandEqAbility2, ecs.Equip_OffHand, 1, "off hand ability 2"},
 	}
 
-	t, ok := ecsContainer.Transforms.Get(e)
-	if !ok {
-		log.Printf("Error setting rotation for entity %d: it has no transform\n", e)
-		return
+	if ecsContainer.Equippers.HasComponent(e) {
+		for _, t := range equipTriggers {
+			if math.Abs(t.value) <= 0 {
+				continue
+			}
+			if _, err := ecsContainer.ActivateEquipmentAbility(e, t.slot, target, t.abiIdx); err != nil {
+				log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
+			}
+		}
 	}
 
-	t.SetLocalRotation(math.Atan2(target.Y-from.Y, target.X-from.X))
+	selfTriggers := []selfTrigger{
+		{input.Ability1, 0, "ability 1"},
+		{input.Ability2, 1, "ability 2"},
+	}
+
+	if ecsContainer.Abilities.HasComponent(e) {
+		for _, t := range selfTriggers {
+			if math.Abs(t.value) <= 0 {
+				continue
+			}
+			if _, err := ecsContainer.ActivateAbility(e, target, t.abiIdx); err != nil {
+				log.Printf("error activating %s for entity %d: %v\n", t.label, e, err)
+			}
+		}
+	}
 }

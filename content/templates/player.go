@@ -93,6 +93,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		ecs.NewPersistentComponent(),
 		ecs.NewVisionComponent(data.PlayerVisionRadiusTiles),
 		ecs.NewInventoryComponent(data.HotbarSlots),
+		ecs.NewAimComponent(),
 	)
 	if err != nil {
 		return -1, fmt.Errorf("error spawning player: %w", err)
@@ -126,7 +127,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 	if err != nil {
 		return err
 	}
-	bazookaFPComp := ecs.NewFacePositionComponent(utils.Vec2f{}, true)
+	bazookaFacingComp := ecs.NewFacingComponent().WithTurnRate(2 * math.Pi)
 
 	rocketTraComp := ecs.NewTransformComponent(utils.Vec2f{}, 1, 0)
 	rocketVelComp := ecs.NewVelocityComponentWithParams(utils.Vec2f{X: 3, Y: 0}, 0, 1)
@@ -218,7 +219,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		bazookaSprComp,
 		bazookaAniComp,
 		bazookaSpaComp,
-		bazookaFPComp,
+		bazookaFacingComp,
 		bazookaEquipmentComp,
 		ecs.NewItemComponent(),
 		ecs.NewPersistentComponent(),
@@ -362,7 +363,7 @@ func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.
 		gunSprComp,
 		gunAniComp,
 		gunSpaComp,
-		ecs.NewFacePositionComponent(utils.Vec2f{}, true),
+		ecs.NewFacingComponent(),
 		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis),
 		ecs.NewItemComponent(),
 		ecs.NewPersistentComponent(),

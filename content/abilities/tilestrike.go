@@ -85,6 +85,10 @@ func TileStrikeAbility(
 		return false, fmt.Errorf("error getting world position of entity %d for tile strike: %v", striker, err)
 	}
 
+	if !target.HasPos {
+		return false, nil
+	}
+
 	terrain := ecsContainer.Terrain()
 	tile, ok := p.TargetTile(strikerPos, target.Pos, terrain)
 	if !ok || !terrain.DamageTile(tile, p.Damage) {

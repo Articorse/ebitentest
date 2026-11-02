@@ -29,6 +29,7 @@ type AbilityParams interface {
 type AbilityTarget struct {
 	Entities []common.EntityId
 	Pos      utils.Vec2f
+	HasPos   bool
 }
 
 // An ability that isn't used, such as one aimed at something it can't affect, doesn't start its duration or cooldown,

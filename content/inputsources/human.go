@@ -53,7 +53,7 @@ func HumanInputSource(
 		mXint, mYint := ebiten.CursorPosition()
 		mX = float64(mXint) + ecsContainer.Camera.X
 		mY = float64(mYint) + ecsContainer.Camera.Y
-		is.AimPos = utils.Vec2f{X: float64(mX), Y: float64(mY)}
+		is.AimPos, is.HasAim = utils.Vec2f{X: float64(mX), Y: float64(mY)}, true
 
 	case ecs.Facing_Analog2:
 		if err != nil {
@@ -66,7 +66,7 @@ func HumanInputSource(
 		}
 		mX = lastFacingDir.X + worldPos.X
 		mY = lastFacingDir.Y + worldPos.Y
-		is.AimPos = utils.Vec2f{X: mX, Y: mY}
+		is.AimPos, is.HasAim = utils.Vec2f{X: mX, Y: mY}, true
 
 	default:
 		log.Printf("Unknown facing input %d for entity %d\n", in.FacingInput(), e)

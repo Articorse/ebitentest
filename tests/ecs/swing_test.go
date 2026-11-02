@@ -23,7 +23,7 @@ func addSwingingTool(t *testing.T, x *ecs.ECSContainer, cooldownMs int, swing *e
 
 	abis := [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{{Def: ecs.NewAbilityDef(abilityId, ecs.Ability_None, cooldownMs, 0)}}
 	tool = testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewEquipmentComponent(ecs.Equipable_MainHand, abis), swing)
-	holder = testutil.AddMovable(t, x, utils.Vec2f{}, false,
+	holder = testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewAimComponent(),
 		ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{ecs.Equip_MainHand: tool}))
 	testutil.Attach(t, x, tool, holder, ecs.Link_Held)
 	return tool, holder
@@ -62,15 +62,18 @@ func TestSwingMirrorsWhenAimingLeftOfTheHolder(t *testing.T) {
 	sw, _ := x.Swings.Get(tool)
 
 	for _, c := range []struct {
-		aim  utils.Vec2f
-		want bool
+		aim    utils.Vec2f
+		hasAim bool
+		want   bool
 	}{
-		{utils.Vec2f{X: 40, Y: 90}, true},
-		{utils.Vec2f{}, true},
-		{utils.Vec2f{X: 60, Y: 10}, false},
-		{utils.Vec2f{}, false},
+		{utils.Vec2f{X: 40, Y: 90}, true, true},
+		{utils.Vec2f{}, false, true},
+		{utils.Vec2f{X: 60, Y: 10}, true, false},
+		{utils.Vec2f{}, false, false},
+		{utils.Vec2f{}, true, true},
 	} {
-		if err := inputsystem.HandleInputs(utils.Vec2f{}, x, map[common.EntityId]ecs.InputState{holder: {AimPos: c.aim}}); err != nil {
+		input := ecs.InputState{AimPos: c.aim, HasAim: c.hasAim}
+		if err := inputsystem.HandleInputs(utils.Vec2f{}, x, map[common.EntityId]ecs.InputState{holder: input}); err != nil {
 			t.Fatal(err)
 		}
 		if sw.Mirrored() != c.want {
@@ -104,7 +107,7 @@ func TestSwingKeepsItsSideUntilItsReadyAgain(t *testing.T) {
 	left, right := utils.Vec2f{X: -10}, utils.Vec2f{X: 10}
 	aim := func(pos utils.Vec2f, use bool) {
 		t.Helper()
-		input := ecs.InputState{AimPos: pos}
+		input := ecs.InputState{AimPos: pos, HasAim: true}
 		if use {
 			input.MainHandEqAbility1 = 1
 		}

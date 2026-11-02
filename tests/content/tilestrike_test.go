@@ -75,7 +75,7 @@ func newMattockHolder(t *testing.T, terrain ecs.Terrain, mask ecs.LayerMask) (*e
 
 func strike(t *testing.T, x *ecs.ECSContainer, holder common.EntityId, tile utils.Vec2i) bool {
 	t.Helper()
-	used, err := x.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, ecs.AbilityTarget{Pos: utils.TilePosToWorldPos(tile)}, 0)
+	used, err := x.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, ecs.AbilityTarget{Pos: utils.TilePosToWorldPos(tile), HasPos: true}, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,6 +131,15 @@ func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 		if used := strike(t, x, holder, c.aim); used != (c.want != none) || !maps.Equal(terrain.damaged, want) {
 			t.Errorf("%s: strike used %v and damaged %v, want %v", c.name, used, terrain.damaged, want)
 		}
+	}
+}
+
+func TestTileStrikeWithoutAnAimDoesNothing(t *testing.T) {
+	terrain := newFakeTerrain()
+	x, holder := newMattockHolder(t, terrain, ecs.Layer_Ground)
+
+	if used, err := x.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, ecs.AbilityTarget{}, 0); err != nil || used || len(terrain.damaged) != 0 {
+		t.Fatalf("used %v, error %v, damaged %v; want nothing, though its own tile is at the origin", used, err, terrain.damaged)
 	}
 }
 

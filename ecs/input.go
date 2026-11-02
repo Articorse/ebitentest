@@ -163,6 +163,8 @@ type InputState struct {
 	Ability1           float64
 	Ability2           float64
 	AimPos             utils.Vec2f
+	// Without it, AimPos means nothing, so that aiming at the world's origin isn't mistaken for not aiming
+	HasAim bool
 	// 1-based, so that the zero value selects nothing
 	SelectSlot int
 }
