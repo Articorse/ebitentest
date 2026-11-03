@@ -135,3 +135,41 @@ func (cc *ChunkContainer) DrawFeatureColliders(
 		}
 	}
 }
+
+// Outlines the chunks on screen that are active (with or without a baked image), loaded but inactive, or being loaded.
+// Inset by a pixel, so that the borders of neighbors are side by side rather than drawn over each other.
+func (cc *ChunkContainer) DrawChunkBorders(screen *ebiten.Image, camera utils.Vec2f) {
+	size := screen.Bounds().Size()
+	onScreen := cameraBounds(camera, utils.Vec2f{X: float64(size.X), Y: float64(size.Y)}, 0)
+	minChunk, maxChunk := utils.WorldPosToChunkGridPos(onScreen[0]), utils.WorldPosToChunkGridPos(onScreen[1])
+
+	for y := minChunk.Y - 1; y <= maxChunk.Y+1; y++ {
+		for x := minChunk.X - 1; x <= maxChunk.X+1; x++ {
+			pos := utils.Vec2i{X: x, Y: y}
+			lineColor, ok := cc.chunkStateColor(pos)
+			bounds := chunkDrawBounds(pos)
+			if !ok || !utils.DetectAABBCollision(bounds, onScreen) {
+				continue
+			}
+
+			side := float32(bounds[1].X - bounds[0].X - 2)
+			vector.StrokeRect(screen, float32(bounds[0].X-camera.X+1), float32(bounds[0].Y-camera.Y+1), side, side, 1, lineColor, false)
+		}
+	}
+}
+
+func (cc *ChunkContainer) chunkStateColor(pos utils.Vec2i) (color.RGBA, bool) {
+	if c, ok := cc.chunks[pos]; ok {
+		if c.Image == nil {
+			return data.Debug_ChunkUnbakedColor, true
+		}
+		return data.Debug_ChunkActiveColor, true
+	}
+	if cc.isAvailable(pos) {
+		return data.Debug_ChunkInactiveColor, true
+	}
+	if _, ok := cc.loadsInFlight[pos]; ok {
+		return data.Debug_ChunkLoadingColor, true
+	}
+	return color.RGBA{}, false
+}

@@ -33,6 +33,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"strings"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -63,7 +64,9 @@ type game struct {
 	visionOverlay drawsystem.VisionOverlay
 
 	showFPS       bool
+	frameTimes    frameTimes
 	showColliders bool
+	showChunks    bool
 	touching      touchingColliders
 
 	// In screen pixels, which are device pixels
@@ -81,6 +84,30 @@ type game struct {
 
 // The size of a character in ebitenutil's debug font
 const debugGlyphWidth, debugGlyphHeight = 6, 16
+
+// The time from one frame to the next, which includes the updates between them, so that a hitch in either shows
+type frameTimes struct {
+	last        time.Time
+	windowStart time.Time
+	windowMax   time.Duration
+	// The slowest frame of the last full window, so that the number holds still long enough to read
+	shownMax time.Duration
+}
+
+func (x *frameTimes) frame(now time.Time) {
+	if !x.last.IsZero() {
+		x.windowMax = max(x.windowMax, now.Sub(x.last))
+	}
+	x.last = now
+
+	if now.Sub(x.windowStart) >= data.DebugFrameTimeWindow {
+		x.shownMax, x.windowMax, x.windowStart = x.windowMax, 0, now
+	}
+}
+
+func (x *frameTimes) slowestMs() float64 {
+	return float64(x.shownMax) / float64(time.Millisecond)
+}
 
 // Which colliders of each kind touched something in the last tick, for drawing them
 type touchingColliders struct {
@@ -237,6 +264,9 @@ func (g *game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
 		g.showColliders = !g.showColliders
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF3) {
+		g.showChunks = !g.showChunks
 	}
 
 	err = animationsystem.Tick(g.ecs, g.assetmanager)
@@ -407,6 +437,8 @@ func (g *game) saveAndExit() error {
 
 // The scaled world covers the whole screen, which is why the screen isn't cleared every frame
 func (g *game) Draw(screen *ebiten.Image) {
+	g.frameTimes.frame(time.Now())
+
 	if g.loading {
 		screen.Fill(color.RGBA{0, 0, 0, 255})
 		g.drawDebugText(screen, "Loading...")
@@ -434,7 +466,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 	}
 
 	if g.showFPS {
-		g.drawDebugText(screen, fmt.Sprintf("FPS: %f", ebiten.ActualFPS()))
+		g.drawDebugText(screen, fmt.Sprintf("FPS: %f\nSlowest frame: %.2f ms", ebiten.ActualFPS(), g.frameTimes.slowestMs()))
 	}
 }
 
@@ -490,6 +522,9 @@ func (g *game) drawWorld(world *ebiten.Image) {
 
 	if g.showColliders {
 		g.drawColliders(world)
+	}
+	if g.showChunks {
+		g.chunkContainer.DrawChunkBorders(world, g.ecs.Camera)
 	}
 }
 

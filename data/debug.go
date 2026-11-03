@@ -1,6 +1,12 @@
 package data
 
-import "image/color"
+import (
+	"image/color"
+	"time"
+)
+
+// How long the slowest frame shown with the FPS is looked for over
+const DebugFrameTimeWindow = time.Second
 
 // Colliders are outlined in the color of their kind, brighter while their entity touches something
 var (
@@ -13,4 +19,9 @@ var (
 	Debug_FeatureColliderColor         = color.RGBA{220, 110, 0, 255}
 	Debug_FeatureColliderTouchingColor = color.RGBA{255, 190, 110, 255}
 	Debug_PlatformColliderColor        = color.RGBA{190, 170, 0, 255}
+	// Chunk borders are colored by what the chunk is doing
+	Debug_ChunkActiveColor   = color.RGBA{0, 200, 0, 255}
+	Debug_ChunkUnbakedColor  = color.RGBA{230, 200, 0, 255}
+	Debug_ChunkInactiveColor = color.RGBA{0, 120, 230, 255}
+	Debug_ChunkLoadingColor  = color.RGBA{230, 0, 200, 255}
 )
