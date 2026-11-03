@@ -67,7 +67,7 @@ func TestDroppingPutsTheSelectedItemUprightWhereItsOwnerStands(t *testing.T) {
 
 func TestDroppingAnEmptySlotDoesNothing(t *testing.T) {
 	x, player, mattock, bazooka, gun := newArmedPlayer(t)
-	press(t, x, player, ecs.InputState{SelectSlot: 5, DropItem: true})
+	press(t, x, player, ecs.InputState{SelectSlot: 6, DropItem: true})
 
 	for _, item := range []common.EntityId{mattock, bazooka, gun} {
 		if x.Parent(item) != player {

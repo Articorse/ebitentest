@@ -144,7 +144,8 @@ func (cc *ChunkContainer) RecallFeature(t utils.Vec2i) (data.FeatureEnum, bool) 
 	return cc.memory.recallFeature(t)
 }
 
-// The sprites of the remembered features whose tiles are within the bounds, in tile order
+// The sprites of the remembered features whose tiles are within the bounds, in tile order, at the start of their
+// animations, since memory is a still picture
 func (cc *ChunkContainer) RememberedFeatureSprites(bounds [2]utils.Vec2f) []common.StaticSprite {
 	minTile, maxTile := utils.WorldPosToTilePos(bounds[0]), utils.WorldPosToTilePos(bounds[1])
 	sprites := []common.StaticSprite{}
@@ -155,7 +156,7 @@ func (cc *ChunkContainer) RememberedFeatureSprites(bounds [2]utils.Vec2f) []comm
 			if !ok {
 				continue
 			}
-			if sprite, ok := cc.featureSprite(t, f); ok {
+			if sprite, ok := cc.featureSprite(t, f, 0); ok {
 				sprites = append(sprites, sprite)
 			}
 		}

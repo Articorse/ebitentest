@@ -31,8 +31,14 @@ func TestPlayerTemplateWithStartingEquipment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(members) != 5 {
-		t.Fatalf("player stored with %d entities, want itself, the mattock, the bazooka, the gun and the axe", len(members))
+	if len(members) != 6 {
+		t.Fatalf("player stored with %d entities, want itself, the mattock, the bazooka, the gun, the axe and the torches", len(members))
+	}
+
+	inv, _ := x.Inventories.Get(p)
+	torches, _ := inv.Slot(4)
+	if item, ok := x.Items.Get(torches); !ok || item.Kind() != data.Item_Torch || item.Count() != 100 {
+		t.Fatal("the player's fifth slot doesn't hold 100 torches")
 	}
 }
 

@@ -144,19 +144,20 @@ func GetAABBCollisions(
 }
 
 // A tile is on Layer_Terrain if it's impassable and on Layer_Ground otherwise, and collides with colliders whose mask
-// has its layer. A feature's collider is on Layer_Feature. Unloaded tiles count as impassable, so that nothing walks out of the simulated area.
+// has its layer. A feature's collider is on Layer_Feature, unless it's walked through. Unloaded tiles count as impassable, so that nothing walks out of the simulated area.
 func (cc *ChunkContainer) GetTilesWithPotentialPhysicsCollisions(ecsContainer *ecs.ECSContainer) ([]EntityTiles, error) {
-	return cc.getTilesWithPotentialCollisions(ecs.Colliders(&ecsContainer.PhysicsColliders), true, ecsContainer, func(e common.EntityId) bool {
+	return cc.getTilesWithPotentialCollisions(ecs.Colliders(&ecsContainer.PhysicsColliders), true, false, ecsContainer, func(e common.EntityId) bool {
 		pc, _ := ecsContainer.PhysicsColliders.Get(e)
 		return pc.ColliderType() == ecs.Collider_Mob
 	})
 }
 
-// Unloaded tiles don't count, so that a projectile leaving the simulated area doesn't hit its edge
+// Unloaded tiles don't count, so that a projectile leaving the simulated area doesn't hit its edge. Features that are
+// walked through are hit, but passably, so that what dies against walls carries on through them.
 func (cc *ChunkContainer) GetHurtboxTileCollisions(ecsContainer *ecs.ECSContainer) ([]common.TileCollision, error) {
 	hurtboxes := ecs.Colliders(&ecsContainer.HurtboxColliders)
 
-	potential, err := cc.getTilesWithPotentialCollisions(hurtboxes, false, ecsContainer, nil)
+	potential, err := cc.getTilesWithPotentialCollisions(hurtboxes, false, true, ecsContainer, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +173,7 @@ func (cc *ChunkContainer) GetHurtboxTileCollisions(ecsContainer *ecs.ECSContaine
 func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 	colliders ecs.ColliderSet,
 	unloadedImpassable bool,
+	walkThroughFeatures bool,
 	ecsContainer *ecs.ECSContainer,
 	include func(common.EntityId) bool,
 ) (potentialCollisions []EntityTiles, err error) {
@@ -222,8 +224,8 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 				add(t, tileLayer(!tileDef.passable), !tileDef.passable, false, tileBounds(t))
 				// Colliders of features are impassable, but only where they are on the tile, and on their own layer, so
 				// that what cuts trees can leave walls alone
-				if bounds, ok := cc.featureCollider(chunk, t); ok {
-					add(t, ecs.Layer_Feature, true, true, bounds)
+				if bounds, walkThrough, ok := cc.featureCollider(chunk, t); ok && (!walkThrough || walkThroughFeatures) {
+					add(t, ecs.Layer_Feature, !walkThrough, true, bounds)
 				}
 			}
 		}

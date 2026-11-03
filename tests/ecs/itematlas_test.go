@@ -190,6 +190,7 @@ func TestItemUsesAreCheckedAgainstTheRegisteredAbilities(t *testing.T) {
 		{"an ability whose params the atlas can't give", `{"ability": 5, "cooldownMs": 250, "params": {}}`},
 		{"params that don't fit the ability", `{"ability": 6, "cooldownMs": 250, "params": "planks"}`},
 		{"no reach", `{"ability": 6, "cooldownMs": 250, "params": {"rangeTiles": 0, "tile": 6}}`},
+		{"no reach for a feature", `{"ability": 8, "cooldownMs": 250, "params": {"rangeTiles": 0, "feature": 3}}`},
 	} {
 		atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t,
 			`[{"id": 1, "name": "Planks", "imageAsset": "planks", "maxStack": 100, "use": `+c.use+`}]`))
@@ -222,5 +223,43 @@ func TestItemsCantPlaceTilesThatDontExist(t *testing.T) {
 	}
 	if err := atlas.CheckPlacedTiles(func(tile data.TileEnum) bool { return tile != 7 }); err == nil {
 		t.Fatal("an item placing a tile that doesn't exist was accepted")
+	}
+}
+
+func TestItemsCantPlaceFeaturesThatDontExist(t *testing.T) {
+	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t,
+		`[{"id": 1, "name": "Torch", "imageAsset": "planks", "maxStack": 100, "use": {"ability": 8, "cooldownMs": 250, "params": {"rangeTiles": 3, "feature": 5}}}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := testutil.NewECS(t).SetItemAtlas(atlas); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := atlas.CheckPlacedFeatures(func(f data.FeatureEnum) bool { return f == 5 }); err != nil {
+		t.Fatalf("an item placing a feature that exists was refused: %v", err)
+	}
+	if err := atlas.CheckPlacedFeatures(func(f data.FeatureEnum) bool { return f != 5 }); err == nil {
+		t.Fatal("an item placing a feature that doesn't exist was accepted")
+	}
+	if err := atlas.CheckPlacedTiles(func(data.TileEnum) bool { return false }); err != nil {
+		t.Fatalf("an item placing a feature was checked as placing a tile: %v", err)
+	}
+}
+
+func TestStacksAreSpawnedUpToTheirLimit(t *testing.T) {
+	x := testutil.NewECS(t)
+	torches, err := x.SpawnItemStack(data.Item_Torch, 100, utils.Vec2f{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item, _ := x.Items.Get(torches); item.Kind() != data.Item_Torch || item.Count() != 100 {
+		t.Fatalf("spawned %v × %d, want 100 torches", item.Kind(), item.Count())
+	}
+
+	for _, count := range []int{0, -1, 101} {
+		if _, err := x.SpawnItemStack(data.Item_Torch, count, utils.Vec2f{}); err == nil {
+			t.Errorf("a stack of %d torches was spawned", count)
+		}
 	}
 }

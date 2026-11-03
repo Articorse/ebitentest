@@ -36,3 +36,15 @@ func Radian2Degree(a float64) float64 {
 func Degree2Radian(a float64) float64 {
 	return a * math.Pi / 180
 }
+
+// The smallest integer whose square is at least a, worked out exactly for any non-negative a
+func CeilSqrt(a int) int {
+	r := int(math.Sqrt(float64(a)))
+	for r*r > a {
+		r--
+	}
+	for r*r < a {
+		r++
+	}
+	return r
+}

@@ -9,5 +9,16 @@
       "cooldownMs": 250,
       "params": { "rangeTiles": 3, "tile": 6 }
     }
+  },
+  {
+    "id": 2,
+    "name": "Torch",
+    "imageAsset": "torch_placed",
+    "maxStack": 100,
+    "use": {
+      "ability": 8,
+      "cooldownMs": 250,
+      "params": { "rangeTiles": 3, "feature": 3 }
+    }
   }
 ]

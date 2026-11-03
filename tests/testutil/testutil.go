@@ -209,6 +209,9 @@ func StartSession(t testing.TB) *Session {
 	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath, x.ItemAtlas()); err != nil {
 		t.Fatal(err)
 	}
+	if err := x.ItemAtlas().CheckPlacedFeatures(cc.HasFeature); err != nil {
+		t.Fatal(err)
+	}
 	x.SetSimulatedPosCheck(cc.IsActiveWorldPos)
 	x.SetTerrain(cc)
 

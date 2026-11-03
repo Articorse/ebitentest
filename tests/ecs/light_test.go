@@ -102,3 +102,74 @@ func TestALightMapNotYetWorkedOutIsDark(t *testing.T) {
 		t.Fatalf("an empty light map gives light %d, want dark", got)
 	}
 }
+
+const nightTick = data.DayTicks + data.DuskTicks
+
+func roofedEverywhere(utils.Vec2i) bool { return true }
+
+func TestATorchsLightFadesWithDistanceToNothingAtItsRange(t *testing.T) {
+	m := lightAround(t, skyTerrain{roofed: roofedEverywhere, torches: []utils.Vec2i{{}}}, nightTick)
+
+	for tile, want := range map[utils.Vec2i]uint8{
+		{}:           150,
+		{X: 1}:       135,
+		{X: 5}:       75,
+		{X: 3, Y: 4}: 75,
+		{X: -9}:      15,
+		{X: 7, Y: 7}: 1,
+		{Y: 10}:      0,
+		{X: 6, Y: 8}: 0,
+		{X: 11}:      0,
+	} {
+		if got := m.At(tile); got != want {
+			t.Errorf("%v from the torch, the light is %d, want %d", tile, got, want)
+		}
+	}
+}
+
+func TestATorchCastsSharpShadows(t *testing.T) {
+	wall := utils.Vec2i{X: 2}
+	m := lightAround(t, skyTerrain{roofed: roofedEverywhere, walls: map[utils.Vec2i]bool{wall: true}, torches: []utils.Vec2i{{}}}, nightTick)
+
+	if got := m.At(wall); got != 120 {
+		t.Fatalf("the wall facing the torch is lit %d, want 120", got)
+	}
+	for _, behind := range []utils.Vec2i{{X: 3}, {X: 6}} {
+		if got := m.At(behind); got != 0 {
+			t.Errorf("behind the wall at %v, the light is %d, want dark rather than light spread around it", behind, got)
+		}
+	}
+	if got := m.At(utils.Vec2i{X: 3, Y: 2}); got == 0 {
+		t.Error("beside the wall's shadow, the torch doesn't light")
+	}
+}
+
+func TestTheBrightestOfSkyAndTorchLightWins(t *testing.T) {
+	torch := utils.Vec2i{X: 2}
+	m := lightAround(t, skyTerrain{roofFromX: 0, torches: []utils.Vec2i{torch}}, nightTick)
+
+	if got := m.At(utils.Vec2i{X: -7}); got != data.NightSkyLight {
+		t.Errorf("under the night sky, 9 tiles from the torch, the light is %d, want the sky's %d over the torch's 15", got, data.NightSkyLight)
+	}
+	if got := m.At(utils.Vec2i{X: -3}); got != 75 {
+		t.Errorf("under the night sky, 5 tiles from the torch, the light is %d, want the torch's 75", got)
+	}
+	if got := m.At(torch); got != 150 {
+		t.Errorf("on the torch under a roof, the light is %d, want 150", got)
+	}
+
+	day := lightAround(t, skyTerrain{roofFromX: 0, torches: []utils.Vec2i{torch}}, 0)
+	if got := day.At(utils.Vec2i{X: -1}); got != data.DaySkyLight {
+		t.Errorf("in daylight next to the torch, the light is %d, want full daylight", got)
+	}
+}
+
+func TestATorchOutsideTheSquareStillLightsIt(t *testing.T) {
+	m := lightAround(t, skyTerrain{roofed: roofedEverywhere, torches: []utils.Vec2i{{X: 35}}}, nightTick)
+	if _, radius := m.Area(); radius != 27 {
+		t.Fatalf("the light was worked out %d tiles around, want 27", radius)
+	}
+	if got := m.At(utils.Vec2i{X: 27}); got != 30 {
+		t.Fatalf("at the square's edge, 8 tiles from a torch outside it, the light is %d, want 30", got)
+	}
+}

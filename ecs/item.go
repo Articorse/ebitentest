@@ -57,14 +57,23 @@ func (x *Item) TickPickupDelay() {
 
 // One of a generic item, lying at pos
 func (x *ECSContainer) SpawnItem(kind data.ItemEnum, pos utils.Vec2f) (common.EntityId, error) {
-	if _, ok := x.itemAtlas.Def(kind); !ok {
+	return x.SpawnItemStack(kind, 1, pos)
+}
+
+// A stack of a generic item, lying at pos
+func (x *ECSContainer) SpawnItemStack(kind data.ItemEnum, count int, pos utils.Vec2f) (common.EntityId, error) {
+	def, ok := x.itemAtlas.Def(kind)
+	if !ok {
 		return -1, fmt.Errorf("item %v isn't in the item atlas", kind)
+	}
+	if count <= 0 || count > def.maxStack {
+		return -1, fmt.Errorf("a stack of item %v holds 1 to %d, not %d", kind, def.maxStack, count)
 	}
 
 	return x.AddNewEntity(
 		NewHierarchyComponent(),
 		NewTransformComponent(pos, 1, 0),
-		&Item{kind: kind, count: 1},
+		&Item{kind: kind, count: count},
 		NewPersistentComponent(),
 	)
 }

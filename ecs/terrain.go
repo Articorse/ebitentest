@@ -13,7 +13,7 @@ type Terrain interface {
 	// Layer_Terrain for impassable tiles and Layer_Ground for passable ones, whatever stands on them; false if the tile
 	// isn't loaded
 	TileLayer(t utils.Vec2i) (LayerMask, bool)
-	// Inside an impassable tile, a feature's collider, or where nothing is loaded
+	// Inside an impassable tile, the collider of a feature that isn't walked through, or where nothing is loaded
 	IsBlockedAt(pos utils.Vec2f) bool
 	CanDamageTile(t utils.Vec2i) bool
 	// False if the tile can't be damaged. What the tile drops, if this destroyed it.
@@ -26,6 +26,13 @@ type Terrain interface {
 	CanDamageFeature(t utils.Vec2i) bool
 	// False if there's no feature on the tile, or it can't be damaged. What the feature drops, if this destroyed it.
 	DamageFeature(t utils.Vec2i, damage int) (damaged bool, drops *DropTable)
+	// Whether there's room for a new feature: passable ground without a feature on it
+	CanPlaceFeature(t utils.Vec2i) bool
+	// False if a feature can't be placed there, or the feature doesn't exist
+	PlaceFeature(t utils.Vec2i, feature data.FeatureEnum) bool
+	// Calls lit for every feature giving light that reaches the square between min and max, with the light on its own
+	// tile and how far away it fades to nothing
+	LightSources(min, max utils.Vec2i, lit func(t utils.Vec2i, level uint8, rangeTiles int))
 }
 
 type noTerrain struct{}
@@ -43,6 +50,10 @@ func (noTerrain) PlaceTile(utils.Vec2i, data.TileEnum) bool { return false }
 func (noTerrain) CanDamageFeature(utils.Vec2i) bool         { return false }
 func (noTerrain) DamageFeature(utils.Vec2i, int) (bool, *DropTable) {
 	return false, nil
+}
+func (noTerrain) CanPlaceFeature(utils.Vec2i) bool                { return false }
+func (noTerrain) PlaceFeature(utils.Vec2i, data.FeatureEnum) bool { return false }
+func (noTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {
 }
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {

@@ -2,6 +2,7 @@ package ecs
 
 import (
 	"ebittest/data"
+	"ebittest/fov"
 	"ebittest/utils"
 )
 
@@ -43,7 +44,10 @@ func (m *LightMap) index(x, y int) (int, bool) {
 // directions, losing data.LightFalloffPerTile with each step. Opaque tiles are lit, so that walls facing the light can be
 // seen, but don't pass it on. Where light arrives from several places, the brightest wins.
 //
-// Light reaching a tile can only have come from within data.MaxLight / data.LightFalloffPerTile steps of it, so the
+// Features such as torches light what they can see, fading with distance rather than spreading around corners, so their
+// shadows are sharp.
+//
+// Sky light reaching a tile can only have come from within data.MaxLight / data.LightFalloffPerTile steps of it, so the
 // tiles that far beyond the square are worked out too, and the square's own light is exact.
 func (x *ECSContainer) LightAround(center utils.Vec2i, radius int, m *LightMap) {
 	reach := data.MaxLight / data.LightFalloffPerTile
@@ -97,6 +101,27 @@ func (x *ECSContainer) LightAround(center utils.Vec2i, radius int, m *LightMap) 
 			m.levels[i] = uint8(max(int(sky)-int(s)*data.LightFalloffPerTile, 0))
 		}
 	}
+
+	areaMin := utils.Vec2i{X: center.X - m.radius, Y: center.Y - m.radius}
+	areaMax := utils.Vec2i{X: center.X + m.radius, Y: center.Y + m.radius}
+	x.terrain.LightSources(areaMin, areaMax, func(source utils.Vec2i, level uint8, rangeTiles int) {
+		fov.Compute(source, rangeTiles, x.terrain.IsOpaqueTile, func(t utils.Vec2i) {
+			i, ok := m.index(t.X-areaMin.X, t.Y-areaMin.Y)
+			if !ok {
+				return
+			}
+			if lit := featureLightAt(t.X-source.X, t.Y-source.Y, level, rangeTiles); lit > m.levels[i] {
+				m.levels[i] = lit
+			}
+		})
+	})
+}
+
+// Fading linearly with distance, to nothing at the light's range. In integers, so that it's the same on every machine:
+// level·(range−d)/range rounded down is (level·range − ⌈level·d⌉)/range rounded down, and level·d = √(level²·d²).
+func featureLightAt(dx, dy int, level uint8, rangeTiles int) uint8 {
+	l := int(level)
+	return uint8(max((l*rangeTiles-utils.CeilSqrt(l*l*(dx*dx+dy*dy)))/rangeTiles, 0))
 }
 
 func resize[T any](s []T, n int) []T {

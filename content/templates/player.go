@@ -260,6 +260,14 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		return fmt.Errorf("error putting axe in the player's inventory: %w", err)
 	}
 
+	torches, err := ecsContainer.SpawnItemStack(data.Item_Torch, 100, playerPos)
+	if err != nil {
+		return fmt.Errorf("error spawning torches: %w", err)
+	}
+	if err := ecsContainer.PutInInventory(player, 4, torches); err != nil {
+		return fmt.Errorf("error putting torches in the player's inventory: %w", err)
+	}
+
 	if err := ecsContainer.SelectInventorySlot(player, 0); err != nil {
 		return fmt.Errorf("error selecting the player's first slot: %w", err)
 	}

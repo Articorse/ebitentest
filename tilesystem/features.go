@@ -21,6 +21,14 @@ type featureDef struct {
 	hasCollider bool
 	// World-space bounds relative to the center of the feature's tile
 	colliderMin, colliderMax utils.Vec2f
+	// What walks through the collider still hits the feature with what it carries
+	walkThrough bool
+
+	// Nil for a still image
+	animation []featureFrame
+	// The light on the feature's own tile, fading to nothing lightRangeTiles away. 0 for features that don't give light.
+	light           uint8
+	lightRangeTiles int
 
 	// Not positive for features that can't be damaged
 	maxHealth     int
@@ -34,11 +42,23 @@ type featureDefDTO struct {
 	ImageAsset  string              `json:"imageAsset"`
 	ImageOffset utils.Vec2f         `json:"imageOffset"`
 	SpriteLayer uint8               `json:"spriteLayer"`
+	Animation   []featureFrame      `json:"animation"`
 	Collider    *featureColliderDTO `json:"collider"`
+	Light       *featureLightDTO    `json:"light"`
 	MaxHealth   int                 `json:"maxHealth"`
-	// Required for features that can be damaged
+	// Required for features that can be damaged, and 0 for those that leave nothing behind
 	DestroyedInto *uint16          `json:"destroyedInto"`
 	Drops         []dropOutcomeDTO `json:"drops"`
+}
+
+type featureFrame struct {
+	FrameIdx   int `json:"frame"`
+	DurationMs int `json:"durationMs"`
+}
+
+type featureLightDTO struct {
+	Level      uint8 `json:"level"`
+	RangeTiles int   `json:"rangeTiles"`
 }
 
 type dropOutcomeDTO struct {
@@ -52,9 +72,10 @@ type itemDropDTO struct {
 }
 
 type featureColliderDTO struct {
-	Width  float64     `json:"width"`
-	Height float64     `json:"height"`
-	Offset utils.Vec2f `json:"offset"`
+	Width       float64     `json:"width"`
+	Height      float64     `json:"height"`
+	Offset      utils.Vec2f `json:"offset"`
+	WalkThrough bool        `json:"walkThrough"`
 }
 
 func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.ItemAtlas) error {
@@ -83,6 +104,21 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.
 			def.hasCollider = true
 			def.colliderMin = c.Offset.Subtract(utils.Vec2f{X: c.Width / 2, Y: c.Height / 2})
 			def.colliderMax = c.Offset.Add(utils.Vec2f{X: c.Width / 2, Y: c.Height / 2})
+			def.walkThrough = c.WalkThrough
+		}
+
+		for _, frame := range dto.Animation {
+			if frame.FrameIdx < 0 || frame.DurationMs <= 0 {
+				return fmt.Errorf("feature %d has an animation frame %d lasting %dms", dto.Id, frame.FrameIdx, frame.DurationMs)
+			}
+		}
+		def.animation = dto.Animation
+
+		if l := dto.Light; l != nil {
+			if l.Level == 0 || l.RangeTiles <= 0 {
+				return fmt.Errorf("feature %d gives light %d up to %d tiles away, which isn't positive", dto.Id, l.Level, l.RangeTiles)
+			}
+			def.light, def.lightRangeTiles = l.Level, l.RangeTiles
 		}
 
 		def.maxHealth = dto.MaxHealth
@@ -102,14 +138,22 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.
 		defs[data.FeatureEnum(dto.Id)] = def
 	}
 
+	maxLightRange := 0
 	for id, def := range defs {
-		if _, ok := defs[def.destroyedInto]; def.maxHealth > 0 && !ok {
+		maxLightRange = max(maxLightRange, def.lightRangeTiles)
+		if _, ok := defs[def.destroyedInto]; def.maxHealth > 0 && def.destroyedInto != data.Feature_None && !ok {
 			return fmt.Errorf("feature %d is destroyed into feature %d, which isn't defined", id, def.destroyedInto)
 		}
 	}
 
 	cc.featureAtlas = defs
+	cc.maxLightRange = maxLightRange
 	return nil
+}
+
+func (cc *ChunkContainer) HasFeature(id data.FeatureEnum) bool {
+	_, ok := cc.featureAtlas[id]
+	return ok
 }
 
 func (cc *ChunkContainer) CanDamageFeature(t utils.Vec2i) bool {
@@ -150,8 +194,34 @@ func (cc *ChunkContainer) DamageFeature(t utils.Vec2i, damage int) (bool, *ecs.D
 	}
 
 	delete(c.featureHealth, t)
-	c.features[t] = def.destroyedInto
+	cc.setFeature(c, t, def.destroyedInto)
 	return true, def.drops
+}
+
+// Whether there's room for a new feature: passable ground without a feature on it
+func (cc *ChunkContainer) CanPlaceFeature(t utils.Vec2i) bool {
+	return cc.CanPlaceTile(t)
+}
+
+// Returns false where a feature can't be placed, or the feature isn't in the atlas
+func (cc *ChunkContainer) PlaceFeature(t utils.Vec2i, f data.FeatureEnum) bool {
+	if _, ok := cc.featureAtlas[f]; !ok || !cc.CanPlaceFeature(t) {
+		return false
+	}
+
+	c := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	cc.setFeature(c, t, f)
+	return true
+}
+
+func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum) {
+	if f == data.Feature_None {
+		delete(c.features, t)
+	} else {
+		c.features[t] = f
+	}
+	c.terrainModified = true
+	c.lightsIndexed = false
 }
 
 func (cc *ChunkContainer) featureOn(t utils.Vec2i) (*chunk, featureDef, bool) {
@@ -180,22 +250,23 @@ func (cc *ChunkContainer) FeatureAt(t utils.Vec2i) (data.FeatureEnum, bool) {
 }
 
 // The world-space bounds of the collider of the feature on the tile, if it has one
-func (cc *ChunkContainer) featureCollider(c *chunk, t utils.Vec2i) ([2]utils.Vec2f, bool) {
+func (cc *ChunkContainer) featureCollider(c *chunk, t utils.Vec2i) (bounds [2]utils.Vec2f, walkThrough bool, ok bool) {
 	f, ok := c.features[t]
 	if !ok {
-		return [2]utils.Vec2f{}, false
+		return [2]utils.Vec2f{}, false, false
 	}
 
 	def, ok := cc.featureAtlas[f]
 	if !ok || !def.hasCollider {
-		return [2]utils.Vec2f{}, false
+		return [2]utils.Vec2f{}, false, false
 	}
 
 	center := utils.TilePosToWorldPos(t)
-	return [2]utils.Vec2f{center.Add(def.colliderMin), center.Add(def.colliderMax)}, true
+	return [2]utils.Vec2f{center.Add(def.colliderMin), center.Add(def.colliderMax)}, def.walkThrough, true
 }
 
-func (cc *ChunkContainer) featureSprite(t utils.Vec2i, f data.FeatureEnum) (common.StaticSprite, bool) {
+// The animation's frame at the time, or the first frame for features without an animation
+func (cc *ChunkContainer) featureSprite(t utils.Vec2i, f data.FeatureEnum, ms uint64) (common.StaticSprite, bool) {
 	def, ok := cc.featureAtlas[f]
 	if !ok {
 		return common.StaticSprite{}, false
@@ -203,14 +274,34 @@ func (cc *ChunkContainer) featureSprite(t utils.Vec2i, f data.FeatureEnum) (comm
 
 	return common.StaticSprite{
 		ImageAsset: def.imageAsset,
+		Frame:      animationFrame(def.animation, ms),
 		Pos:        utils.TilePosToWorldPos(t).Add(def.imageOffset),
 		Layer:      def.spriteLayer,
 	}, true
 }
 
-// The sprites of the features in the active chunks whose tiles are within the bounds, in tile order so that drawing
-// them is the same every frame
-func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f) []common.StaticSprite {
+func animationFrame(frames []featureFrame, ms uint64) int {
+	total := 0
+	for _, f := range frames {
+		total += f.DurationMs
+	}
+	if total == 0 {
+		return 0
+	}
+
+	at := int(ms % uint64(total))
+	for _, f := range frames {
+		if at < f.DurationMs {
+			return f.FrameIdx
+		}
+		at -= f.DurationMs
+	}
+	return 0
+}
+
+// The sprites of the features in the active chunks whose tiles are within the bounds, at the time in their animations,
+// in tile order so that drawing them is the same every frame
+func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f, ms uint64) []common.StaticSprite {
 	minTile, maxTile := utils.WorldPosToTilePos(bounds[0]), utils.WorldPosToTilePos(bounds[1])
 	minChunk := utils.Vec2i{X: floorDiv(minTile.X, data.ChunkSize), Y: floorDiv(minTile.Y, data.ChunkSize)}
 	maxChunk := utils.Vec2i{X: floorDiv(maxTile.X, data.ChunkSize), Y: floorDiv(maxTile.Y, data.ChunkSize)}
@@ -232,7 +323,7 @@ func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f) []common.StaticS
 				if t.X < minTile.X || t.X > maxTile.X || t.Y < minTile.Y || t.Y > maxTile.Y {
 					continue
 				}
-				if sprite, ok := cc.featureSprite(t, f); ok {
+				if sprite, ok := cc.featureSprite(t, f, ms); ok {
 					found = append(found, placed{t, sprite})
 				}
 			}

@@ -23,8 +23,8 @@ func TestConsistencyCheck(t *testing.T) {
 	}
 
 	children := x.Children(p)
-	if len(children) != 4 {
-		t.Fatalf("player children %v, want the mattock, the bazooka, the gun and the axe", children)
+	if len(children) != 5 {
+		t.Fatalf("player children %v, want the mattock, the bazooka, the gun, the axe and the torches", children)
 	}
 	equipment := children[0]
 	if err := x.Detach(equipment); err != nil {

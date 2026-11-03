@@ -124,8 +124,8 @@ func (cc *ChunkContainer) IsBlockedAt(pos utils.Vec2f) bool {
 		return true
 	}
 
-	b, ok := cc.featureCollider(c, t)
-	return ok && pos.X >= b[0].X && pos.X <= b[1].X && pos.Y >= b[0].Y && pos.Y <= b[1].Y
+	b, walkThrough, ok := cc.featureCollider(c, t)
+	return ok && !walkThrough && pos.X >= b[0].X && pos.X <= b[1].X && pos.Y >= b[0].Y && pos.Y <= b[1].Y
 }
 
 func (cc *ChunkContainer) HasTile(id data.TileEnum) bool {

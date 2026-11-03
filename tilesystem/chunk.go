@@ -18,6 +18,10 @@ type chunk struct {
 	featureHealth   map[utils.Vec2i]int
 	terrainModified bool
 
+	// The tiles of the features that give light, found when they're first asked for after the features change
+	lights        []utils.Vec2i
+	lightsIndexed bool
+
 	Image *ebiten.Image
 }
 

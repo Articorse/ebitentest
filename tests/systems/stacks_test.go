@@ -41,13 +41,13 @@ func TestPlanksStackUpToAHundredPerSlot(t *testing.T) {
 	}
 
 	inv, _ := x.Inventories.Get(player)
-	first, _ := inv.Slot(4)
-	second, _ := inv.Slot(5)
+	first, _ := inv.Slot(5)
+	second, _ := inv.Slot(6)
 	if countOf(x, first) != 100 || countOf(x, second) != 1 {
 		t.Fatalf("101 planks went into stacks of %d and %d, want 100 and 1", countOf(x, first), countOf(x, second))
 	}
-	if n := len(x.Items.GetEntities()); n != 6 {
-		t.Fatalf("%d items exist, want the 4 tools and 2 stacks: the planks used to top up a stack should be gone", n)
+	if n := len(x.Items.GetEntities()); n != 7 {
+		t.Fatalf("%d items exist, want the 4 tools, the torches and 2 stacks: the planks used to top up a stack should be gone", n)
 	}
 	checkConsistency(t, x)
 }
@@ -76,7 +76,7 @@ func TestAFullHotbarStillTakesWhatFitsOnAStack(t *testing.T) {
 	testutil.RemoveScheduled(t, x)
 
 	inv, _ := x.Inventories.Get(player)
-	stack, _ := inv.Slot(4)
+	stack, _ := inv.Slot(5)
 	if countOf(x, stack) != 2 || x.HasEntity(plank) {
 		t.Fatalf("the stack has %d planks and the plank on the ground still exists %v; want it pulled in and stacked",
 			countOf(x, stack), x.HasEntity(plank))
@@ -108,8 +108,8 @@ func TestDroppingFromAStackDropsOneAtATime(t *testing.T) {
 		pickUpPlank(t, x, player)
 	}
 	inv, _ := x.Inventories.Get(player)
-	stack, _ := inv.Slot(4)
-	press(t, x, player, ecs.InputState{SelectSlot: 5})
+	stack, _ := inv.Slot(5)
+	press(t, x, player, ecs.InputState{SelectSlot: 6})
 
 	aim := utils.Vec2f{X: 100}
 	for _, want := range []int{2, 1} {

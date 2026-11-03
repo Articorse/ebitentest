@@ -60,12 +60,14 @@ func TestTheSkyLightsByDayAndDimsAtNight(t *testing.T) {
 	}
 }
 
-// Open to the sky everywhere but where it's roofed, which by default is from roofFromX on, with walls where told
+// Open to the sky everywhere but where it's roofed, which by default is from roofFromX on, with walls and torches
+// giving 150 light up to 10 tiles away where told
 type skyTerrain struct {
 	ecs.Terrain
 	roofFromX int
 	roofed    func(utils.Vec2i) bool
 	walls     map[utils.Vec2i]bool
+	torches   []utils.Vec2i
 }
 
 func (s skyTerrain) IsOpenToSky(t utils.Vec2i) bool {
@@ -75,6 +77,11 @@ func (s skyTerrain) IsOpenToSky(t utils.Vec2i) bool {
 	return t.X < s.roofFromX
 }
 func (s skyTerrain) IsOpaqueTile(t utils.Vec2i) bool { return s.walls[t] }
+func (s skyTerrain) LightSources(_, _ utils.Vec2i, lit func(utils.Vec2i, uint8, int)) {
+	for _, t := range s.torches {
+		lit(t, 150, 10)
+	}
+}
 
 func TestVisionSeesLessAtNightAndNothingDeepUnderARoof(t *testing.T) {
 	x := testutil.NewECS(t)

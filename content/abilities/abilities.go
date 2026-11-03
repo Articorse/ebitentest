@@ -8,13 +8,14 @@ import (
 
 // Saved components refer to abilities by these values, so they must never change
 const (
-	Ability_Spawn      ecs.AbilityEnum = 1
-	Ability_Dodge      ecs.AbilityEnum = 2
-	Ability_Dodge_Post ecs.AbilityEnum = 3
-	Ability_Explode    ecs.AbilityEnum = 4
-	Ability_TileStrike ecs.AbilityEnum = 5
-	Ability_PlaceTile  ecs.AbilityEnum = 6
-	Ability_Slash      ecs.AbilityEnum = 7
+	Ability_Spawn        ecs.AbilityEnum = 1
+	Ability_Dodge        ecs.AbilityEnum = 2
+	Ability_Dodge_Post   ecs.AbilityEnum = 3
+	Ability_Explode      ecs.AbilityEnum = 4
+	Ability_TileStrike   ecs.AbilityEnum = 5
+	Ability_PlaceTile    ecs.AbilityEnum = 6
+	Ability_Slash        ecs.AbilityEnum = 7
+	Ability_PlaceFeature ecs.AbilityEnum = 8
 )
 
 func Register(ecsContainer *ecs.ECSContainer) error {
@@ -23,6 +24,7 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 	gob.Register(&TileStrikeParams{})
 	gob.Register(&PlaceTileParams{})
 	gob.Register(&SlashParams{})
+	gob.Register(&PlaceFeatureParams{})
 
 	abilityFuncs := []struct {
 		id          ecs.AbilityEnum
@@ -35,6 +37,7 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 		{Ability_TileStrike, TileStrikeAbility},
 		{Ability_PlaceTile, PlaceTileAbility},
 		{Ability_Slash, SlashAbility},
+		{Ability_PlaceFeature, PlaceFeatureAbility},
 	}
 
 	for _, a := range abilityFuncs {
@@ -45,6 +48,9 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 
 	if err := ecsContainer.RegisterAbilityParamsDecoder(Ability_PlaceTile, decodePlaceTileParams); err != nil {
 		return fmt.Errorf("error registering the params decoder of ability %v: %w", Ability_PlaceTile, err)
+	}
+	if err := ecsContainer.RegisterAbilityParamsDecoder(Ability_PlaceFeature, decodePlaceFeatureParams); err != nil {
+		return fmt.Errorf("error registering the params decoder of ability %v: %w", Ability_PlaceFeature, err)
 	}
 
 	return nil

@@ -492,7 +492,7 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	if err := drawsystem.DrawSprites(
 		world,
 		g.ecs.Camera,
-		g.chunkContainer.FeatureSprites(drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world))),
+		g.chunkContainer.FeatureSprites(drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world)), g.ecs.TickIdx*data.TickMs),
 		g.ecs,
 		g.assetmanager,
 	); err != nil {
@@ -696,6 +696,9 @@ func main() {
 	}
 	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json", itemAtlas); err != nil {
 		log.Fatal("error generating feature atlas from json: ", err)
+	}
+	if err := itemAtlas.CheckPlacedFeatures(g.chunkContainer.HasFeature); err != nil {
+		log.Fatal("error checking the item atlas against the feature atlas: ", err)
 	}
 
 	g.ecs.TickState = *common.NewTickState()

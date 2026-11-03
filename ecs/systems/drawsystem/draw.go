@@ -243,7 +243,10 @@ func drawStaticSprite(
 		return fmt.Errorf("error getting image of static sprite at %v: %v", s.Pos, err)
 	}
 
-	img := asset.Frames[0]
+	if s.Frame < 0 || s.Frame >= len(asset.Frames) {
+		return fmt.Errorf("static sprite at %v shows frame %d of %s, which has %d", s.Pos, s.Frame, s.ImageAsset, len(asset.Frames))
+	}
+	img := asset.Frames[s.Frame]
 	opts := ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(s.Pos.X-camera.X-float64(img.Bounds().Dx())/2, s.Pos.Y-camera.Y-float64(img.Bounds().Dy())/2)
 	screen.DrawImage(img, &opts)

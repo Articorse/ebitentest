@@ -50,13 +50,14 @@ func TestOnlyTheSelectedItemIsInHandAndEnabled(t *testing.T) {
 	x, player, mattock, bazooka, gun := newArmedPlayer(t)
 	inv, _ := x.Inventories.Get(player)
 	axe, _ := inv.Slot(3)
+	torches, _ := inv.Slot(4)
 
 	check := func(wantInHand common.EntityId) {
 		t.Helper()
 		if got := inHand(x, player); got != wantInHand {
 			t.Fatalf("main hand holds %d, want %d", got, wantInHand)
 		}
-		for _, item := range []common.EntityId{mattock, bazooka, gun, axe} {
+		for _, item := range []common.EntityId{mattock, bazooka, gun, axe, torches} {
 			if x.IsDisabled(item) == (item == wantInHand) {
 				t.Fatalf("item %d disabled %v, but %d is in hand", item, x.IsDisabled(item), wantInHand)
 			}
@@ -74,6 +75,8 @@ func TestOnlyTheSelectedItemIsInHandAndEnabled(t *testing.T) {
 	press(t, x, player, ecs.InputState{SelectSlot: 4})
 	check(axe)
 	press(t, x, player, ecs.InputState{SelectSlot: 5})
+	check(torches)
+	press(t, x, player, ecs.InputState{SelectSlot: 6})
 	check(-1)
 	press(t, x, player, ecs.InputState{SelectSlot: 1})
 	check(mattock)

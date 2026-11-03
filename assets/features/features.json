@@ -17,5 +17,22 @@
     "imageAsset": "treestump",
     "imageOffset": { "x": 1, "y": -7 },
     "spriteLayer": 20
+  },
+  {
+    "id": 3,
+    "imageAsset": "torch_placed",
+    "imageOffset": { "x": 1, "y": -1 },
+    "spriteLayer": 20,
+    "animation": [
+      { "frame": 0, "durationMs": 150 },
+      { "frame": 1, "durationMs": 150 },
+      { "frame": 2, "durationMs": 150 },
+      { "frame": 1, "durationMs": 150 }
+    ],
+    "collider": { "width": 6, "height": 14, "offset": { "x": 0, "y": -2 }, "walkThrough": true },
+    "light": { "level": 200, "rangeTiles": 10 },
+    "maxHealth": 1,
+    "destroyedInto": 0,
+    "drops": [{ "chance": 100, "items": [{ "kind": 2, "count": 1 }] }]
   }
 ]

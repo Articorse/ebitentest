@@ -36,6 +36,12 @@ func (openGround) CanPlaceTile(utils.Vec2i) bool { return false }
 
 func (openGround) PlaceTile(utils.Vec2i, data.TileEnum) bool { return false }
 
+func (openGround) CanPlaceFeature(utils.Vec2i) bool { return false }
+
+func (openGround) PlaceFeature(utils.Vec2i, data.FeatureEnum) bool { return false }
+
+func (openGround) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {}
+
 func TestTheMattockStrikesTheTileUnderTheCursor(t *testing.T) {
 	x, player, _, _, _ := newArmedPlayer(t)
 	ground := openGround{damaged: map[utils.Vec2i]int{}}

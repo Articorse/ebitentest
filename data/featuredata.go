@@ -7,4 +7,5 @@ const (
 	Feature_None FeatureEnum = iota
 	Feature_Tree
 	Feature_Stump
+	Feature_Torch
 )

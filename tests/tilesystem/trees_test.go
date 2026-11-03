@@ -202,7 +202,7 @@ func TestADestroyedTreeLeavesAStumpThatsOutOfTheWay(t *testing.T) {
 	}
 
 	center := utils.TilePosToWorldPos(tree)
-	sprites := s.Chunks.FeatureSprites([2]utils.Vec2f{center, center})
+	sprites := s.Chunks.FeatureSprites([2]utils.Vec2f{center, center}, 0)
 	if len(sprites) != 1 || sprites[0].ImageAsset != common.AssetImageTreeStump {
 		t.Fatalf("sprites on the tile are %+v, want the stump", sprites)
 	}
@@ -222,14 +222,14 @@ func TestTreesAreDrawnWhereTheyStand(t *testing.T) {
 	tree := findLoneTree(t, s)
 	center := utils.TilePosToWorldPos(tree)
 
-	sprites := s.Chunks.FeatureSprites([2]utils.Vec2f{center.Subtract(utils.Vec2f{X: 8, Y: 8}), center.Add(utils.Vec2f{X: 8, Y: 8})})
+	sprites := s.Chunks.FeatureSprites([2]utils.Vec2f{center.Subtract(utils.Vec2f{X: 8, Y: 8}), center.Add(utils.Vec2f{X: 8, Y: 8})}, 0)
 	want := common.StaticSprite{ImageAsset: common.AssetImageTree, Pos: center.Add(utils.Vec2f{X: 1, Y: -7}), Layer: 20}
 	if len(sprites) != 1 || sprites[0] != want {
 		t.Fatalf("sprites on the tree's tile are %+v, want just %+v", sprites, want)
 	}
 
 	away := center.Add(utils.Vec2f{X: farChunks * chunkPx})
-	if sprites := s.Chunks.FeatureSprites([2]utils.Vec2f{away, away}); len(sprites) != 0 {
+	if sprites := s.Chunks.FeatureSprites([2]utils.Vec2f{away, away}, 0); len(sprites) != 0 {
 		t.Fatalf("sprites far from any active chunk: %+v", sprites)
 	}
 }

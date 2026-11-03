@@ -15,6 +15,8 @@ type ChunkContainer struct {
 	chunks       map[utils.Vec2i]*chunk
 	atlas        map[data.TileEnum]tileDef
 	featureAtlas map[data.FeatureEnum]featureDef
+	// How far the light of the furthest-reaching feature goes
+	maxLightRange int
 
 	ioRequests *ioQueue
 	ioResults  chan ioResult

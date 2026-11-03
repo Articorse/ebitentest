@@ -152,6 +152,24 @@ func (x *ItemAtlas) CheckPlacedTiles(tileExists func(data.TileEnum) bool) error 
 	return nil
 }
 
+// Implemented by the params of abilities that place a feature
+type FeaturePlacer interface {
+	PlacedFeature() data.FeatureEnum
+}
+
+// Like the placed tiles, since the feature atlas is loaded after the item atlas too
+func (x *ItemAtlas) CheckPlacedFeatures(featureExists func(data.FeatureEnum) bool) error {
+	for kind, def := range x.defs {
+		if def.use == nil {
+			continue
+		}
+		if placer, ok := def.use.params.(FeaturePlacer); ok && !featureExists(placer.PlacedFeature()) {
+			return fmt.Errorf("item %d places feature %d, which isn't in the feature atlas", kind, placer.PlacedFeature())
+		}
+	}
+	return nil
+}
+
 // What a generic item of the kind holds in hand, if anything
 func (x *ECSContainer) itemEquipment(def ItemDef) (*Equipment, bool) {
 	if def.use == nil {

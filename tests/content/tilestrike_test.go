@@ -20,17 +20,19 @@ type fakeTerrain struct {
 	// Trees damaged, apart from the ground under them
 	treesDamaged map[utils.Vec2i]int
 	// Placed tiles block like rock
-	placed map[utils.Vec2i]data.TileEnum
+	placed         map[utils.Vec2i]data.TileEnum
+	placedFeatures map[utils.Vec2i]data.FeatureEnum
 }
 
 func newFakeTerrain(rock ...utils.Vec2i) *fakeTerrain {
 	f := &fakeTerrain{
-		rock:         map[utils.Vec2i]bool{},
-		trees:        map[utils.Vec2i]bool{},
-		sturdy:       map[utils.Vec2i]bool{},
-		damaged:      map[utils.Vec2i]int{},
-		treesDamaged: map[utils.Vec2i]int{},
-		placed:       map[utils.Vec2i]data.TileEnum{},
+		rock:           map[utils.Vec2i]bool{},
+		trees:          map[utils.Vec2i]bool{},
+		sturdy:         map[utils.Vec2i]bool{},
+		damaged:        map[utils.Vec2i]int{},
+		treesDamaged:   map[utils.Vec2i]int{},
+		placed:         map[utils.Vec2i]data.TileEnum{},
+		placedFeatures: map[utils.Vec2i]data.FeatureEnum{},
 	}
 	for _, r := range rock {
 		f.rock[r] = true
@@ -101,6 +103,21 @@ func (f *fakeTerrain) PlaceTile(t utils.Vec2i, tile data.TileEnum) bool {
 	f.placed[t] = tile
 	return true
 }
+
+func (f *fakeTerrain) CanPlaceFeature(t utils.Vec2i) bool {
+	_, placed := f.placedFeatures[t]
+	return f.CanPlaceTile(t) && !placed
+}
+
+func (f *fakeTerrain) PlaceFeature(t utils.Vec2i, feature data.FeatureEnum) bool {
+	if !f.CanPlaceFeature(t) {
+		return false
+	}
+	f.placedFeatures[t] = feature
+	return true
+}
+
+func (f *fakeTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {}
 
 func newMattockHolder(t *testing.T, terrain ecs.Terrain, mask ecs.LayerMask) (*ecs.ECSContainer, common.EntityId) {
 	t.Helper()

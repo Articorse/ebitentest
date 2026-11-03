@@ -8,4 +8,5 @@ const (
 	// Unique items, such as tools, which are each their own entity and never stack
 	Item_None ItemEnum = iota
 	Item_Planks
+	Item_Torch
 )

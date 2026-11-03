@@ -130,7 +130,7 @@ func (cc *ChunkContainer) DrawFeatureColliders(
 		}
 
 		for t := range c.features {
-			bounds, ok := cc.featureCollider(c, t)
+			bounds, _, ok := cc.featureCollider(c, t)
 			if !ok || !include(t) || !utils.DetectAABBCollision(bounds, onScreen) {
 				continue
 			}

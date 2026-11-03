@@ -24,6 +24,7 @@ var (
 		common.AssetSheetBullet:           ImageAssetDef{path: "assets/sprites/bullet_ss.png", frameCount: 3, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetImageMattock:          ImageAssetDef{path: "assets/sprites/mattock.png", frameCount: 1, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetImagePlanks:           ImageAssetDef{path: "assets/sprites/planks.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
+		common.AssetSheetTorchPlaced:      ImageAssetDef{path: "assets/sprites/torch_placed.png", frameCount: 3, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetImageAxe:              ImageAssetDef{path: "assets/sprites/axe.png", frameCount: 1, frameSize: utils.Vec2f{X: 32, Y: 32}},
 		common.AssetImageSlash:            ImageAssetDef{path: "assets/sprites/slash.png", frameCount: 1, frameSize: utils.Vec2f{X: 20, Y: 36}},
 		common.AssetImagePlatform:         ImageAssetDef{path: "assets/sprites/platform.png", frameCount: 1, frameSize: utils.Vec2f{X: 32, Y: 32}},
