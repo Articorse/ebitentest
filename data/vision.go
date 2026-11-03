@@ -1,7 +1,7 @@
 package data
 
 const (
-	PlayerVisionRadiusTiles = 12
+	PlayerVisionRadiusTiles = 36
 	VisionCircleMarginTiles = 1.5
 	VisionCircleFadeTiles   = 0.5
 	MemoryRegionSize        = 32
