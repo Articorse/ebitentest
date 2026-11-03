@@ -228,7 +228,7 @@ func TestTreesAreDrawnWhereTheyStand(t *testing.T) {
 		t.Fatalf("sprites on the tree's tile are %+v, want just %+v", sprites, want)
 	}
 
-	away := center.Add(utils.Vec2f{X: 1000})
+	away := center.Add(utils.Vec2f{X: farChunks * chunkPx})
 	if sprites := s.Chunks.FeatureSprites([2]utils.Vec2f{away, away}); len(sprites) != 0 {
 		t.Fatalf("sprites far from any active chunk: %+v", sprites)
 	}

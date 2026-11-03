@@ -25,7 +25,7 @@
     "id": 3,
     "imagePath": "assets/tiles/rock.png",
     "maxHealth": 200,
-    "destroyedInto": 1,
+    "destroyedInto": 7,
     "passable": false,
     "opaque": true
   },
@@ -51,5 +51,12 @@
     "passable": false,
     "opaque": true,
     "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 1 }] }]
+  },
+  {
+    "id": 7,
+    "imagePath": "assets/tiles/rock_floor.png",
+    "maxHealth": -1,
+    "passable": true,
+    "opaque": false
   }
 ]

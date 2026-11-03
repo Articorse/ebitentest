@@ -20,16 +20,11 @@ func tileOf(t *testing.T, s *testutil.Session, kind data.TileEnum) utils.Vec2i {
 
 // What's there now, which can differ from what was generated
 func currentTile(s *testutil.Session, tile utils.Vec2i) data.TileEnum {
-	if _, ok := s.Chunks.TileHealth(tile); !ok && !s.Chunks.IsOpaqueTile(tile) {
-		return data.Tile_Dirt
-	}
-	if s.Chunks.IsOpaqueTile(tile) {
-		return data.Tile_Rock
-	}
-	return data.Tile_Grass
+	t, _ := s.Chunks.TileAt(tile)
+	return t
 }
 
-func TestDamagedTilesKeepTheirHealthAndBecomeDirt(t *testing.T) {
+func TestDamagedTilesKeepTheirHealthAndBecomeWhatTheyreDestroyedInto(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	grass := tileOf(t, s, data.Tile_Grass)
@@ -45,14 +40,14 @@ func TestDamagedTilesKeepTheirHealthAndBecomeDirt(t *testing.T) {
 	if ok, _ := s.Chunks.DamageTile(rock, 500); !ok {
 		t.Fatal("rock can't be damaged")
 	}
+	if got := currentTile(s, rock); got != data.Tile_RockFloor {
+		t.Fatalf("destroyed rock turned into %v, want rock floor", got)
+	}
 	if s.Chunks.IsOpaqueTile(rock) {
 		t.Fatal("destroyed rock still blocks sight")
 	}
-	if _, ok := s.Chunks.TileHealth(rock); ok {
-		t.Fatal("destroyed rock turned into something that can still be damaged, want dirt")
-	}
 	if ok, _ := s.Chunks.DamageTile(rock, 10); ok {
-		t.Fatal("dirt took damage")
+		t.Fatal("rock floor took damage")
 	}
 
 	s.Commit()
@@ -60,8 +55,8 @@ func TestDamagedTilesKeepTheirHealthAndBecomeDirt(t *testing.T) {
 	if health, ok := r.Chunks.TileHealth(grass); !ok || health != 30 {
 		t.Fatalf("after restarting, grass has %d health (damageable %v), want 30", health, ok)
 	}
-	if r.Chunks.IsOpaqueTile(rock) {
-		t.Fatal("after restarting, destroyed rock is back")
+	if got := currentTile(r, rock); got != data.Tile_RockFloor {
+		t.Fatalf("after restarting, destroyed rock is %v, want rock floor", got)
 	}
 }
 

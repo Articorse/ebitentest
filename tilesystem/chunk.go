@@ -114,6 +114,15 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, tile data.TileEnum) {
 	drawTileInto(c.Image, idx, def.image)
 }
 
+// False where no chunk is active
+func (cc *ChunkContainer) TileAt(t utils.Vec2i) (data.TileEnum, bool) {
+	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	if !ok {
+		return data.Tile_None, false
+	}
+	return c.getTileDefId(t), true
+}
+
 func (cc *ChunkContainer) CanDamageTile(t utils.Vec2i) bool {
 	_, ok := cc.TileHealth(t)
 	return ok

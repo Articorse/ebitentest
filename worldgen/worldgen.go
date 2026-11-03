@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/utils"
 	"ebittest/worldgen/noise"
+	"math"
 )
 
 // Added to the world seed, so that every layer gets noise of its own
@@ -14,6 +15,8 @@ const (
 	rockChanceSeed
 	rockWarpXSeed
 	rockWarpYSeed
+	caveSeed
+	caveChamberSeed
 )
 
 // Every tile depends only on the seed and its own position, so chunks can be generated in any order and regenerated
@@ -30,6 +33,9 @@ func ChunkTiles(seed uint64, chunkPos utils.Vec2i) [data.ChunkSize * data.ChunkS
 
 func Tile(seed uint64, tilePos utils.Vec2i) data.TileEnum {
 	if isRock(seed, tilePos) {
+		if isCave(seed, tilePos) {
+			return data.Tile_RockFloor
+		}
 		return data.Tile_Rock
 	}
 	if ground(seed, tilePos) > data.WorldgenGrassThreshold {
@@ -56,4 +62,17 @@ func isRock(seed uint64, tilePos utils.Vec2i) bool {
 
 	cellX, cellY := noise.NearestCell(seed+rockCellSeed, wx/data.WorldgenRockCellSizeTiles, wy/data.WorldgenRockCellSizeTiles)
 	return noise.UnitFloat(noise.Hash2(seed+rockChanceSeed, cellX, cellY)) < data.WorldgenRockCellChance
+}
+
+// Tunnels follow the lines where a noise field crosses zero, which are long and unbroken, so they run through the
+// mountains and open onto their edges. A second noise field widens them into chambers, so chambers are always on a
+// tunnel.
+func isCave(seed uint64, tilePos utils.Vec2i) bool {
+	x, y := float64(tilePos.X), float64(tilePos.Y)
+
+	tunnel := noise.OpenSimplex2(int64(seed+caveSeed), x/data.WorldgenCaveScaleTiles, y/data.WorldgenCaveScaleTiles)
+	chamber := noise.OpenSimplex2(int64(seed+caveChamberSeed), x/data.WorldgenCaveChamberScaleTiles, y/data.WorldgenCaveChamberScaleTiles)
+
+	width := data.WorldgenCaveTunnelWidth + data.WorldgenCaveChamberWidth*max(chamber-data.WorldgenCaveChamberThreshold, 0)
+	return math.Abs(tunnel) < width
 }

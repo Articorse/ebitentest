@@ -16,7 +16,7 @@ import (
 func findTile(t *testing.T, s *testutil.Session, want func(utils.Vec2i) bool) utils.Vec2i {
 	t.Helper()
 	center := utils.WorldPosToTilePos(testutil.PlayerStart)
-	for r := 0; r <= 6; r++ {
+	for r := 0; r <= 40; r++ {
 		for dy := -r; dy <= r; dy++ {
 			for dx := -r; dx <= r; dx++ {
 				tile := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}

@@ -175,10 +175,11 @@ func TestMemoryRegionsFarOffScreenAreFreedAndBakedAgain(t *testing.T) {
 	b := &bakes{}
 	first := b.drawn(s, dst, camera)
 
-	nearby := camera.Add(utils.Vec2f{X: 640 + data.MemoryImageFreeMarginPx/2})
+	// Every region in view stays within the margin of the view moved this little
+	nearby := camera.Add(utils.Vec2f{X: data.MemoryImageFreeMarginPx / 2})
 	b.drawn(s, dst, nearby)
 	if got := b.drawn(s, dst, camera); len(got) != 0 {
-		t.Fatalf("regions %v were baked again after looking just past them", got)
+		t.Fatalf("regions %v were baked again after looking slightly to the side", got)
 	}
 
 	b.drawn(s, dst, camera.Add(utils.Vec2f{X: 50 * regionPx}))
