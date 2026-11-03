@@ -192,6 +192,9 @@ func (g *game) Update() error {
 			if err := templates.SpawnStartingEquipment(g.ecs, g.playerEntity); err != nil {
 				log.Fatal("error spawning starting equipment: ", err)
 			}
+			if err := g.spawnFirstEnemy(); err != nil {
+				log.Fatal("error spawning the first enemy: ", err)
+			}
 		}
 		g.logConsistency("after loading")
 	}
@@ -668,6 +671,20 @@ func touchingCollidersOf(
 		t.features[c.Tile] = t.features[c.Tile] || c.Feature
 	}
 	return t
+}
+
+// Until enemies spawn by themselves, a new world starts with one evil slime near the player. Only once its chunks are
+// active, since an entity outside them isn't simulated.
+func (g *game) spawnFirstEnemy() error {
+	playerPos, err := g.ecs.WorldPos(g.playerEntity)
+	if err != nil {
+		return err
+	}
+	slime, err := templates.SpawnEvilSlime(g.ecs, playerPos.Add(utils.Vec2f{X: 100}), g.playerEntity)
+	if err != nil {
+		return err
+	}
+	return g.moveToNewWorldSpawn(slime)
 }
 
 func (g *game) moveToNewWorldSpawn(e common.EntityId) error {

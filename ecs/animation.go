@@ -116,7 +116,7 @@ func (x *ECSContainer) TickAnimation(e common.EntityId) error {
 		} else {
 			a.frameState.CounterMs = 0
 			a.frameState.CurrentIdx = (a.frameState.CurrentIdx + 1) % uint16(len(frames))
-			s.subImageIdx = int(a.stateFrames[currentState][currentIdx].FrameIdx)
+			s.subImageIdx = int(frames[a.frameState.CurrentIdx].FrameIdx)
 		}
 	}
 
