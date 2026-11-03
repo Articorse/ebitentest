@@ -75,6 +75,7 @@ type ECSContainer struct {
 	Tosses            Storage[Toss]
 	DropTables        Storage[DropTable]
 	LightEmitters     Storage[LightEmitter]
+	SpawnedEnemies    Storage[SpawnedEnemy]
 	Disabled          Storage[Disabled]
 }
 
@@ -112,6 +113,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&inventoryDto{})
 	gob.Register(&disabledDto{})
 	gob.Register(&lightEmitterDto{})
+	gob.Register(&spawnedEnemyDto{})
 
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
@@ -170,6 +172,7 @@ func NewECSContainer() *ECSContainer {
 		Tosses:            newStorage[Toss](),
 		DropTables:        newStorage[DropTable](),
 		LightEmitters:     newStorage[LightEmitter](),
+		SpawnedEnemies:    newStorage[SpawnedEnemy](),
 		Disabled:          newStorage[Disabled](),
 	}
 
@@ -207,6 +210,7 @@ func NewECSContainer() *ECSContainer {
 		&x.Tosses,
 		&x.DropTables,
 		&x.LightEmitters,
+		&x.SpawnedEnemies,
 		&x.Disabled,
 	}
 

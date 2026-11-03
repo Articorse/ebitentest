@@ -68,7 +68,6 @@ func SpawnEvilSlime(ecsContainer *ecs.ECSContainer, pos utils.Vec2f, target comm
 		ecs.NewHurtboxColliderComponent(ecs.Layer_Enemy, ecs.Layer_Player, hurtboxShape),
 		ecs.NewContactDamageComponent(-1, 5, 5).WithRehitIntervalMs(1000),
 		ecs.NewBodyComponent(data.Body_Humanoid),
-		ecs.NewInvulnerabilityComponent(1000),
 		ecs.NewInputComponent(nil, inputsources.InputType_Rusher, &inputsources.InputRusherParams{Target: target}, ecs.Facing_None),
 		ecs.NewVisionComponent(data.PlayerVisionRangeTiles/2),
 		ecs.NewPersistentComponent(),
