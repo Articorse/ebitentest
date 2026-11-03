@@ -1,11 +1,15 @@
 {
-  "capacities": [{ "id": 1, "name": "Moving", "floorPercent": 15 }],
+  "capacities": [
+    { "id": 1, "name": "Moving", "floorPercent": 15 },
+    { "id": 2, "name": "Sight", "floorPercent": 0 }
+  ],
   "bodies": [
     {
       "id": 1,
       "name": "Humanoid",
       "parts": [
         { "name": "torso", "maxHealth": 20, "coverage": 60, "vital": true },
+        { "name": "eyes", "maxHealth": 10, "coverage": 10, "capacities": [2] },
         { "name": "left leg", "maxHealth": 15, "coverage": 20, "capacities": [1] },
         { "name": "right leg", "maxHealth": 15, "coverage": 20, "capacities": [1] }
       ],

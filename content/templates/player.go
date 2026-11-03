@@ -92,7 +92,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		pAbiComp,
 		pCLComp,
 		ecs.NewPersistentComponent(),
-		ecs.NewVisionComponent(),
+		ecs.NewVisionComponent(data.PlayerVisionRangeTiles),
 		ecs.NewInventoryComponent(data.HotbarSlots),
 		ecs.NewAimComponent(),
 	)

@@ -10,7 +10,7 @@ const (
 	NightSkyLight = 48
 	// What light loses with each tile it spreads, so daylight reaches 7 tiles under a roof and night sky light 1
 	LightFalloffPerTile = 32
-	// How far line of sight is followed, whatever the light. It's fixed, rather than the screen's edge, since vision
-	// is part of the simulation and mustn't depend on the window or zoom.
-	VisionMaxRangeTiles = 64
+	// How far the player sees in full light with unhurt eyes, whatever the light. It's fixed, rather than the screen's
+	// edge, since vision is part of the simulation and mustn't depend on the window or zoom.
+	PlayerVisionRangeTiles = 64
 )

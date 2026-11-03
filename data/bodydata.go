@@ -15,6 +15,7 @@ type CapacityEnum uint16
 const (
 	Capacity_None CapacityEnum = iota
 	Capacity_Moving
+	Capacity_Sight
 )
 
 // Efficiencies are in thousandths, in integers, so that what parts govern is worked out the same on every machine

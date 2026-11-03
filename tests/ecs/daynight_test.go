@@ -86,7 +86,7 @@ func (s skyTerrain) LightSources(_, _ utils.Vec2i, lit func(utils.Vec2i, uint8, 
 func TestVisionSeesLessAtNightAndNothingDeepUnderARoof(t *testing.T) {
 	x := testutil.NewECS(t)
 	x.SetTerrain(skyTerrain{Terrain: x.Terrain(), roofFromX: 30})
-	viewer := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0), ecs.NewVisionComponent())
+	viewer := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0), ecs.NewVisionComponent(data.PlayerVisionRangeTiles))
 	v, _ := x.Visions.Get(viewer)
 	far, near := utils.Vec2i{X: 20}, utils.Vec2i{X: 11}
 	underTheEdge, deepUnder := utils.Vec2i{X: 31}, utils.Vec2i{X: 40}

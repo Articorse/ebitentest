@@ -11,17 +11,17 @@ import (
 )
 
 func see(s *testutil.Session, viewer utils.Vec2f) *ecs.Vision {
-	v := ecs.NewVisionComponent()
+	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
 	origin := utils.WorldPosToTilePos(viewer)
-	s.ECS.LightAround(origin, data.VisionMaxRangeTiles, v.Light())
-	v.Update(origin, s.Chunks.IsOpaqueTile, v.Light().At)
+	s.ECS.LightAround(origin, data.PlayerVisionRangeTiles, v.Light())
+	v.Update(origin, data.PlayerVisionRangeTiles, s.Chunks.IsOpaqueTile, v.Light().At)
 	s.Chunks.RememberSeenTiles(v)
 	return v
 }
 
 func seeLitBy(s *testutil.Session, viewer utils.Vec2f, lightAt func(utils.Vec2i) uint8) *ecs.Vision {
-	v := ecs.NewVisionComponent()
-	v.Update(utils.WorldPosToTilePos(viewer), s.Chunks.IsOpaqueTile, lightAt)
+	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
+	v.Update(utils.WorldPosToTilePos(viewer), data.PlayerVisionRangeTiles, s.Chunks.IsOpaqueTile, lightAt)
 	s.Chunks.RememberSeenTiles(v)
 	return v
 }
@@ -42,8 +42,8 @@ func TestExactlyTheSeenTilesAreRemembered(t *testing.T) {
 
 	remembered, unseen := 0, 0
 	center := utils.WorldPosToTilePos(viewer)
-	for dy := -data.VisionMaxRangeTiles - 2; dy <= data.VisionMaxRangeTiles+2; dy++ {
-		for dx := -data.VisionMaxRangeTiles - 2; dx <= data.VisionMaxRangeTiles+2; dx++ {
+	for dy := -data.PlayerVisionRangeTiles - 2; dy <= data.PlayerVisionRangeTiles+2; dy++ {
+		for dx := -data.PlayerVisionRangeTiles - 2; dx <= data.PlayerVisionRangeTiles+2; dx++ {
 			tile := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
 			got, ok := s.Chunks.RecallTile(tile)
 			if ok != v.CanSee(tile) {
@@ -117,7 +117,7 @@ func TestRememberingDuringACommitIsSavedByTheNext(t *testing.T) {
 }
 
 func rememberedAround(s *testutil.Session, pos utils.Vec2f) map[utils.Vec2i]bool {
-	const reach = 2 * data.VisionMaxRangeTiles
+	const reach = 2 * data.PlayerVisionRangeTiles
 	center := utils.WorldPosToTilePos(pos)
 	remembered := map[utils.Vec2i]bool{}
 	for dy := -reach; dy <= reach; dy++ {

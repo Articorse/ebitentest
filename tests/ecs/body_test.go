@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/ecs/systems/visionsystem"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"os"
@@ -227,5 +228,49 @@ func TestADamagedBodyIsSavedAndItsCapacitiesWorkedOutAgain(t *testing.T) {
 	}
 	if got := y.Capacity(e, data.Capacity_Moving); got != moving || got == data.FullEfficiency {
 		t.Fatalf("the loaded body moves at %d, want %d", got, moving)
+	}
+}
+
+func TestHurtEyesShortenVisionAndDestroyedOnesBlind(t *testing.T) {
+	x := testutil.NewECS(t)
+	x.SetBodyAtlas(testutil.BodyAtlasFrom(t, `{
+		"capacities": [{"id": 2, "name": "Sight", "floorPercent": 0}],
+		"bodies": [{"id": 1, "name": "Eyes", "parts": [
+			{"name": "torso", "maxHealth": 20, "coverage": 0, "vital": true},
+			{"name": "eyes", "maxHealth": 10, "coverage": 100, "capacities": [2]}]}]}`))
+	x.SetTerrain(skyTerrain{Terrain: x.Terrain(), roofFromX: 1000})
+	viewer := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0),
+		ecs.NewVisionComponent(40), ecs.NewBodyComponent(data.Body_Humanoid))
+	v, _ := x.Visions.Get(viewer)
+
+	for _, c := range []struct{ eyes, rangeTiles int }{{10, 40}, {6, 24}, {1, 4}, {0, 0}} {
+		for {
+			if eyes, _, _ := x.PartHealth(viewer, "eyes"); eyes == c.eyes {
+				break
+			}
+			damage(t, x, viewer, 1)
+		}
+		visionsystem.Tick(x)
+		if _, radius := v.VisibleArea(); radius != c.rangeTiles {
+			t.Errorf("with eyes at %d of 10, it sees %d tiles in daylight, want %d", c.eyes, radius, c.rangeTiles)
+		}
+	}
+	if v.CanSee(utils.Vec2i{}) {
+		t.Fatal("with destroyed eyes, it sees its own tile")
+	}
+}
+
+func TestTheHumanoidHasEyesGoverningSight(t *testing.T) {
+	x := testutil.NewECS(t)
+	e := withBody(t, x, data.Body_Humanoid)
+	if health, maxHealth, ok := x.PartHealth(e, "eyes"); !ok || health != 10 || maxHealth != 10 {
+		t.Fatalf("the humanoid's eyes have %d of %d health (%v), want 10", health, maxHealth, ok)
+	}
+	_, capacities, err := x.BodyStatus(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(capacities) != 2 || capacities[1].Name != "Sight" || capacities[1].Efficiency != data.FullEfficiency {
+		t.Fatalf("the humanoid's capacities are %+v, want full Sight after Moving", capacities)
 	}
 }

@@ -10,8 +10,8 @@ import (
 
 func TestOnlyWhatTheViewerSeesIsRevealed(t *testing.T) {
 	wall := utils.Vec2i{X: 2}
-	vision := ecs.NewVisionComponent()
-	vision.Update(utils.Vec2i{}, func(t utils.Vec2i) bool { return t == wall }, func(utils.Vec2i) uint8 { return data.NightSkyLight })
+	vision := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
+	vision.Update(utils.Vec2i{}, data.PlayerVisionRangeTiles, func(t utils.Vec2i) bool { return t == wall }, func(utils.Vec2i) uint8 { return data.NightSkyLight })
 
 	for _, c := range []struct {
 		name string

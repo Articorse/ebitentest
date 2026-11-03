@@ -16,8 +16,9 @@ func Tick(ecsContainer *ecs.ECSContainer) {
 		}
 
 		origin := utils.WorldPosToTilePos(pos)
+		rangeTiles := v.BaseRangeTiles() * ecsContainer.Capacity(e, data.Capacity_Sight) / data.FullEfficiency
 		light := v.Light()
-		ecsContainer.LightAround(origin, data.VisionMaxRangeTiles, light)
-		v.Update(origin, ecsContainer.Terrain().IsOpaqueTile, light.At)
+		ecsContainer.LightAround(origin, rangeTiles, light)
+		v.Update(origin, rangeTiles, ecsContainer.Terrain().IsOpaqueTile, light.At)
 	}
 }
