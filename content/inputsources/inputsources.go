@@ -14,6 +14,7 @@ const (
 	InputType_Human  ecs.InputTypeEnum = 3
 	InputType_Loop   ecs.InputTypeEnum = 4
 	InputType_Replay ecs.InputTypeEnum = 5
+	InputType_Rusher ecs.InputTypeEnum = 6
 )
 
 func Register(ecsContainer *ecs.ECSContainer) error {
@@ -21,6 +22,7 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 	gob.Register(&InputFollowParams{})
 	gob.Register(&InputLoopParams{})
 	gob.Register(&InputReplayParams{})
+	gob.Register(&InputRusherParams{})
 
 	inputSources := []struct {
 		id              ecs.InputTypeEnum
@@ -32,6 +34,7 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 		{InputType_Human, HumanInputSource},
 		{InputType_Loop, LoopInputSource},
 		{InputType_Replay, ReplayInputSource},
+		{InputType_Rusher, RusherInputSource},
 	}
 
 	for _, s := range inputSources {

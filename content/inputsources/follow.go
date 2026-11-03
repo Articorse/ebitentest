@@ -38,16 +38,21 @@ func FollowInputSource(
 		return ecs.InputState{}, fmt.Errorf("input params are nil")
 	}
 
+	return towards(entityId, followParams.FollowEntity, ecsContainer)
+}
+
+// Heads straight at the target, whatever's in the way
+func towards(self, target common.EntityId, ecsContainer *ecs.ECSContainer) (ecs.InputState, error) {
 	is := ecs.InputState{}
 
-	selfWorldPos, err := ecsContainer.WorldPos(entityId)
+	selfWorldPos, err := ecsContainer.WorldPos(self)
 	if err != nil {
-		return is, fmt.Errorf("error getting world position for self entity %d: %v", entityId, err)
+		return is, fmt.Errorf("error getting world position for self entity %d: %v", self, err)
 	}
 
-	targetWorldPos, err := ecsContainer.WorldPos(followParams.FollowEntity)
+	targetWorldPos, err := ecsContainer.WorldPos(target)
 	if err != nil {
-		return is, fmt.Errorf("error getting world position for follow entity %d: %v", followParams.FollowEntity, err)
+		return is, fmt.Errorf("error getting world position for follow entity %d: %v", target, err)
 	}
 
 	dir := targetWorldPos.Subtract(selfWorldPos).Normalized()
