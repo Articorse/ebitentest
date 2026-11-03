@@ -11,7 +11,12 @@ import (
 )
 
 func see(s *testutil.Session, viewer utils.Vec2f) *ecs.Vision {
-	return seeLitBy(s, viewer, s.ECS.LightAt)
+	v := ecs.NewVisionComponent()
+	origin := utils.WorldPosToTilePos(viewer)
+	s.ECS.LightAround(origin, data.VisionMaxRangeTiles, v.Light())
+	v.Update(origin, s.Chunks.IsOpaqueTile, v.Light().At)
+	s.Chunks.RememberSeenTiles(v)
+	return v
 }
 
 func seeLitBy(s *testutil.Session, viewer utils.Vec2f, lightAt func(utils.Vec2i) uint8) *ecs.Vision {

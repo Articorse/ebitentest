@@ -2,7 +2,6 @@ package ecs
 
 import (
 	"ebittest/data"
-	"ebittest/utils"
 	"math"
 )
 
@@ -25,12 +24,4 @@ func Darkness(tick uint64) float64 {
 // How brightly the sky lights the tiles open to it
 func SkyLight(darkness float64) uint8 {
 	return uint8(math.Round(data.DaySkyLight + (data.NightSkyLight-data.DaySkyLight)*darkness))
-}
-
-// 0 is pitch black. Only the sky gives light so far, so roofed and unloaded tiles are dark.
-func (x *ECSContainer) LightAt(t utils.Vec2i) uint8 {
-	if !x.terrain.IsOpenToSky(t) {
-		return 0
-	}
-	return SkyLight(Darkness(x.TickIdx))
 }

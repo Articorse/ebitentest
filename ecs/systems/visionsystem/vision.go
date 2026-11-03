@@ -1,6 +1,7 @@
 package visionsystem
 
 import (
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/utils"
 	"log"
@@ -14,6 +15,9 @@ func Tick(ecsContainer *ecs.ECSContainer) {
 			continue
 		}
 
-		v.Update(utils.WorldPosToTilePos(pos), ecsContainer.Terrain().IsOpaqueTile, ecsContainer.LightAt)
+		origin := utils.WorldPosToTilePos(pos)
+		light := v.Light()
+		ecsContainer.LightAround(origin, data.VisionMaxRangeTiles, light)
+		v.Update(origin, ecsContainer.Terrain().IsOpaqueTile, light.At)
 	}
 }

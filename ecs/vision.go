@@ -12,6 +12,7 @@ type Vision struct {
 	// What was visible at the last update, as a square around origin. It's derived from the world, so it isn't saved.
 	origin  utils.Vec2i
 	visible []bool
+	light   LightMap
 }
 
 func NewVisionComponent() *Vision {
@@ -42,6 +43,11 @@ func (x *Vision) Update(origin utils.Vec2i, isOpaque func(utils.Vec2i) bool, lig
 func litEnough(dx, dy int, light uint8) bool {
 	reach := int(light) * data.VisionMaxRangeTiles
 	return light > 0 && (dx*dx+dy*dy)*data.MaxLight*data.MaxLight <= reach*reach
+}
+
+// The light around the viewer, kept with the vision so that working it out every tick doesn't allocate
+func (x *Vision) Light() *LightMap {
+	return &x.light
 }
 
 // The square of tiles CanSee answers for, as of the last update

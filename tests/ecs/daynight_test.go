@@ -60,30 +60,38 @@ func TestTheSkyLightsByDayAndDimsAtNight(t *testing.T) {
 	}
 }
 
-// Open to the sky everywhere but the roofed tiles, and without walls
+// Open to the sky everywhere but where it's roofed, which by default is from roofFromX on, with walls where told
 type skyTerrain struct {
 	ecs.Terrain
-	roofed map[utils.Vec2i]bool
+	roofFromX int
+	roofed    func(utils.Vec2i) bool
+	walls     map[utils.Vec2i]bool
 }
 
-func (s skyTerrain) IsOpenToSky(t utils.Vec2i) bool { return !s.roofed[t] }
-func (skyTerrain) IsOpaqueTile(utils.Vec2i) bool    { return false }
+func (s skyTerrain) IsOpenToSky(t utils.Vec2i) bool {
+	if s.roofed != nil {
+		return !s.roofed(t)
+	}
+	return t.X < s.roofFromX
+}
+func (s skyTerrain) IsOpaqueTile(t utils.Vec2i) bool { return s.walls[t] }
 
-func TestVisionSeesLessAtNightAndNothingUnderARoof(t *testing.T) {
+func TestVisionSeesLessAtNightAndNothingDeepUnderARoof(t *testing.T) {
 	x := testutil.NewECS(t)
-	roofed := utils.Vec2i{X: 5, Y: 5}
-	x.SetTerrain(skyTerrain{Terrain: x.Terrain(), roofed: map[utils.Vec2i]bool{roofed: true}})
+	x.SetTerrain(skyTerrain{Terrain: x.Terrain(), roofFromX: 30})
 	viewer := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0), ecs.NewVisionComponent())
 	v, _ := x.Visions.Get(viewer)
 	far, near := utils.Vec2i{X: 20}, utils.Vec2i{X: 11}
+	underTheEdge, deepUnder := utils.Vec2i{X: 31}, utils.Vec2i{X: 40}
 
 	x.TickIdx = 0
 	visionsystem.Tick(x)
 	if !v.CanSee(far) || !v.CanSee(near) {
 		t.Fatal("by day, the viewer doesn't see 20 tiles away")
 	}
-	if v.CanSee(roofed) {
-		t.Fatal("by day, the viewer sees a dark tile under a roof")
+	if !v.CanSee(underTheEdge) || v.CanSee(deepUnder) {
+		t.Fatalf("by day, the viewer sees just under the roof's edge %v and deep under it %v; want only the edge",
+			v.CanSee(underTheEdge), v.CanSee(deepUnder))
 	}
 
 	x.TickIdx = data.DayTicks + data.DuskTicks

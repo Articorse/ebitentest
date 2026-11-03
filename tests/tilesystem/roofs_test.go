@@ -91,3 +91,24 @@ func TestAChunkFirstSavedForAnEntityKeepsItsTreesAndRoofs(t *testing.T) {
 		t.Fatalf("the roof at %v is gone after its chunk was first saved for an entity", roofed)
 	}
 }
+
+func TestTheFaceOfAMountainIsSeenByDay(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	viewer := outside(t, s)
+	v := see(s, viewer)
+
+	center := utils.WorldPosToTilePos(viewer)
+	for dy := -data.VisionMaxRangeTiles; dy <= data.VisionMaxRangeTiles; dy++ {
+		for dx := -data.VisionMaxRangeTiles; dx <= data.VisionMaxRangeTiles; dx++ {
+			tile := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
+			if currentTile(s, tile) == data.Tile_Rock && v.CanSee(tile) {
+				if got, ok := s.Chunks.RecallTile(tile); !ok || got != data.Tile_Rock {
+					t.Fatalf("rock at %v is seen but remembered as %v (%v)", tile, got, ok)
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("no rock is seen from beside a mountain by day, so mountains show as black")
+}
