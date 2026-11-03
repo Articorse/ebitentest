@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"maps"
+	"slices"
 )
 
 // Parts that take damage, as the body atlas defines them for the body's kind, and the capacities they govern
@@ -165,4 +166,35 @@ func (x Body) toDto() (ComponentDto, error) {
 
 func (x bodyDto) toComponent() (Component, error) {
 	return &Body{kind: x.Kind, health: maps.Clone(x.Health)}, nil
+}
+
+type PartStatus struct {
+	Name              string
+	Health, MaxHealth int
+}
+
+type CapacityStatus struct {
+	Name string
+	// In thousandths
+	Efficiency int
+}
+
+// The parts in the body atlas's order, and the capacities they govern by id
+func (x *ECSContainer) BodyStatus(e common.EntityId) ([]PartStatus, []CapacityStatus, error) {
+	body, def, err := x.body(e)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	parts := make([]PartStatus, len(def.parts))
+	for i, p := range def.parts {
+		parts[i] = PartStatus{Name: p.name, Health: def.partHealth(p, body.health), MaxHealth: p.maxHealth}
+	}
+
+	ids := slices.Sorted(maps.Keys(body.capacities))
+	capacities := make([]CapacityStatus, len(ids))
+	for i, id := range ids {
+		capacities[i] = CapacityStatus{Name: x.bodyAtlas.capacities[id].name, Efficiency: body.capacities[id]}
+	}
+	return parts, capacities, nil
 }

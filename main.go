@@ -68,6 +68,7 @@ type game struct {
 	frameTimes    frameTimes
 	showColliders bool
 	showChunks    bool
+	showBody      bool
 	touching      touchingColliders
 
 	// In screen pixels, which are device pixels
@@ -78,9 +79,9 @@ type game struct {
 	uiScale float64
 	// The world is drawn at its own resolution and scaled onto the screen, so that it can be zoomed without changing how
 	// anything in it is drawn
-	world *ebiten.Image
-	// Grown to fit the longest debug text yet, so that it isn't reallocated as the FPS changes
-	debugText *ebiten.Image
+	world    *ebiten.Image
+	fpsText  debugText
+	bodyText debugText
 }
 
 // The size of a character in ebitenutil's debug font
@@ -269,6 +270,9 @@ func (g *game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF3) {
 		g.showChunks = !g.showChunks
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
+		g.showBody = !g.showBody
+	}
 
 	err = animationsystem.Tick(g.ecs, g.assetmanager)
 	if err != nil {
@@ -440,7 +444,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	if g.loading {
 		screen.Fill(color.RGBA{0, 0, 0, 255})
-		g.drawDebugText(screen, "Loading...")
+		g.fpsText.draw(screen, "Loading...", g.uiScale, false)
 		return
 	}
 
@@ -463,7 +467,12 @@ func (g *game) Draw(screen *ebiten.Image) {
 	}
 
 	if g.showFPS {
-		g.drawDebugText(screen, fmt.Sprintf("FPS: %f\nSlowest frame: %.2f ms", ebiten.ActualFPS(), g.frameTimes.slowestMs()))
+		g.fpsText.draw(screen, fmt.Sprintf("FPS: %f\nSlowest frame: %.2f ms", ebiten.ActualFPS(), g.frameTimes.slowestMs()), g.uiScale, false)
+	}
+	if g.showBody {
+		if status, err := drawsystem.BodyStatusText(g.playerEntity, g.ecs); err == nil {
+			g.bodyText.draw(screen, status, g.uiScale, true)
+		}
 	}
 }
 
@@ -524,9 +533,14 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	}
 }
 
+// Grown to fit the longest text yet, so that it isn't reallocated as the text changes
+type debugText struct {
+	image *ebiten.Image
+}
+
 // The debug font is tiny at the screen's resolution, so the text is printed at UI pixels and scaled up. Only the text's
 // own area is drawn, since a full-screen draw for a few characters costs as much as drawing the world.
-func (g *game) drawDebugText(screen *ebiten.Image, msg string) {
+func (d *debugText) draw(screen *ebiten.Image, msg string, uiScale float64, bottomRight bool) {
 	lines := strings.Split(msg, "\n")
 	longest := 0
 	for _, l := range lines {
@@ -535,19 +549,24 @@ func (g *game) drawDebugText(screen *ebiten.Image, msg string) {
 	// ebitenutil draws a shadow one pixel down and to the right of the text
 	w, h := longest*debugGlyphWidth+1, len(lines)*debugGlyphHeight+1
 
-	if g.debugText == nil || g.debugText.Bounds().Dx() < w || g.debugText.Bounds().Dy() < h {
-		if g.debugText != nil {
-			w, h = max(w, g.debugText.Bounds().Dx()), max(h, g.debugText.Bounds().Dy())
-			g.debugText.Deallocate()
+	if d.image == nil || d.image.Bounds().Dx() < w || d.image.Bounds().Dy() < h {
+		allocW, allocH := w, h
+		if d.image != nil {
+			allocW, allocH = max(w, d.image.Bounds().Dx()), max(h, d.image.Bounds().Dy())
+			d.image.Deallocate()
 		}
-		g.debugText = ebiten.NewImage(w, h)
+		d.image = ebiten.NewImage(allocW, allocH)
 	}
 
-	g.debugText.Clear()
-	ebitenutil.DebugPrint(g.debugText, msg)
+	d.image.Clear()
+	ebitenutil.DebugPrint(d.image, msg)
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(g.uiScale, g.uiScale)
-	screen.DrawImage(g.debugText.SubImage(image.Rect(0, 0, w, h)).(*ebiten.Image), op)
+	op.GeoM.Scale(uiScale, uiScale)
+	if bottomRight {
+		size := screen.Bounds().Size()
+		op.GeoM.Translate(float64(size.X)-float64(w)*uiScale, float64(size.Y)-float64(h)*uiScale)
+	}
+	screen.DrawImage(d.image.SubImage(image.Rect(0, 0, w, h)).(*ebiten.Image), op)
 }
 
 // Entities are never remembered, only the terrain and the features on it
