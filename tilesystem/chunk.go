@@ -67,7 +67,7 @@ func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) (bool, *ecs.Drop
 		return true, nil
 	}
 
-	c.setTile(t, def.destroyedInto)
+	cc.setTile(c, t, def.destroyedInto)
 	return true, def.drops
 }
 
@@ -91,16 +91,27 @@ func (cc *ChunkContainer) PlaceTile(t utils.Vec2i, tile data.TileEnum) bool {
 	}
 
 	c := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
-	c.setTile(t, tile)
+	cc.setTile(c, t, tile)
 	return true
 }
 
-// A new tile starts out undamaged, and the chunk's image is baked again to show it
-func (x *chunk) setTile(t utils.Vec2i, tile data.TileEnum) {
-	delete(x.promotedTiles, t)
-	x.tiles[x.tileIndex(t)] = tile
-	x.terrainModified = true
-	x.freeImage()
+// A new tile starts out undamaged. Only its own part of the chunk's image is drawn again, since baking a whole chunk's
+// image is enough work to stall a frame.
+func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, tile data.TileEnum) {
+	idx := c.tileIndex(t)
+	delete(c.promotedTiles, t)
+	c.tiles[idx] = tile
+	c.terrainModified = true
+
+	if c.Image == nil {
+		return
+	}
+	def, ok := cc.atlas[tile]
+	if !ok {
+		c.freeImage()
+		return
+	}
+	drawTileInto(c.Image, idx, def.image)
 }
 
 func (cc *ChunkContainer) CanDamageTile(t utils.Vec2i) bool {

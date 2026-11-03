@@ -87,14 +87,19 @@ func (x *chunk) generateChunkImage(atlas map[data.TileEnum]tileDef) error {
 			return fmt.Errorf("tile enum %d not found in atlas", tEnum)
 		}
 
-		opts := ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(float64(tCell%data.ChunkSize*data.TileSize), float64(tCell/data.ChunkSize*data.TileSize))
-		img.DrawImage(tile.image, &opts)
+		drawTileInto(img, tCell, tile.image)
 	}
 
 	x.Image = img
 
 	return nil
+}
+
+// Replaces what's drawn on the tile, so that drawing a changed tile over the old one doesn't blend with it
+func drawTileInto(chunkImage *ebiten.Image, idx int, tile *ebiten.Image) {
+	opts := ebiten.DrawImageOptions{Blend: ebiten.BlendCopy}
+	opts.GeoM.Translate(float64(idx%data.ChunkSize*data.TileSize), float64(idx/data.ChunkSize*data.TileSize))
+	chunkImage.DrawImage(tile, &opts)
 }
 
 func (x *chunk) freeImage() {
