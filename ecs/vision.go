@@ -5,6 +5,7 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/fov"
 	"ebittest/utils"
+	"math"
 )
 
 type Vision struct {
@@ -12,6 +13,7 @@ type Vision struct {
 
 	// What was visible at the last update, as a square around origin. It's derived from the world, so it isn't saved.
 	origin        utils.Vec2i
+	reach         float64
 	visibleRadius int
 	visible       []bool
 }
@@ -29,17 +31,21 @@ func (x *Vision) SetRadius(radius int) {
 	x.radius = max(radius, 0)
 }
 
-func (x *Vision) Update(origin utils.Vec2i, isOpaque func(utils.Vec2i) bool) {
-	side := 2*x.radius + 1
+// The reach is how many tiles the vision reaches at the moment, which can be less than its radius, such as at night. It
+// can be fractional, so that the circle shrinks and grows smoothly, while tiles are computed up to the reach rounded up.
+func (x *Vision) Update(origin utils.Vec2i, reach float64, isOpaque func(utils.Vec2i) bool) {
+	x.reach = min(max(reach, 0), float64(x.radius))
+	x.origin, x.visibleRadius = origin, int(math.Ceil(x.reach))
+
+	side := 2*x.visibleRadius + 1
 	if cap(x.visible) < side*side {
 		x.visible = make([]bool, side*side)
 	} else {
 		x.visible = x.visible[:side*side]
 		clear(x.visible)
 	}
-	x.origin, x.visibleRadius = origin, x.radius
 
-	fov.Compute(origin, x.radius, isOpaque, func(t utils.Vec2i) {
+	fov.Compute(origin, x.visibleRadius, isOpaque, func(t utils.Vec2i) {
 		x.visible[x.index(t)] = true
 	})
 }
@@ -50,9 +56,9 @@ func (x *Vision) VisibleArea() (origin utils.Vec2i, radius int) {
 }
 
 // In pixels, around the viewer's exact position: fully clear within clearRadius, fading out up to outer. Kept far enough
-// inside the computed radius that the circle only shows computed tiles, wherever in its tile the viewer stands.
+// inside the reach that the circle only shows computed tiles, wherever in its tile the viewer stands.
 func (x *Vision) CircleRadii() (clearRadius, outer float64) {
-	outer = max(float64(x.visibleRadius)-data.VisionCircleMarginTiles, data.VisionCircleFadeTiles) * data.TileSize
+	outer = max(x.reach-data.VisionCircleMarginTiles, data.VisionCircleFadeTiles) * data.TileSize
 	return outer - data.VisionCircleFadeTiles*data.TileSize, outer
 }
 

@@ -11,7 +11,7 @@ import (
 func TestOnlyWhatTheVisionOverlayUncoversIsRevealed(t *testing.T) {
 	wall := utils.Vec2i{X: 2}
 	vision := ecs.NewVisionComponent(8)
-	vision.Update(utils.Vec2i{}, func(t utils.Vec2i) bool { return t == wall })
+	vision.Update(utils.Vec2i{}, float64(vision.Radius()), func(t utils.Vec2i) bool { return t == wall })
 	center := utils.TilePosToWorldPos(utils.Vec2i{})
 	_, outer := vision.CircleRadii()
 

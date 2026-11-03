@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	AtlasPath          = "assets/tiles/atlas.json"
-	FeatureAtlasPath   = "assets/features/features.json"
-	ItemAtlasPath      = "assets/items/items.json"
+	AtlasPath        = "assets/tiles/atlas.json"
+	FeatureAtlasPath = "assets/features/features.json"
+	ItemAtlasPath    = "assets/items/items.json"
 	// Small, since every chunk it loads is generated, and chunks are big
 	PlayerLoaderRadius = 1
 	// Fixed rather than random like the game's, so that a failing test fails the same way every time

@@ -14,7 +14,7 @@ func TestVisionRadiusChangesAtTheNextUpdate(t *testing.T) {
 	open := func(utils.Vec2i) bool { return false }
 	far := utils.Vec2i{X: 5, Y: 1}
 
-	v.Update(utils.Vec2i{}, open)
+	v.Update(utils.Vec2i{}, float64(v.Radius()), open)
 	if v.CanSee(far) {
 		t.Fatal("sees beyond its radius")
 	}
@@ -23,13 +23,13 @@ func TestVisionRadiusChangesAtTheNextUpdate(t *testing.T) {
 	if v.CanSee(far) {
 		t.Fatal("the new radius applied before an update")
 	}
-	v.Update(utils.Vec2i{}, open)
+	v.Update(utils.Vec2i{}, float64(v.Radius()), open)
 	if !v.CanSee(far) {
 		t.Fatal("the new radius didn't apply at the update")
 	}
 
 	v.SetRadius(1)
-	v.Update(utils.Vec2i{X: 100}, open)
+	v.Update(utils.Vec2i{X: 100}, float64(v.Radius()), open)
 	if v.CanSee(far) || !v.CanSee(utils.Vec2i{X: 101}) {
 		t.Fatal("what's visible didn't follow the new origin and radius")
 	}
@@ -39,7 +39,7 @@ func TestVisionSavesOnlyItsRadius(t *testing.T) {
 	x := testutil.NewECS(t)
 	e := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0), ecs.NewVisionComponent(4))
 	v, _ := x.Visions.Get(e)
-	v.Update(utils.Vec2i{}, func(utils.Vec2i) bool { return false })
+	v.Update(utils.Vec2i{}, float64(v.Radius()), func(utils.Vec2i) bool { return false })
 
 	members, err := x.GetCompositionComponents(e)
 	if err != nil {
@@ -65,7 +65,7 @@ func TestVisionCircleOnlyShowsComputedTiles(t *testing.T) {
 		for j := range 9 {
 			// Positions spread over the whole tile, edges included
 			viewer := utils.Vec2f{X: (float64(i)/8 - 0.5) * data.TileSize, Y: (float64(j)/8 - 0.5) * data.TileSize}
-			v.Update(utils.WorldPosToTilePos(viewer), func(utils.Vec2i) bool { return false })
+			v.Update(utils.WorldPosToTilePos(viewer), float64(v.Radius()), func(utils.Vec2i) bool { return false })
 
 			for a := range 360 {
 				angle := float64(a) * math.Pi / 180
@@ -75,5 +75,24 @@ func TestVisionCircleOnlyShowsComputedTiles(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestAFractionalReachComputesTilesUpToItAndShrinksTheCircleSmoothly(t *testing.T) {
+	v := ecs.NewVisionComponent(36)
+	open := func(utils.Vec2i) bool { return false }
+
+	v.Update(utils.Vec2i{}, 20.25, open)
+	if _, radius := v.VisibleArea(); radius != 21 || !v.CanSee(utils.Vec2i{X: 21}) || v.CanSee(utils.Vec2i{X: 22}) {
+		t.Fatalf("a reach of 20.25 computed a radius of %d, want 21", radius)
+	}
+	_, outer := v.CircleRadii()
+	if want := (20.25 - data.VisionCircleMarginTiles) * data.TileSize; math.Abs(outer-want) > 1e-9 {
+		t.Fatalf("the circle reaches %v px, want %v: from the exact reach", outer, want)
+	}
+
+	v.Update(utils.Vec2i{}, 50, open)
+	if _, radius := v.VisibleArea(); radius != 36 {
+		t.Fatalf("a reach past the radius computed a radius of %d, want the radius, 36", radius)
 	}
 }

@@ -13,7 +13,7 @@ import (
 
 func see(s *testutil.Session, viewer utils.Vec2f) *ecs.Vision {
 	v := ecs.NewVisionComponent(data.PlayerVisionRadiusTiles)
-	v.Update(utils.WorldPosToTilePos(viewer), s.Chunks.IsOpaqueTile)
+	v.Update(utils.WorldPosToTilePos(viewer), float64(v.Radius()), s.Chunks.IsOpaqueTile)
 	s.Chunks.RememberSeenTiles(viewer, v)
 	return v
 }
