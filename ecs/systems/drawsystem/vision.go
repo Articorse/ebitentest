@@ -50,8 +50,9 @@ func (o *VisionOverlay) Draw(
 	screen.DrawImage(o.mask, nil)
 }
 
-// Copied over the filled mask, so that the tiles in the square replace it, clear where they're seen. Filtered between
-// tile centers, so that the edge of what's seen is soft rather than following tile edges.
+// Cuts the seen tiles out of the filled mask. Filtered between tile centers, so that the edge of what's seen is soft
+// rather than following tile edges. Filtering also fades the image out past its outermost tiles, so copying it in clear
+// where it's seen, rather than cutting, let the live view show through a band around the square.
 func (o *VisionOverlay) drawTiles(dst *ebiten.Image, camera utils.Vec2f, vision *ecs.Vision) {
 	origin, radius := vision.VisibleArea()
 	side := 2*radius + 1
@@ -66,16 +67,16 @@ func (o *VisionOverlay) drawTiles(dst *ebiten.Image, camera utils.Vec2f, vision 
 
 	for y := range side {
 		for x := range side {
-			alpha := byte(255)
+			alpha := byte(0)
 			if vision.CanSee(utils.Vec2i{X: origin.X - radius + x, Y: origin.Y - radius + y}) {
-				alpha = 0
+				alpha = 255
 			}
 			o.tilePixels[4*(y*side+x)+3] = alpha
 		}
 	}
 	o.tiles.WritePixels(o.tilePixels)
 
-	op := &ebiten.DrawImageOptions{Blend: ebiten.BlendCopy, Filter: ebiten.FilterLinear}
+	op := &ebiten.DrawImageOptions{Blend: ebiten.BlendDestinationOut, Filter: ebiten.FilterLinear}
 	op.GeoM.Scale(data.TileSize, data.TileSize)
 	topLeft := utils.TilePosToWorldPos(utils.Vec2i{X: origin.X - radius, Y: origin.Y - radius}).
 		Subtract(utils.Vec2f{X: data.TileSize / 2, Y: data.TileSize / 2})
