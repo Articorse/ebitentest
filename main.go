@@ -24,10 +24,15 @@ import (
 	"ebittest/utils"
 	"ebittest/world"
 	"errors"
+	"flag"
 	"fmt"
+	"image"
 	"image/color"
 	"log"
 	"math"
+	"os"
+	"runtime/pprof"
+	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -70,9 +75,12 @@ type game struct {
 	// The world is drawn at its own resolution and scaled onto the screen, so that it can be zoomed without changing how
 	// anything in it is drawn
 	world *ebiten.Image
-	// The debug font is tiny at the screen's resolution, so debug text is printed here and scaled up
+	// Grown to fit the longest debug text yet, so that it isn't reallocated as the FPS changes
 	debugText *ebiten.Image
 }
+
+// The size of a character in ebitenutil's debug font
+const debugGlyphWidth, debugGlyphHeight = 6, 16
 
 // Which colliders of each kind touched something in the last tick, for drawing them
 type touchingColliders struct {
@@ -397,10 +405,10 @@ func (g *game) saveAndExit() error {
 	return ebiten.Termination
 }
 
+// The scaled world covers the whole screen, which is why the screen isn't cleared every frame
 func (g *game) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{0, 0, 0, 255})
-
 	if g.loading {
+		screen.Fill(color.RGBA{0, 0, 0, 255})
 		g.drawDebugText(screen, "Loading...")
 		return
 	}
@@ -484,12 +492,20 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	}
 }
 
+// The debug font is tiny at the screen's resolution, so the text is printed at UI pixels and scaled up. Only the text's
+// own area is drawn, since a full-screen draw for a few characters costs as much as drawing the world.
 func (g *game) drawDebugText(screen *ebiten.Image, msg string) {
-	size := screen.Bounds().Size()
-	w := int(math.Ceil(float64(size.X) / g.uiScale))
-	h := int(math.Ceil(float64(size.Y) / g.uiScale))
-	if g.debugText == nil || g.debugText.Bounds().Dx() != w || g.debugText.Bounds().Dy() != h {
+	lines := strings.Split(msg, "\n")
+	longest := 0
+	for _, l := range lines {
+		longest = max(longest, len(l))
+	}
+	// ebitenutil draws a shadow one pixel down and to the right of the text
+	w, h := longest*debugGlyphWidth+1, len(lines)*debugGlyphHeight+1
+
+	if g.debugText == nil || g.debugText.Bounds().Dx() < w || g.debugText.Bounds().Dy() < h {
 		if g.debugText != nil {
+			w, h = max(w, g.debugText.Bounds().Dx()), max(h, g.debugText.Bounds().Dy())
 			g.debugText.Deallocate()
 		}
 		g.debugText = ebiten.NewImage(w, h)
@@ -499,17 +515,16 @@ func (g *game) drawDebugText(screen *ebiten.Image, msg string) {
 	ebitenutil.DebugPrint(g.debugText, msg)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(g.uiScale, g.uiScale)
-	screen.DrawImage(g.debugText, op)
+	screen.DrawImage(g.debugText.SubImage(image.Rect(0, 0, w, h)).(*ebiten.Image), op)
 }
 
 // Entities are never remembered, only the terrain and the features on it
 func (g *game) drawMemory(dst *ebiten.Image, camera utils.Vec2f) {
-	g.chunkContainer.DrawMemory(dst, camera)
-
-	features := g.chunkContainer.RememberedFeatureSprites(drawsystem.DrawWindow(camera, drawsystem.ImageSize(dst)))
-	if err := drawsystem.DrawStaticSprites(dst, camera, features, data.MemoryBrightness, g.assetmanager); err != nil {
-		log.Println("error while drawing remembered features: ", err)
-	}
+	g.chunkContainer.DrawMemory(dst, camera, func(dst *ebiten.Image, camera utils.Vec2f, sprites []common.StaticSprite) {
+		if err := drawsystem.DrawStaticSprites(dst, camera, sprites, data.MemoryBrightness, g.assetmanager); err != nil {
+			log.Println("error while drawing remembered features: ", err)
+		}
+	})
 }
 
 // Keeps what's at the center of the screen there, so that zooming with the camera not following the player doesn't
@@ -620,6 +635,9 @@ func (g *game) moveToNewWorldSpawn(e common.EntityId) error {
 }
 
 func main() {
+	cpuProfile := flag.String("cpuprofile", "", "write a CPU profile of the game's run to this file")
+	flag.Parse()
+
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetTPS(data.TPS)
@@ -689,8 +707,35 @@ func main() {
 	ebiten.SetWindowSize(1920, 1080)
 	ebiten.SetWindowTitle("ebittest")
 	ebiten.SetWindowClosingHandled(true)
+	ebiten.SetScreenClearedEveryFrame(false)
 
-	if err := ebiten.RunGame(&g); err != nil {
+	stopProfile := startCPUProfile(*cpuProfile)
+	err = ebiten.RunGame(&g)
+	// Stopped before a fatal error exits, which would otherwise leave the profile unwritten
+	stopProfile()
+	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+// Does nothing without a path
+func startCPUProfile(path string) (stop func()) {
+	if path == "" {
+		return func() {}
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		log.Fatal("error creating CPU profile: ", err)
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal("error starting CPU profile: ", err)
+	}
+
+	return func() {
+		pprof.StopCPUProfile()
+		if err := f.Close(); err != nil {
+			log.Println("error closing CPU profile: ", err)
+		}
 	}
 }

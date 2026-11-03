@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/utils"
+	"image/color"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -18,16 +19,18 @@ var blendMax = ebiten.Blend{
 	BlendOperationAlpha:         ebiten.BlendOperationMax,
 }
 
+// Only the vision's square of tiles and its circle are drawn each frame, both the same size at any zoom; everything
+// outside them is hidden by filling the mask first
 type VisionOverlay struct {
-	// One pixel per on-screen tile, scaled up, so that hiding every unseen tile is a single draw
+	// One pixel per tile in the vision's square, scaled up, so that hiding every unseen tile is a single draw
 	tiles      *ebiten.Image
 	tilePixels []byte
 
-	// Opaque everywhere but a hole in the middle, twice the screen's size so that it covers the screen wherever the
-	// hole is placed
+	// Opaque everywhere but a hole in the middle, big enough to cover the vision's square from anywhere in the viewer's
+	// tile
 	circle      *ebiten.Image
 	circleRadii [2]float64
-	circleSize  [2]int
+	circleSize  int
 
 	// How much of the remembered view replaces the live one, per pixel
 	mask   *ebiten.Image
@@ -46,11 +49,15 @@ func (o *VisionOverlay) Draw(
 ) {
 	size := screen.Bounds().Size()
 	if o.mask == nil || o.mask.Bounds().Size() != size {
+		if o.mask != nil {
+			o.mask.Deallocate()
+			o.memory.Deallocate()
+		}
 		o.mask = ebiten.NewImage(size.X, size.Y)
 		o.memory = ebiten.NewImage(size.X, size.Y)
 	}
 
-	o.mask.Clear()
+	o.mask.Fill(color.White)
 	o.drawTiles(o.mask, camera, vision)
 	o.drawCircle(o.mask, camera, center, vision)
 
@@ -60,50 +67,53 @@ func (o *VisionOverlay) Draw(
 	screen.DrawImage(o.mask, nil)
 }
 
+// Copied over the filled mask, so that the tiles in the square replace it, clear where they're seen
 func (o *VisionOverlay) drawTiles(dst *ebiten.Image, camera utils.Vec2f, vision *ecs.Vision) {
-	size := dst.Bounds().Size()
-	minTile := utils.WorldPosToTilePos(camera)
-	maxTile := utils.WorldPosToTilePos(camera.Add(utils.Vec2f{X: float64(size.X), Y: float64(size.Y)}))
-	w, h := maxTile.X-minTile.X+1, maxTile.Y-minTile.Y+1
+	origin, radius := vision.VisibleArea()
+	side := 2*radius + 1
 
-	if o.tiles == nil || o.tiles.Bounds().Dx() != w || o.tiles.Bounds().Dy() != h {
-		o.tiles = ebiten.NewImage(w, h)
-		o.tilePixels = make([]byte, 4*w*h)
+	if o.tiles == nil || o.tiles.Bounds().Dx() != side {
+		if o.tiles != nil {
+			o.tiles.Deallocate()
+		}
+		o.tiles = ebiten.NewImage(side, side)
+		o.tilePixels = make([]byte, 4*side*side)
 	}
 
-	for y := range h {
-		for x := range w {
+	for y := range side {
+		for x := range side {
 			alpha := byte(255)
-			if vision.CanSee(utils.Vec2i{X: minTile.X + x, Y: minTile.Y + y}) {
+			if vision.CanSee(utils.Vec2i{X: origin.X - radius + x, Y: origin.Y - radius + y}) {
 				alpha = 0
 			}
-			o.tilePixels[4*(y*w+x)+3] = alpha
+			o.tilePixels[4*(y*side+x)+3] = alpha
 		}
 	}
 	o.tiles.WritePixels(o.tilePixels)
 
-	op := &ebiten.DrawImageOptions{}
+	op := &ebiten.DrawImageOptions{Blend: ebiten.BlendCopy}
 	op.GeoM.Scale(data.TileSize, data.TileSize)
-	topLeft := utils.TilePosToWorldPos(minTile).Subtract(utils.Vec2f{X: data.TileSize / 2, Y: data.TileSize / 2})
+	topLeft := utils.TilePosToWorldPos(utils.Vec2i{X: origin.X - radius, Y: origin.Y - radius}).
+		Subtract(utils.Vec2f{X: data.TileSize / 2, Y: data.TileSize / 2})
 	op.GeoM.Translate(topLeft.X-camera.X, topLeft.Y-camera.Y)
 	dst.DrawImage(o.tiles, op)
 }
 
 func (o *VisionOverlay) drawCircle(dst *ebiten.Image, camera utils.Vec2f, center utils.Vec2f, vision *ecs.Vision) {
-	size := dst.Bounds().Size()
-	w, h := 2*size.X, 2*size.Y
+	_, radius := vision.VisibleArea()
+	size := 2 * (radius + 1) * data.TileSize
 	clearRadius, outer := vision.CircleRadii()
 
-	if o.circle == nil || o.circleRadii != [2]float64{clearRadius, outer} || o.circleSize != [2]int{w, h} {
+	if o.circle == nil || o.circleRadii != [2]float64{clearRadius, outer} || o.circleSize != size {
 		if o.circle != nil {
 			o.circle.Deallocate()
 		}
-		o.circle = circleImage(w, h, clearRadius, outer)
-		o.circleRadii, o.circleSize = [2]float64{clearRadius, outer}, [2]int{w, h}
+		o.circle = circleImage(size, size, clearRadius, outer)
+		o.circleRadii, o.circleSize = [2]float64{clearRadius, outer}, size
 	}
 
 	op := &ebiten.DrawImageOptions{Blend: blendMax}
-	op.GeoM.Translate(center.X-camera.X-float64(w)/2, center.Y-camera.Y-float64(h)/2)
+	op.GeoM.Translate(center.X-camera.X-float64(size)/2, center.Y-camera.Y-float64(size)/2)
 	dst.DrawImage(o.circle, op)
 }
 

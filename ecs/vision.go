@@ -44,6 +44,11 @@ func (x *Vision) Update(origin utils.Vec2i, isOpaque func(utils.Vec2i) bool) {
 	})
 }
 
+// The square of tiles CanSee answers for, as of the last update
+func (x *Vision) VisibleArea() (origin utils.Vec2i, radius int) {
+	return x.origin, x.visibleRadius
+}
+
 // In pixels, around the viewer's exact position: fully clear within clearRadius, fading out up to outer. Kept far enough
 // inside the computed radius that the circle only shows computed tiles, wherever in its tile the viewer stands.
 func (x *Vision) CircleRadii() (clearRadius, outer float64) {
