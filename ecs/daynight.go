@@ -1,6 +1,10 @@
 package ecs
 
-import "ebittest/data"
+import (
+	"ebittest/data"
+	"ebittest/utils"
+	"math"
+)
 
 // From 0 in full daylight to 1 at full night, changing evenly over dusk and dawn. Worked out from the tick, so that
 // it's saved with it and the same on every run.
@@ -18,8 +22,15 @@ func Darkness(tick uint64) float64 {
 	}
 }
 
-// How many tiles a vision of the radius reaches at the darkness
-func VisionReach(radius int, darkness float64) float64 {
-	night := float64(radius / data.NightVisionDivisor)
-	return float64(radius) + (night-float64(radius))*darkness
+// How brightly the sky lights the tiles open to it
+func SkyLight(darkness float64) uint8 {
+	return uint8(math.Round(data.DaySkyLight + (data.NightSkyLight-data.DaySkyLight)*darkness))
+}
+
+// 0 is pitch black. Only the sky gives light so far, so roofed and unloaded tiles are dark.
+func (x *ECSContainer) LightAt(t utils.Vec2i) uint8 {
+	if !x.terrain.IsOpenToSky(t) {
+		return 0
+	}
+	return SkyLight(Darkness(x.TickIdx))
 }

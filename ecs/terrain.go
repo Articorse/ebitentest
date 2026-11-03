@@ -8,6 +8,8 @@ import (
 // The tiles the simulation runs on, so that systems and abilities can query and change them
 type Terrain interface {
 	IsOpaqueTile(t utils.Vec2i) bool
+	// Loaded and without a roof
+	IsOpenToSky(t utils.Vec2i) bool
 	// Layer_Terrain for impassable tiles and Layer_Ground for passable ones, whatever stands on them; false if the tile
 	// isn't loaded
 	TileLayer(t utils.Vec2i) (LayerMask, bool)
@@ -29,6 +31,7 @@ type Terrain interface {
 type noTerrain struct{}
 
 func (noTerrain) IsOpaqueTile(utils.Vec2i) bool           { return false }
+func (noTerrain) IsOpenToSky(utils.Vec2i) bool            { return false }
 func (noTerrain) TileLayer(utils.Vec2i) (LayerMask, bool) { return 0, false }
 func (noTerrain) IsBlockedAt(utils.Vec2f) bool            { return false }
 func (noTerrain) CanDamageTile(utils.Vec2i) bool          { return false }

@@ -8,8 +8,6 @@ const (
 	DuskTicks  = 5 * TPS
 	NightTicks = 10 * TPS
 	DawnTicks  = 5 * TPS
-	// At night, visions reach this fraction of their radius, rounded down
-	NightVisionDivisor = 3
 )
 
 // What the world's colors are multiplied by at full night, from white by day

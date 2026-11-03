@@ -42,7 +42,8 @@ func TestRoofsAreRemembered(t *testing.T) {
 		roof, _ := s.Chunks.RoofAt(tile)
 		return roof == data.Roof_Rock && !s.Chunks.IsOpaqueTile(tile)
 	})
-	see(s, utils.TilePosToWorldPos(open))
+	// Roofed tiles are dark until something lights them
+	seeLitBy(s, utils.TilePosToWorldPos(open), func(utils.Vec2i) uint8 { return data.MaxLight })
 	s.Commit()
 
 	r := testutil.StartSession(t)

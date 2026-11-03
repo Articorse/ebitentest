@@ -142,8 +142,9 @@ func TestDisabledEntitiesStayOutOfTheSpatialHash(t *testing.T) {
 
 func TestDisabledEntitiesNeitherLoseInvulnerabilityNorSee(t *testing.T) {
 	x := testutil.NewECS(t)
+	x.SetTerrain(openGround{damaged: map[utils.Vec2i]int{}})
 	enabled, disabled := enabledAndDisabled(t, x, func() []ecs.Component {
-		return []ecs.Component{ecs.NewHitpointsComponent(10, 1000), ecs.NewVisionComponent(3)}
+		return []ecs.Component{ecs.NewHitpointsComponent(10, 1000), ecs.NewVisionComponent()}
 	})
 	for _, e := range []common.EntityId{enabled, disabled} {
 		hp, _ := x.Hitpoints.Get(e)

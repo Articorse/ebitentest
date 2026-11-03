@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -164,17 +163,13 @@ func (cc *ChunkContainer) RememberedFeatureSprites(bounds [2]utils.Vec2f) []comm
 	return sprites
 }
 
-// Remembers the tiles, and the features on them, that the viewer's vision circle shows completely, so that remembered
-// ground never reaches past where the circle has been
-func (cc *ChunkContainer) RememberSeenTiles(viewerPos utils.Vec2f, vision *ecs.Vision) {
-	clearRadius, _ := vision.CircleRadii()
-	center := utils.WorldPosToTilePos(viewerPos)
-	reach := int(math.Ceil(clearRadius/data.TileSize)) + 1
-
-	for dy := -reach; dy <= reach; dy++ {
-		for dx := -reach; dx <= reach; dx++ {
-			t := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
-			if !vision.CanSee(t) || !tileInsideCircle(t, viewerPos, clearRadius) {
+// Remembers the tiles the vision sees, with their features and roofs
+func (cc *ChunkContainer) RememberSeenTiles(vision *ecs.Vision) {
+	origin, radius := vision.VisibleArea()
+	for dy := -radius; dy <= radius; dy++ {
+		for dx := -radius; dx <= radius; dx++ {
+			t := utils.Vec2i{X: origin.X + dx, Y: origin.Y + dy}
+			if !vision.CanSee(t) {
 				continue
 			}
 
@@ -185,13 +180,6 @@ func (cc *ChunkContainer) RememberSeenTiles(viewerPos utils.Vec2f, vision *ecs.V
 			cc.memory.remember(t, c.getTileDefId(t), c.features[t], c.roofs[c.tileIndex(t)])
 		}
 	}
-}
-
-func tileInsideCircle(t utils.Vec2i, center utils.Vec2f, radius float64) bool {
-	c := utils.TilePosToWorldPos(t)
-	farX := math.Abs(c.X-center.X) + data.TileSize/2
-	farY := math.Abs(c.Y-center.Y) + data.TileSize/2
-	return farX*farX+farY*farY <= radius*radius
 }
 
 // Draws what's remembered on screen darkened, and the rest black. Each region is baked into an image, which is kept

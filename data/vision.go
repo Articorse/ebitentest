@@ -1,14 +1,11 @@
 package data
 
 const (
-	PlayerVisionRadiusTiles = 36
-	VisionCircleMarginTiles = 1.5
-	VisionCircleFadeTiles   = 0.5
-	MemoryRegionSize        = 32
-	MemoryFilePrefix        = "memory_"
-	MemoryFilePathTemplate  = "chunkdata/memory_%d_%d.gob"
-	MemoryBrightness        = 0.35
-	MemorySaturation        = 0.5
+	MemoryRegionSize       = 32
+	MemoryFilePrefix       = "memory_"
+	MemoryFilePathTemplate = "chunkdata/memory_%d_%d.gob"
+	MemoryBrightness       = 0.35
+	MemorySaturation       = 0.5
 	// How many tiles past its own tile a feature's sprite can reach, so that remembering a feature also bakes the
 	// memory regions its sprite reaches into again
 	MemoryFeatureReachTiles = 2

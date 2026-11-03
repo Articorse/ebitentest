@@ -42,6 +42,10 @@ func (f *fakeTerrain) loaded(t utils.Vec2i) bool {
 	return t.X*t.X+t.Y*t.Y <= 25
 }
 
+func (f *fakeTerrain) IsOpenToSky(t utils.Vec2i) bool {
+	return f.loaded(t)
+}
+
 func (f *fakeTerrain) IsOpaqueTile(t utils.Vec2i) bool {
 	return !f.loaded(t) || f.rock[t]
 }

@@ -123,6 +123,11 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, tile data.TileEnum) {
 	drawTileInto(c.Image, idx, def.image)
 }
 
+func (cc *ChunkContainer) IsOpenToSky(t utils.Vec2i) bool {
+	roof, ok := cc.RoofAt(t)
+	return ok && roof == data.Roof_None
+}
+
 // False where no chunk is active
 func (cc *ChunkContainer) RoofAt(t utils.Vec2i) (data.RoofEnum, bool) {
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]

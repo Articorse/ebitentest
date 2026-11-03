@@ -45,28 +45,35 @@ func TestTheCycleIsThirtySecondsOfTenDayFiveDuskTenNightFiveDawn(t *testing.T) {
 	}
 }
 
-func TestNightCutsVisionToAThirdRoundedDown(t *testing.T) {
+func TestTheSkyLightsByDayAndDimsAtNight(t *testing.T) {
 	for _, c := range []struct {
-		radius   int
 		darkness float64
-		want     float64
+		want     uint8
 	}{
-		{36, 0, 36},
-		{36, 1, 12},
-		{36, 0.5, 24},
-		{10, 1, 3},
-		{10, 0.5, 6.5},
-		{2, 1, 0},
+		{0, data.DaySkyLight},
+		{1, data.NightSkyLight},
+		{0.5, uint8((data.DaySkyLight + data.NightSkyLight + 1) / 2)},
 	} {
-		if got := ecs.VisionReach(c.radius, c.darkness); math.Abs(got-c.want) > 1e-9 {
-			t.Errorf("radius %d at darkness %v reaches %v, want %v", c.radius, c.darkness, got, c.want)
+		if got := ecs.SkyLight(c.darkness); got != c.want {
+			t.Errorf("at darkness %v the sky gives light %d, want %d", c.darkness, got, c.want)
 		}
 	}
 }
 
-func TestVisionSeesLessAtNight(t *testing.T) {
+// Open to the sky everywhere but the roofed tiles, and without walls
+type skyTerrain struct {
+	ecs.Terrain
+	roofed map[utils.Vec2i]bool
+}
+
+func (s skyTerrain) IsOpenToSky(t utils.Vec2i) bool { return !s.roofed[t] }
+func (skyTerrain) IsOpaqueTile(utils.Vec2i) bool    { return false }
+
+func TestVisionSeesLessAtNightAndNothingUnderARoof(t *testing.T) {
 	x := testutil.NewECS(t)
-	viewer := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0), ecs.NewVisionComponent(36))
+	roofed := utils.Vec2i{X: 5, Y: 5}
+	x.SetTerrain(skyTerrain{Terrain: x.Terrain(), roofed: map[utils.Vec2i]bool{roofed: true}})
+	viewer := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0), ecs.NewVisionComponent())
 	v, _ := x.Visions.Get(viewer)
 	far, near := utils.Vec2i{X: 20}, utils.Vec2i{X: 11}
 
@@ -75,13 +82,13 @@ func TestVisionSeesLessAtNight(t *testing.T) {
 	if !v.CanSee(far) || !v.CanSee(near) {
 		t.Fatal("by day, the viewer doesn't see 20 tiles away")
 	}
+	if v.CanSee(roofed) {
+		t.Fatal("by day, the viewer sees a dark tile under a roof")
+	}
 
 	x.TickIdx = data.DayTicks + data.DuskTicks
 	visionsystem.Tick(x)
 	if v.CanSee(far) || !v.CanSee(near) {
 		t.Fatalf("at night, the viewer sees 20 tiles away %v and 11 tiles away %v; want only 11", v.CanSee(far), v.CanSee(near))
-	}
-	if v.Radius() != 36 {
-		t.Fatalf("night changed the vision's radius to %d", v.Radius())
 	}
 }

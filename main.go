@@ -367,9 +367,7 @@ func (g *game) Update() error {
 
 	visionsystem.Tick(g.ecs)
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
-		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
-			g.chunkContainer.RememberSeenTiles(pos, vision)
-		}
+		g.chunkContainer.RememberSeenTiles(vision)
 	}
 
 	if err := g.ecs.RemoveScheduledEntities(); err != nil {
@@ -455,9 +453,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	isVisible := func(utils.Vec2f) bool { return true }
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
-		if center, err := g.ecs.WorldPos(g.playerEntity); err == nil {
-			isVisible = func(pos utils.Vec2f) bool { return drawsystem.Revealed(pos, center, vision) }
-		}
+		isVisible = func(pos utils.Vec2f) bool { return drawsystem.Revealed(pos, vision) }
 	}
 	if err := drawsystem.DrawFloatingTexts(screen, g.uiScale, isVisible, g.ecs); err != nil {
 		log.Println("error while drawing floating texts: ", err)
@@ -521,9 +517,7 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	g.chunkContainer.DrawRoofShade(world, g.ecs.Camera)
 
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
-		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
-			g.visionOverlay.Draw(world, g.ecs.Camera, pos, vision, g.drawMemory)
-		}
+		g.visionOverlay.Draw(world, g.ecs.Camera, vision, g.drawMemory)
 	}
 
 	if err := drawsystem.DrawTileTarget(world, g.ecs.Camera, g.playerEntity, g.ecs); err != nil {

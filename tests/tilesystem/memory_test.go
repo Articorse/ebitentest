@@ -7,57 +7,64 @@ import (
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"ebittest/worldgen"
-	"math"
 	"testing"
 )
 
 func see(s *testutil.Session, viewer utils.Vec2f) *ecs.Vision {
-	v := ecs.NewVisionComponent(data.PlayerVisionRadiusTiles)
-	v.Update(utils.WorldPosToTilePos(viewer), float64(v.Radius()), s.Chunks.IsOpaqueTile)
-	s.Chunks.RememberSeenTiles(viewer, v)
+	return seeLitBy(s, viewer, s.ECS.LightAt)
+}
+
+func seeLitBy(s *testutil.Session, viewer utils.Vec2f, lightAt func(utils.Vec2i) uint8) *ecs.Vision {
+	v := ecs.NewVisionComponent()
+	v.Update(utils.WorldPosToTilePos(viewer), s.Chunks.IsOpaqueTile, lightAt)
+	s.Chunks.RememberSeenTiles(v)
 	return v
 }
 
-func TestOnlyTilesTheCircleShowsCompletelyAreRemembered(t *testing.T) {
+// The center of the closest tile to the start that's in daylight, since the start itself may be inside a mountain
+func outside(t *testing.T, s *testutil.Session) utils.Vec2f {
+	t.Helper()
+	return utils.TilePosToWorldPos(findTile(t, s, func(tile utils.Vec2i) bool {
+		return s.Chunks.IsOpenToSky(tile) && !s.Chunks.IsOpaqueTile(tile)
+	}))
+}
+
+func TestExactlyTheSeenTilesAreRemembered(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
-	viewer := testutil.PlayerStart.Add(utils.Vec2f{X: 5, Y: -3})
+	viewer := outside(t, s).Add(utils.Vec2f{X: 5, Y: -3})
 	v := see(s, viewer)
-	clearRadius, _ := v.CircleRadii()
 
-	remembered := 0
+	remembered, unseen := 0, 0
 	center := utils.WorldPosToTilePos(viewer)
-	for dy := -data.PlayerVisionRadiusTiles; dy <= data.PlayerVisionRadiusTiles; dy++ {
-		for dx := -data.PlayerVisionRadiusTiles; dx <= data.PlayerVisionRadiusTiles; dx++ {
+	for dy := -data.VisionMaxRangeTiles - 2; dy <= data.VisionMaxRangeTiles+2; dy++ {
+		for dx := -data.VisionMaxRangeTiles - 2; dx <= data.VisionMaxRangeTiles+2; dx++ {
 			tile := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
 			got, ok := s.Chunks.RecallTile(tile)
-
-			pos := utils.TilePosToWorldPos(tile)
-			farX := math.Abs(pos.X-viewer.X) + data.TileSize/2
-			farY := math.Abs(pos.Y-viewer.Y) + data.TileSize/2
-			want := v.CanSee(tile) && farX*farX+farY*farY <= clearRadius*clearRadius
-
-			if ok != want {
-				t.Fatalf("tile %v remembered %v, want %v", tile, ok, want)
+			if ok != v.CanSee(tile) {
+				t.Fatalf("tile %v remembered %v, but seen %v", tile, ok, v.CanSee(tile))
 			}
 			if ok && got != worldgen.Tile(testutil.WorldSeed, tile) {
 				t.Fatalf("tile %v remembered as %v, but it's %v", tile, got, worldgen.Tile(testutil.WorldSeed, tile))
 			}
 			if ok {
 				remembered++
+			} else {
+				unseen++
 			}
 		}
 	}
-	if remembered == 0 {
-		t.Fatal("nothing was remembered")
+	if remembered == 0 || unseen == 0 {
+		t.Fatalf("%d tiles remembered and %d not, want some of each", remembered, unseen)
 	}
 }
 
 func TestMemorySurvivesARestart(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
-	see(s, testutil.PlayerStart)
-	tile := utils.WorldPosToTilePos(testutil.PlayerStart)
+	start := outside(t, s)
+	see(s, start)
+	tile := utils.WorldPosToTilePos(start)
 	want, ok := s.Chunks.RecallTile(tile)
 	if !ok {
 		t.Fatal("the viewer's own tile isn't remembered")
@@ -73,18 +80,20 @@ func TestMemorySurvivesARestart(t *testing.T) {
 func TestRememberingDuringACommitIsSavedByTheNext(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
-	see(s, testutil.PlayerStart)
-	before := rememberedAround(s, testutil.PlayerStart)
+	start := outside(t, s)
+	see(s, start)
+	before := rememberedAround(s, start)
 
 	s.StartCommit()
-	moved := testutil.PlayerStart.Add(utils.Vec2f{X: 4 * data.TileSize, Y: 2 * data.TileSize})
+	// Away from the mountain the start is beside, so that there's open land to see
+	moved := start.Add(utils.Vec2f{X: -8 * data.TileSize, Y: 2 * data.TileSize})
 	see(s, moved)
 	for s.Chunks.IsCommitting() {
 		s.Tick(1)
 	}
 
 	during := []utils.Vec2i{}
-	for tile := range rememberedAround(s, testutil.PlayerStart) {
+	for tile := range rememberedAround(s, start) {
 		if !before[tile] {
 			during = append(during, tile)
 		}
@@ -103,7 +112,7 @@ func TestRememberingDuringACommitIsSavedByTheNext(t *testing.T) {
 }
 
 func rememberedAround(s *testutil.Session, pos utils.Vec2f) map[utils.Vec2i]bool {
-	const reach = 2 * data.PlayerVisionRadiusTiles
+	const reach = 2 * data.VisionMaxRangeTiles
 	center := utils.WorldPosToTilePos(pos)
 	remembered := map[utils.Vec2i]bool{}
 	for dy := -reach; dy <= reach; dy++ {
