@@ -4,8 +4,10 @@ import (
 	"ebittest/data"
 	"ebittest/utils"
 	"fmt"
+	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 func DrawChunks(
@@ -96,4 +98,33 @@ func (x *chunk) freeImage() {
 
 	x.Image.Deallocate()
 	x.Image = nil
+}
+
+// Outlines the colliders on screen of the features on the tiles that are included
+func (cc *ChunkContainer) DrawFeatureColliders(
+	screen *ebiten.Image,
+	camera utils.Vec2f,
+	lineColor color.RGBA,
+	include func(utils.Vec2i) bool,
+) {
+	onScreen := [2]utils.Vec2f{camera, camera.Add(utils.Vec2f{X: data.CameraWidth, Y: data.CameraHeight})}
+	minTile, maxTile := utils.WorldPosToTilePos(onScreen[0]), utils.WorldPosToTilePos(onScreen[1])
+
+	for ck, c := range cc.chunks {
+		chunkMin := utils.Vec2i{X: ck.X * data.ChunkSize, Y: ck.Y * data.ChunkSize}
+		chunkMax := utils.Vec2i{X: chunkMin.X + data.ChunkSize - 1, Y: chunkMin.Y + data.ChunkSize - 1}
+		if chunkMax.X < minTile.X || chunkMin.X > maxTile.X || chunkMax.Y < minTile.Y || chunkMin.Y > maxTile.Y {
+			continue
+		}
+
+		for t := range c.features {
+			bounds, ok := cc.featureCollider(c, t)
+			if !ok || !include(t) || !utils.DetectAABBCollision(bounds, onScreen) {
+				continue
+			}
+
+			size := bounds[1].Subtract(bounds[0])
+			vector.StrokeRect(screen, float32(bounds[0].X-camera.X), float32(bounds[0].Y-camera.Y), float32(size.X), float32(size.Y), 1, lineColor, false)
+		}
+	}
 }

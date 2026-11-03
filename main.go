@@ -64,6 +64,7 @@ type game struct {
 // Which colliders of each kind touched something in the last tick, for drawing them
 type touchingColliders struct {
 	physics, hitboxes, hurtboxes map[common.EntityId]bool
+	features                     map[utils.Vec2i]bool
 }
 
 func (g *game) Update() error {
@@ -443,18 +444,38 @@ func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func (g *game) DrawDebug(screen *ebiten.Image) {
 	if g.showColliders {
-		// Platforms resolve what lands on them themselves, without reporting it, so they're never shown touching
-		for _, c := range []struct {
+		kinds := []struct {
 			colliders      ecs.ColliderSet
 			color, touches color.RGBA
 			touching       map[common.EntityId]bool
 		}{
+			// Platforms resolve what lands on them themselves, without reporting it, so they're never shown touching
 			{platformColliders, data.Debug_PlatformColliderColor, data.Debug_PlatformColliderColor, nil},
 			{physicsColliders, data.Debug_PhysicsColliderColor, data.Debug_PhysicsColliderTouchingColor, g.touching.physics},
 			{hitboxColliders, data.Debug_HitboxColliderColor, data.Debug_HitboxColliderTouchingColor, g.touching.hitboxes},
 			{hurtboxColliders, data.Debug_HurtboxColliderColor, data.Debug_HurtboxColliderTouchingColor, g.touching.hurtboxes},
-		} {
-			collisionsystem.DrawColliders(c.colliders, c.color, c.touches, screen, g.ecs.Camera, c.touching, g.ecs)
+		}
+
+		// Touching outlines go over the rest, so that one isn't hidden under another collider in the same place, such as
+		// the player's hitbox over its physics collider
+		for _, touching := range []bool{false, true} {
+			featureColor := data.Debug_FeatureColliderColor
+			if touching {
+				featureColor = data.Debug_FeatureColliderTouchingColor
+			}
+			g.chunkContainer.DrawFeatureColliders(screen, g.ecs.Camera, featureColor, func(t utils.Vec2i) bool {
+				return g.touching.features[t] == touching
+			})
+
+			for _, k := range kinds {
+				lineColor := k.color
+				if touching {
+					lineColor = k.touches
+				}
+				collisionsystem.DrawColliders(k.colliders, lineColor, func(e common.EntityId) bool {
+					return k.touching[e] == touching
+				}, screen, g.ecs.Camera, g.ecs)
+			}
 		}
 	}
 
@@ -469,18 +490,25 @@ func touchingCollidersOf(
 	damageCollisions []common.Collision,
 	damageTileCollisions []common.TileCollision,
 ) touchingColliders {
-	t := touchingColliders{physics: map[common.EntityId]bool{}, hitboxes: map[common.EntityId]bool{}, hurtboxes: map[common.EntityId]bool{}}
+	t := touchingColliders{
+		physics:   map[common.EntityId]bool{},
+		hitboxes:  map[common.EntityId]bool{},
+		hurtboxes: map[common.EntityId]bool{},
+		features:  map[utils.Vec2i]bool{},
+	}
 	for _, c := range physicsCollisions {
 		t.physics[c.A], t.physics[c.B] = true, true
 	}
 	for _, c := range physicsTileCollisions {
 		t.physics[c.E] = true
+		t.features[c.Tile] = t.features[c.Tile] || c.Feature
 	}
 	for _, c := range damageCollisions {
 		t.hurtboxes[c.A], t.hitboxes[c.B] = true, true
 	}
 	for _, c := range damageTileCollisions {
 		t.hurtboxes[c.E] = true
+		t.features[c.Tile] = t.features[c.Tile] || c.Feature
 	}
 	return t
 }

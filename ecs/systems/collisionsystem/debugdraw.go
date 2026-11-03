@@ -13,21 +13,20 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
-// Outlines the colliders on screen, in the touching color for entities that touched something this tick
+// Outlines the colliders on screen of the entities that are included
 func DrawColliders(
 	colliders ecs.ColliderSet,
-	baseColor color.RGBA,
-	touchingColor color.RGBA,
+	lineColor color.RGBA,
+	include func(common.EntityId) bool,
 	screen *ebiten.Image,
 	camera utils.Vec2f,
-	touching map[common.EntityId]bool,
 	ecsContainer *ecs.ECSContainer,
 ) {
 	onScreen := [2]utils.Vec2f{camera, camera.Add(utils.Vec2f{X: data.CameraWidth, Y: data.CameraHeight})}
 
 	for _, e := range colliders.GetEntities() {
 		col, _ := colliders.Collider(e)
-		if ecsContainer.IsDisabled(e) || !col.Enabled() {
+		if ecsContainer.IsDisabled(e) || !col.Enabled() || !include(e) {
 			continue
 		}
 
@@ -44,11 +43,6 @@ func DrawColliders(
 		if err != nil {
 			log.Printf("Error getting world position for entity %d: %v\n", e, err)
 			continue
-		}
-
-		lineColor := baseColor
-		if touching[e] {
-			lineColor = touchingColor
 		}
 
 		for _, shape := range col.Shapes() {

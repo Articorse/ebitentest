@@ -10,5 +10,7 @@ var (
 	Debug_HitboxColliderTouchingColor  = color.RGBA{140, 200, 255, 255}
 	Debug_HurtboxColliderColor         = color.RGBA{200, 0, 0, 255}
 	Debug_HurtboxColliderTouchingColor = color.RGBA{255, 140, 140, 255}
+	Debug_FeatureColliderColor         = color.RGBA{220, 110, 0, 255}
+	Debug_FeatureColliderTouchingColor = color.RGBA{255, 190, 110, 255}
 	Debug_PlatformColliderColor        = color.RGBA{190, 170, 0, 255}
 )
