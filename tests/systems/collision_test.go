@@ -171,7 +171,7 @@ func TestEntitiesWithHurtboxesAndHitboxesDamageEachOther(t *testing.T) {
 	fighters := []common.EntityId{}
 	for _, pos := range []utils.Vec2f{{}, {X: 6}} {
 		fighters = append(fighters, testutil.AddMovable(t, x, pos, false,
-			ecs.NewHitpointsComponent(10, 0),
+			testutil.DummyBody(t, x, 10),
 			ecs.NewContactDamageComponent(-1, 0, 3),
 			ecs.NewHurtboxColliderComponent(ecs.Layer_Enemy, ecs.Layer_Enemy, newShape(t, "circle", utils.Vec2f{})),
 			ecs.NewHitboxColliderComponent(ecs.Layer_Enemy, ecs.Layer_Enemy, newShape(t, "circle", utils.Vec2f{}))))
@@ -185,8 +185,8 @@ func TestEntitiesWithHurtboxesAndHitboxesDamageEachOther(t *testing.T) {
 	}
 
 	for _, e := range fighters {
-		if hp, _ := x.Hitpoints.Get(e); hp.Current() != 7 {
-			t.Errorf("fighter %d has %d hitpoints, want 7", e, hp.Current())
+		if health := testutil.PartHealth(t, x, e, testutil.DummyPart); health != 7 {
+			t.Errorf("fighter %d has %d health, want 7", e, health)
 		}
 	}
 }

@@ -266,13 +266,13 @@ func TestTileStrikeDoesntHurtEntitiesOnTheTile(t *testing.T) {
 	terrain := newFakeTerrain()
 	x, holder := newMattockHolder(t, terrain, ecs.Layer_Terrain|ecs.Layer_Ground|ecs.Layer_Enemy)
 	target := utils.Vec2i{X: 1}
-	bystander := testutil.AddMovable(t, x, utils.TilePosToWorldPos(target), false, ecs.NewHitpointsComponent(10, 0))
+	bystander := testutil.AddMovable(t, x, utils.TilePosToWorldPos(target), false, testutil.DummyBody(t, x, 10))
 
 	if !strike(t, x, holder, target) {
 		t.Fatal("strike wasn't used")
 	}
-	if hp, _ := x.Hitpoints.Get(bystander); hp.Current() != 10 {
-		t.Fatalf("the entity on the tile has %d hitpoints, want 10", hp.Current())
+	if health := testutil.PartHealth(t, x, bystander, testutil.DummyPart); health != 10 {
+		t.Fatalf("the entity on the tile has %d health, want 10", health)
 	}
 }
 

@@ -69,7 +69,7 @@ func addEnemy(t *testing.T, x *ecs.ECSContainer, pos utils.Vec2f) common.EntityI
 	if err != nil {
 		t.Fatal(err)
 	}
-	return testutil.AddMovable(t, x, pos, false, ecs.NewHitpointsComponent(100, 0),
+	return testutil.AddMovable(t, x, pos, false, testutil.DummyBody(t, x, 100),
 		ecs.NewHitboxColliderComponent(ecs.Layer_Enemy, ecs.Layer_FriendlyProjectile, shape))
 }
 
@@ -88,8 +88,8 @@ func cut(t *testing.T, x *ecs.ECSContainer, slash common.EntityId, enemies ...co
 }
 
 func hurt(x *ecs.ECSContainer, e common.EntityId) int {
-	hp, _ := x.Hitpoints.Get(e)
-	return 100 - hp.Current()
+	health, _, _ := x.PartHealth(e, testutil.DummyPart)
+	return 100 - health
 }
 
 func TestTheAxeSlashesTowardTheAimFromWhoeverHoldsIt(t *testing.T) {

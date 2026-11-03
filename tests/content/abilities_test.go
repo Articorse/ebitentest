@@ -32,7 +32,7 @@ func TestDodgeIsInvulnerableOnlyWhileActive(t *testing.T) {
 		Params: &abilities.DodgeParams{Force: 10},
 	}}
 	p := testutil.Add(t, x, ecs.NewTransformComponent(utils.Vec2f{}, 1, 0), ecs.NewDefaultVelocityComponent(), spr, ani,
-		ecs.NewHitpointsComponent(20, 1000), ecs.NewAbilitiesComponent(abis))
+		ecs.NewInvulnerabilityComponent(1000), ecs.NewAbilitiesComponent(abis))
 
 	x.SetTickInputs(0, map[common.EntityId]ecs.InputState{p: {Analog1X: 1}})
 	if activated, err := x.ActivateAbility(p, ecs.AbilityTarget{}, 0); err != nil || !activated {
@@ -41,11 +41,11 @@ func TestDodgeIsInvulnerableOnlyWhileActive(t *testing.T) {
 
 	invulAt := func() int {
 		t.Helper()
-		hp, ok := x.Hitpoints.Get(p)
+		inv, ok := x.Invulnerabilities.Get(p)
 		if !ok {
-			t.Fatal("player has no hitpoints")
+			t.Fatal("player has no invulnerability")
 		}
-		return hp.InvulCurrent()
+		return inv.RemainingMs()
 	}
 
 	if invulAt() <= 0 {

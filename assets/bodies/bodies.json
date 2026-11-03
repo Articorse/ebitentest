@@ -1,0 +1,15 @@
+{
+  "capacities": [{ "id": 1, "name": "Moving", "floorPercent": 15 }],
+  "bodies": [
+    {
+      "id": 1,
+      "name": "Humanoid",
+      "parts": [
+        { "name": "torso", "maxHealth": 20, "coverage": 60, "vital": true },
+        { "name": "left leg", "maxHealth": 15, "coverage": 20, "capacities": [1] },
+        { "name": "right leg", "maxHealth": 15, "coverage": 20, "capacities": [1] }
+      ],
+      "vitalCapacities": []
+    }
+  ]
+}

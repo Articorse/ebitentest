@@ -679,6 +679,12 @@ func main() {
 		log.Fatal("error registering content: ", err)
 	}
 
+	bodyAtlas, err := ecs.LoadBodyAtlasFromJson("assets/bodies/bodies.json")
+	if err != nil {
+		log.Fatal("error loading body atlas from json: ", err)
+	}
+	g.ecs.SetBodyAtlas(bodyAtlas)
+
 	itemAtlas, err := ecs.LoadItemAtlasFromJson("assets/items/items.json")
 	if err != nil {
 		log.Fatal("error loading item atlas from json: ", err)

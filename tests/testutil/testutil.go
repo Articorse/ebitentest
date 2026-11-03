@@ -8,6 +8,7 @@ import (
 	"ebittest/tilesystem"
 	"ebittest/utils"
 	"ebittest/world"
+	"encoding/json"
 	"maps"
 	"os"
 	"path/filepath"
@@ -22,6 +23,7 @@ const (
 	AtlasPath        = "assets/tiles/atlas.json"
 	FeatureAtlasPath = "assets/features/features.json"
 	ItemAtlasPath    = "assets/items/items.json"
+	BodyAtlasPath    = "assets/bodies/bodies.json"
 	// Small, since every chunk it loads is generated, and chunks are big
 	PlayerLoaderRadius = 1
 	// Fixed rather than random like the game's, so that a failing test fails the same way every time
@@ -40,6 +42,11 @@ func NewECS(t testing.TB) *ecs.ECSContainer {
 	if err := x.SetItemAtlas(ItemAtlas(t)); err != nil {
 		t.Fatal(err)
 	}
+	bodies, err := ecs.LoadBodyAtlasFromJson(filepath.Join(RepoRoot(), BodyAtlasPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	x.SetBodyAtlas(bodies)
 	x.TickState = *common.NewTickState()
 
 	return x
@@ -311,4 +318,56 @@ func (s *Session) snapshot() world.Header {
 		s.t.Fatal(err)
 	}
 	return h
+}
+
+const DummyPart = "core"
+
+// The game's bodies plus a dummy body made of one vital part with the given health, so that damage to it is exact.
+// Every dummy body in the container has the health given last, since they're all of the same kind.
+func DummyBody(t testing.TB, x *ecs.ECSContainer, health int) *ecs.Body {
+	t.Helper()
+
+	f, err := os.ReadFile(filepath.Join(RepoRoot(), BodyAtlasPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var atlas map[string]any
+	if err := json.Unmarshal(f, &atlas); err != nil {
+		t.Fatal(err)
+	}
+	const dummyKind = 999
+	atlas["bodies"] = append(atlas["bodies"].([]any), map[string]any{
+		"id":    dummyKind,
+		"name":  "Dummy",
+		"parts": []any{map[string]any{"name": DummyPart, "maxHealth": health, "coverage": 100, "vital": true}},
+	})
+
+	out, err := json.Marshal(atlas)
+	if err != nil {
+		t.Fatal(err)
+	}
+	x.SetBodyAtlas(BodyAtlasFrom(t, string(out)))
+	return ecs.NewBodyComponent(dummyKind)
+}
+
+func BodyAtlasFrom(t testing.TB, atlasJson string) *ecs.BodyAtlas {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "bodies.json")
+	if err := os.WriteFile(path, []byte(atlasJson), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	atlas, err := ecs.LoadBodyAtlasFromJson(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return atlas
+}
+
+func PartHealth(t testing.TB, x *ecs.ECSContainer, e common.EntityId, part string) int {
+	t.Helper()
+	health, _, ok := x.PartHealth(e, part)
+	if !ok {
+		t.Fatalf("entity %d has no part %q", e, part)
+	}
+	return health
 }

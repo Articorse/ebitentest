@@ -52,7 +52,6 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		ecs.Collider_Mob,
 		pPhyColShape,
 	)
-	pHpComp := ecs.NewHitpointsComponent(20, 1000)
 	pHitboxShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
 	if err != nil {
 		return -1, err
@@ -87,7 +86,8 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		pSprComp,
 		pAniComp,
 		pPhyColComp,
-		pHpComp,
+		ecs.NewBodyComponent(data.Body_Humanoid),
+		ecs.NewInvulnerabilityComponent(1000),
 		pHitboxComp,
 		pAbiComp,
 		pCLComp,

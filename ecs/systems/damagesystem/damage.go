@@ -9,8 +9,8 @@ import (
 )
 
 func Tick(ecsCont *ecs.ECSContainer) {
-	for _, hp := range ecs.Query1(&ecsCont.Hitpoints, ecs.Without(&ecsCont.Disabled)) {
-		hp.TickInvul()
+	for _, inv := range ecs.Query1(&ecsCont.Invulnerabilities, ecs.Without(&ecsCont.Disabled)) {
+		inv.Tick()
 	}
 }
 
@@ -27,13 +27,12 @@ func DealContactDamage(
 			continue
 		}
 
-		hp, ok := ecsCont.Hitpoints.Get(hitE)
-		if !ok {
-			log.Printf("Error dealing contact damage to entity %d: it has no hitpoints\n", hitE)
+		if !ecsCont.Bodies.HasComponent(hitE) {
+			log.Printf("Error dealing contact damage to entity %d: it has no body\n", hitE)
 			continue
 		}
 
-		if hp.IsInvul() || hitE == dmgE || !cd.CanHitEntity(hitE) {
+		if ecsCont.IsInvulnerable(hitE) || hitE == dmgE || !cd.CanHitEntity(hitE) {
 			continue
 		}
 

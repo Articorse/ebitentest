@@ -144,21 +144,21 @@ func TestDisabledEntitiesNeitherLoseInvulnerabilityNorSee(t *testing.T) {
 	x := testutil.NewECS(t)
 	x.SetTerrain(openGround{damaged: map[utils.Vec2i]int{}})
 	enabled, disabled := enabledAndDisabled(t, x, func() []ecs.Component {
-		return []ecs.Component{ecs.NewHitpointsComponent(10, 1000), ecs.NewVisionComponent()}
+		return []ecs.Component{ecs.NewInvulnerabilityComponent(1000), ecs.NewVisionComponent()}
 	})
 	for _, e := range []common.EntityId{enabled, disabled} {
-		hp, _ := x.Hitpoints.Get(e)
-		hp.SetInvul(1000)
+		inv, _ := x.Invulnerabilities.Get(e)
+		inv.Set(1000)
 	}
 
 	damagesystem.Tick(x)
 	visionsystem.Tick(x)
 
-	hpEnabled, _ := x.Hitpoints.Get(enabled)
-	hpDisabled, _ := x.Hitpoints.Get(disabled)
-	if hpEnabled.InvulCurrent() == 1000 || hpDisabled.InvulCurrent() != 1000 {
+	invEnabled, _ := x.Invulnerabilities.Get(enabled)
+	invDisabled, _ := x.Invulnerabilities.Get(disabled)
+	if invEnabled.RemainingMs() == 1000 || invDisabled.RemainingMs() != 1000 {
 		t.Fatalf("invulnerability ticked to %d enabled and %d disabled, want only the enabled one to tick",
-			hpEnabled.InvulCurrent(), hpDisabled.InvulCurrent())
+			invEnabled.RemainingMs(), invDisabled.RemainingMs())
 	}
 
 	vEnabled, _ := x.Visions.Get(enabled)

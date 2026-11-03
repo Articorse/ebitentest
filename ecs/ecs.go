@@ -34,6 +34,7 @@ type ECSContainer struct {
 	isSimulatedPos func(worldPos utils.Vec2f) bool
 	terrain        Terrain
 	itemAtlas      *ItemAtlas
+	bodyAtlas      *BodyAtlas
 
 	storages []componentStorage
 
@@ -54,7 +55,8 @@ type ECSContainer struct {
 	HurtboxColliders  Storage[HurtboxCollider]
 	Spawners          Storage[Spawner]
 	Timers            Storage[Timer]
-	Hitpoints         Storage[Hitpoints]
+	Bodies            Storage[Body]
+	Invulnerabilities Storage[Invulnerability]
 	ContactDamages    Storage[ContactDamage]
 	Abilities         Storage[Abilities]
 	Aims              Storage[Aim]
@@ -89,7 +91,8 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&hurtboxColliderDto{})
 	gob.Register(&spawnerDto{})
 	gob.Register(&timerDto{})
-	gob.Register(&hitpointsDto{})
+	gob.Register(&bodyDto{})
+	gob.Register(&invulnerabilityDto{})
 	gob.Register(&contactDamageDto{})
 	gob.Register(&abilitiesDto{})
 	gob.Register(&aimDto{})
@@ -147,7 +150,8 @@ func NewECSContainer() *ECSContainer {
 		HurtboxColliders:  newStorage[HurtboxCollider](),
 		Spawners:          newStorage[Spawner](),
 		Timers:            newStorage[Timer](),
-		Hitpoints:         newStorage[Hitpoints](),
+		Bodies:            newStorage[Body](),
+		Invulnerabilities: newStorage[Invulnerability](),
 		ContactDamages:    newStorage[ContactDamage](),
 		Abilities:         newStorage[Abilities](),
 		Aims:              newStorage[Aim](),
@@ -182,7 +186,8 @@ func NewECSContainer() *ECSContainer {
 		&x.HurtboxColliders,
 		&x.Spawners,
 		&x.Timers,
-		&x.Hitpoints,
+		&x.Bodies,
+		&x.Invulnerabilities,
 		&x.ContactDamages,
 		&x.Inputs,
 		&x.Abilities,

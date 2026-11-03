@@ -41,10 +41,10 @@ func DodgeAbility(
 	}
 
 	anim, animOk := ecsContainer.Animations.Get(self)
-	hp, hpOk := ecsContainer.Hitpoints.Get(self)
+	inv, invOk := ecsContainer.Invulnerabilities.Get(self)
 	spr, sprOk := ecsContainer.Sprites.Get(self)
-	if !animOk || !hpOk || !sprOk {
-		return false, fmt.Errorf("entity %d needs an animation, hitpoints and a sprite to dodge", self)
+	if !animOk || !invOk || !sprOk {
+		return false, fmt.Errorf("entity %d needs an animation, invulnerability and a sprite to dodge", self)
 	}
 
 	err := ecsContainer.SetAnimationState(self, ecs.Anim_Jump)
@@ -57,7 +57,7 @@ func DodgeAbility(
 		return false, fmt.Errorf("error setting queued animation state of entity %d to idle: %v", self, err)
 	}
 
-	hp.SetInvul(math.MaxInt)
+	inv.Set(math.MaxInt)
 
 	err = spr.SetFlash(
 		[]utils.RelativeColor{
@@ -92,13 +92,13 @@ func DodgeAbilityPost(
 	params ecs.AbilityParams,
 	ecsContainer *ecs.ECSContainer,
 ) (bool, error) {
-	hp, hpOk := ecsContainer.Hitpoints.Get(self)
+	inv, invOk := ecsContainer.Invulnerabilities.Get(self)
 	spr, sprOk := ecsContainer.Sprites.Get(self)
-	if !hpOk || !sprOk {
-		return false, fmt.Errorf("entity %d needs hitpoints and a sprite to end its dodge", self)
+	if !invOk || !sprOk {
+		return false, fmt.Errorf("entity %d needs invulnerability and a sprite to end its dodge", self)
 	}
 
-	hp.SetInvul(0)
+	inv.Set(0)
 	spr.StopFlash()
 
 	return true, nil

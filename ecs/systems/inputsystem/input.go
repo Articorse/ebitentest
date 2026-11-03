@@ -1,6 +1,7 @@
 package inputsystem
 
 import (
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/ecs/systems/facingsystem"
@@ -61,7 +62,8 @@ func HandleInputs(
 
 		if vel, ok := ecsContainer.Velocities.Get(e); ok {
 			dir := utils.Vec2f{X: input.Analog1X, Y: input.Analog1Y}.Normalized()
-			vel.AddForce(dir.Multiply(vel.Acceleration()))
+			moving := float64(ecsContainer.Capacity(e, data.Capacity_Moving)) / data.FullEfficiency
+			vel.AddForce(dir.Multiply(vel.Acceleration() * moving))
 		}
 	}
 

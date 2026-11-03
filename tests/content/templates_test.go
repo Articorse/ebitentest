@@ -35,6 +35,13 @@ func TestPlayerTemplateWithStartingEquipment(t *testing.T) {
 		t.Fatalf("player stored with %d entities, want itself, the mattock, the bazooka, the gun, the axe and the torches", len(members))
 	}
 
+	if body, ok := x.Bodies.Get(p); !ok || body.Kind() != data.Body_Humanoid {
+		t.Fatal("the player doesn't have a humanoid body")
+	}
+	if inv, ok := x.Invulnerabilities.Get(p); !ok || inv.PostHitMs() != 1000 {
+		t.Fatal("the player isn't invulnerable for a second after each hit")
+	}
+
 	inv, _ := x.Inventories.Get(p)
 	torches, _ := inv.Slot(4)
 	if item, ok := x.Items.Get(torches); !ok || item.Kind() != data.Item_Torch || item.Count() != 100 {

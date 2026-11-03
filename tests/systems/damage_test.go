@@ -28,7 +28,7 @@ func addTarget(t *testing.T, x *ecs.ECSContainer, invulMs int) common.EntityId {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewHitpointsComponent(100, invulMs),
+	return testutil.AddMovable(t, x, utils.Vec2f{}, false, testutil.DummyBody(t, x, 100), ecs.NewInvulnerabilityComponent(invulMs),
 		ecs.NewHitboxColliderComponent(ecs.Layer_Enemy, ecs.Layer_FriendlyProjectile, shape))
 }
 
@@ -48,8 +48,8 @@ func touchEntities(t *testing.T, x *ecs.ECSContainer, sources, targets []common.
 }
 
 func lost(x *ecs.ECSContainer, e common.EntityId) int {
-	hp, _ := x.Hitpoints.Get(e)
-	return 100 - hp.Current()
+	health, _, _ := x.PartHealth(e, testutil.DummyPart)
+	return 100 - health
 }
 
 func TestContactDamageHitsEachEntityOnceByDefault(t *testing.T) {
