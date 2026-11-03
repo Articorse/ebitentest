@@ -62,6 +62,7 @@ type game struct {
 
 	assetmanager  *assetmanager.AssetManager
 	visionOverlay drawsystem.VisionOverlay
+	lightOverlay  drawsystem.LightOverlay
 
 	showFPS       bool
 	frameTimes    frameTimes
@@ -447,8 +448,6 @@ func (g *game) Draw(screen *ebiten.Image) {
 	g.drawWorld(world)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(g.ecs.Zoom, g.ecs.Zoom)
-	r, gr, b := nightTint(ecs.Darkness(g.ecs.TickIdx))
-	op.ColorScale.Scale(r, gr, b, 1)
 	screen.DrawImage(world, op)
 
 	isVisible := func(utils.Vec2f) bool { return true }
@@ -466,12 +465,6 @@ func (g *game) Draw(screen *ebiten.Image) {
 	if g.showFPS {
 		g.drawDebugText(screen, fmt.Sprintf("FPS: %f\nSlowest frame: %.2f ms", ebiten.ActualFPS(), g.frameTimes.slowestMs()))
 	}
-}
-
-// White by day, data.NightTint at full night
-func nightTint(darkness float64) (r, g, b float32) {
-	lerp := func(c uint8) float32 { return float32(1 + (float64(c)/255-1)*darkness) }
-	return lerp(data.NightTint.R), lerp(data.NightTint.G), lerp(data.NightTint.B)
 }
 
 // Big enough to cover the screen once scaled up by the zoom
@@ -514,9 +507,8 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		}
 	}
 
-	g.chunkContainer.DrawRoofShade(world, g.ecs.Camera)
-
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
+		g.lightOverlay.Draw(world, g.ecs.Camera, vision.Light())
 		g.visionOverlay.Draw(world, g.ecs.Camera, vision, g.drawMemory)
 	}
 

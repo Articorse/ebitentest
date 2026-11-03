@@ -2,6 +2,8 @@ package data
 
 const (
 	MaxLight = 255
+	// The darkest that anything lit is drawn, as a share of full brightness
+	MinLightBrightness = 0.01
 	// Full daylight lets tiles be seen as far as vision reaches
 	DaySkyLight = MaxLight
 	// Seen from 12 tiles away

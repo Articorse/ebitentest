@@ -95,3 +95,10 @@ func TestLightComesInFromBeyondTheSquareAsked(t *testing.T) {
 		t.Fatalf("3 tiles from sky just past the square, the light is %d, want %d", got, want)
 	}
 }
+
+func TestALightMapNotYetWorkedOutIsDark(t *testing.T) {
+	m := &ecs.LightMap{}
+	if got := m.At(utils.Vec2i{}); got != 0 {
+		t.Fatalf("an empty light map gives light %d, want dark", got)
+	}
+}

@@ -270,16 +270,6 @@ func (cc *ChunkContainer) bakeMemoryRegion(
 	reach := utils.Vec2f{X: data.MemoryFeatureReachTiles * data.TileSize, Y: data.MemoryFeatureReachTiles * data.TileSize}
 	drawFeatures(r.image, bounds[0], cc.RememberedFeatureSprites([2]utils.Vec2f{bounds[0].Subtract(reach), bounds[1].Add(reach)}))
 
-	if pixels, roofed := roofShadePixels(r.roofs[:]); roofed {
-		if cc.memoryRoofShade == nil {
-			cc.memoryRoofShade = ebiten.NewImage(data.MemoryRegionSize, data.MemoryRegionSize)
-		}
-		cc.memoryRoofShade.WritePixels(pixels)
-		op := &ebiten.DrawImageOptions{Blend: blendMultiply}
-		op.GeoM.Scale(data.TileSize, data.TileSize)
-		r.image.DrawImage(cc.memoryRoofShade, op)
-	}
-
 	r.imageStale = false
 }
 

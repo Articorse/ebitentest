@@ -17,10 +17,15 @@ type LightMap struct {
 	queue  []int
 }
 
-// 0 outside the square
+// The square the light was worked out for, which reaches past the one asked for
+func (m *LightMap) Area() (center utils.Vec2i, radius int) {
+	return m.center, m.radius
+}
+
+// 0 outside the square, and before the light is first worked out
 func (m *LightMap) At(t utils.Vec2i) uint8 {
 	i, ok := m.index(t.X-m.center.X+m.radius, t.Y-m.center.Y+m.radius)
-	if !ok {
+	if !ok || i >= len(m.levels) {
 		return 0
 	}
 	return m.levels[i]

@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type ChunkContainer struct {
@@ -38,8 +36,6 @@ type ChunkContainer struct {
 
 	seed   uint64
 	memory memory
-	// Reused for every region baked, since each bake writes it before drawing it
-	memoryRoofShade *ebiten.Image
 }
 
 func NewChunkContainer() *ChunkContainer {

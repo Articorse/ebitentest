@@ -19,10 +19,6 @@ type chunk struct {
 	terrainModified bool
 
 	Image *ebiten.Image
-	// One pixel per tile, to be multiplied over what's drawn on the chunk. Nil until it's needed, and for chunks without
-	// a roof, which roofsChecked tells apart.
-	roofShade    *ebiten.Image
-	roofsChecked bool
 }
 
 func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {

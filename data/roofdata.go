@@ -7,6 +7,3 @@ const (
 	// What worldgen puts over mountains
 	Roof_Rock
 )
-
-// How bright what's under a roof is drawn
-const RoofShade = 0.75
