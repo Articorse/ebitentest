@@ -1,7 +1,6 @@
 package collisionsystem
 
 import (
-	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
@@ -22,7 +21,8 @@ func DrawColliders(
 	camera utils.Vec2f,
 	ecsContainer *ecs.ECSContainer,
 ) {
-	onScreen := [2]utils.Vec2f{camera, camera.Add(utils.Vec2f{X: data.CameraWidth, Y: data.CameraHeight})}
+	size := screen.Bounds().Size()
+	onScreen := [2]utils.Vec2f{camera, camera.Add(utils.Vec2f{X: float64(size.X), Y: float64(size.Y)})}
 
 	for _, e := range colliders.GetEntities() {
 		col, _ := colliders.Collider(e)

@@ -107,6 +107,12 @@ func (o *VisionOverlay) drawCircle(dst *ebiten.Image, camera utils.Vec2f, center
 	dst.DrawImage(o.circle, op)
 }
 
+// Whether the overlay leaves the world position at least partly uncovered
+func Revealed(pos, center utils.Vec2f, vision *ecs.Vision) bool {
+	_, outer := vision.CircleRadii()
+	return vision.CanSee(utils.WorldPosToTilePos(pos)) && pos.Subtract(center).Length() < outer
+}
+
 func circleImage(w, h int, clearRadius, outer float64) *ebiten.Image {
 	pixels := make([]byte, 4*w*h)
 	cx, cy := float64(w)/2, float64(h)/2

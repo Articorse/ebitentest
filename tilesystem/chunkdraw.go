@@ -16,19 +16,21 @@ func DrawChunks(
 	chunkCont *ChunkContainer,
 ) error {
 	marginBakesLeft := data.MaxChunkImageBakesPerFrame
+	size := screen.Bounds().Size()
+	view := utils.Vec2f{X: float64(size.X), Y: float64(size.Y)}
 
 	for ck, c := range chunkCont.chunks {
 		cBounds := chunkDrawBounds(ck)
 
-		if !utils.DetectAABBCollision(cBounds, cameraBounds(camera, data.ChunkImageFreeMarginPx)) {
+		if !utils.DetectAABBCollision(cBounds, cameraBounds(camera, view, data.ChunkImageFreeMarginPx)) {
 			c.freeImage()
 			continue
 		}
 
-		visible := utils.DetectAABBCollision(cBounds, cameraBounds(camera, 0))
+		visible := utils.DetectAABBCollision(cBounds, cameraBounds(camera, view, 0))
 
 		if c.Image == nil {
-			inBakeMargin := utils.DetectAABBCollision(cBounds, cameraBounds(camera, data.ChunkImageBakeMarginPx))
+			inBakeMargin := utils.DetectAABBCollision(cBounds, cameraBounds(camera, view, data.ChunkImageBakeMarginPx))
 			if !visible && (!inBakeMargin || marginBakesLeft <= 0) {
 				continue
 			}
@@ -64,10 +66,10 @@ func chunkDrawBounds(ck utils.Vec2i) [2]utils.Vec2f {
 	}
 }
 
-func cameraBounds(camera utils.Vec2f, margin float64) [2]utils.Vec2f {
+func cameraBounds(camera, view utils.Vec2f, margin float64) [2]utils.Vec2f {
 	return [2]utils.Vec2f{
 		{X: camera.X - margin, Y: camera.Y - margin},
-		{X: camera.X + data.CameraWidth + margin, Y: camera.Y + data.CameraHeight + margin},
+		{X: camera.X + view.X + margin, Y: camera.Y + view.Y + margin},
 	}
 }
 
@@ -107,7 +109,8 @@ func (cc *ChunkContainer) DrawFeatureColliders(
 	lineColor color.RGBA,
 	include func(utils.Vec2i) bool,
 ) {
-	onScreen := [2]utils.Vec2f{camera, camera.Add(utils.Vec2f{X: data.CameraWidth, Y: data.CameraHeight})}
+	size := screen.Bounds().Size()
+	onScreen := cameraBounds(camera, utils.Vec2f{X: float64(size.X), Y: float64(size.Y)}, 0)
 	minTile, maxTile := utils.WorldPosToTilePos(onScreen[0]), utils.WorldPosToTilePos(onScreen[1])
 
 	for ck, c := range cc.chunks {

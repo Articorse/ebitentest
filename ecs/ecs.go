@@ -20,7 +20,10 @@ type ECSContainer struct {
 	tickInputs     map[common.EntityId]InputState
 	tickInputsTick uint64
 
-	Camera       utils.Vec2f
+	// The world position at the screen's top left
+	Camera utils.Vec2f
+	// Screen pixels per world pixel
+	Zoom         float64
 	CameraFollow bool
 
 	Rng       *rand.Rand
@@ -113,6 +116,7 @@ func NewECSContainer() *ECSContainer {
 
 	x := &ECSContainer{
 		nextEntity:   0,
+		Zoom:         1,
 		CameraFollow: true,
 
 		abilityFuncs:          make(map[AbilityEnum]AbilityFunc),

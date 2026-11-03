@@ -53,8 +53,8 @@ func HumanInputSource(
 
 	case ecs.Facing_Mouse:
 		mXint, mYint := ebiten.CursorPosition()
-		mX = float64(mXint) + ecsContainer.Camera.X
-		mY = float64(mYint) + ecsContainer.Camera.Y
+		mX = float64(mXint)/ecsContainer.Zoom + ecsContainer.Camera.X
+		mY = float64(mYint)/ecsContainer.Zoom + ecsContainer.Camera.Y
 		is.AimPos, is.HasAim = utils.Vec2f{X: float64(mX), Y: float64(mY)}, true
 
 	case ecs.Facing_Analog2:

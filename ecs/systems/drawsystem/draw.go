@@ -27,7 +27,7 @@ func DrawSprites(
 	ecsContainer *ecs.ECSContainer,
 	assetManager *assetmanager.AssetManager,
 ) error {
-	order, err := SpriteDrawOrder(camera, staticSprites, ecsContainer, assetManager)
+	order, err := SpriteDrawOrder(DrawWindow(camera, ImageSize(screen)), staticSprites, ecsContainer, assetManager)
 	if err != nil {
 		return err
 	}
@@ -48,12 +48,16 @@ func DrawSprites(
 	return nil
 }
 
-// Where sprites have to be to be drawn. It reaches past the screen, since a sprite's position is its center.
-func DrawWindow(camera utils.Vec2f) [2]utils.Vec2f {
-	return [2]utils.Vec2f{
-		{X: camera.X - data.SpatialHashGridCellSize, Y: camera.Y - data.SpatialHashGridCellSize},
-		{X: camera.X + data.CameraWidth + data.SpatialHashGridCellSize, Y: camera.Y + data.CameraHeight + data.SpatialHashGridCellSize},
-	}
+// Where sprites have to be to be drawn into an image of the world of the given size. It reaches past the image, since a
+// sprite's position is its center.
+func DrawWindow(camera, size utils.Vec2f) [2]utils.Vec2f {
+	margin := utils.Vec2f{X: data.SpatialHashGridCellSize, Y: data.SpatialHashGridCellSize}
+	return [2]utils.Vec2f{camera.Subtract(margin), camera.Add(size).Add(margin)}
+}
+
+func ImageSize(img *ebiten.Image) utils.Vec2f {
+	size := img.Bounds().Size()
+	return utils.Vec2f{X: float64(size.X), Y: float64(size.Y)}
 }
 
 type SpriteDraw struct {
@@ -72,12 +76,11 @@ type spriteGroup struct {
 }
 
 func SpriteDrawOrder(
-	camera utils.Vec2f,
+	window [2]utils.Vec2f,
 	staticSprites []common.StaticSprite,
 	ecsContainer *ecs.ECSContainer,
 	assetManager *assetmanager.AssetManager,
 ) ([]SpriteDraw, error) {
-	window := DrawWindow(camera)
 	inWindow := func(p utils.Vec2f) bool {
 		return p.X >= window[0].X && p.X <= window[1].X && p.Y >= window[0].Y && p.Y <= window[1].Y
 	}
@@ -306,29 +309,38 @@ func drawEntitySprite(
 	return nil
 }
 
-func DrawFloatingTexts(screen *ebiten.Image, ecs *ecs.ECSContainer) error {
-	for _, e := range ecs.FloatingTexts.GetEntities() {
-		if ecs.IsDisabled(e) {
+// Onto the screen rather than into the world, so that text is crisp and the same size at any zoom. Since the screen
+// isn't covered by the vision overlay, texts at positions that aren't visible are left out.
+func DrawFloatingTexts(
+	screen *ebiten.Image,
+	uiScale float64,
+	isVisible func(utils.Vec2f) bool,
+	ecsContainer *ecs.ECSContainer,
+) error {
+	for _, e := range ecsContainer.FloatingTexts.GetEntities() {
+		if ecsContainer.IsDisabled(e) {
 			continue
 		}
-		ecsPos, err := ecs.WorldPos(e)
+		ecsPos, err := ecsContainer.WorldPos(e)
 		if err != nil {
 			return fmt.Errorf("error getting ecs position of floating text entity %d: %v", e, err)
 		}
+		if !isVisible(ecsPos) {
+			continue
+		}
 
-		ft, _ := ecs.FloatingTexts.Get(e)
+		ft, _ := ecsContainer.FloatingTexts.Get(e)
 		offset, textValue, color, size := ft.Offset(), ft.Text(), ft.Color(), ft.Size()
 
-		face, err := floatingTextFace(size)
+		face, err := floatingTextFace(size * uiScale)
 		if err != nil {
 			return fmt.Errorf("error getting font for floating text entity %d: %v", e, err)
 		}
 
 		op := &text.DrawOptions{}
-		tX := ecsPos.X + offset.X - ecs.Camera.X
-		tY := ecsPos.Y + offset.Y - ecs.Camera.Y
+		t := ecsPos.Add(offset).Subtract(ecsContainer.Camera).Multiply(ecsContainer.Zoom)
 		w, h := text.Measure(textValue, face, 0)
-		op.GeoM.Translate(tX-w/2, tY-h/2)
+		op.GeoM.Translate(t.X-w/2, t.Y-h/2)
 		op.ColorScale.ScaleWithColor(color)
 
 		text.Draw(screen, textValue, face, op)

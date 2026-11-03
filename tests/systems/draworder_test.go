@@ -43,7 +43,7 @@ func drawOrder(t *testing.T, x *ecs.ECSContainer, statics ...common.StaticSprite
 	t.Helper()
 	t.Chdir(testutil.RepoRoot())
 	treeBottom := bottomRow(t, common.AssetImageTree)
-	order, err := drawsystem.SpriteDrawOrder(utils.Vec2f{}, statics, x, assetmanager.NewAssetManager())
+	order, err := drawsystem.SpriteDrawOrder(drawsystem.DrawWindow(utils.Vec2f{}, utils.Vec2f{X: 640, Y: 360}), statics, x, assetmanager.NewAssetManager())
 	if err != nil {
 		t.Fatal(err)
 	}

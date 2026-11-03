@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -59,6 +60,16 @@ type game struct {
 	showFPS       bool
 	showColliders bool
 	touching      touchingColliders
+
+	// In screen pixels, which are device pixels
+	screenSize utils.Vec2f
+	// Screen pixels per UI pixel
+	uiScale float64
+	// The world is drawn at its own resolution and scaled onto the screen, so that it can be zoomed without changing how
+	// anything in it is drawn
+	world *ebiten.Image
+	// The debug font is tiny at the screen's resolution, so debug text is printed here and scaled up
+	debugText *ebiten.Image
 }
 
 // Which colliders of each kind touched something in the last tick, for drawing them
@@ -201,7 +212,7 @@ func (g *game) Update() error {
 			log.Println("error getting player ecs position for camera follow: ", err)
 		}
 
-		g.ecs.Camera = pWorldPos.Subtract(utils.Vec2f{X: float64(data.CameraWidth) / 2, Y: float64(data.CameraHeight) / 2})
+		g.ecs.Camera = pWorldPos.Subtract(g.screenSize.Multiply(0.5 / g.ecs.Zoom))
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
@@ -381,18 +392,60 @@ func (g *game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{0, 0, 0, 255})
 
 	if g.loading {
-		ebitenutil.DebugPrint(screen, "Loading...")
+		g.drawDebugText(screen, "Loading...")
 		return
 	}
 
-	if err := tilesystem.DrawChunks(screen, g.ecs.Camera, g.chunkContainer); err != nil {
+	world := g.worldImage(screen)
+	g.drawWorld(world)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(g.ecs.Zoom, g.ecs.Zoom)
+	screen.DrawImage(world, op)
+
+	isVisible := func(utils.Vec2f) bool { return true }
+	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
+		if center, err := g.ecs.WorldPos(g.playerEntity); err == nil {
+			isVisible = func(pos utils.Vec2f) bool { return drawsystem.Revealed(pos, center, vision) }
+		}
+	}
+	if err := drawsystem.DrawFloatingTexts(screen, g.uiScale, isVisible, g.ecs); err != nil {
+		log.Println("error while drawing floating texts: ", err)
+	}
+
+	if err := drawsystem.DrawHotbar(screen, g.uiScale, g.playerEntity, g.ecs, g.assetmanager); err != nil {
+		log.Println("error while drawing hotbar: ", err)
+	}
+
+	if g.showFPS {
+		g.drawDebugText(screen, fmt.Sprintf("FPS: %f", ebiten.ActualFPS()))
+	}
+}
+
+// Big enough to cover the screen once scaled up by the zoom
+func (g *game) worldImage(screen *ebiten.Image) *ebiten.Image {
+	size := screen.Bounds().Size()
+	w := int(math.Ceil(float64(size.X) / g.ecs.Zoom))
+	h := int(math.Ceil(float64(size.Y) / g.ecs.Zoom))
+	if g.world == nil || g.world.Bounds().Dx() != w || g.world.Bounds().Dy() != h {
+		if g.world != nil {
+			g.world.Deallocate()
+		}
+		g.world = ebiten.NewImage(w, h)
+	}
+	return g.world
+}
+
+func (g *game) drawWorld(world *ebiten.Image) {
+	world.Fill(color.RGBA{0, 0, 0, 255})
+
+	if err := tilesystem.DrawChunks(world, g.ecs.Camera, g.chunkContainer); err != nil {
 		log.Println("error while drawing chunks: ", err)
 	}
 
 	if err := drawsystem.DrawSprites(
-		screen,
+		world,
 		g.ecs.Camera,
-		g.chunkContainer.FeatureSprites(drawsystem.DrawWindow(g.ecs.Camera)),
+		g.chunkContainer.FeatureSprites(drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world))),
 		g.ecs,
 		g.assetmanager,
 	); err != nil {
@@ -407,80 +460,94 @@ func (g *game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	if err := drawsystem.DrawFloatingTexts(screen, g.ecs); err != nil {
-		log.Println("error while drawing floating texts: ", err)
-	}
-
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
 		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
-			g.visionOverlay.Draw(screen, g.ecs.Camera, pos, vision, g.drawMemory)
+			g.visionOverlay.Draw(world, g.ecs.Camera, pos, vision, g.drawMemory)
 		}
 	}
 
-	if err := drawsystem.DrawTileTarget(screen, g.ecs.Camera, g.playerEntity, g.ecs); err != nil {
+	if err := drawsystem.DrawTileTarget(world, g.ecs.Camera, g.playerEntity, g.ecs); err != nil {
 		log.Println("error while drawing the tile target: ", err)
 	}
 
-	if err := drawsystem.DrawHotbar(screen, g.playerEntity, g.ecs, g.assetmanager); err != nil {
-		log.Println("error while drawing hotbar: ", err)
+	if g.showColliders {
+		g.drawColliders(world)
+	}
+}
+
+func (g *game) drawDebugText(screen *ebiten.Image, msg string) {
+	size := screen.Bounds().Size()
+	w := int(math.Ceil(float64(size.X) / g.uiScale))
+	h := int(math.Ceil(float64(size.Y) / g.uiScale))
+	if g.debugText == nil || g.debugText.Bounds().Dx() != w || g.debugText.Bounds().Dy() != h {
+		if g.debugText != nil {
+			g.debugText.Deallocate()
+		}
+		g.debugText = ebiten.NewImage(w, h)
 	}
 
-	g.DrawDebug(screen)
+	g.debugText.Clear()
+	ebitenutil.DebugPrint(g.debugText, msg)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(g.uiScale, g.uiScale)
+	screen.DrawImage(g.debugText, op)
 }
 
 // Entities are never remembered, only the terrain and the features on it
 func (g *game) drawMemory(dst *ebiten.Image, camera utils.Vec2f) {
 	g.chunkContainer.DrawMemory(dst, camera)
 
-	features := g.chunkContainer.RememberedFeatureSprites(drawsystem.DrawWindow(camera))
+	features := g.chunkContainer.RememberedFeatureSprites(drawsystem.DrawWindow(camera, drawsystem.ImageSize(dst)))
 	if err := drawsystem.DrawStaticSprites(dst, camera, features, data.MemoryBrightness, g.assetmanager); err != nil {
 		log.Println("error while drawing remembered features: ", err)
 	}
 }
 
+// At the screen's real resolution, so that the world and the UI are each scaled up on their own
 func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return data.CameraWidth, data.CameraHeight
+	deviceScale := ebiten.Monitor().DeviceScaleFactor()
+	g.ecs.Zoom = data.WorldZoom * deviceScale
+	g.uiScale = data.UIScale * deviceScale
+	g.screenSize = utils.Vec2f{
+		X: math.Ceil(float64(outsideWidth) * deviceScale),
+		Y: math.Ceil(float64(outsideHeight) * deviceScale),
+	}
+	return int(g.screenSize.X), int(g.screenSize.Y)
 }
 
-func (g *game) DrawDebug(screen *ebiten.Image) {
-	if g.showColliders {
-		kinds := []struct {
-			colliders      ecs.ColliderSet
-			color, touches color.RGBA
-			touching       map[common.EntityId]bool
-		}{
-			// Platforms resolve what lands on them themselves, without reporting it, so they're never shown touching
-			{platformColliders, data.Debug_PlatformColliderColor, data.Debug_PlatformColliderColor, nil},
-			{physicsColliders, data.Debug_PhysicsColliderColor, data.Debug_PhysicsColliderTouchingColor, g.touching.physics},
-			{hitboxColliders, data.Debug_HitboxColliderColor, data.Debug_HitboxColliderTouchingColor, g.touching.hitboxes},
-			{hurtboxColliders, data.Debug_HurtboxColliderColor, data.Debug_HurtboxColliderTouchingColor, g.touching.hurtboxes},
-		}
-
-		// Touching outlines go over the rest, so that one isn't hidden under another collider in the same place, such as
-		// the player's hitbox over its physics collider
-		for _, touching := range []bool{false, true} {
-			featureColor := data.Debug_FeatureColliderColor
-			if touching {
-				featureColor = data.Debug_FeatureColliderTouchingColor
-			}
-			g.chunkContainer.DrawFeatureColliders(screen, g.ecs.Camera, featureColor, func(t utils.Vec2i) bool {
-				return g.touching.features[t] == touching
-			})
-
-			for _, k := range kinds {
-				lineColor := k.color
-				if touching {
-					lineColor = k.touches
-				}
-				collisionsystem.DrawColliders(k.colliders, lineColor, func(e common.EntityId) bool {
-					return k.touching[e] == touching
-				}, screen, g.ecs.Camera, g.ecs)
-			}
-		}
+func (g *game) drawColliders(world *ebiten.Image) {
+	kinds := []struct {
+		colliders      ecs.ColliderSet
+		color, touches color.RGBA
+		touching       map[common.EntityId]bool
+	}{
+		// Platforms resolve what lands on them themselves, without reporting it, so they're never shown touching
+		{platformColliders, data.Debug_PlatformColliderColor, data.Debug_PlatformColliderColor, nil},
+		{physicsColliders, data.Debug_PhysicsColliderColor, data.Debug_PhysicsColliderTouchingColor, g.touching.physics},
+		{hitboxColliders, data.Debug_HitboxColliderColor, data.Debug_HitboxColliderTouchingColor, g.touching.hitboxes},
+		{hurtboxColliders, data.Debug_HurtboxColliderColor, data.Debug_HurtboxColliderTouchingColor, g.touching.hurtboxes},
 	}
 
-	if g.showFPS {
-		ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %f", ebiten.ActualFPS()))
+	// Touching outlines go over the rest, so that one isn't hidden under another collider in the same place, such as
+	// the player's hitbox over its physics collider
+	for _, touching := range []bool{false, true} {
+		featureColor := data.Debug_FeatureColliderColor
+		if touching {
+			featureColor = data.Debug_FeatureColliderTouchingColor
+		}
+		g.chunkContainer.DrawFeatureColliders(world, g.ecs.Camera, featureColor, func(t utils.Vec2i) bool {
+			return g.touching.features[t] == touching
+		})
+
+		for _, k := range kinds {
+			lineColor := k.color
+			if touching {
+				lineColor = k.touches
+			}
+			collisionsystem.DrawColliders(k.colliders, lineColor, func(e common.EntityId) bool {
+				return k.touching[e] == touching
+			}, world, g.ecs.Camera, g.ecs)
+		}
 	}
 }
 
