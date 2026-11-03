@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	g = game{ecs: ecs.NewECSContainer(), assetmanager: assetmanager.NewAssetManager()}
+	g = game{ecs: ecs.NewECSContainer(), assetmanager: assetmanager.NewAssetManager(), zoom: data.DefaultZoom}
 
 	physicsColliders  = ecs.Colliders(&g.ecs.PhysicsColliders)
 	hurtboxColliders  = ecs.Colliders(&g.ecs.HurtboxColliders)
@@ -63,6 +63,8 @@ type game struct {
 
 	// In screen pixels, which are device pixels
 	screenSize utils.Vec2f
+	// Window pixels per world pixel, from data.MinZoom to data.MaxZoom
+	zoom int
 	// Screen pixels per UI pixel
 	uiScale float64
 	// The world is drawn at its own resolution and scaled onto the screen, so that it can be zoomed without changing how
@@ -201,6 +203,13 @@ func (g *game) Update() error {
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyDown) {
 		g.ecs.Camera.Y += 10
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) {
+		g.setZoom(g.zoom + 1)
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) {
+		g.setZoom(g.zoom - 1)
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
@@ -503,10 +512,25 @@ func (g *game) drawMemory(dst *ebiten.Image, camera utils.Vec2f) {
 	}
 }
 
+// Keeps what's at the center of the screen there, so that zooming with the camera not following the player doesn't
+// pull the view towards the top left
+func (g *game) setZoom(zoom int) {
+	zoom = min(max(zoom, data.MinZoom), data.MaxZoom)
+	if zoom == g.zoom {
+		return
+	}
+
+	newZoom := g.ecs.Zoom * float64(zoom) / float64(g.zoom)
+	center := g.ecs.Camera.Add(g.screenSize.Multiply(0.5 / g.ecs.Zoom))
+	g.ecs.Camera = center.Subtract(g.screenSize.Multiply(0.5 / newZoom))
+	g.ecs.Zoom = newZoom
+	g.zoom = zoom
+}
+
 // At the screen's real resolution, so that the world and the UI are each scaled up on their own
 func (g *game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	deviceScale := ebiten.Monitor().DeviceScaleFactor()
-	g.ecs.Zoom = data.WorldZoom * deviceScale
+	g.ecs.Zoom = float64(g.zoom) * deviceScale
 	g.uiScale = data.UIScale * deviceScale
 	g.screenSize = utils.Vec2f{
 		X: math.Ceil(float64(outsideWidth) * deviceScale),
