@@ -447,7 +447,8 @@ func (g *game) worldImage(screen *ebiten.Image) *ebiten.Image {
 		if g.world != nil {
 			g.world.Deallocate()
 		}
-		g.world = ebiten.NewImage(w, h)
+		// Unmanaged, so that it isn't put on Ebitengine's shared atlas, whose pages grow to fit it and don't shrink back
+		g.world = ebiten.NewImageWithOptions(image.Rect(0, 0, w, h), &ebiten.NewImageOptions{Unmanaged: true})
 	}
 	return g.world
 }

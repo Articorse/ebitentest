@@ -8,6 +8,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"image"
 	"image/color"
 	"math"
 	"os"
@@ -231,7 +232,8 @@ func (cc *ChunkContainer) bakeMemoryRegion(
 ) {
 	side := data.MemoryRegionSize * data.TileSize
 	if r.image == nil {
-		r.image = ebiten.NewImage(side, side)
+		// Unmanaged like chunk images, so that region images don't grow a page of the shared atlas
+		r.image = ebiten.NewImageWithOptions(image.Rect(0, 0, side, side), &ebiten.NewImageOptions{Unmanaged: true})
 	} else {
 		r.image.Clear()
 	}

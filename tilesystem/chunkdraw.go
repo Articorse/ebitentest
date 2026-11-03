@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/utils"
 	"fmt"
+	"image"
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -74,7 +75,10 @@ func cameraBounds(camera, view utils.Vec2f, margin float64) [2]utils.Vec2f {
 }
 
 func (x *chunk) generateChunkImage(atlas map[data.TileEnum]tileDef) error {
-	img := ebiten.NewImage(data.ChunkSize*data.TileSize, data.ChunkSize*data.TileSize)
+	// Unmanaged, since a big image on Ebitengine's shared atlas grows its page, up to the GPU's largest texture size,
+	// which the GPU can fail to allocate
+	side := data.ChunkSize * data.TileSize
+	img := ebiten.NewImageWithOptions(image.Rect(0, 0, side, side), &ebiten.NewImageOptions{Unmanaged: true})
 
 	for tCell, tEnum := range x.tiles {
 		tile, ok := atlas[tEnum]

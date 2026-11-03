@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/utils"
+	"image"
 	"image/color"
 	"math"
 
@@ -53,8 +54,10 @@ func (o *VisionOverlay) Draw(
 			o.mask.Deallocate()
 			o.memory.Deallocate()
 		}
-		o.mask = ebiten.NewImage(size.X, size.Y)
-		o.memory = ebiten.NewImage(size.X, size.Y)
+		// Unmanaged like the world image they're drawn onto, so that they don't grow pages of the shared atlas
+		unmanaged := &ebiten.NewImageOptions{Unmanaged: true}
+		o.mask = ebiten.NewImageWithOptions(image.Rect(0, 0, size.X, size.Y), unmanaged)
+		o.memory = ebiten.NewImageWithOptions(image.Rect(0, 0, size.X, size.Y), unmanaged)
 	}
 
 	o.mask.Fill(color.White)

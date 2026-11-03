@@ -79,7 +79,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		},
 	}
 	pAbiComp := ecs.NewAbilitiesComponent(pAbis)
-	pCLComp := ecs.NewChunkLoaderComponent(3)
+	pCLComp := ecs.NewChunkLoaderComponent(2)
 	player, err := ecsContainer.AddNewEntity(
 		pParComp,
 		pTraComp,

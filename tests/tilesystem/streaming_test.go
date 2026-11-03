@@ -2,6 +2,7 @@ package tilesystem_test
 
 import (
 	"bytes"
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/tests/testutil"
@@ -13,11 +14,18 @@ import (
 	"testing"
 )
 
+// Chunks away from the player's start, past what its loader keeps active or prefetched, so that a position that far
+// isn't simulated while the player is at the start, and its chunks aren't loaded with the start's
+const farChunks = testutil.PlayerLoaderRadius + data.ChunkDeactivateMargin + data.ChunkPrefetchMargin + 1
+
 var (
 	nearPlayer = utils.Vec2f{X: 150, Y: 60}
-	farAway    = utils.Vec2f{X: 2000, Y: 2000}
-	elsewhere  = utils.Vec2f{X: 5000, Y: 5000}
+	farAway    = testutil.PlayerStart.Add(utils.Vec2f{X: farChunks * chunkPx, Y: farChunks * chunkPx})
+	// As far from farAway as farAway is from the start
+	elsewhere = testutil.PlayerStart.Add(utils.Vec2f{X: 2 * farChunks * chunkPx, Y: 2 * farChunks * chunkPx})
 )
+
+const chunkPx = data.ChunkSize * data.TileSize
 
 func TestEntitiesLeavingActiveChunksPersistOrDespawn(t *testing.T) {
 	testutil.TempWorld(t)
@@ -131,7 +139,7 @@ func TestTetheredEntityKeptInAnchorArea(t *testing.T) {
 	vel.SetLocalVector(utils.Vec2f{X: 3})
 	s.Tick(2)
 
-	s.MovePlayer(utils.Vec2f{X: 1000, Y: 100})
+	s.MovePlayer(farAway)
 	s.Tick(3)
 
 	if !x.HasEntity(colonist) {

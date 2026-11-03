@@ -2,7 +2,7 @@ package data
 
 const (
 	TileSize                    = 16
-	ChunkSize                   = 4
+	ChunkSize                   = 128
 	ChunkDataDir                = "chunkdata"
 	ChunkDataFilePathTemplate   = "chunkdata/chunk_%d_%d.gob"
 	WorldHeaderFilePath         = "chunkdata/world.gob"
