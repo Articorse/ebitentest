@@ -34,7 +34,7 @@ func DrawSprites(
 
 	for _, d := range order {
 		if d.Entity == -1 {
-			if err := drawStaticSprite(screen, camera, d.Static, 1, assetManager); err != nil {
+			if err := drawStaticSprite(screen, camera, d.Static, assetManager); err != nil {
 				return err
 			}
 			continue
@@ -185,13 +185,11 @@ func SpriteDrawOrder(
 	return order, nil
 }
 
-// Static sprites on their own, such as remembered features, in the order DrawSprites would draw them, and scaled by
-// the brightness
+// Static sprites on their own, such as remembered features, in the order DrawSprites would draw them
 func DrawStaticSprites(
 	dst *ebiten.Image,
 	camera utils.Vec2f,
 	sprites []common.StaticSprite,
-	brightness float32,
 	assetManager *assetmanager.AssetManager,
 ) error {
 	ordered, err := StaticSpriteDrawOrder(sprites, assetManager)
@@ -200,7 +198,7 @@ func DrawStaticSprites(
 	}
 
 	for _, s := range ordered {
-		if err := drawStaticSprite(dst, camera, s, brightness, assetManager); err != nil {
+		if err := drawStaticSprite(dst, camera, s, assetManager); err != nil {
 			return err
 		}
 	}
@@ -238,7 +236,6 @@ func drawStaticSprite(
 	screen *ebiten.Image,
 	camera utils.Vec2f,
 	s common.StaticSprite,
-	brightness float32,
 	assetManager *assetmanager.AssetManager,
 ) error {
 	asset, err := assetManager.GetAsset(s.ImageAsset)
@@ -249,7 +246,6 @@ func drawStaticSprite(
 	img := asset.Frames[0]
 	opts := ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(s.Pos.X-camera.X-float64(img.Bounds().Dx())/2, s.Pos.Y-camera.Y-float64(img.Bounds().Dy())/2)
-	opts.ColorScale.Scale(brightness, brightness, brightness, 1)
 	screen.DrawImage(img, &opts)
 
 	return nil

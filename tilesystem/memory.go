@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/colorm"
 )
 
 // What the player remembers of the terrain and the features on it, which can differ from what's there now. It's kept in regions that are
@@ -199,6 +200,7 @@ func (cc *ChunkContainer) DrawMemory(
 	minRegion, _ := memoryIndex(utils.WorldPosToTilePos(camera))
 	maxRegion, _ := memoryIndex(utils.WorldPosToTilePos(camera.Add(view)))
 	bakesLeft := data.MaxMemoryBakesPerFrame
+	look := memoryLook()
 
 	for y := minRegion.Y; y <= maxRegion.Y; y++ {
 		for x := minRegion.X; x <= maxRegion.X; x++ {
@@ -218,11 +220,19 @@ func (cc *ChunkContainer) DrawMemory(
 			}
 
 			topLeft := memoryRegionBounds(pos)[0]
-			op := &ebiten.DrawImageOptions{}
+			op := &colorm.DrawImageOptions{}
 			op.GeoM.Translate(topLeft.X-camera.X, topLeft.Y-camera.Y)
-			dst.DrawImage(r.image, op)
+			colorm.DrawImage(dst, r.image, look, op)
 		}
 	}
+}
+
+// Regions are baked as they were seen, and given this look as they're drawn, so that changing it never needs them
+// baked again
+func memoryLook() colorm.ColorM {
+	var look colorm.ColorM
+	look.ChangeHSV(0, data.MemorySaturation, data.MemoryBrightness)
+	return look
 }
 
 func (cc *ChunkContainer) bakeMemoryRegion(
@@ -246,7 +256,6 @@ func (cc *ChunkContainer) bakeMemoryRegion(
 
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(float64(i%data.MemoryRegionSize*data.TileSize), float64(i/data.MemoryRegionSize*data.TileSize))
-		op.ColorScale.Scale(data.MemoryBrightness, data.MemoryBrightness, data.MemoryBrightness, 1)
 		r.image.DrawImage(def.image, op)
 	}
 

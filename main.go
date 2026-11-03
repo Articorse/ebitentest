@@ -449,6 +449,8 @@ func (g *game) Draw(screen *ebiten.Image) {
 	g.drawWorld(world)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(g.ecs.Zoom, g.ecs.Zoom)
+	r, gr, b := nightTint(ecs.Darkness(g.ecs.TickIdx))
+	op.ColorScale.Scale(r, gr, b, 1)
 	screen.DrawImage(world, op)
 
 	isVisible := func(utils.Vec2f) bool { return true }
@@ -468,6 +470,12 @@ func (g *game) Draw(screen *ebiten.Image) {
 	if g.showFPS {
 		g.drawDebugText(screen, fmt.Sprintf("FPS: %f\nSlowest frame: %.2f ms", ebiten.ActualFPS(), g.frameTimes.slowestMs()))
 	}
+}
+
+// White by day, data.NightTint at full night
+func nightTint(darkness float64) (r, g, b float32) {
+	lerp := func(c uint8) float32 { return float32(1 + (float64(c)/255-1)*darkness) }
+	return lerp(data.NightTint.R), lerp(data.NightTint.G), lerp(data.NightTint.B)
 }
 
 // Big enough to cover the screen once scaled up by the zoom
@@ -557,7 +565,7 @@ func (g *game) drawDebugText(screen *ebiten.Image, msg string) {
 // Entities are never remembered, only the terrain and the features on it
 func (g *game) drawMemory(dst *ebiten.Image, camera utils.Vec2f) {
 	g.chunkContainer.DrawMemory(dst, camera, func(dst *ebiten.Image, camera utils.Vec2f, sprites []common.StaticSprite) {
-		if err := drawsystem.DrawStaticSprites(dst, camera, sprites, data.MemoryBrightness, g.assetmanager); err != nil {
+		if err := drawsystem.DrawStaticSprites(dst, camera, sprites, g.assetmanager); err != nil {
 			log.Println("error while drawing remembered features: ", err)
 		}
 	})
