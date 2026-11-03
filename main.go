@@ -518,6 +518,8 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		}
 	}
 
+	g.chunkContainer.DrawRoofShade(world, g.ecs.Camera)
+
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
 		if pos, err := g.ecs.WorldPos(g.playerEntity); err == nil {
 			g.visionOverlay.Draw(world, g.ecs.Camera, pos, vision, g.drawMemory)

@@ -11,6 +11,7 @@ import (
 
 type chunk struct {
 	tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
+	roofs         [data.ChunkSize * data.ChunkSize]data.RoofEnum
 	promotedTiles map[utils.Vec2i]promotedTile
 	features      map[utils.Vec2i]data.FeatureEnum
 	// Only for damaged features
@@ -18,10 +19,18 @@ type chunk struct {
 	terrainModified bool
 
 	Image *ebiten.Image
+	// One pixel per tile, to be multiplied over what's drawn on the chunk. Nil until it's needed, and for chunks without
+	// a roof, which roofsChecked tells apart.
+	roofShade    *ebiten.Image
+	roofsChecked bool
 }
 
 func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
-	c := chunk{tiles: worldgen.ChunkTiles(cc.seed, pos), features: worldgen.ChunkFeatures(cc.seed, pos)}
+	c := chunk{
+		tiles:    worldgen.ChunkTiles(cc.seed, pos),
+		roofs:    worldgen.ChunkRoofs(cc.seed, pos),
+		features: worldgen.ChunkFeatures(cc.seed, pos),
+	}
 	c.promotedTiles = make(map[utils.Vec2i]promotedTile)
 	c.featureHealth = make(map[utils.Vec2i]int)
 
@@ -112,6 +121,15 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, tile data.TileEnum) {
 		return
 	}
 	drawTileInto(c.Image, idx, def.image)
+}
+
+// False where no chunk is active
+func (cc *ChunkContainer) RoofAt(t utils.Vec2i) (data.RoofEnum, bool) {
+	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	if !ok {
+		return data.Roof_None, false
+	}
+	return c.roofs[c.tileIndex(t)], true
 }
 
 // False where no chunk is active

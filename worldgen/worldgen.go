@@ -31,6 +31,24 @@ func ChunkTiles(seed uint64, chunkPos utils.Vec2i) [data.ChunkSize * data.ChunkS
 	return tiles
 }
 
+// Mountains are roofed whole, rock and caves alike, so that tunnels dug into them stay under their roof
+func ChunkRoofs(seed uint64, chunkPos utils.Vec2i) [data.ChunkSize * data.ChunkSize]data.RoofEnum {
+	var roofs [data.ChunkSize * data.ChunkSize]data.RoofEnum
+	for y := range data.ChunkSize {
+		for x := range data.ChunkSize {
+			roofs[y*data.ChunkSize+x] = Roof(seed, utils.Vec2i{X: chunkPos.X*data.ChunkSize + x, Y: chunkPos.Y*data.ChunkSize + y})
+		}
+	}
+	return roofs
+}
+
+func Roof(seed uint64, tilePos utils.Vec2i) data.RoofEnum {
+	if isRock(seed, tilePos) {
+		return data.Roof_Rock
+	}
+	return data.Roof_None
+}
+
 func Tile(seed uint64, tilePos utils.Vec2i) data.TileEnum {
 	if isRock(seed, tilePos) {
 		if isCave(seed, tilePos) {

@@ -98,6 +98,7 @@ func (cc *ChunkContainer) StartCommit(header world.Header, ecsCont *ecs.ECSConta
 			Y:        pos.Y,
 			Tiles:    append([]data.TileEnum(nil), r.tiles[:]...),
 			Features: append([]data.FeatureEnum(nil), r.features[:]...),
+			Roofs:    append([]data.RoofEnum(nil), r.roofs[:]...),
 		}
 		inFlight.memoryVersions[pos] = r.version
 	}
@@ -286,7 +287,7 @@ func (cc *ChunkContainer) commit(req commitRequest) (committed bool, err error) 
 				discard()
 				return false, fmt.Errorf("failed to create chunk at %v to append entities to: %w", pos, err)
 			}
-			cDto = chunkDto{X: pos.X, Y: pos.Y, Tiles: c.tiles}
+			cDto = chunkDto{X: pos.X, Y: pos.Y, Tiles: c.tiles, Roofs: c.roofs, Features: featureDtos(c)}
 		}
 
 		if cDto.Entities == nil {

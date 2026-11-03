@@ -121,3 +121,42 @@ func surroundedByMountain(tiles []data.TileEnum, x, y, depth int) bool {
 	}
 	return true
 }
+
+func TestMountainsAreRoofedWholeAndNothingElseIs(t *testing.T) {
+	for _, seed := range []uint64{1, 7} {
+		roofed := 0
+		for y := range 300 {
+			for x := range 300 {
+				pos := utils.Vec2i{X: x, Y: y}
+				want := data.Roof_None
+				if isMountain(worldgen.Tile(seed, pos)) {
+					want = data.Roof_Rock
+				}
+				if got := worldgen.Roof(seed, pos); got != want {
+					t.Fatalf("seed %d: %v under %v is roofed with %v, want %v", seed, pos, worldgen.Tile(seed, pos), got, want)
+				}
+				if want != data.Roof_None {
+					roofed++
+				}
+			}
+		}
+		if roofed == 0 {
+			t.Fatalf("seed %d: nothing is roofed", seed)
+		}
+	}
+}
+
+func TestChunkRoofsMatchTheirWorldPositions(t *testing.T) {
+	const seed = 7
+	for _, chunkPos := range []utils.Vec2i{{X: 0, Y: 0}, {X: -3, Y: 5}} {
+		roofs := worldgen.ChunkRoofs(seed, chunkPos)
+		for y := range data.ChunkSize {
+			for x := range data.ChunkSize {
+				pos := utils.Vec2i{X: chunkPos.X*data.ChunkSize + x, Y: chunkPos.Y*data.ChunkSize + y}
+				if got, want := roofs[y*data.ChunkSize+x], worldgen.Roof(seed, pos); got != want {
+					t.Fatalf("chunk %v has roof %v at %v, want %v", chunkPos, got, pos, want)
+				}
+			}
+		}
+	}
+}

@@ -31,6 +31,7 @@ type memoryRegion struct {
 	tiles [data.MemoryRegionSize * data.MemoryRegionSize]data.TileEnum
 	// Feature_None where the tile had none, or isn't remembered
 	features [data.MemoryRegionSize * data.MemoryRegionSize]data.FeatureEnum
+	roofs    [data.MemoryRegionSize * data.MemoryRegionSize]data.RoofEnum
 	version  uint64
 	dirty    bool
 
@@ -43,13 +44,14 @@ type memoryRegionDto struct {
 	X, Y     int
 	Tiles    []data.TileEnum
 	Features []data.FeatureEnum
+	Roofs    []data.RoofEnum
 }
 
 func newMemory() memory {
 	return memory{regions: make(map[utils.Vec2i]*memoryRegion)}
 }
 
-func (m *memory) remember(t utils.Vec2i, tile data.TileEnum, feature data.FeatureEnum) {
+func (m *memory) remember(t utils.Vec2i, tile data.TileEnum, feature data.FeatureEnum, roof data.RoofEnum) {
 	pos, idx := memoryIndex(t)
 	r, ok := m.regions[pos]
 	if !ok {
@@ -57,7 +59,7 @@ func (m *memory) remember(t utils.Vec2i, tile data.TileEnum, feature data.Featur
 		m.regions[pos] = r
 	}
 
-	if r.tiles[idx] == tile && r.features[idx] == feature {
+	if r.tiles[idx] == tile && r.features[idx] == feature && r.roofs[idx] == roof {
 		return
 	}
 
@@ -65,6 +67,7 @@ func (m *memory) remember(t utils.Vec2i, tile data.TileEnum, feature data.Featur
 	m.version++
 	r.tiles[idx] = tile
 	r.features[idx] = feature
+	r.roofs[idx] = roof
 	r.version = m.version
 	r.dirty = true
 	r.imageStale = true
@@ -120,6 +123,20 @@ func memoryIndex(t utils.Vec2i) (region utils.Vec2i, idx int) {
 	return region, localY*data.MemoryRegionSize + localX
 }
 
+func (m *memory) recallRoof(t utils.Vec2i) data.RoofEnum {
+	pos, idx := memoryIndex(t)
+	r, ok := m.regions[pos]
+	if !ok {
+		return data.Roof_None
+	}
+	return r.roofs[idx]
+}
+
+// Roof_None where nothing is remembered
+func (cc *ChunkContainer) RecallRoof(t utils.Vec2i) data.RoofEnum {
+	return cc.memory.recallRoof(t)
+}
+
 func (cc *ChunkContainer) RecallTile(t utils.Vec2i) (data.TileEnum, bool) {
 	return cc.memory.recall(t)
 }
@@ -165,7 +182,7 @@ func (cc *ChunkContainer) RememberSeenTiles(viewerPos utils.Vec2f, vision *ecs.V
 			if !ok {
 				continue
 			}
-			cc.memory.remember(t, c.getTileDefId(t), c.features[t])
+			cc.memory.remember(t, c.getTileDefId(t), c.features[t], c.roofs[c.tileIndex(t)])
 		}
 	}
 }
@@ -265,6 +282,16 @@ func (cc *ChunkContainer) bakeMemoryRegion(
 	reach := utils.Vec2f{X: data.MemoryFeatureReachTiles * data.TileSize, Y: data.MemoryFeatureReachTiles * data.TileSize}
 	drawFeatures(r.image, bounds[0], cc.RememberedFeatureSprites([2]utils.Vec2f{bounds[0].Subtract(reach), bounds[1].Add(reach)}))
 
+	if pixels, roofed := roofShadePixels(r.roofs[:]); roofed {
+		if cc.memoryRoofShade == nil {
+			cc.memoryRoofShade = ebiten.NewImage(data.MemoryRegionSize, data.MemoryRegionSize)
+		}
+		cc.memoryRoofShade.WritePixels(pixels)
+		op := &ebiten.DrawImageOptions{Blend: blendMultiply}
+		op.GeoM.Scale(data.TileSize, data.TileSize)
+		r.image.DrawImage(cc.memoryRoofShade, op)
+	}
+
 	r.imageStale = false
 }
 
@@ -288,13 +315,15 @@ func (cc *ChunkContainer) LoadMemory() error {
 		if err != nil {
 			return err
 		}
-		if n := data.MemoryRegionSize * data.MemoryRegionSize; len(dto.Tiles) != n || len(dto.Features) != n {
-			return fmt.Errorf("memory file %s has %d tiles and %d features, want %d of each", name, len(dto.Tiles), len(dto.Features), n)
+		if n := data.MemoryRegionSize * data.MemoryRegionSize; len(dto.Tiles) != n || len(dto.Features) != n || len(dto.Roofs) != n {
+			return fmt.Errorf("memory file %s has %d tiles, %d features and %d roofs, want %d of each",
+				name, len(dto.Tiles), len(dto.Features), len(dto.Roofs), n)
 		}
 
 		r := &memoryRegion{}
 		copy(r.tiles[:], dto.Tiles)
 		copy(r.features[:], dto.Features)
+		copy(r.roofs[:], dto.Roofs)
 		cc.memory.regions[utils.Vec2i{X: dto.X, Y: dto.Y}] = r
 	}
 

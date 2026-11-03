@@ -15,6 +15,7 @@ type chunkDto struct {
 	X               int
 	Y               int
 	Tiles           [data.ChunkSize * data.ChunkSize]data.TileEnum
+	Roofs           [data.ChunkSize * data.ChunkSize]data.RoofEnum
 	PromotedTiles   []promotedTileDto
 	Entities        map[common.EntityId][]ecs.ComponentDto
 	TerrainModified bool
@@ -53,14 +54,6 @@ func (cc *ChunkContainer) chunkToDto(
 		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
 	})
 
-	features := make([]featureDto, 0, len(c.features))
-	for t, f := range c.features {
-		features = append(features, featureDto{X: t.X, Y: t.Y, Feature: f, Health: c.featureHealth[t]})
-	}
-	slices.SortFunc(features, func(a, b featureDto) int {
-		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
-	})
-
 	entitiesWithComps := make(map[common.EntityId][]ecs.ComponentDto)
 	for _, root := range cc.currentTickEIdsInChunks[pos] {
 		if !ecsCont.Persistents.HasComponent(root) {
@@ -78,11 +71,24 @@ func (cc *ChunkContainer) chunkToDto(
 		X:               pos.X,
 		Y:               pos.Y,
 		Tiles:           c.tiles,
+		Roofs:           c.roofs,
 		PromotedTiles:   promotedTiles,
 		Entities:        entitiesWithComps,
 		TerrainModified: c.terrainModified,
-		Features:        features,
+		Features:        featureDtos(c),
 	}, nil
+}
+
+// In tile order, so that saving the same chunk twice writes the same file
+func featureDtos(c *chunk) []featureDto {
+	features := make([]featureDto, 0, len(c.features))
+	for t, f := range c.features {
+		features = append(features, featureDto{X: t.X, Y: t.Y, Feature: f, Health: c.featureHealth[t]})
+	}
+	slices.SortFunc(features, func(a, b featureDto) int {
+		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
+	})
+	return features
 }
 
 func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
@@ -105,6 +111,7 @@ func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 
 	chunk := &chunk{
 		tiles:           dto.Tiles,
+		roofs:           dto.Roofs,
 		promotedTiles:   promotedTiles,
 		features:        features,
 		featureHealth:   featureHealth,

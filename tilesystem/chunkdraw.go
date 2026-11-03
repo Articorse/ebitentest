@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -103,12 +104,75 @@ func drawTileInto(chunkImage *ebiten.Image, idx int, tile *ebiten.Image) {
 }
 
 func (x *chunk) freeImage() {
-	if x.Image == nil {
-		return
+	if x.Image != nil {
+		x.Image.Deallocate()
+		x.Image = nil
 	}
+	if x.roofShade != nil {
+		x.roofShade.Deallocate()
+		x.roofShade = nil
+		x.roofsChecked = false
+	}
+}
 
-	x.Image.Deallocate()
-	x.Image = nil
+var blendMultiply = ebiten.Blend{
+	BlendFactorSourceRGB:        ebiten.BlendFactorDestinationColor,
+	BlendFactorSourceAlpha:      ebiten.BlendFactorZero,
+	BlendFactorDestinationRGB:   ebiten.BlendFactorZero,
+	BlendFactorDestinationAlpha: ebiten.BlendFactorOne,
+	BlendOperationRGB:           ebiten.BlendOperationAdd,
+	BlendOperationAlpha:         ebiten.BlendOperationAdd,
+}
+
+// Darkens everything drawn under a roof, tiles, features and entities alike, so it's drawn after all of them
+func (cc *ChunkContainer) DrawRoofShade(screen *ebiten.Image, camera utils.Vec2f) {
+	size := screen.Bounds().Size()
+	onScreen := cameraBounds(camera, utils.Vec2f{X: float64(size.X), Y: float64(size.Y)}, 0)
+
+	for ck, c := range cc.chunks {
+		bounds := chunkDrawBounds(ck)
+		if !utils.DetectAABBCollision(bounds, onScreen) {
+			continue
+		}
+
+		shade := c.roofShadeImage()
+		if shade == nil {
+			continue
+		}
+		op := &ebiten.DrawImageOptions{Blend: blendMultiply}
+		op.GeoM.Scale(data.TileSize, data.TileSize)
+		op.GeoM.Translate(bounds[0].X-camera.X, bounds[0].Y-camera.Y)
+		screen.DrawImage(shade, op)
+	}
+}
+
+func (x *chunk) roofShadeImage() *ebiten.Image {
+	if x.roofsChecked {
+		return x.roofShade
+	}
+	x.roofsChecked = true
+
+	pixels, roofed := roofShadePixels(x.roofs[:])
+	if !roofed {
+		return nil
+	}
+	x.roofShade = ebiten.NewImage(data.ChunkSize, data.ChunkSize)
+	x.roofShade.WritePixels(pixels)
+	return x.roofShade
+}
+
+// White where there's no roof, so that multiplying by it leaves what's there as it is
+func roofShadePixels(roofs []data.RoofEnum) (pixels []byte, roofed bool) {
+	pixels = make([]byte, 4*len(roofs))
+	shade := byte(math.Round(data.RoofShade * 255))
+	for i, roof := range roofs {
+		v := byte(255)
+		if roof != data.Roof_None {
+			v, roofed = shade, true
+		}
+		pixels[4*i], pixels[4*i+1], pixels[4*i+2], pixels[4*i+3] = v, v, v, 255
+	}
+	return pixels, roofed
 }
 
 // Outlines the colliders on screen of the features on the tiles that are included
