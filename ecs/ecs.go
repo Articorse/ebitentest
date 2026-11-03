@@ -72,6 +72,7 @@ type ECSContainer struct {
 	Swings            Storage[Swing]
 	Tosses            Storage[Toss]
 	DropTables        Storage[DropTable]
+	LightEmitters     Storage[LightEmitter]
 	Disabled          Storage[Disabled]
 }
 
@@ -107,6 +108,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&itemDto{})
 	gob.Register(&inventoryDto{})
 	gob.Register(&disabledDto{})
+	gob.Register(&lightEmitterDto{})
 
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
@@ -163,6 +165,7 @@ func NewECSContainer() *ECSContainer {
 		Swings:            newStorage[Swing](),
 		Tosses:            newStorage[Toss](),
 		DropTables:        newStorage[DropTable](),
+		LightEmitters:     newStorage[LightEmitter](),
 		Disabled:          newStorage[Disabled](),
 	}
 
@@ -198,6 +201,7 @@ func NewECSContainer() *ECSContainer {
 		&x.Swings,
 		&x.Tosses,
 		&x.DropTables,
+		&x.LightEmitters,
 		&x.Disabled,
 	}
 
@@ -412,8 +416,10 @@ func (x *ECSContainer) GetEntityComponents(eId common.EntityId) []ComponentDto {
 	var comps []ComponentDto
 
 	for _, s := range x.storages {
-		// A generic item's sprite and equipment come from the item atlas when it's loaded
-		if (s == componentStorage(&x.Sprites) || s == componentStorage(&x.Equipments)) && x.isGenericItem(eId) {
+		// A generic item's sprite, animation, equipment and light come from the item atlas when it's loaded
+		fromAtlas := s == componentStorage(&x.Sprites) || s == componentStorage(&x.Animations) ||
+			s == componentStorage(&x.Equipments) || s == componentStorage(&x.LightEmitters)
+		if fromAtlas && x.isGenericItem(eId) {
 			continue
 		}
 

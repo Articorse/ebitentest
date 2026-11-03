@@ -3,6 +3,7 @@ package ecs_test
 import (
 	"ebittest/data"
 	"ebittest/ecs"
+	"ebittest/ecs/common"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"testing"
@@ -171,5 +172,79 @@ func TestATorchOutsideTheSquareStillLightsIt(t *testing.T) {
 	}
 	if got := m.At(utils.Vec2i{X: 27}); got != 30 {
 		t.Fatalf("at the square's edge, 8 tiles from a torch outside it, the light is %d, want 30", got)
+	}
+}
+
+// A holder whose own tile is the one given, holding a light emitter with a local offset into the next tile over
+func holdLight(t *testing.T, x *ecs.ECSContainer, tile utils.Vec2i, linkKind ecs.LinkKindEnum) (holder, light common.EntityId) {
+	t.Helper()
+	emitter, err := ecs.NewLightEmitterComponent(150, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	holder = testutil.AddMovable(t, x, utils.TilePosToWorldPos(tile), false)
+	light = testutil.AddMovable(t, x, utils.Vec2f{X: data.TileSize}, false, emitter)
+	testutil.Attach(t, x, light, holder, linkKind)
+	return holder, light
+}
+
+func lightOf(t *testing.T, x *ecs.ECSContainer) *ecs.LightMap {
+	t.Helper()
+	x.SetTerrain(skyTerrain{Terrain: x.Terrain(), roofed: roofedEverywhere})
+	x.TickIdx = nightTick
+	m := &ecs.LightMap{}
+	x.LightAround(utils.Vec2i{}, 20, m)
+	return m
+}
+
+func TestAHeldLightShinesFromItsHoldersTileLikeATorch(t *testing.T) {
+	x := testutil.NewECS(t)
+	holdLight(t, x, utils.Vec2i{X: 2}, ecs.Link_Held)
+	m := lightOf(t, x)
+
+	for tile, want := range map[utils.Vec2i]uint8{{X: 2}: 150, {X: 7}: 75, {X: -3}: 75, {X: 12}: 0} {
+		if got := m.At(tile); got != want {
+			t.Errorf("at %v, held light 150 from (2, 0) lights %d, want %d", tile, got, want)
+		}
+	}
+}
+
+func TestOnlyAnEnabledHeldLightShines(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(x *ecs.ECSContainer)
+	}{
+		{"put away", func(x *ecs.ECSContainer) {
+			_, light := holdLight(t, x, utils.Vec2i{}, ecs.Link_Held)
+			x.SetDisabled(light, true)
+		}},
+		{"attached rather than held", func(x *ecs.ECSContainer) {
+			holdLight(t, x, utils.Vec2i{}, ecs.Link_Attached)
+		}},
+		{"lying loose", func(x *ecs.ECSContainer) {
+			emitter, err := ecs.NewLightEmitterComponent(150, 10)
+			if err != nil {
+				t.Fatal(err)
+			}
+			testutil.AddMovable(t, x, utils.Vec2f{}, false, emitter)
+		}},
+	}
+	for _, c := range cases {
+		x := testutil.NewECS(t)
+		c.setup(x)
+		if got := lightOf(t, x).At(utils.Vec2i{}); got != 0 {
+			t.Errorf("a light %s lights %d", c.name, got)
+		}
+	}
+}
+
+func TestLightEmittersNeedLight(t *testing.T) {
+	for _, c := range []struct {
+		level uint8
+		reach int
+	}{{0, 10}, {150, 0}, {150, -1}} {
+		if _, err := ecs.NewLightEmitterComponent(c.level, c.reach); err == nil {
+			t.Errorf("light %d up to %d tiles away was accepted", c.level, c.reach)
+		}
 	}
 }

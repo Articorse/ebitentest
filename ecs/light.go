@@ -44,8 +44,8 @@ func (m *LightMap) index(x, y int) (int, bool) {
 // directions, losing data.LightFalloffPerTile with each step. Opaque tiles are lit, so that walls facing the light can be
 // seen, but don't pass it on. Where light arrives from several places, the brightest wins.
 //
-// Features such as torches light what they can see, fading with distance rather than spreading around corners, so their
-// shadows are sharp.
+// Features such as torches, and light emitters such as torches in hand, light what they can see, fading with distance
+// rather than spreading around corners, so their shadows are sharp.
 //
 // Sky light reaching a tile can only have come from within data.MaxLight / data.LightFalloffPerTile steps of it, so the
 // tiles that far beyond the square are worked out too, and the square's own light is exact.
@@ -104,22 +104,38 @@ func (x *ECSContainer) LightAround(center utils.Vec2i, radius int, m *LightMap) 
 
 	areaMin := utils.Vec2i{X: center.X - m.radius, Y: center.Y - m.radius}
 	areaMax := utils.Vec2i{X: center.X + m.radius, Y: center.Y + m.radius}
-	x.terrain.LightSources(areaMin, areaMax, func(source utils.Vec2i, level uint8, rangeTiles int) {
+	shine := func(source utils.Vec2i, level uint8, rangeTiles int) {
 		fov.Compute(source, rangeTiles, x.terrain.IsOpaqueTile, func(t utils.Vec2i) {
 			i, ok := m.index(t.X-areaMin.X, t.Y-areaMin.Y)
 			if !ok {
 				return
 			}
-			if lit := featureLightAt(t.X-source.X, t.Y-source.Y, level, rangeTiles); lit > m.levels[i] {
+			if lit := fadingLightAt(t.X-source.X, t.Y-source.Y, level, rangeTiles); lit > m.levels[i] {
 				m.levels[i] = lit
 			}
 		})
-	})
+	}
+	x.terrain.LightSources(areaMin, areaMax, shine)
+
+	for e, emitter := range Query1(&x.LightEmitters, Without(&x.Disabled)) {
+		if x.LinkKind(e) != Link_Held {
+			continue
+		}
+		pos, err := x.WorldPos(x.Parent(e))
+		if err != nil {
+			continue
+		}
+
+		source, r := utils.WorldPosToTilePos(pos), emitter.rangeTiles
+		if source.X+r >= areaMin.X && source.X-r <= areaMax.X && source.Y+r >= areaMin.Y && source.Y-r <= areaMax.Y {
+			shine(source, emitter.level, r)
+		}
+	}
 }
 
 // Fading linearly with distance, to nothing at the light's range. In integers, so that it's the same on every machine:
 // level·(range−d)/range rounded down is (level·range − ⌈level·d⌉)/range rounded down, and level·d = √(level²·d²).
-func featureLightAt(dx, dy int, level uint8, rangeTiles int) uint8 {
+func fadingLightAt(dx, dy int, level uint8, rangeTiles int) uint8 {
 	l := int(level)
 	return uint8(max((l*rangeTiles-utils.CeilSqrt(l*l*(dx*dx+dy*dy)))/rangeTiles, 0))
 }

@@ -5,6 +5,7 @@ import (
 	"ebittest/ecs/common"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 )
 
@@ -16,6 +17,11 @@ type ItemDef struct {
 	maxStack   int
 	// Nil for items that do nothing in hand
 	use *itemUse
+	// Nil for a still image
+	animation []AnimationFrame
+	// 0 for items that give no light in hand
+	lightLevel      uint8
+	lightRangeTiles int
 }
 
 // The ability a generic item has in hand, which is decoded once the abilities it can name are registered
@@ -46,11 +52,24 @@ type ItemAtlas struct {
 }
 
 type itemDefDTO struct {
-	Id         uint16      `json:"id"`
-	Name       string      `json:"name"`
-	ImageAsset string      `json:"imageAsset"`
-	MaxStack   int         `json:"maxStack"`
-	Use        *itemUseDTO `json:"use"`
+	Id         uint16         `json:"id"`
+	Name       string         `json:"name"`
+	ImageAsset string         `json:"imageAsset"`
+	MaxStack   int            `json:"maxStack"`
+	Use        *itemUseDTO    `json:"use"`
+	Animation  []itemFrameDTO `json:"animation"`
+	Light      *itemLightDTO  `json:"light"`
+}
+
+type itemFrameDTO struct {
+	FrameIdx   int `json:"frame"`
+	DurationMs int `json:"durationMs"`
+}
+
+// Given while the item is in hand
+type itemLightDTO struct {
+	Level      uint8 `json:"level"`
+	RangeTiles int   `json:"rangeTiles"`
 }
 
 type itemUseDTO struct {
@@ -95,6 +114,18 @@ func LoadItemAtlasFromJson(path string) (*ItemAtlas, error) {
 				return nil, fmt.Errorf("item %d has a negative cooldown", dto.Id)
 			}
 			def.use = &itemUse{ability: AbilityEnum(u.Ability), cooldownMs: u.CooldownMs, rawParams: u.Params}
+		}
+		for _, f := range dto.Animation {
+			if f.FrameIdx < 0 || f.FrameIdx > math.MaxUint16 || f.DurationMs <= 0 {
+				return nil, fmt.Errorf("item %d has an animation frame %d lasting %dms", dto.Id, f.FrameIdx, f.DurationMs)
+			}
+			def.animation = append(def.animation, AnimationFrame{FrameIdx: uint16(f.FrameIdx), DurationMs: uint64(f.DurationMs)})
+		}
+		if l := dto.Light; l != nil {
+			if l.Level == 0 || l.RangeTiles <= 0 {
+				return nil, fmt.Errorf("item %d gives light %d up to %d tiles away, which isn't positive", dto.Id, l.Level, l.RangeTiles)
+			}
+			def.lightLevel, def.lightRangeTiles = l.Level, l.RangeTiles
 		}
 		atlas.defs[kind] = def
 	}

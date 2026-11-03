@@ -265,8 +265,8 @@ func (x Item) Copy() Item {
 	return x
 }
 
-// A generic item gets its sprite, and its equipment if it has a use, from the atlas whenever it's added, spawned or
-// loaded, since those aren't saved
+// A generic item gets its sprite, and its animation, equipment and light if it has them, from the atlas whenever it's
+// added, spawned or loaded, since those aren't saved
 func (x Item) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 	ecsContainer.Items.addComponent(e, x.Copy())
 
@@ -283,12 +283,30 @@ func (x Item) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 		ecsContainer.AddComponent(e, eq)
 	}
 
+	if def.lightLevel > 0 {
+		light, err := NewLightEmitterComponent(def.lightLevel, def.lightRangeTiles)
+		if err != nil {
+			log.Printf("error creating the light of item %d: %v", e, err)
+		} else {
+			ecsContainer.AddComponent(e, light)
+		}
+	}
+
 	spr, err := NewSpriteComponent(def.imageAsset, data.ItemSpriteLayer, false)
 	if err != nil {
 		log.Printf("error creating the sprite of item %d: %v", e, err)
 		return
 	}
 	ecsContainer.AddComponent(e, spr)
+
+	if len(def.animation) > 0 {
+		anim, err := NewAnimationComponent(def.imageAsset, map[AnimationState][]AnimationFrame{Anim_Idle: def.animation})
+		if err != nil {
+			log.Printf("error creating the animation of item %d: %v", e, err)
+			return
+		}
+		ecsContainer.AddComponent(e, anim)
+	}
 }
 
 func (x *ECSContainer) isGenericItem(e common.EntityId) bool {

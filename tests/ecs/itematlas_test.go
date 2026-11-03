@@ -29,6 +29,10 @@ func TestTheItemAtlasRefusesBrokenItems(t *testing.T) {
 		{"no name", `[{"id": 1, "imageAsset": "planks", "maxStack": 1}]`},
 		{"no image", `[{"id": 1, "name": "Planks", "maxStack": 1}]`},
 		{"a stack of nothing", `[{"id": 1, "name": "Planks", "imageAsset": "planks", "maxStack": 0}]`},
+		{"no light", `[{"id": 1, "name": "Torch", "imageAsset": "planks", "maxStack": 1, "light": {"level": 0, "rangeTiles": 10}}]`},
+		{"light reaching nowhere", `[{"id": 1, "name": "Torch", "imageAsset": "planks", "maxStack": 1, "light": {"level": 150, "rangeTiles": 0}}]`},
+		{"a frame that doesn't last", `[{"id": 1, "name": "Torch", "imageAsset": "planks", "maxStack": 1, "animation": [{"frame": 0, "durationMs": 0}]}]`},
+		{"a negative frame", `[{"id": 1, "name": "Torch", "imageAsset": "planks", "maxStack": 1, "animation": [{"frame": -1, "durationMs": 150}]}]`},
 		{"an id used twice", `[{"id": 1, "name": "A", "imageAsset": "planks", "maxStack": 1}, {"id": 1, "name": "B", "imageAsset": "planks", "maxStack": 1}]`},
 	} {
 		if _, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, c.json)); err == nil {
@@ -261,5 +265,48 @@ func TestStacksAreSpawnedUpToTheirLimit(t *testing.T) {
 		if _, err := x.SpawnItemStack(data.Item_Torch, count, utils.Vec2f{}); err == nil {
 			t.Errorf("a stack of %d torches was spawned", count)
 		}
+	}
+}
+
+func TestATorchsFlickerAndLightComeFromTheAtlasNotTheSave(t *testing.T) {
+	x := testutil.NewECS(t)
+	torch, err := x.SpawnItem(data.Item_Torch, utils.Vec2f{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !x.Animations.HasComponent(torch) || !x.LightEmitters.HasComponent(torch) {
+		t.Fatal("a spawned torch doesn't flicker or give light")
+	}
+
+	members, err := x.GetCompositionComponents(torch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	comps := []ecs.Component{}
+	for _, dto := range members[torch] {
+		comp, err := ecs.DtoToComponent(dto)
+		if err != nil {
+			t.Fatal(err)
+		}
+		switch comp.(type) {
+		case *ecs.Animation, *ecs.LightEmitter:
+			t.Fatalf("a torch's %T was saved, but it should come from the atlas", comp)
+		}
+		comps = append(comps, comp)
+	}
+
+	y := testutil.NewECS(t)
+	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, `[{"id": 2, "name": "Torch", "imageAsset": "torch_placed", "maxStack": 100}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := y.SetItemAtlas(atlas); err != nil {
+		t.Fatal(err)
+	}
+	if err := y.AddEntityWithId(torch, comps...); err != nil {
+		t.Fatal(err)
+	}
+	if y.Animations.HasComponent(torch) || y.LightEmitters.HasComponent(torch) {
+		t.Fatal("a loaded torch flickers or gives light, but the atlas says now it doesn't")
 	}
 }

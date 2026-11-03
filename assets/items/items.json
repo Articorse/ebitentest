@@ -15,6 +15,13 @@
     "name": "Torch",
     "imageAsset": "torch_placed",
     "maxStack": 100,
+    "animation": [
+      { "frame": 0, "durationMs": 150 },
+      { "frame": 1, "durationMs": 150 },
+      { "frame": 2, "durationMs": 150 },
+      { "frame": 1, "durationMs": 150 }
+    ],
+    "light": { "level": 200, "rangeTiles": 10 },
     "use": {
       "ability": 8,
       "cooldownMs": 250,

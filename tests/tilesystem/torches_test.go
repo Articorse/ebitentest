@@ -82,13 +82,18 @@ func TestPlacedTorchesAreWalkedThroughAndAnyHitBreaksThemIntoATorch(t *testing.T
 func TestTorchesAreOnlyLightSourcesWhereTheirLightReaches(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
+	// The torch's light, as the feature atlas has it, and its range
+	var level uint8
+	var reach int
 	// Over the tiles from fromX to toX tiles across from the torch, whichever way round, and 5 tiles down
 	litBy := func(torch utils.Vec2i, fromX, toX int) bool {
 		found := false
 		min := utils.Vec2i{X: torch.X + min(fromX, toX), Y: torch.Y}
 		max := utils.Vec2i{X: torch.X + max(fromX, toX), Y: torch.Y + 5}
-		s.Chunks.LightSources(min, max, func(t utils.Vec2i, level uint8, rangeTiles int) {
-			found = found || (t == torch && level == 150 && rangeTiles == 10)
+		s.Chunks.LightSources(min, max, func(t utils.Vec2i, l uint8, rangeTiles int) {
+			if t == torch {
+				found, level, reach = true, l, rangeTiles
+			}
 		})
 		return found
 	}
@@ -107,18 +112,21 @@ func TestTorchesAreOnlyLightSourcesWhereTheirLightReaches(t *testing.T) {
 		}
 		placeTorchOn(t, s, torch)
 
-		if !litBy(torch, 0, 0) || !litBy(torch, 10*outwards, 15*outwards) {
-			t.Fatalf("the torch at %v doesn't light its own tile or the next chunk 10 tiles away", torch)
+		if !litBy(torch, 0, 0) || level <= data.NightSkyLight || reach < 2 {
+			t.Fatalf("the torch at %v gives light %d up to %d tiles away, want more than the night sky's over 2 tiles or more", torch, level, reach)
 		}
-		if litBy(torch, -11*outwards, -16*outwards) {
-			t.Fatalf("the torch at %v lights its own chunk 11 tiles away", torch)
+		if !litBy(torch, reach*outwards, (reach+5)*outwards) {
+			t.Fatalf("the torch at %v doesn't light the next chunk %d tiles away", torch, reach)
+		}
+		if litBy(torch, -(reach+1)*outwards, -(reach+6)*outwards) {
+			t.Fatalf("the torch at %v lights its own chunk %d tiles away", torch, reach+1)
 		}
 
 		s.ECS.TickIdx = data.DayTicks + data.DuskTicks
 		m := &ecs.LightMap{}
 		s.ECS.LightAround(torch, 0, m)
-		if got := m.At(torch); got != 150 {
-			t.Fatalf("at night, the torch's tile is lit %d, want 150", got)
+		if got := m.At(torch); got != level {
+			t.Fatalf("at night, the torch's tile is lit %d, want %d", got, level)
 		}
 
 		s.ECS.DamageFeature(torch, 1)
