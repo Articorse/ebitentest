@@ -40,9 +40,17 @@ func HandleInputs(
 		input := allInputs[e]
 
 		// Before facing and using equipment, so that a newly selected item is aimed before its first use
-		if inv, ok := ecsContainer.Inventories.Get(e); ok && input.SelectSlot > 0 && input.SelectSlot-1 != inv.Selected() {
-			if err := ecsContainer.SelectHotbarSlot(e, input.SelectSlot-1); err != nil {
-				log.Printf("error selecting slot %d of entity %d: %v\n", input.SelectSlot, e, err)
+		if inv, ok := ecsContainer.Inventories.Get(e); ok {
+			slot := inv.Selected()
+			if input.SelectSlot > 0 {
+				slot = input.SelectSlot - 1
+			} else if size := inv.HotbarSize(); size > 0 {
+				slot = ((slot+input.ScrollSlot)%size + size) % size
+			}
+			if slot != inv.Selected() {
+				if err := ecsContainer.SelectHotbarSlot(e, slot); err != nil {
+					log.Printf("error selecting slot %d of entity %d: %v\n", slot+1, e, err)
+				}
 			}
 		}
 

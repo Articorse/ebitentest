@@ -15,9 +15,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// The player's inventory, as a grid of slots in the middle of the screen. An item is picked up with a click and put
-// down with another; nothing in the simulation changes until it's put down, so closing the menu while holding an item
-// leaves it where it was. Positions are in UI pixels throughout.
+// The player's inventory, as a grid of slots at the bottom of the screen, below the player. An item is picked up with a
+// click and put down with another; nothing in the simulation changes until it's put down, so closing the menu while
+// holding an item leaves it where it was. Positions are in UI pixels throughout.
 type InventoryMenu struct {
 	open bool
 	// The inventory slot of the item picked up
@@ -49,8 +49,8 @@ func newInventoryLayout(screenSize utils.Vec2f, assets *assetmanager.AssetManage
 	s := slot.FrameSize
 	gridW := data.InventoryColumns*s.X + (data.InventoryColumns-1)*data.HotbarSlotGapPx
 	gridH := data.InventoryRows*s.Y + (data.InventoryRows-1)*data.HotbarSlotGapPx
-	start := utils.Vec2f{X: (screenSize.X - gridW) / 2, Y: (screenSize.Y - gridH) / 2}
 	pad := float64(data.InventoryPanelPaddingPx)
+	start := utils.Vec2f{X: (screenSize.X - gridW) / 2, Y: screenSize.Y - data.InventoryMarginPx - pad - gridH}
 	panel := image.Rect(int(start.X-pad), int(start.Y-pad), int(start.X+gridW+pad), int(start.Y+gridH+pad))
 	return inventoryLayout{slotSize: s, panel: panel, gridStart: start, screenH: screenSize.Y}, nil
 }
@@ -61,6 +61,14 @@ func (l inventoryLayout) slotPos(i int) utils.Vec2f {
 		X: l.gridStart.X + float64(col)*(l.slotSize.X+data.HotbarSlotGapPx),
 		Y: l.gridStart.Y + float64(row)*(l.slotSize.Y+data.HotbarSlotGapPx),
 	}
+}
+
+// The held item, unless its slot was emptied since, such as by moving all of it onto a stack
+func (m *InventoryMenu) heldItem(inv *ecs.Inventory) (common.EntityId, bool) {
+	if !m.holding {
+		return -1, false
+	}
+	return inv.Slot(m.held)
 }
 
 func within(p, topLeft, size utils.Vec2f) bool {
@@ -99,12 +107,38 @@ func (m *InventoryMenu) Covers(cursor, screenSize utils.Vec2f, inv *ecs.Inventor
 	}
 	overPanel := cursor.X >= float64(l.panel.Min.X) && cursor.X < float64(l.panel.Max.X) &&
 		cursor.Y >= float64(l.panel.Min.Y) && cursor.Y < float64(l.panel.Max.Y)
-	return m.holding || overPanel || l.hotbarSlotAt(cursor, inv.HotbarSize()) != -1
+	_, holding := m.heldItem(inv)
+	return holding || overPanel || l.hotbarSlotAt(cursor, inv.HotbarSize()) != -1
+}
+
+// The inventory slot under the cursor, or -1
+func (m *InventoryMenu) SlotAt(cursor, screenSize utils.Vec2f, inv *ecs.Inventory, assets *assetmanager.AssetManager) int {
+	if !m.open {
+		return -1
+	}
+	l, err := newInventoryLayout(screenSize, assets)
+	if err != nil {
+		return -1
+	}
+	return l.slotAt(cursor, inv.Capacity())
+}
+
+// Points the hotbar slot at the item under the cursor, or at nothing if the slot under it is empty
+func (m *InventoryMenu) HotbarKey(hotbarSlot int, cursor, screenSize utils.Vec2f, inv *ecs.Inventory, assets *assetmanager.AssetManager) ecs.InventoryAction {
+	slot := m.SlotAt(cursor, screenSize, inv, assets)
+	if slot == -1 {
+		return ecs.InventoryAction{}
+	}
+	if _, full := inv.Slot(slot); full {
+		return ecs.InventoryAction{Kind: ecs.InventoryAction_Bind, From: slot, To: hotbarSlot}
+	}
+	return ecs.InventoryAction{Kind: ecs.InventoryAction_Unbind, To: hotbarSlot}
 }
 
 // What a click at the cursor does. Picking up and putting back only change the menu; putting an item down elsewhere
 // moves it, onto a hotbar slot points that slot at it, and clicking a hotbar slot with nothing held points it at
-// nothing.
+// nothing. Putting an item down on another picks that one up, and onto a stack of its kind keeps what didn't fit: both
+// end up in the slot the held item came from, so the menu goes on holding that slot, and lets go if it's emptied.
 func (m *InventoryMenu) Click(cursor, screenSize utils.Vec2f, inv *ecs.Inventory, assets *assetmanager.AssetManager) ecs.InventoryAction {
 	if !m.open {
 		return ecs.InventoryAction{}
@@ -113,10 +147,8 @@ func (m *InventoryMenu) Click(cursor, screenSize utils.Vec2f, inv *ecs.Inventory
 	if err != nil {
 		return ecs.InventoryAction{}
 	}
-	if m.holding {
-		if _, ok := inv.Slot(m.held); !ok {
-			m.holding = false
-		}
+	if _, ok := m.heldItem(inv); !ok {
+		m.holding = false
 	}
 
 	if slot := l.slotAt(cursor, inv.Capacity()); slot != -1 {
@@ -126,7 +158,7 @@ func (m *InventoryMenu) Click(cursor, screenSize utils.Vec2f, inv *ecs.Inventory
 		case m.holding && slot == m.held:
 			m.holding = false
 		case m.holding:
-			m.holding = false
+			m.holding = full
 			return ecs.InventoryAction{Kind: ecs.InventoryAction_Move, From: m.held, To: slot}
 		}
 		return ecs.InventoryAction{}
@@ -178,7 +210,7 @@ func (m *InventoryMenu) Draw(
 		screen.DrawImage(slot.Frames[0], op)
 
 		item, ok := inv.Slot(i)
-		if !ok || (m.holding && i == m.held) {
+		if held, holding := m.heldItem(inv); !ok || (holding && item == held) {
 			continue
 		}
 		if err := drawSlotItem(screen, scale, item, p.X+l.slotSize.X/2, p.Y+l.slotSize.Y/2, l.slotSize, ecsContainer, assets); err != nil {
@@ -191,7 +223,7 @@ func (m *InventoryMenu) Draw(
 		}
 	}
 
-	if item, ok := inv.Slot(m.held); m.holding && ok {
+	if item, ok := m.heldItem(inv); ok {
 		return drawSlotItem(screen, scale, item, cursor.X, cursor.Y, l.slotSize, ecsContainer, assets)
 	}
 	return nil

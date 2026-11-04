@@ -137,6 +137,9 @@ type Input struct {
 	lastFacingDir utils.Vec2f
 	// Not saved: a key held through loading only counts as pressed once more
 	held map[InputType]bool
+	// Wheel movement short of a whole step, so that a touchpad's small scrolls add up rather than each counting as one.
+	// Forgotten when the wheel turns the other way, so that a full step back always steps back.
+	wheel float64
 }
 
 func newUnsetInputKey() InputKey {
@@ -170,6 +173,8 @@ type InputState struct {
 	HasAim bool
 	// 1-based, so that the zero value selects nothing
 	SelectSlot int
+	// Steps the selected hotbar slot this far down, wrapping around, when SelectSlot doesn't select one
+	ScrollSlot int
 	DropItem   bool
 	// What a click in an inventory menu changed. Menus send these rather than changing the inventory themselves, so
 	// that the change happens in the simulation's tick like any other input.
@@ -224,6 +229,17 @@ func (x *Input) JustPressed(inputType InputType) bool {
 	wasHeld := x.held[inputType]
 	x.held[inputType] = held
 	return held && !wasHeld
+}
+
+// Whole steps scrolled down since the last call, given how far the wheel moved down since then; negative is up
+func (x *Input) WheelSteps(down float64) int {
+	if down*x.wheel < 0 {
+		x.wheel = 0
+	}
+	x.wheel += down
+	steps := int(x.wheel)
+	x.wheel -= float64(steps)
+	return steps
 }
 
 func (x *Input) FacingInput() FacingInputEnum {

@@ -151,3 +151,25 @@ func TestProjectilesHitTreesAndWalls(t *testing.T) {
 		}
 	}
 }
+
+func TestScrollingStepsThroughTheHotbarAndWraps(t *testing.T) {
+	x, player, mattock, bazooka, _ := newArmedPlayer(t)
+	inv, _ := x.Inventories.Get(player)
+
+	press(t, x, player, ecs.InputState{ScrollSlot: 1})
+	if inv.Selected() != 1 || inHand(x, player) != bazooka {
+		t.Fatalf("scrolling down selected hotbar slot %d, want the bazooka's", inv.Selected()+1)
+	}
+	press(t, x, player, ecs.InputState{ScrollSlot: -2})
+	if inv.Selected() != inv.HotbarSize()-1 {
+		t.Fatalf("scrolling up past the first slot selected %d, want the last", inv.Selected()+1)
+	}
+	press(t, x, player, ecs.InputState{ScrollSlot: 1})
+	if inv.Selected() != 0 || inHand(x, player) != mattock {
+		t.Fatalf("scrolling down past the last slot selected %d, want the first", inv.Selected()+1)
+	}
+	press(t, x, player, ecs.InputState{ScrollSlot: 1, SelectSlot: 4})
+	if inv.Selected() != 3 {
+		t.Fatalf("scrolling while pressing 4 selected %d, want 4", inv.Selected()+1)
+	}
+}

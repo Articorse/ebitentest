@@ -25,3 +25,15 @@ func TestOnlyCurrentTickInputsAreAvailable(t *testing.T) {
 		t.Fatal("the previous tick's inputs were returned as the current tick's")
 	}
 }
+
+func TestSmallWheelMovementsAddUpToSteps(t *testing.T) {
+	in := ecs.NewInputComponent(nil, 0, nil, ecs.Facing_None)
+	for i, step := range []struct {
+		down float64
+		want int
+	}{{0.4, 0}, {0.4, 0}, {0.4, 1}, {2.1, 2}, {-0.5, 0}, {-0.6, -1}, {0.9, 0}, {0.1, 1}} {
+		if got := in.WheelSteps(step.down); got != step.want {
+			t.Fatalf("call %d scrolled %d steps, want %d", i, got, step.want)
+		}
+	}
+}

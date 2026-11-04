@@ -175,10 +175,7 @@ func (g *game) Update() error {
 		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewMouseInputKey(ebiten.MouseButtonLeft, -1)
 		pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(ebiten.KeySpace, -1)
 		pInputConfig[ecs.Input_DropItem] = ecs.NewKeyboardInputKey(ebiten.KeyQ, -1)
-		for i, key := range []ebiten.Key{
-			ebiten.KeyDigit1, ebiten.KeyDigit2, ebiten.KeyDigit3, ebiten.KeyDigit4, ebiten.KeyDigit5,
-			ebiten.KeyDigit6, ebiten.KeyDigit7, ebiten.KeyDigit8, ebiten.KeyDigit9,
-		} {
+		for i, key := range hotbarKeys {
 			pInputConfig[ecs.Input_SelectSlot1+ecs.InputType(i)] = ecs.NewKeyboardInputKey(key, -1)
 		}
 		pInpComp := ecs.NewInputComponent(pInputConfig, inputsources.InputType_Human, nil, ecs.Facing_Mouse)
@@ -420,13 +417,19 @@ func (g *game) Update() error {
 	return nil
 }
 
+var hotbarKeys = []ebiten.Key{
+	ebiten.KeyDigit1, ebiten.KeyDigit2, ebiten.KeyDigit3, ebiten.KeyDigit4, ebiten.KeyDigit5,
+	ebiten.KeyDigit6, ebiten.KeyDigit7, ebiten.KeyDigit8, ebiten.KeyDigit9,
+}
+
 // In UI pixels
 func (g *game) uiCursor() utils.Vec2f {
 	x, y := ebiten.CursorPosition()
 	return utils.Vec2f{X: float64(x), Y: float64(y)}.Multiply(1 / g.uiScale)
 }
 
-// Adds what a click in the inventory menu did, and keeps clicks on the menu from also using what's in hand
+// Adds what a click or a hotbar key in the inventory menu did, keeps clicks on the menu from also using what's in hand,
+// and hotbar keys over its slots from also selecting
 func (g *game) inventoryMenuInput(in ecs.InputState) ecs.InputState {
 	inv, ok := g.ecs.Inventories.Get(g.playerEntity)
 	if !ok {
@@ -443,6 +446,15 @@ func (g *game) inventoryMenuInput(in ecs.InputState) ecs.InputState {
 	}
 	if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) && !ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
 		g.menuHasMouse = false
+	}
+
+	if g.inventoryMenu.SlotAt(cursor, screen, inv, g.assetmanager) != -1 {
+		in.SelectSlot = 0
+		for i, key := range hotbarKeys {
+			if inpututil.IsKeyJustPressed(key) && in.Inventory.Kind == ecs.InventoryAction_None {
+				in.Inventory = g.inventoryMenu.HotbarKey(i, cursor, screen, inv, g.assetmanager)
+			}
+		}
 	}
 
 	if g.menuHasMouse || covers {
