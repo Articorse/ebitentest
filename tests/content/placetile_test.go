@@ -20,7 +20,7 @@ func newPlankHolder(t *testing.T, terrain ecs.Terrain, planks int) (*ecs.ECSCont
 	x.SetTerrain(terrain)
 
 	holder := testutil.AddMovable(t, x, utils.Vec2f{}, false,
-		ecs.NewInventoryComponent(2),
+		ecs.NewInventoryComponent(2, 2),
 		ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{}))
 	for range planks {
 		plank, err := x.SpawnItem(data.Item_Planks, utils.Vec2f{})

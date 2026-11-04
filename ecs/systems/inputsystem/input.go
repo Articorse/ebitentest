@@ -6,6 +6,7 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/ecs/systems/facingsystem"
 	"ebittest/utils"
+	"fmt"
 	"log"
 	"maps"
 	"math"
@@ -40,7 +41,7 @@ func HandleInputs(
 
 		// Before facing and using equipment, so that a newly selected item is aimed before its first use
 		if inv, ok := ecsContainer.Inventories.Get(e); ok && input.SelectSlot > 0 && input.SelectSlot-1 != inv.Selected() {
-			if err := ecsContainer.SelectInventorySlot(e, input.SelectSlot-1); err != nil {
+			if err := ecsContainer.SelectHotbarSlot(e, input.SelectSlot-1); err != nil {
 				log.Printf("error selecting slot %d of entity %d: %v\n", input.SelectSlot, e, err)
 			}
 		}
@@ -51,6 +52,10 @@ func HandleInputs(
 			} else {
 				aim.ClearTarget()
 			}
+		}
+
+		if err := applyInventoryAction(e, input.Inventory, ecsContainer); err != nil {
+			log.Printf("error applying inventory action %+v of entity %d: %v\n", input.Inventory, e, err)
 		}
 
 		// After taking aim, since a dropped item is tossed towards it
@@ -115,4 +120,24 @@ func useAbilities(e common.EntityId, input ecs.InputState, ecsContainer *ecs.ECS
 			}
 		}
 	}
+}
+
+func applyInventoryAction(e common.EntityId, action ecs.InventoryAction, ecsContainer *ecs.ECSContainer) error {
+	switch action.Kind {
+	case ecs.InventoryAction_Move:
+		return ecsContainer.MoveInventoryItem(e, action.From, action.To)
+	case ecs.InventoryAction_Bind:
+		inv, ok := ecsContainer.Inventories.Get(e)
+		if !ok {
+			return fmt.Errorf("entity %d has no inventory", e)
+		}
+		item, ok := inv.Slot(action.From)
+		if !ok {
+			return nil
+		}
+		return ecsContainer.BindHotbar(e, action.To, item)
+	case ecs.InventoryAction_Unbind:
+		return ecsContainer.BindHotbar(e, action.To, -1)
+	}
+	return nil
 }

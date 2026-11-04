@@ -6,19 +6,27 @@ import (
 	"slices"
 )
 
-// Every item in an inventory is also held by its owner, so that it's saved, streamed and dropped along with it
+// Every item in an inventory is also held by its owner, so that it's saved, streamed and dropped along with it. The
+// hotbar isn't more room: each of its slots points at an item in the inventory, wherever that item is moved to.
 type Inventory struct {
 	// -1 for an empty slot
-	slots    []common.EntityId
+	slots []common.EntityId
+	// -1 for a hotbar slot that points at nothing
+	hotbar []common.EntityId
+	// The hotbar slot whose item is in hand
 	selected int
 }
 
-func NewInventoryComponent(capacity int) *Inventory {
-	slots := make([]common.EntityId, max(capacity, 0))
+func NewInventoryComponent(capacity, hotbarSize int) *Inventory {
+	return &Inventory{slots: emptySlots(capacity), hotbar: emptySlots(hotbarSize)}
+}
+
+func emptySlots(n int) []common.EntityId {
+	slots := make([]common.EntityId, max(n, 0))
 	for i := range slots {
 		slots[i] = -1
 	}
-	return &Inventory{slots: slots}
+	return slots
 }
 
 func (x *Inventory) Capacity() int {
@@ -37,23 +45,33 @@ func (x *Inventory) FirstFreeSlot() int {
 	return slices.Index(x.slots, -1)
 }
 
-func (x *Inventory) Selected() int {
-	return x.selected
+func (x *Inventory) HotbarSize() int {
+	return len(x.hotbar)
 }
 
-func (x *Inventory) Select(i int) error {
-	if i < 0 || i >= len(x.slots) {
-		return fmt.Errorf("slot %d is outside an inventory of %d slots", i, len(x.slots))
+func (x *Inventory) HotbarItem(i int) (common.EntityId, bool) {
+	if i < 0 || i >= len(x.hotbar) || x.hotbar[i] == -1 {
+		return -1, false
 	}
-	x.selected = i
-	return nil
+	return x.hotbar[i], true
+}
+
+// -1 if the item isn't on the hotbar
+func (x *Inventory) HotbarSlotOf(item common.EntityId) int {
+	return slices.Index(x.hotbar, item)
+}
+
+// The hotbar slot whose item is in hand
+func (x *Inventory) Selected() int {
+	return x.selected
 }
 
 func (x *Inventory) slotOf(item common.EntityId) int {
 	return slices.Index(x.slots, item)
 }
 
-// Holds the item in the given empty slot, attaching it to the owner if it isn't held by it already
+// Holds the item in the given empty slot, attaching it to the owner if it isn't held by it already. It isn't put on the
+// hotbar.
 func (x *ECSContainer) PutInInventory(owner common.EntityId, slot int, item common.EntityId) error {
 	inv, ok := x.Inventories.Get(owner)
 	if !ok {
@@ -79,23 +97,113 @@ func (x *ECSContainer) PutInInventory(owner common.EntityId, slot int, item comm
 	}
 
 	inv.slots[slot] = item
-	return nil
+	x.SetDisabled(item, true)
+	return x.refreshHand(owner)
 }
 
-// Only the selected item is enabled, and in the owner's main hand if it fits there. The rest are disabled, so that
-// what's carried but not in hand isn't drawn or used.
-func (x *ECSContainer) SelectInventorySlot(owner common.EntityId, slot int) error {
+// Points the hotbar slot at an item in the inventory, or at nothing for -1. An item is only ever on one hotbar slot, so
+// binding it again moves it.
+func (x *ECSContainer) BindHotbar(owner common.EntityId, hotbarSlot int, item common.EntityId) error {
 	inv, ok := x.Inventories.Get(owner)
 	if !ok {
 		return fmt.Errorf("entity %d has no inventory", owner)
 	}
-	if err := inv.Select(slot); err != nil {
-		return err
+	if hotbarSlot < 0 || hotbarSlot >= len(inv.hotbar) {
+		return fmt.Errorf("hotbar slot %d is outside the %d of entity %d's inventory", hotbarSlot, len(inv.hotbar), owner)
+	}
+	if item != -1 {
+		if inv.slotOf(item) == -1 {
+			return fmt.Errorf("entity %d isn't in entity %d's inventory", item, owner)
+		}
+		if i := inv.HotbarSlotOf(item); i != -1 {
+			inv.hotbar[i] = -1
+		}
 	}
 
-	for i, item := range inv.slots {
+	inv.hotbar[hotbarSlot] = item
+	return x.refreshHand(owner)
+}
+
+// Binds the item to the first hotbar slot that points at nothing, if there is one
+func (x *ECSContainer) bindToFreeHotbarSlot(owner, item common.EntityId) error {
+	inv, ok := x.Inventories.Get(owner)
+	if !ok {
+		return fmt.Errorf("entity %d has no inventory", owner)
+	}
+	if i := slices.Index(inv.hotbar, -1); i != -1 {
+		return x.BindHotbar(owner, i, item)
+	}
+	return nil
+}
+
+// Puts the item in the slot from into the slot to: into it if it's empty, onto a stack of the same kind as far as the
+// stack's limit goes, leaving the rest behind, and swapped with whatever else is there. A stack emptied into another
+// takes its place on the hotbar, and is removed at the end of the tick.
+func (x *ECSContainer) MoveInventoryItem(owner common.EntityId, from, to int) error {
+	inv, ok := x.Inventories.Get(owner)
+	if !ok {
+		return fmt.Errorf("entity %d has no inventory", owner)
+	}
+	if from < 0 || from >= len(inv.slots) || to < 0 || to >= len(inv.slots) {
+		return fmt.Errorf("can't move between slots %d and %d of an inventory of %d", from, to, len(inv.slots))
+	}
+	moving, there := inv.slots[from], inv.slots[to]
+	if moving == -1 || from == to {
+		return nil
+	}
+
+	if there != -1 {
+		movingComp, _ := x.Items.Get(moving)
+		thereComp, _ := x.Items.Get(there)
+		if movingComp != nil && thereComp != nil && x.stacks(movingComp, thereComp) && thereComp.count < x.stackLimit(thereComp) {
+			moved := min(x.stackLimit(thereComp)-thereComp.count, movingComp.count)
+			thereComp.count += moved
+			movingComp.count -= moved
+			if movingComp.count > 0 {
+				return nil
+			}
+
+			if i := inv.HotbarSlotOf(moving); i != -1 {
+				inv.hotbar[i] = -1
+				if inv.HotbarSlotOf(there) == -1 {
+					inv.hotbar[i] = there
+				}
+			}
+			x.takeOutOfInventory(owner, moving)
+			x.SetDisabled(moving, true)
+			x.ScheduleRemoveEntity(moving)
+			return x.refreshHand(owner)
+		}
+	}
+
+	inv.slots[from], inv.slots[to] = there, moving
+	return nil
+}
+
+// Puts the item the hotbar slot points at in the owner's main hand, if it fits there, and enables it. Every other item
+// in the inventory is disabled, so that what's carried but not in hand isn't drawn or used.
+func (x *ECSContainer) SelectHotbarSlot(owner common.EntityId, hotbarSlot int) error {
+	inv, ok := x.Inventories.Get(owner)
+	if !ok {
+		return fmt.Errorf("entity %d has no inventory", owner)
+	}
+	if hotbarSlot < 0 || hotbarSlot >= len(inv.hotbar) {
+		return fmt.Errorf("hotbar slot %d is outside the %d of entity %d's inventory", hotbarSlot, len(inv.hotbar), owner)
+	}
+	inv.selected = hotbarSlot
+	return x.refreshHand(owner)
+}
+
+func (x *ECSContainer) refreshHand(owner common.EntityId) error {
+	inv, ok := x.Inventories.Get(owner)
+	if !ok {
+		return fmt.Errorf("entity %d has no inventory", owner)
+	}
+	inHand, _ := inv.HotbarItem(inv.selected)
+
+	for _, item := range inv.slots {
 		if item != -1 {
-			x.SetDisabled(item, i != slot)
+			x.SetDisabled(item, item != inHand)
 		}
 	}
 
@@ -103,18 +211,17 @@ func (x *ECSContainer) SelectInventorySlot(owner common.EntityId, slot int) erro
 	if !ok {
 		return nil
 	}
-
 	equipper.Unequip(Equip_MainHand)
-	if item, ok := inv.Slot(slot); ok {
-		if eq, ok := x.Equipments.Get(item); ok && eq.Fits(Equip_MainHand) {
-			equipper.Equip(Equip_MainHand, item)
+	if inHand != -1 {
+		if eq, ok := x.Equipments.Get(inHand); ok && eq.Fits(Equip_MainHand) {
+			equipper.Equip(Equip_MainHand, inHand)
 		}
 	}
-
 	return nil
 }
 
-// An item that stops being held by its owner leaves the owner's inventory with it
+// An item that stops being held by its owner leaves the owner's inventory with it, and any hotbar slot pointing at it
+// points at nothing
 func (x *ECSContainer) takeOutOfInventory(owner, item common.EntityId) {
 	inv, ok := x.Inventories.Get(owner)
 	if !ok {
@@ -123,10 +230,13 @@ func (x *ECSContainer) takeOutOfInventory(owner, item common.EntityId) {
 	if i := inv.slotOf(item); i != -1 {
 		inv.slots[i] = -1
 	}
+	if i := inv.HotbarSlotOf(item); i != -1 {
+		inv.hotbar[i] = -1
+	}
 }
 
 func (x Inventory) Copy() Inventory {
-	return Inventory{slots: slices.Clone(x.slots), selected: x.selected}
+	return Inventory{slots: slices.Clone(x.slots), hotbar: slices.Clone(x.hotbar), selected: x.selected}
 }
 
 func (x Inventory) addTo(ecsContainer *ECSContainer, e common.EntityId) {
@@ -135,13 +245,14 @@ func (x Inventory) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 
 type inventoryDto struct {
 	Slots    []common.EntityId
+	Hotbar   []common.EntityId
 	Selected int
 }
 
 func (x Inventory) toDto() (ComponentDto, error) {
-	return &inventoryDto{Slots: slices.Clone(x.slots), Selected: x.selected}, nil
+	return &inventoryDto{Slots: slices.Clone(x.slots), Hotbar: slices.Clone(x.hotbar), Selected: x.selected}, nil
 }
 
 func (x inventoryDto) toComponent() (Component, error) {
-	return &Inventory{slots: slices.Clone(x.Slots), selected: x.Selected}, nil
+	return &Inventory{slots: slices.Clone(x.Slots), hotbar: slices.Clone(x.Hotbar), selected: x.Selected}, nil
 }

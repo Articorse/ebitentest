@@ -12,7 +12,7 @@ import (
 
 func newOwner(t *testing.T, x *ecs.ECSContainer) common.EntityId {
 	t.Helper()
-	return testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(3))
+	return testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(3, 3))
 }
 
 func newItem(t *testing.T, x *ecs.ECSContainer) common.EntityId {
@@ -69,9 +69,8 @@ func TestInventoryRefusesWhatDoesntFit(t *testing.T) {
 		}
 	}
 
-	inv, _ := x.Inventories.Get(owner)
-	if err := inv.Select(3); err == nil {
-		t.Error("selecting a slot past the capacity was allowed")
+	if err := x.SelectHotbarSlot(owner, 3); err == nil {
+		t.Error("selecting a hotbar slot past its size was allowed")
 	}
 	checkConsistency(t, x)
 }
@@ -122,8 +121,10 @@ func TestInventorySurvivesSaving(t *testing.T) {
 	if err := x.PutInInventory(owner, 1, item); err != nil {
 		t.Fatal(err)
 	}
-	inv, _ := x.Inventories.Get(owner)
-	if err := inv.Select(1); err != nil {
+	if err := x.BindHotbar(owner, 2, item); err != nil {
+		t.Fatal(err)
+	}
+	if err := x.SelectHotbarSlot(owner, 1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -140,14 +141,20 @@ func TestInventorySurvivesSaving(t *testing.T) {
 	if got, ok := restored.Slot(1); !ok || got != item || !y.Items.HasComponent(item) {
 		t.Fatal("the restored inventory lost its item")
 	}
+	if got, ok := restored.HotbarItem(2); !ok || got != item {
+		t.Fatal("the restored hotbar doesn't point at the item")
+	}
 	checkConsistency(t, y)
 }
 
 func TestTheItemsPickupDelayAndPullAreSaved(t *testing.T) {
 	x := testutil.NewECS(t)
-	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(1))
+	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(1, 1))
 	item := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewItemComponent())
 	if err := x.PutInInventory(owner, 0, item); err != nil {
+		t.Fatal(err)
+	}
+	if err := x.BindHotbar(owner, 0, item); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := x.DropSelectedItem(owner); err != nil {

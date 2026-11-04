@@ -95,7 +95,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		pCLComp,
 		ecs.NewPersistentComponent(),
 		ecs.NewVisionComponent(data.PlayerVisionRangeTiles),
-		ecs.NewInventoryComponent(data.HotbarSlots),
+		ecs.NewInventoryComponent(data.InventoryRows*data.InventoryColumns, data.HotbarSlots),
 		ecs.NewAimComponent(),
 	)
 	if err != nil {
@@ -270,8 +270,13 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		return fmt.Errorf("error putting torches in the player's inventory: %w", err)
 	}
 
-	if err := ecsContainer.SelectInventorySlot(player, 0); err != nil {
-		return fmt.Errorf("error selecting the player's first slot: %w", err)
+	for i, item := range []common.EntityId{mattock, bazooka, gun, axe, torches} {
+		if err := ecsContainer.BindHotbar(player, i, item); err != nil {
+			return fmt.Errorf("error putting item %d on the player's hotbar: %w", item, err)
+		}
+	}
+	if err := ecsContainer.SelectHotbarSlot(player, 0); err != nil {
+		return fmt.Errorf("error selecting the player's first hotbar slot: %w", err)
 	}
 
 	return nil

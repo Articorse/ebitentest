@@ -131,7 +131,7 @@ func TestItemsArePulledTowardsTheClosestCollector(t *testing.T) {
 	x, player, mattock := playerWithLooseMattock(t, utils.Vec2f{})
 	testutil.SetPos(t, x, player, utils.Vec2f{X: -inPull(0.8)})
 	// Neither is close enough to pick it up in the same tick
-	closer := testutil.AddMovable(t, x, utils.Vec2f{X: inPull(0.6)}, false, ecs.NewInventoryComponent(1))
+	closer := testutil.AddMovable(t, x, utils.Vec2f{X: inPull(0.6)}, false, ecs.NewInventoryComponent(1, 1))
 	if closer < player {
 		t.Fatal("the test needs the closer collector to come later in entity order, so that order alone can't pick it")
 	}

@@ -103,15 +103,15 @@ func (x *Item) StopPull() {
 	x.pullSpeedPx = 0
 }
 
-// Puts the selected item, or one of a stack, on the ground where its owner stands, upright, tossed towards the
-// owner's aim, and returns it
+// Puts the item in hand, or one of a stack, on the ground where its owner stands, upright, tossed towards the owner's
+// aim, and returns it
 func (x *ECSContainer) DropSelectedItem(owner common.EntityId) (common.EntityId, bool, error) {
 	inv, ok := x.Inventories.Get(owner)
 	if !ok {
 		return -1, false, fmt.Errorf("entity %d has no inventory", owner)
 	}
 
-	item, ok := inv.Slot(inv.Selected())
+	item, ok := inv.HotbarItem(inv.Selected())
 	if !ok {
 		return -1, false, nil
 	}
@@ -214,9 +214,9 @@ func (x *ECSContainer) heldItem(inv *Inventory, slot int) (*Item, bool) {
 	return x.Items.Get(e)
 }
 
-// Tops up the collector's stacks of the item first, in slot order, and puts what's left into the lowest free slot, in
-// its hand. An item that's used up by topping up is removed at the end of the tick. False if the collector can't pick
-// it up.
+// Tops up the collector's stacks of the item first, in slot order, and puts what's left into the lowest free slot and
+// on the first hotbar slot that points at nothing. An item that's used up by topping up is removed at the end of the
+// tick. False if the collector can't pick it up.
 func (x *ECSContainer) PickUpItem(collector, item common.EntityId) (bool, error) {
 	if !x.CanPickUp(collector, item) {
 		return false, nil
@@ -253,8 +253,7 @@ func (x *ECSContainer) PickUpItem(collector, item common.EntityId) (bool, error)
 		t.SetLocalRotation(0)
 	}
 
-	// Selecting again enables and equips the item if it went into the selected slot, and disables it otherwise
-	if err := x.SelectInventorySlot(collector, inv.Selected()); err != nil {
+	if err := x.bindToFreeHotbarSlot(collector, item); err != nil {
 		return false, err
 	}
 

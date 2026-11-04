@@ -30,8 +30,17 @@ func (x *ECSContainer) CheckConsistency() error {
 	}
 
 	for e, inv := range Query1(&x.Inventories) {
-		if inv.selected < 0 || inv.selected >= len(inv.slots) {
-			errs = errors.Join(errs, fmt.Errorf("inventory %d has slot %d selected, outside its %d slots", e, inv.selected, len(inv.slots)))
+		if inv.selected < 0 || inv.selected >= len(inv.hotbar) {
+			errs = errors.Join(errs, fmt.Errorf("inventory %d has hotbar slot %d selected, outside its %d", e, inv.selected, len(inv.hotbar)))
+		}
+		for slot, item := range inv.hotbar {
+			switch {
+			case item == -1:
+			case inv.slotOf(item) == -1:
+				errs = errors.Join(errs, fmt.Errorf("hotbar slot %d of inventory %d points at entity %d, which isn't in it", slot, e, item))
+			case inv.HotbarSlotOf(item) != slot:
+				errs = errors.Join(errs, fmt.Errorf("item %d is on the hotbar of inventory %d more than once", item, e))
+			}
 		}
 
 		for slot, item := range inv.slots {

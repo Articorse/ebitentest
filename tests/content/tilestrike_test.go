@@ -308,7 +308,7 @@ func TestTheStartingMattockStrikesTrees(t *testing.T) {
 	terrain := newFakeTerrain()
 	terrain.trees[utils.Vec2i{X: 1}] = true
 	x.SetTerrain(terrain)
-	if err := x.SelectInventorySlot(player, 0); err != nil {
+	if err := x.SelectHotbarSlot(player, 0); err != nil {
 		t.Fatal(err)
 	}
 

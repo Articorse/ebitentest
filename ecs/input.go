@@ -171,6 +171,26 @@ type InputState struct {
 	// 1-based, so that the zero value selects nothing
 	SelectSlot int
 	DropItem   bool
+	// What a click in an inventory menu changed. Menus send these rather than changing the inventory themselves, so
+	// that the change happens in the simulation's tick like any other input.
+	Inventory InventoryAction
+}
+
+type InventoryActionKind uint8
+
+const (
+	InventoryAction_None InventoryActionKind = iota
+	// Moves the item in inventory slot From to slot To
+	InventoryAction_Move
+	// Points hotbar slot To at the item in inventory slot From
+	InventoryAction_Bind
+	// Points hotbar slot To at nothing
+	InventoryAction_Unbind
+)
+
+type InventoryAction struct {
+	Kind     InventoryActionKind
+	From, To int
 }
 
 func NewInputComponent(config map[InputType]InputKey, inputType InputTypeEnum, params InputParams, facingInput FacingInputEnum) *Input {

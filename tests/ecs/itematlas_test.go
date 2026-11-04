@@ -122,7 +122,7 @@ func TestStacksAreLimitedByTheAtlas(t *testing.T) {
 	if err := x.SetItemAtlas(atlas); err != nil {
 		t.Fatal(err)
 	}
-	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(2))
+	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(2, 2))
 
 	for range 3 {
 		plank, err := x.SpawnItem(data.Item_Planks, utils.Vec2f{})
@@ -165,7 +165,7 @@ func TestOnlyItemsOfTheSameKindStack(t *testing.T) {
 	if err := x.SetItemAtlas(atlas); err != nil {
 		t.Fatal(err)
 	}
-	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(1))
+	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(1, 1))
 
 	plank, err := x.SpawnItem(data.Item_Planks, utils.Vec2f{})
 	if err != nil {

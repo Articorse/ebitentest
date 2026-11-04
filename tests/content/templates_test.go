@@ -80,13 +80,16 @@ func TestPlayerStartsWithItsToolsInOrderAndTheMattockSelected(t *testing.T) {
 	}
 
 	inv, ok := x.Inventories.Get(p)
-	if !ok || inv.Capacity() != data.HotbarSlots {
-		t.Fatalf("player inventory %v with %d slots, want %d", ok, inv.Capacity(), data.HotbarSlots)
+	if !ok || inv.Capacity() != 36 || inv.HotbarSize() != data.HotbarSlots {
+		t.Fatalf("player inventory %v with %d slots and a hotbar of %d, want 4×9 and %d", ok, inv.Capacity(), inv.HotbarSize(), data.HotbarSlots)
 	}
 	for i, want := range []common.ImageAssetTag{common.AssetImageMattock, common.AssetSheetBazooka, common.AssetSheetGun, common.AssetImageAxe} {
 		item, _ := inv.Slot(i)
 		if spr, ok := x.Sprites.Get(item); !ok || spr.ImageAsset() != want {
 			t.Fatalf("slot %d holds entity %d, want the %s", i, item, want)
+		}
+		if bound, _ := inv.HotbarItem(i); bound != item {
+			t.Fatalf("hotbar slot %d points at %d, want the %s in slot %d", i, bound, want, i)
 		}
 	}
 

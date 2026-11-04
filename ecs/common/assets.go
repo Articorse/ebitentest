@@ -21,6 +21,8 @@ const (
 	AssetImagePlatform      ImageAssetTag = "platform"
 	AssetImageSlot          ImageAssetTag = "slot"
 	AssetImageSlotHighlight ImageAssetTag = "slot_highlight"
+	// Nine slices of three by three pixels: corners, edges and middle
+	AssetImageInventoryPanel ImageAssetTag = "inventory_panel"
 
 	AssetDebug16x16 ImageAssetTag = "debug_16x16"
 )
@@ -30,5 +32,6 @@ const (
 var CodeAssetTags = []ImageAssetTag{
 	AssetSheetSlime, AssetImageTree, AssetImageTreeStump, AssetSheetEvilSlime, AssetSheetBazooka, AssetSheetRocket,
 	AssetSheetExplosion, AssetSheetGun, AssetSheetBullet, AssetImageMattock, AssetImagePlanks, AssetSheetTorchPlaced,
-	AssetImageAxe, AssetImageSlash, AssetImagePlatform, AssetImageSlot, AssetImageSlotHighlight, AssetDebug16x16,
+	AssetImageAxe, AssetImageSlash, AssetImagePlatform, AssetImageSlot, AssetImageSlotHighlight,
+	AssetImageInventoryPanel, AssetDebug16x16,
 }

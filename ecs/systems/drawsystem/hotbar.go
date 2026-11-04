@@ -5,6 +5,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 	"image/color"
 	"strconv"
@@ -13,9 +14,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// One slot per inventory slot, in a column centered on the left edge of the screen, with each item drawn as the first
-// frame of its sprite
-// Laid out in UI pixels, which are the scale's number of screen pixels across
+// One slot per hotbar slot, in a column centered on the left edge of the screen, with the item each points at drawn as
+// the first frame of its sprite. Laid out in UI pixels, which are the scale's number of screen pixels across.
 func DrawHotbar(
 	screen *ebiten.Image,
 	scale float64,
@@ -37,12 +37,8 @@ func DrawHotbar(
 		return err
 	}
 
-	slotW, slotH := slot.FrameSize.X, slot.FrameSize.Y
-	total := float64(inv.Capacity())*slotH + float64(inv.Capacity()-1)*data.HotbarSlotGapPx
-	top := (float64(screen.Bounds().Dy())/scale - total) / 2
-
-	for i := range inv.Capacity() {
-		x, y := float64(data.HotbarMarginPx), top+float64(i)*(slotH+data.HotbarSlotGapPx)
+	for i := range inv.HotbarSize() {
+		x, y := hotbarSlotPos(i, inv.HotbarSize(), ImageSize(screen).Y/scale, slot.FrameSize)
 
 		bg := slot.Frames[0]
 		if i == inv.Selected() {
@@ -53,31 +49,51 @@ func DrawHotbar(
 		op.GeoM.Scale(scale, scale)
 		screen.DrawImage(bg, op)
 
-		item, ok := inv.Slot(i)
-		if !ok {
-			continue
-		}
-		spr, ok := ecsContainer.Sprites.Get(item)
-		if !ok {
-			continue
-		}
-		icon, err := assetManager.GetAsset(spr.ImageAsset())
-		if err != nil {
-			return fmt.Errorf("error getting icon of item %d: %w", item, err)
-		}
-
-		op = &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(x+(slotW-icon.FrameSize.X)/2, y+(slotH-icon.FrameSize.Y)/2)
-		op.GeoM.Scale(scale, scale)
-		screen.DrawImage(icon.Frames[0], op)
-
-		if itemComp, ok := ecsContainer.Items.Get(item); ok && itemComp.Count() > 1 {
-			if err := drawStackCount(screen, scale, itemComp.Count(), x+slotW, y+slotH); err != nil {
+		if item, ok := inv.HotbarItem(i); ok {
+			if err := drawSlotItem(screen, scale, item, x+slot.FrameSize.X/2, y+slot.FrameSize.Y/2, slot.FrameSize, ecsContainer, assetManager); err != nil {
 				return err
 			}
 		}
 	}
 
+	return nil
+}
+
+// The top left corner of the hotbar slot, in UI pixels, on a screen of the given height in UI pixels
+func hotbarSlotPos(i, slots int, screenHeight float64, slotSize utils.Vec2f) (x, y float64) {
+	total := float64(slots)*slotSize.Y + float64(slots-1)*data.HotbarSlotGapPx
+	top := (screenHeight - total) / 2
+	return data.HotbarMarginPx, top + float64(i)*(slotSize.Y+data.HotbarSlotGapPx)
+}
+
+// The item's icon, the first frame of its sprite, centered on x, y in UI pixels, and its count if it's a stack, in the
+// bottom right corner of a slot of the given size
+func drawSlotItem(
+	screen *ebiten.Image,
+	scale float64,
+	item common.EntityId,
+	x, y float64,
+	slotSize utils.Vec2f,
+	ecsContainer *ecs.ECSContainer,
+	assetManager *assetmanager.AssetManager,
+) error {
+	spr, ok := ecsContainer.Sprites.Get(item)
+	if !ok {
+		return nil
+	}
+	icon, err := assetManager.GetAsset(spr.ImageAsset())
+	if err != nil {
+		return fmt.Errorf("error getting icon of item %d: %w", item, err)
+	}
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(x-icon.FrameSize.X/2, y-icon.FrameSize.Y/2)
+	op.GeoM.Scale(scale, scale)
+	screen.DrawImage(icon.Frames[0], op)
+
+	if itemComp, ok := ecsContainer.Items.Get(item); ok && itemComp.Count() > 1 {
+		return drawStackCount(screen, scale, itemComp.Count(), x+slotSize.X/2, y+slotSize.Y/2)
+	}
 	return nil
 }
 

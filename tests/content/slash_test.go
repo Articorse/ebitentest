@@ -29,7 +29,7 @@ func newAxeHolder(t *testing.T) (*ecs.ECSContainer, common.EntityId, common.Enti
 	if err := templates.SpawnStartingEquipment(x, player); err != nil {
 		t.Fatal(err)
 	}
-	if err := x.SelectInventorySlot(player, 3); err != nil {
+	if err := x.SelectHotbarSlot(player, 3); err != nil {
 		t.Fatal(err)
 	}
 

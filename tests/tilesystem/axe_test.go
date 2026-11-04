@@ -23,7 +23,7 @@ func slashFromTheLeft(t *testing.T, s *testutil.Session, target utils.Vec2f) com
 	if err := templates.SpawnStartingEquipment(s.ECS, player); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.ECS.SelectInventorySlot(player, 3); err != nil {
+	if err := s.ECS.SelectHotbarSlot(player, 3); err != nil {
 		t.Fatal(err)
 	}
 

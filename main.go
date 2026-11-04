@@ -64,6 +64,9 @@ type game struct {
 	assetmanager  *assetmanager.AssetManager
 	visionOverlay drawsystem.VisionOverlay
 	lightOverlay  drawsystem.LightOverlay
+	inventoryMenu drawsystem.InventoryMenu
+	// From a click the menu took until the mouse is let go, so that the press doesn't carry on into the world
+	menuHasMouse bool
 
 	showFPS       bool
 	frameTimes    frameTimes
@@ -218,6 +221,9 @@ func (g *game) Update() error {
 
 		tickInputs[eid] = tInputs
 	}
+	if in, ok := tickInputs[g.playerEntity]; ok {
+		tickInputs[g.playerEntity] = g.inventoryMenuInput(in)
+	}
 	g.ecs.SetTickInputs(g.ecs.TickIdx, tickInputs)
 
 	currentTickInputs, err := g.ecs.GetCurrentTickInputs()
@@ -263,6 +269,10 @@ func (g *game) Update() error {
 		}
 
 		g.ecs.Camera = pWorldPos.Subtract(g.screenSize.Multiply(0.5 / g.ecs.Zoom))
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		g.inventoryMenu.Toggle()
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
@@ -410,6 +420,38 @@ func (g *game) Update() error {
 	return nil
 }
 
+// In UI pixels
+func (g *game) uiCursor() utils.Vec2f {
+	x, y := ebiten.CursorPosition()
+	return utils.Vec2f{X: float64(x), Y: float64(y)}.Multiply(1 / g.uiScale)
+}
+
+// Adds what a click in the inventory menu did, and keeps clicks on the menu from also using what's in hand
+func (g *game) inventoryMenuInput(in ecs.InputState) ecs.InputState {
+	inv, ok := g.ecs.Inventories.Get(g.playerEntity)
+	if !ok {
+		return in
+	}
+	cursor, screen := g.uiCursor(), g.screenSize.Multiply(1/g.uiScale)
+
+	covers := g.inventoryMenu.Covers(cursor, screen, inv, g.assetmanager)
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) || inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		g.menuHasMouse = covers
+		if covers && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			in.Inventory = g.inventoryMenu.Click(cursor, screen, inv, g.assetmanager)
+		}
+	}
+	if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) && !ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
+		g.menuHasMouse = false
+	}
+
+	if g.menuHasMouse || covers {
+		in.MainHandEqAbility1, in.MainHandEqAbility2 = 0, 0
+		in.OffHandEqAbility1, in.OffHandEqAbility2 = 0, 0
+	}
+	return in
+}
+
 func (g *game) logConsistency(when string) {
 	if err := g.ecs.CheckConsistency(); err != nil {
 		log.Printf("consistency check %s failed:\n%v", when, err)
@@ -482,6 +524,9 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	if err := drawsystem.DrawHotbar(screen, g.uiScale, g.playerEntity, g.ecs, g.assetmanager); err != nil {
 		log.Println("error while drawing hotbar: ", err)
+	}
+	if err := g.inventoryMenu.Draw(screen, g.uiScale, g.uiCursor(), g.playerEntity, g.ecs, g.assetmanager); err != nil {
+		log.Println("error while drawing the inventory: ", err)
 	}
 
 	if g.showFPS {
