@@ -34,6 +34,10 @@ func (p *SlashParams) Copy() ecs.AbilityParams {
 	return &c
 }
 
+func (p *SlashParams) UsedImages() map[common.ImageAssetTag][]int {
+	return map[common.ImageAssetTag][]int{p.Image: {0}}
+}
+
 // Leaves a slash toward the aim, at the reach from whoever holds the item, which hurts what it covers on the tick it
 // appears and stays in place until it fades
 func SlashAbility(

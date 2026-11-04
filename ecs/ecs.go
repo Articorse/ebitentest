@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
@@ -35,6 +36,7 @@ type ECSContainer struct {
 	terrain        Terrain
 	itemAtlas      *ItemAtlas
 	bodyAtlas      *BodyAtlas
+	assets         *assetmanager.AssetManager
 
 	storages []componentStorage
 

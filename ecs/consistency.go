@@ -7,8 +7,8 @@ import (
 	"slices"
 )
 
-// Returns every broken reference between live entities. None of these should ever happen,
-// so a non-nil result points at a bug rather than at a state the game should handle.
+// Returns every broken reference between live entities, and every image they draw that the assets don't have. None of
+// these should ever happen, so a non-nil result points at a bug rather than at a state the game should handle.
 func (x *ECSContainer) CheckConsistency() error {
 	var errs error
 
@@ -75,6 +75,8 @@ func (x *ECSContainer) CheckConsistency() error {
 			errs = errors.Join(errs, fmt.Errorf("entity %d is tethered to entity %d, which isn't a chunkloader", e, tetherComp.anchor))
 		}
 	}
+
+	errs = errors.Join(errs, x.checkImages())
 
 	return errs
 }

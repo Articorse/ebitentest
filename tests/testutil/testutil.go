@@ -50,6 +50,7 @@ func NewECS(t testing.TB) *ecs.ECSContainer {
 		t.Fatal(err)
 	}
 	x.SetBodyAtlas(bodies)
+	x.SetAssets(Assets(t))
 	x.TickState = *common.NewTickState()
 
 	return x

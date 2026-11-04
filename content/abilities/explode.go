@@ -32,6 +32,14 @@ func (p *ExplodeParams) Copy() ecs.AbilityParams {
 	return &c
 }
 
+func (p *ExplodeParams) UsedImages() map[common.ImageAssetTag][]int {
+	frames := make([]int, len(p.Animationframes))
+	for i, f := range p.Animationframes {
+		frames[i] = int(f.FrameIdx)
+	}
+	return map[common.ImageAssetTag][]int{common.AssetSheetExplosion: frames}
+}
+
 func ExplodeAbility(
 	self common.EntityId,
 	target ecs.AbilityTarget,

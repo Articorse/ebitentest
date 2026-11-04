@@ -714,6 +714,7 @@ func main() {
 		log.Fatal("error checking the assets code uses: ", err)
 	}
 	g.assetmanager = assets
+	g.ecs.SetAssets(assets)
 
 	// Content first, since the item atlas names its abilities
 	if err := content.Register(g.ecs); err != nil {
