@@ -33,8 +33,8 @@ var (
 		common.AssetTileImageDirt:         ImageAssetDef{path: "assets/tiles/dirt.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
 		common.AssetTileImageGrass:        ImageAssetDef{path: "assets/tiles/grass.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
 		common.AssetTileImageRock:         ImageAssetDef{path: "assets/tiles/rock.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
-		common.AssetTileImageShallowWater: ImageAssetDef{path: "assets/tiles/shallow_water.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
-		common.AssetTileImageDeepWater:    ImageAssetDef{path: "assets/tiles/deep_water.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
+		common.AssetTileImageShallowWater: ImageAssetDef{path: "assets/tiles/watershallow.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
+		common.AssetTileImageDeepWater:    ImageAssetDef{path: "assets/tiles/waterdeep.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
 
 		common.AssetDebug16x16: ImageAssetDef{path: "assets/debug/16x16.png", frameCount: 1, frameSize: utils.Vec2f{X: 16, Y: 16}},
 	}

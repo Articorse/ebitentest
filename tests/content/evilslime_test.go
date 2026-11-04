@@ -161,22 +161,44 @@ func TestTheEvilSlimeIdlesUntilItSeesThePlayerAndRushesWhileItDoes(t *testing.T)
 	}
 
 	x.SetTerrain(newFakeTerrain(utils.Vec2i{X: 0}, utils.Vec2i{X: 0, Y: 1}, utils.Vec2i{X: 0, Y: -1}))
-	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || input != (ecs.InputState{}) {
-		t.Fatalf("with the player behind a wall, the slime is in state %v moving %v, %v; want it idle again", state, input.Analog1X, input.Analog1Y)
+	if input, state := rush(t, x, slime); state != inputsources.Rusher_Search || input == (ecs.InputState{}) {
+		t.Fatalf("with the player behind a wall, the slime is in state %v moving %v, %v; want it searching", state, input.Analog1X, input.Analog1Y)
+	}
+	if path := pathOf(x, slime); len(path) == 0 || path[len(path)-1] != (utils.Vec2i{X: -2}) {
+		t.Fatalf("searching, the slime's path is %v, want it to end where it last saw the player", path)
+	}
+	if err := x.SetWorldPos(slime, utils.TilePosToWorldPos(utils.Vec2i{X: -2, Y: 2})); err != nil {
+		t.Fatal(err)
+	}
+	if err := x.SetWorldPos(player, utils.TilePosToWorldPos(utils.Vec2i{X: 20})); err != nil {
+		t.Fatal(err)
+	}
+	if _, state := rush(t, x, slime); state != inputsources.Rusher_Search {
+		t.Fatalf("on its way, the slime is in state %v, want it still searching", state)
+	}
+	if err := x.SetWorldPos(slime, utils.TilePosToWorldPos(utils.Vec2i{X: -2})); err != nil {
+		t.Fatal(err)
+	}
+	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || input != (ecs.InputState{}) || len(pathOf(x, slime)) != 0 {
+		t.Fatalf("where it last saw the player, the slime is in state %v moving %v, %v; want it idle", state, input.Analog1X, input.Analog1Y)
 	}
 
 	x.SetTerrain(newFakeTerrain())
+	if err := x.SetWorldPos(player, utils.TilePosToWorldPos(utils.Vec2i{X: 1})); err != nil {
+		t.Fatal(err)
+	}
+	rush(t, x, slime)
 	x.ScheduleKillEntity(player)
 	testutil.RemoveScheduled(t, x)
-	if _, state := rush(t, x, slime); state != inputsources.Rusher_Idle {
-		t.Fatalf("with the player gone, the slime is in state %v, want it idle", state)
+	if _, state := rush(t, x, slime); state != inputsources.Rusher_Search {
+		t.Fatalf("with the player gone, the slime is in state %v, want it heading where it last saw it", state)
 	}
 }
 
 func TestTheRushersStateIsSaved(t *testing.T) {
-	p := &inputsources.InputRusherParams{Target: 3, State: inputsources.Rusher_Follow}
+	p := &inputsources.InputRusherParams{Target: 3, State: inputsources.Rusher_Follow, LastSeen: utils.Vec2i{X: 4, Y: -5}}
 	c := p.Copy().(*inputsources.InputRusherParams)
-	if c.Target != p.Target || c.State != p.State {
+	if c.Target != p.Target || c.State != p.State || c.LastSeen != p.LastSeen {
 		t.Fatalf("the copy is %+v, want %+v", *c, *p)
 	}
 	c.State = inputsources.Rusher_Idle

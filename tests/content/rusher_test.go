@@ -111,8 +111,25 @@ func TestTheRusherWalksAroundWhatItCanSeeAcrossButNotWalkThrough(t *testing.T) {
 	if err := x.SetWorldPos(player, utils.TilePosToWorldPos(utils.Vec2i{X: -38})); err != nil {
 		t.Fatal(err)
 	}
-	if _, state := rush(t, x, slime); state != inputsources.Rusher_Idle || len(pathOf(x, slime)) != 0 {
-		t.Fatalf("with the player out of sight, the slime is in state %v with path %v, want it idle without one", state, pathOf(x, slime))
+	if _, state := rush(t, x, slime); state != inputsources.Rusher_Search {
+		t.Fatalf("with the player out of sight, the slime is in state %v, want it searching", state)
+	}
+	if path := pathOf(x, slime); len(path) == 0 || path[len(path)-1] != (utils.Vec2i{Y: 1}) {
+		t.Fatalf("searching, the slime's path is %v, want it round the pond to where it last saw the player", path)
+	}
+}
+
+func TestTheRusherGivesUpSearchingWhereItCantGo(t *testing.T) {
+	water := pond(-2, 2, -2, 2)
+	delete(water, utils.Vec2i{})
+	x, player, slime := rusherBy(t, water, utils.Vec2i{X: 6})
+	rush(t, x, slime)
+	if err := x.SetWorldPos(player, utils.TilePosToWorldPos(utils.Vec2i{X: -38})); err != nil {
+		t.Fatal(err)
+	}
+
+	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || input != (ecs.InputState{}) {
+		t.Fatalf("with the player last seen on an island, the slime is in state %v heading %v, %v; want it idle", state, input.Analog1X, input.Analog1Y)
 	}
 }
 
