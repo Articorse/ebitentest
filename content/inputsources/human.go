@@ -43,8 +43,7 @@ func HumanInputSource(
 			break
 		}
 	}
-	_, wheelUp := ebiten.Wheel()
-	is.ScrollSlot = in.WheelSteps(-wheelUp)
+	is.ScrollSlot = in.WheelSteps()
 
 	lastFacingDir := in.LastFacingDir()
 	worldPos, err := ecsContainer.WorldPos(e)

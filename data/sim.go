@@ -7,4 +7,6 @@ const (
 	AABBPadding              = 20
 	MaxAbilitySlots          = 16
 	MaxEquipmentAbilitySlots = 2
+	TimescaleStepPercent     = 10
+	MaxTimescalePercent      = 200
 )

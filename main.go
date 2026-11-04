@@ -42,7 +42,7 @@ import (
 )
 
 var (
-	g = game{ecs: ecs.NewECSContainer(), zoom: data.DefaultZoom}
+	g = game{ecs: ecs.NewECSContainer(), zoom: data.DefaultZoom, timescalePercent: 100}
 
 	physicsColliders  = ecs.Colliders(&g.ecs.PhysicsColliders)
 	hurtboxColliders  = ecs.Colliders(&g.ecs.HurtboxColliders)
@@ -67,6 +67,10 @@ type game struct {
 	inventoryMenu drawsystem.InventoryMenu
 	// From a click the menu took until the mouse is let go, so that the press doesn't carry on into the world
 	menuHasMouse bool
+	// Kept from the latest frame for the next tick, since a frame doesn't always run one
+	pendingInventory ecs.InventoryAction
+	menuTakesHand    bool
+	menuOverSlot     bool
 
 	showFPS       bool
 	frameTimes    frameTimes
@@ -77,6 +81,13 @@ type game struct {
 	touching      touchingColliders
 	// Only drawn without light and fog, so that the simulation, what's remembered included, plays out the same
 	fullBright bool
+
+	// Simulated time per real time, which isn't saved
+	timescalePercent int
+	// Each frame adds the timescale, and each tick run takes 100, so that 10% runs a tick every tenth frame and 200%
+	// two every frame
+	tickBudgetPercent int
+	timescaleText     debugText
 
 	// In screen pixels, which are device pixels
 	screenSize utils.Vec2f
@@ -125,8 +136,6 @@ type touchingColliders struct {
 }
 
 func (g *game) Update() error {
-	var err error
-
 	if ebiten.IsWindowBeingClosed() {
 		return g.saveAndExit()
 	}
@@ -183,6 +192,89 @@ func (g *game) Update() error {
 		gamepadFound = true
 	}
 
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		g.ecs.Camera.X -= 10
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		g.ecs.Camera.Y -= 10
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
+		g.ecs.Camera.X += 10
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		g.ecs.Camera.Y += 10
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) {
+		g.setZoom(g.zoom + 1)
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) {
+		g.setZoom(g.zoom - 1)
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
+		g.ecs.CameraFollow = !g.ecs.CameraFollow
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		g.inventoryMenu.Toggle()
+	}
+	g.updateInventoryMenu()
+	if in, ok := g.ecs.Inputs.Get(g.playerEntity); ok {
+		_, wheelUp := ebiten.Wheel()
+		in.AddWheel(-wheelUp)
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyBracketLeft) {
+		g.timescalePercent = max(g.timescalePercent-data.TimescaleStepPercent, 0)
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyBracketRight) {
+		g.timescalePercent = min(g.timescalePercent+data.TimescaleStepPercent, data.MaxTimescalePercent)
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
+		g.showFPS = !g.showFPS
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
+		g.showColliders = !g.showColliders
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF3) {
+		g.showChunks = !g.showChunks
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
+		g.showBody = !g.showBody
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF5) {
+		g.showPaths = !g.showPaths
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF6) {
+		g.fullBright = !g.fullBright
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF7) {
+		g.ecs.SetUntargetable(g.playerEntity, !g.ecs.IsUntargetable(g.playerEntity))
+	}
+
+	g.tickBudgetPercent += g.timescalePercent
+	for g.tickBudgetPercent >= 100 {
+		g.tickBudgetPercent -= 100
+		g.tick()
+	}
+
+	if g.ecs.CameraFollow {
+		pWorldPos, err := g.ecs.WorldPos(g.playerEntity)
+		if err != nil {
+			log.Println("error getting player ecs position for camera follow: ", err)
+		}
+
+		g.ecs.Camera = pWorldPos.Subtract(g.screenSize.Multiply(0.5 / g.ecs.Zoom))
+	}
+
+	return nil
+}
+
+// One step of the simulation, data.TickMs long
+func (g *game) tick() {
+	var err error
+
 	err = g.chunkContainer.Tick(g.ecs)
 	if err != nil {
 		log.Println("error ticking chunk container:", err)
@@ -219,7 +311,7 @@ func (g *game) Update() error {
 		tickInputs[eid] = tInputs
 	}
 	if in, ok := tickInputs[g.playerEntity]; ok {
-		tickInputs[g.playerEntity] = g.inventoryMenuInput(in)
+		tickInputs[g.playerEntity] = g.withInventoryMenu(in)
 	}
 	g.ecs.SetTickInputs(g.ecs.TickIdx, tickInputs)
 
@@ -234,64 +326,6 @@ func (g *game) Update() error {
 	)
 	if err != nil {
 		log.Printf("error during handling inputs: %v", err)
-	}
-
-	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-		g.ecs.Camera.X -= 10
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyUp) {
-		g.ecs.Camera.Y -= 10
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyRight) {
-		g.ecs.Camera.X += 10
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyDown) {
-		g.ecs.Camera.Y += 10
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) {
-		g.setZoom(g.zoom + 1)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) {
-		g.setZoom(g.zoom - 1)
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
-		g.ecs.CameraFollow = !g.ecs.CameraFollow
-	}
-	if g.ecs.CameraFollow {
-		pWorldPos, err := g.ecs.WorldPos(g.playerEntity)
-		if err != nil {
-			log.Println("error getting player ecs position for camera follow: ", err)
-		}
-
-		g.ecs.Camera = pWorldPos.Subtract(g.screenSize.Multiply(0.5 / g.ecs.Zoom))
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
-		g.inventoryMenu.Toggle()
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
-		g.showFPS = !g.showFPS
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
-		g.showColliders = !g.showColliders
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF3) {
-		g.showChunks = !g.showChunks
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
-		g.showBody = !g.showBody
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF5) {
-		g.showPaths = !g.showPaths
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF6) {
-		g.fullBright = !g.fullBright
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF7) {
-		g.ecs.SetUntargetable(g.playerEntity, !g.ecs.IsUntargetable(g.playerEntity))
 	}
 
 	err = animationsystem.Tick(g.ecs, g.assetmanager)
@@ -413,8 +447,6 @@ func (g *game) Update() error {
 	}
 
 	g.ecs.TickIdx++
-
-	return nil
 }
 
 var hotbarKeys = []ebiten.Key{
@@ -428,36 +460,48 @@ func (g *game) uiCursor() utils.Vec2f {
 	return utils.Vec2f{X: float64(x), Y: float64(y)}.Multiply(1 / g.uiScale)
 }
 
-// Adds what a click or a hotbar key in the inventory menu did, keeps clicks on the menu from also using what's in hand,
-// and hotbar keys over its slots from also selecting
-func (g *game) inventoryMenuInput(in ecs.InputState) ecs.InputState {
+// Turns clicks and hotbar keys in the inventory menu into an action for the next tick. Until that tick has run, which
+// at a slow or stopped timescale can take many frames, the menu takes no new actions, since it decides what a click
+// does from the inventory as it is.
+func (g *game) updateInventoryMenu() {
 	inv, ok := g.ecs.Inventories.Get(g.playerEntity)
 	if !ok {
-		return in
+		return
 	}
 	cursor, screen := g.uiCursor(), g.screenSize.Multiply(1/g.uiScale)
+	canAct := g.pendingInventory.Kind == ecs.InventoryAction_None
 
 	covers := g.inventoryMenu.Covers(cursor, screen, inv, g.assetmanager)
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) || inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		g.menuHasMouse = covers
-		if covers && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			in.Inventory = g.inventoryMenu.Click(cursor, screen, inv, g.assetmanager)
+		if covers && canAct && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			g.pendingInventory = g.inventoryMenu.Click(cursor, screen, inv, g.assetmanager)
 		}
 	}
 	if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) && !ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
 		g.menuHasMouse = false
 	}
 
-	if g.inventoryMenu.SlotAt(cursor, screen, inv, g.assetmanager) != -1 {
-		in.SelectSlot = 0
+	g.menuOverSlot = g.inventoryMenu.SlotAt(cursor, screen, inv, g.assetmanager) != -1
+	if g.menuOverSlot {
 		for i, key := range hotbarKeys {
-			if inpututil.IsKeyJustPressed(key) && in.Inventory.Kind == ecs.InventoryAction_None {
-				in.Inventory = g.inventoryMenu.HotbarKey(i, cursor, screen, inv, g.assetmanager)
+			if inpututil.IsKeyJustPressed(key) && g.pendingInventory.Kind == ecs.InventoryAction_None {
+				g.pendingInventory = g.inventoryMenu.HotbarKey(i, cursor, screen, inv, g.assetmanager)
 			}
 		}
 	}
 
-	if g.menuHasMouse || covers {
+	g.menuTakesHand = g.menuHasMouse || covers
+}
+
+// Adds the inventory menu's pending action, keeps clicks on the menu from also using what's in hand, and hotbar keys
+// over its slots from also selecting
+func (g *game) withInventoryMenu(in ecs.InputState) ecs.InputState {
+	in.Inventory, g.pendingInventory = g.pendingInventory, ecs.InventoryAction{}
+	if g.menuOverSlot {
+		in.SelectSlot = 0
+	}
+	if g.menuTakesHand {
 		in.MainHandEqAbility1, in.MainHandEqAbility2 = 0, 0
 		in.OffHandEqAbility1, in.OffHandEqAbility2 = 0, 0
 	}
@@ -516,7 +560,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 
 	if g.loading {
 		screen.Fill(color.RGBA{0, 0, 0, 255})
-		g.fpsText.draw(screen, "Loading...", g.uiScale, false)
+		g.fpsText.draw(screen, "Loading...", g.uiScale, corner_TopLeft)
 		return
 	}
 
@@ -542,12 +586,15 @@ func (g *game) Draw(screen *ebiten.Image) {
 	}
 
 	if g.showFPS {
-		g.fpsText.draw(screen, fmt.Sprintf("FPS: %f\nSlowest frame: %.2f ms", ebiten.ActualFPS(), g.frameTimes.slowestMs()), g.uiScale, false)
+		g.fpsText.draw(screen, fmt.Sprintf("FPS: %f\nSlowest frame: %.2f ms", ebiten.ActualFPS(), g.frameTimes.slowestMs()), g.uiScale, corner_TopLeft)
 	}
 	if g.showBody {
 		if status, err := drawsystem.BodyStatusText(g.playerEntity, g.ecs); err == nil {
-			g.bodyText.draw(screen, status, g.uiScale, true)
+			g.bodyText.draw(screen, status, g.uiScale, corner_BottomRight)
 		}
+	}
+	if g.timescalePercent != 100 {
+		g.timescaleText.draw(screen, fmt.Sprintf("Speed: %d%%", g.timescalePercent), g.uiScale, corner_TopRight)
 	}
 }
 
@@ -618,7 +665,15 @@ type debugText struct {
 
 // The debug font is tiny at the screen's resolution, so the text is printed at UI pixels and scaled up. Only the text's
 // own area is drawn, since a full-screen draw for a few characters costs as much as drawing the world.
-func (d *debugText) draw(screen *ebiten.Image, msg string, uiScale float64, bottomRight bool) {
+type screenCorner uint8
+
+const (
+	corner_TopLeft screenCorner = iota
+	corner_TopRight
+	corner_BottomRight
+)
+
+func (d *debugText) draw(screen *ebiten.Image, msg string, uiScale float64, corner screenCorner) {
 	lines := strings.Split(msg, "\n")
 	longest := 0
 	for _, l := range lines {
@@ -640,8 +695,11 @@ func (d *debugText) draw(screen *ebiten.Image, msg string, uiScale float64, bott
 	ebitenutil.DebugPrint(d.image, msg)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(uiScale, uiScale)
-	if bottomRight {
-		size := screen.Bounds().Size()
+	size := screen.Bounds().Size()
+	switch corner {
+	case corner_TopRight:
+		op.GeoM.Translate(float64(size.X)-float64(w)*uiScale, 0)
+	case corner_BottomRight:
 		op.GeoM.Translate(float64(size.X)-float64(w)*uiScale, float64(size.Y)-float64(h)*uiScale)
 	}
 	screen.DrawImage(d.image.SubImage(image.Rect(0, 0, w, h)).(*ebiten.Image), op)

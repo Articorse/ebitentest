@@ -231,12 +231,16 @@ func (x *Input) JustPressed(inputType InputType) bool {
 	return held && !wasHeld
 }
 
-// Whole steps scrolled down since the last call, given how far the wheel moved down since then; negative is up
-func (x *Input) WheelSteps(down float64) int {
+// Adds how far the wheel moved down, which is read every frame, since a frame doesn't always run a tick
+func (x *Input) AddWheel(down float64) {
 	if down*x.wheel < 0 {
 		x.wheel = 0
 	}
 	x.wheel += down
+}
+
+// Whole steps scrolled down since the last call; negative is up
+func (x *Input) WheelSteps() int {
 	steps := int(x.wheel)
 	x.wheel -= float64(steps)
 	return steps
