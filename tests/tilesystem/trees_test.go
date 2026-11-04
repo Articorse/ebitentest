@@ -280,7 +280,7 @@ func TestTerrainBlocksTossesWhereItsImpassable(t *testing.T) {
 	}
 }
 
-func TestFelledTreesDropPlanks(t *testing.T) {
+func TestFelledTreesDropWood(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 
@@ -309,19 +309,19 @@ func TestFelledTreesDropPlanks(t *testing.T) {
 		dropCounts[len(dropped)]++
 		for _, e := range dropped {
 			item, _ := s.ECS.Items.Get(e)
-			if item.Kind() != data.Item_Planks || item.Count() != 1 || !s.ECS.Tosses.HasComponent(e) {
-				t.Fatalf("the tree at %v dropped a %v of kind %v, tossed %v; want single planks, each tossed",
+			if item.Kind() != data.Item_Wood || item.Count() != 1 || !s.ECS.Tosses.HasComponent(e) {
+				t.Fatalf("the tree at %v dropped a %v of kind %v, tossed %v; want single pieces of wood, each tossed",
 					tree, item.Count(), item.Kind(), s.ECS.Tosses.HasComponent(e))
 			}
 			if pos := testutil.WorldPos(t, s.ECS, e); pos != utils.TilePosToWorldPos(tree) {
-				t.Fatalf("a plank was dropped at %v, want from the tree at %v", pos, utils.TilePosToWorldPos(tree))
+				t.Fatalf("wood was dropped at %v, want from the tree at %v", pos, utils.TilePosToWorldPos(tree))
 			}
 		}
 	}
 
 	for n := range dropCounts {
 		if n > 2 {
-			t.Fatalf("drop counts %v, want only 0, 1 or 2 planks per tree", dropCounts)
+			t.Fatalf("drop counts %v, want only 0, 1 or 2 wood per tree", dropCounts)
 		}
 	}
 	if dropCounts[1] == 0 || dropCounts[2] == 0 {

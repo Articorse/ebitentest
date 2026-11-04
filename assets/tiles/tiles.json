@@ -11,6 +11,7 @@
     "imageAsset": "tile_dirt",
     "maxHealth": -1,
     "passable": true,
+    "buildable": true,
     "opaque": false
   },
   {
@@ -19,6 +20,7 @@
     "maxHealth": 50,
     "destroyedInto": 1,
     "passable": true,
+    "buildable": true,
     "opaque": false
   },
   {
@@ -59,6 +61,7 @@
     "imageAsset": "tile_rock_floor",
     "maxHealth": -1,
     "passable": true,
+    "buildable": true,
     "opaque": false
   }
 ]

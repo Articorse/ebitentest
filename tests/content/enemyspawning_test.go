@@ -111,7 +111,7 @@ func TestEnemiesDontSpawnWhereThePlayerSeesOrSomethingStands(t *testing.T) {
 	for dy := -128; dy <= 128; dy++ {
 		for dx := -128; dx <= 128; dx++ {
 			if d := dx*dx + dy*dy; d >= 64*64 && d <= 128*128 {
-				if _, err := y.SpawnItem(data.Item_Planks, utils.TilePosToWorldPos(utils.Vec2i{X: dx, Y: dy})); err != nil {
+				if _, err := y.SpawnItem(data.Item_Wood, utils.TilePosToWorldPos(utils.Vec2i{X: dx, Y: dy})); err != nil {
 					t.Fatal(err)
 				}
 			}

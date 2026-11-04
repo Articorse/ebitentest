@@ -16,6 +16,7 @@ type chunk struct {
 	features      map[utils.Vec2i]data.FeatureEnum
 	// Only for damaged features
 	featureHealth   map[utils.Vec2i]int
+	sites           map[utils.Vec2i]*constructionSite
 	terrainModified bool
 
 	// The tiles of the features that give light, found when they're first asked for after the features change
@@ -36,6 +37,7 @@ func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
 	}
 	c.promotedTiles = make(map[utils.Vec2i]promotedTile)
 	c.featureHealth = make(map[utils.Vec2i]int)
+	c.sites = make(map[utils.Vec2i]*constructionSite)
 
 	return &c, nil
 }
@@ -83,13 +85,16 @@ func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) (bool, *ecs.Drop
 	return true, def.drops
 }
 
-// Passable ground, loaded and without a feature on it
+// Passable ground, loaded and without a feature or a construction site on it
 func (cc *ChunkContainer) CanPlaceTile(t utils.Vec2i) bool {
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	if !ok {
 		return false
 	}
 	if _, hasFeature := c.features[t]; hasFeature {
+		return false
+	}
+	if _, hasSite := c.sites[t]; hasSite {
 		return false
 	}
 	def, ok := cc.atlas[c.getTileDefId(t)]

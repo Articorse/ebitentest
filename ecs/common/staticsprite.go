@@ -9,4 +9,6 @@ type StaticSprite struct {
 	// Where the image's center is
 	Pos   utils.Vec2f
 	Layer uint8
+	// Drawn see-through and tinted, as what's planned rather than what's there
+	Ghost bool
 }

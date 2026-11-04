@@ -865,9 +865,14 @@ func main() {
 	if err := g.chunkContainer.GenerateTileAtlasFromJson("assets/tiles/tiles.json", itemAtlas, assets); err != nil {
 		log.Fatal("error generating tile atlas from json: ", err)
 	}
-	if err := itemAtlas.CheckPlacedTiles(g.chunkContainer.HasTile); err != nil {
-		log.Fatal("error checking the item atlas against the tile atlas: ", err)
+	blueprintAtlas, err := ecs.LoadBlueprintAtlasFromJson("assets/blueprints/blueprints.json", itemAtlas, assets)
+	if err != nil {
+		log.Fatal("error loading blueprint atlas from json: ", err)
 	}
+	if err := g.chunkContainer.SetBlueprintAtlas(blueprintAtlas); err != nil {
+		log.Fatal("error checking the blueprint atlas against the tile atlas: ", err)
+	}
+	g.ecs.SetBlueprintAtlas(blueprintAtlas)
 	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json", itemAtlas, assets); err != nil {
 		log.Fatal("error generating feature atlas from json: ", err)
 	}

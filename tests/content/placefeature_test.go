@@ -5,6 +5,8 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/ecs/shapes"
+	"ebittest/ecs/systems/abilitysystem"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"maps"
@@ -66,7 +68,7 @@ func TestTorchesArePlacedOnFreeGroundInReachAndSightEvenUnderSomeone(t *testing.
 			addBlocker(t, x, pos)
 		}
 		for _, pos := range c.items {
-			if _, err := x.SpawnItem(data.Item_Planks, pos); err != nil {
+			if _, err := x.SpawnItem(data.Item_Wood, pos); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -86,13 +88,82 @@ func TestTorchesArePlacedOnFreeGroundInReachAndSightEvenUnderSomeone(t *testing.
 			want[c.aim] = data.Feature_Torch
 			left = 1
 		}
-		used := place(t, x, holder, c.aim)
+		used := strike(t, x, holder, c.aim)
 		if item, _ := x.Items.Get(stack); used != c.placed || !maps.Equal(terrain.placedFeatures, want) || item.Count() != left {
 			t.Errorf("%s: placing used %v, placed %v and left %d torches; want %v and %d", c.name, used, terrain.placedFeatures, item.Count(), want, left)
 		}
 		if len(terrain.placed) != 0 {
 			t.Errorf("%s: a torch placed tiles %v", c.name, terrain.placed)
 		}
+	}
+}
+
+func TestEachPlacementUsesUpATorchAndTheLastEmptiesTheSlot(t *testing.T) {
+	terrain := newFakeTerrain()
+	x, holder, stack := newTorchHolder(t, terrain, 2)
+	tick := func(ms int) {
+		t.Helper()
+		for range ms / data.TickMs {
+			if err := abilitysystem.Tick(x); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	if !strike(t, x, holder, utils.Vec2i{X: 1}) {
+		t.Fatal("the first torch wasn't placed")
+	}
+	if item, _ := x.Items.Get(stack); item.Count() != 1 {
+		t.Fatalf("%d torches are left after placing one of 2, want 1", item.Count())
+	}
+
+	tick(240)
+	if strike(t, x, holder, utils.Vec2i{X: -1}) {
+		t.Fatal("a torch was placed before the 250ms cooldown ran out")
+	}
+	tick(40)
+	if !strike(t, x, holder, utils.Vec2i{X: -1}) {
+		t.Fatal("the last torch wasn't placed after the cooldown")
+	}
+
+	inv, _ := x.Inventories.Get(holder)
+	if _, ok := inv.Slot(0); ok {
+		t.Fatal("the slot still holds the used up stack")
+	}
+	if eq, _ := x.Equippers.Get(holder); len(eq.Equipment()) != 0 {
+		t.Fatal("the used up stack is still in hand")
+	}
+	if err := x.CheckConsistency(); err != nil {
+		t.Fatal(err)
+	}
+	testutil.RemoveScheduled(t, x)
+	if x.HasEntity(stack) {
+		t.Fatal("the used up stack wasn't removed")
+	}
+	if want := map[utils.Vec2i]data.FeatureEnum{{X: 1}: data.Feature_Torch, {X: -1}: data.Feature_Torch}; !maps.Equal(terrain.placedFeatures, want) {
+		t.Fatalf("placed %v, want %v", terrain.placedFeatures, want)
+	}
+}
+
+func TestAPickedUpTorchDoesntGoIntoAUsedUpStack(t *testing.T) {
+	terrain := newFakeTerrain()
+	x, holder, stack := newTorchHolder(t, terrain, 1)
+	if !strike(t, x, holder, utils.Vec2i{X: 1}) {
+		t.Fatal("the torch wasn't placed")
+	}
+
+	torch, err := x.SpawnItem(data.Item_Torch, utils.Vec2f{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := x.PickUpItem(holder, torch); err != nil || !ok {
+		t.Fatalf("picking up a torch: %v, %v", ok, err)
+	}
+	testutil.RemoveScheduled(t, x)
+
+	inv, _ := x.Inventories.Get(holder)
+	if held, _ := inv.Slot(0); held != torch || x.HasEntity(stack) {
+		t.Fatalf("slot 0 holds %d, want the torch picked up after the stack ran out", held)
 	}
 }
 
@@ -103,4 +174,13 @@ func TestPlaceFeatureParamsAreCopiedNotShared(t *testing.T) {
 	if p.RangeTiles != 3 || p.PlacedFeature() != data.Feature_Torch {
 		t.Fatal("changing the copy changed the original")
 	}
+}
+
+func addBlocker(t *testing.T, x *ecs.ECSContainer, pos utils.Vec2f) {
+	t.Helper()
+	shape, err := shapes.NewRectangleShape(6, 6, utils.Vec2f{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	testutil.AddMovable(t, x, pos, false, ecs.NewPhysicsColliderComponent(1, 1, ecs.Collider_Mob, shape))
 }

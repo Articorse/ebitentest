@@ -35,6 +35,7 @@ type ECSContainer struct {
 	isSimulatedPos func(worldPos utils.Vec2f) bool
 	terrain        Terrain
 	itemAtlas      *ItemAtlas
+	blueprintAtlas *BlueprintAtlas
 	bodyAtlas      *BodyAtlas
 	assets         *assetmanager.AssetManager
 	untargetable   map[common.EntityId]bool
@@ -136,6 +137,7 @@ func NewECSContainer() *ECSContainer {
 		untargetable:          make(map[common.EntityId]bool),
 		timerFuncs:            make(map[TimerFuncEnum]TimerFunc),
 		itemAtlas:             NewItemAtlas(),
+		blueprintAtlas:        NewBlueprintAtlas(),
 		inputSourceFuncs:      make(map[InputTypeEnum]InputSourceFunc),
 
 		Rng:       rand.New(rngSource),

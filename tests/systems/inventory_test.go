@@ -18,7 +18,7 @@ func act(t *testing.T, x *ecs.ECSContainer, player common.EntityId, kind ecs.Inv
 
 func putStack(t *testing.T, x *ecs.ECSContainer, player common.EntityId, slot, count int) common.EntityId {
 	t.Helper()
-	stack, err := x.SpawnItemStack(data.Item_Planks, count, testutil.WorldPos(t, x, player))
+	stack, err := x.SpawnItemStack(data.Item_Wood, count, testutil.WorldPos(t, x, player))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,8 +90,8 @@ func TestAStackMovedWhollyOntoAnotherHandsItsHotbarSlotOver(t *testing.T) {
 	if x.HasEntity(moved) || slotItem(inv, 10) != -1 || countOf(x, onto) != 70 {
 		t.Fatal("the emptied stack wasn't taken out and removed")
 	}
-	if hotbarItem(inv, 7) != onto || inHand(x, player) != onto {
-		t.Fatal("the hotbar slot and the hand didn't go over to the stack the planks went into")
+	if hotbarItem(inv, 7) != onto || x.IsDisabled(onto) {
+		t.Fatal("the hotbar slot and the selection didn't go over to the stack the wood went into")
 	}
 }
 
@@ -162,17 +162,17 @@ func TestNewItemsPickedUpGoOnTheFirstFreeHotbarSlot(t *testing.T) {
 	x, player, _, _, _ := newArmedPlayer(t)
 	inv, _ := x.Inventories.Get(player)
 
-	pickUpPlank(t, x, player)
-	planks := slotItem(inv, 5)
-	if hotbarItem(inv, 5) != planks {
-		t.Fatal("the planks didn't go onto the first free hotbar slot")
+	pickUpWood(t, x, player)
+	wood := slotItem(inv, 5)
+	if hotbarItem(inv, 5) != wood {
+		t.Fatal("the wood didn't go onto the first free hotbar slot")
 	}
 
 	if err := x.BindHotbar(player, 5, -1); err != nil {
 		t.Fatal(err)
 	}
-	pickUpPlank(t, x, player)
-	if hotbarItem(inv, 5) != -1 || countOf(x, planks) != 2 {
+	pickUpWood(t, x, player)
+	if hotbarItem(inv, 5) != -1 || countOf(x, wood) != 2 {
 		t.Fatal("topping up a stack put it back on the hotbar")
 	}
 	checkConsistency(t, x)
@@ -191,10 +191,10 @@ func TestNewItemsPickedUpWithAFullHotbarStayOffIt(t *testing.T) {
 		}
 	}
 
-	pickUpPlank(t, x, player)
+	pickUpWood(t, x, player)
 
-	if planks := slotItem(inv, inv.HotbarSize()); planks == -1 || inv.HotbarSlotOf(planks) != -1 {
-		t.Fatal("the planks weren't picked up off the hotbar")
+	if wood := slotItem(inv, inv.HotbarSize()); wood == -1 || inv.HotbarSlotOf(wood) != -1 {
+		t.Fatal("the wood weren't picked up off the hotbar")
 	}
 	checkConsistency(t, x)
 }

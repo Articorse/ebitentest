@@ -14,7 +14,7 @@ const (
 	AssetSheetGun           ImageAssetTag = "gun"
 	AssetSheetBullet        ImageAssetTag = "bullet"
 	AssetImageMattock       ImageAssetTag = "mattock"
-	AssetImagePlanks        ImageAssetTag = "planks"
+	AssetImageWood          ImageAssetTag = "wood"
 	AssetSheetTorchPlaced   ImageAssetTag = "torch_placed"
 	AssetImageAxe           ImageAssetTag = "axe"
 	AssetImageSlash         ImageAssetTag = "slash"
@@ -31,7 +31,7 @@ const (
 // when they're loaded.
 var CodeAssetTags = []ImageAssetTag{
 	AssetSheetSlime, AssetImageTree, AssetImageTreeStump, AssetSheetEvilSlime, AssetSheetBazooka, AssetSheetRocket,
-	AssetSheetExplosion, AssetSheetGun, AssetSheetBullet, AssetImageMattock, AssetImagePlanks, AssetSheetTorchPlaced,
+	AssetSheetExplosion, AssetSheetGun, AssetSheetBullet, AssetImageMattock, AssetImageWood, AssetSheetTorchPlaced,
 	AssetImageAxe, AssetImageSlash, AssetImagePlatform, AssetImageSlot, AssetImageSlotHighlight,
 	AssetImageInventoryPanel, AssetDebug16x16,
 }

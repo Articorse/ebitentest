@@ -16,6 +16,7 @@ type ChunkContainer struct {
 	chunks       map[utils.Vec2i]*chunk
 	atlas        map[data.TileEnum]tileDef
 	featureAtlas map[data.FeatureEnum]featureDef
+	blueprints   *ecs.BlueprintAtlas
 	// How far the light of the furthest-reaching feature goes
 	maxLightRange int
 
@@ -43,7 +44,8 @@ type ChunkContainer struct {
 
 func NewChunkContainer() *ChunkContainer {
 	cc := &ChunkContainer{
-		chunks: make(map[utils.Vec2i]*chunk),
+		chunks:     make(map[utils.Vec2i]*chunk),
+		blueprints: ecs.NewBlueprintAtlas(),
 
 		ioRequests: newIOQueue(),
 		ioResults:  make(chan ioResult, 1024),

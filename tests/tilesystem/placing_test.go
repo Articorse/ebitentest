@@ -15,7 +15,7 @@ func bareGrass(t *testing.T, s *testutil.Session) utils.Vec2i {
 	})
 }
 
-func TestPlacedPlanksAreAWallThatBreaksIntoDirtAndAPlank(t *testing.T) {
+func TestPlacedPlanksAreAWallThatBreaksIntoDirtAndWood(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	tile := bareGrass(t, s)
@@ -50,10 +50,10 @@ func TestPlacedPlanksAreAWallThatBreaksIntoDirtAndAPlank(t *testing.T) {
 
 	dropped := len(r.ECS.Items.GetEntities()) - items
 	if dropped != 1 {
-		t.Fatalf("destroyed planks dropped %d items, want 1 plank", dropped)
+		t.Fatalf("destroyed planks dropped %d items, want 1 wood", dropped)
 	}
 	for _, e := range r.ECS.Items.GetEntities() {
-		if item, _ := r.ECS.Items.Get(e); item.Kind() == data.Item_Planks && item.Count() != 1 {
+		if item, _ := r.ECS.Items.Get(e); item.Kind() == data.Item_Wood && item.Count() != 1 {
 			t.Fatalf("destroyed planks dropped a stack of %d, want 1", item.Count())
 		}
 	}

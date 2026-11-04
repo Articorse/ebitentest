@@ -37,6 +37,51 @@ type Terrain interface {
 	// Calls lit for every feature giving light that reaches the square between min and max, with the light on its own
 	// tile and how far away it fades to nothing
 	LightSources(min, max utils.Vec2i, lit func(t utils.Vec2i, level uint8, rangeTiles int))
+	// A blueprint is put down as a construction site, which is walked over and seen through. There's room for one on
+	// ground that can be built on, without a feature or another site.
+	CanPlaceSite(t utils.Vec2i) bool
+	// False if a site can't be placed there, or the blueprint doesn't exist
+	PlaceSite(t utils.Vec2i, blueprint data.BlueprintEnum) bool
+	Site(t utils.Vec2i) (ConstructionSite, bool)
+	// How many of the items the site took, which is no more than it still needs of them
+	DeliverToSite(t utils.Vec2i, item data.ItemEnum, count int) int
+	// Works on a site that has everything delivered, and turns it into its tile once its health reaches the tile's.
+	// Worked is false if there's no such site.
+	BuildSite(t utils.Vec2i, work int) (worked, built bool)
+}
+
+// Its health is how far building it has come, from 1 when it's placed up to that of the tile it builds
+type ConstructionSite struct {
+	Blueprint data.BlueprintEnum
+	// For each of the blueprint's costs in turn, how many have been delivered
+	Delivered []ItemCost
+	Health    int
+	MaxHealth int
+}
+
+// Every cost has been delivered, so building can start
+func (x ConstructionSite) Supplied(def BlueprintDef) bool {
+	for _, c := range def.costs {
+		if x.Needs(c.Kind, def) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (x ConstructionSite) Needs(item data.ItemEnum, def BlueprintDef) int {
+	needed := 0
+	for _, c := range def.costs {
+		if c.Kind == item {
+			needed += c.Count
+		}
+	}
+	for _, d := range x.Delivered {
+		if d.Kind == item {
+			needed -= d.Count
+		}
+	}
+	return needed
 }
 
 type noTerrain struct{}
@@ -60,6 +105,11 @@ func (noTerrain) PlaceFeature(utils.Vec2i, data.FeatureEnum) bool { return false
 func (noTerrain) WalkSpeedPercent(utils.Vec2i) int                { return 100 }
 func (noTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {
 }
+func (noTerrain) CanPlaceSite(utils.Vec2i) bool                     { return false }
+func (noTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool    { return false }
+func (noTerrain) Site(utils.Vec2i) (ConstructionSite, bool)         { return ConstructionSite{}, false }
+func (noTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int { return 0 }
+func (noTerrain) BuildSite(utils.Vec2i, int) (worked, built bool)   { return false, false }
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {
 	x.terrain = terrain

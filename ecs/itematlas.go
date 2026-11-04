@@ -165,31 +165,13 @@ func (x *ECSContainer) SetItemAtlas(atlas *ItemAtlas) error {
 	return nil
 }
 
-// Implemented by the params of abilities that place a tile
-type TilePlacer interface {
-	PlacedTile() data.TileEnum
-}
-
-// The tile atlas is loaded after the item atlas, since tiles drop items, so the tiles that items place are checked
-// once both are loaded
-func (x *ItemAtlas) CheckPlacedTiles(tileExists func(data.TileEnum) bool) error {
-	for kind, def := range x.defs {
-		if def.use == nil {
-			continue
-		}
-		if placer, ok := def.use.params.(TilePlacer); ok && !tileExists(placer.PlacedTile()) {
-			return fmt.Errorf("item %d places tile %d, which isn't in the tile atlas", kind, placer.PlacedTile())
-		}
-	}
-	return nil
-}
-
 // Implemented by the params of abilities that place a feature
 type FeaturePlacer interface {
 	PlacedFeature() data.FeatureEnum
 }
 
-// Like the placed tiles, since the feature atlas is loaded after the item atlas too
+// The feature atlas is loaded after the item atlas, since features drop items, so the features that items place are
+// checked once both are loaded
 func (x *ItemAtlas) CheckPlacedFeatures(featureExists func(data.FeatureEnum) bool) error {
 	for kind, def := range x.defs {
 		if def.use == nil {

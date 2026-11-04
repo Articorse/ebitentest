@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-func planks(n int) []ecs.ItemDrop {
-	return []ecs.ItemDrop{{Kind: data.Item_Planks, Count: n}}
+func wood(n int) []ecs.ItemDrop {
+	return []ecs.ItemDrop{{Kind: data.Item_Wood, Count: n}}
 }
 
 func TestDropTablesRefuseOutcomesThatDontAddUp(t *testing.T) {
@@ -20,12 +20,12 @@ func TestDropTablesRefuseOutcomesThatDontAddUp(t *testing.T) {
 		outcomes []ecs.DropOutcome
 		ok       bool
 	}{
-		{"exactly 100%", []ecs.DropOutcome{{ChancePercent: 60, Items: planks(1)}, {ChancePercent: 40, Items: planks(2)}}, true},
-		{"under 100%", []ecs.DropOutcome{{ChancePercent: 30, Items: planks(2)}, {ChancePercent: 50, Items: planks(1)}}, true},
-		{"two outcomes with the same chance", []ecs.DropOutcome{{ChancePercent: 30, Items: planks(2)}, {ChancePercent: 30, Items: planks(1)}}, true},
-		{"over 100%", []ecs.DropOutcome{{ChancePercent: 60, Items: planks(1)}, {ChancePercent: 40.5, Items: planks(2)}}, false},
-		{"a negative chance", []ecs.DropOutcome{{ChancePercent: -10, Items: planks(1)}, {ChancePercent: 50, Items: planks(2)}}, false},
-		{"dropping none of an item", []ecs.DropOutcome{{ChancePercent: 50, Items: planks(0)}}, false},
+		{"exactly 100%", []ecs.DropOutcome{{ChancePercent: 60, Items: wood(1)}, {ChancePercent: 40, Items: wood(2)}}, true},
+		{"under 100%", []ecs.DropOutcome{{ChancePercent: 30, Items: wood(2)}, {ChancePercent: 50, Items: wood(1)}}, true},
+		{"two outcomes with the same chance", []ecs.DropOutcome{{ChancePercent: 30, Items: wood(2)}, {ChancePercent: 30, Items: wood(1)}}, true},
+		{"over 100%", []ecs.DropOutcome{{ChancePercent: 60, Items: wood(1)}, {ChancePercent: 40.5, Items: wood(2)}}, false},
+		{"a negative chance", []ecs.DropOutcome{{ChancePercent: -10, Items: wood(1)}, {ChancePercent: 50, Items: wood(2)}}, false},
+		{"dropping none of an item", []ecs.DropOutcome{{ChancePercent: 50, Items: wood(0)}}, false},
 	} {
 		if _, err := ecs.NewDropTable(c.outcomes...); (err == nil) != c.ok {
 			t.Errorf("%s: error %v, want ok %v", c.name, err, c.ok)
@@ -33,7 +33,7 @@ func TestDropTablesRefuseOutcomesThatDontAddUp(t *testing.T) {
 	}
 }
 
-// Kills an entity with the table at the origin and returns how many planks it dropped
+// Kills an entity with the table at the origin and returns how many wood it dropped
 func killAndCountDrops(t *testing.T, x *ecs.ECSContainer, table *ecs.DropTable) int {
 	t.Helper()
 	before := len(x.Items.GetEntities())
@@ -45,7 +45,7 @@ func killAndCountDrops(t *testing.T, x *ecs.ECSContainer, table *ecs.DropTable) 
 
 func TestDropTablesRollEachOutcomeAsOftenAsItsChance(t *testing.T) {
 	x := testutil.NewECS(t)
-	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 30, Items: planks(2)}, ecs.DropOutcome{ChancePercent: 50, Items: planks(1)})
+	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 30, Items: wood(2)}, ecs.DropOutcome{ChancePercent: 50, Items: wood(1)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestDropTablesRollEachOutcomeAsOftenAsItsChance(t *testing.T) {
 
 func TestOnlyKilledEntitiesDropTheirLoot(t *testing.T) {
 	x := testutil.NewECS(t)
-	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: planks(1)})
+	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: wood(1)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,13 +86,13 @@ func TestOnlyKilledEntitiesDropTheirLoot(t *testing.T) {
 	testutil.RemoveScheduled(t, x)
 	dropped := x.Items.GetEntities()
 	if len(dropped) != 1 || testutil.WorldPos(t, x, dropped[0]) != pos || !x.Tosses.HasComponent(dropped[0]) {
-		t.Fatalf("a killed entity dropped %v, want one plank tossed from where it died, %v", dropped, pos)
+		t.Fatalf("a killed entity dropped %v, want one wood tossed from where it died, %v", dropped, pos)
 	}
 }
 
 func TestDropTablesAreSaved(t *testing.T) {
 	x := testutil.NewECS(t)
-	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: planks(3)})
+	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: wood(3)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,13 +106,13 @@ func TestDropTablesAreSaved(t *testing.T) {
 	y.ScheduleKillEntity(e)
 	testutil.RemoveScheduled(t, y)
 	if n := len(y.Items.GetEntities()); n != 3 {
-		t.Fatalf("after loading, the entity dropped %d planks, want 3", n)
+		t.Fatalf("after loading, the entity dropped %d wood, want 3", n)
 	}
 }
 
 func TestEachDropIsTossedItsOwnWay(t *testing.T) {
 	x := testutil.NewECS(t)
-	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: planks(3)})
+	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: wood(3)})
 	if err != nil {
 		t.Fatal(err)
 	}

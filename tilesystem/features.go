@@ -306,8 +306,8 @@ func animationFrame(frames []featureFrame, ms uint64) int {
 	return 0
 }
 
-// The sprites of the features in the active chunks whose tiles are within the bounds, at the time in their animations,
-// in tile order so that drawing them is the same every frame
+// The sprites of the features and construction sites in the active chunks whose tiles are within the bounds, features at
+// the time in their animations, in tile order so that drawing them is the same every frame
 func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f, ms uint64) []common.StaticSprite {
 	minTile, maxTile := utils.WorldPosToTilePos(bounds[0]), utils.WorldPosToTilePos(bounds[1])
 	minChunk := utils.Vec2i{X: floorDiv(minTile.X, data.ChunkSize), Y: floorDiv(minTile.Y, data.ChunkSize)}
@@ -331,6 +331,14 @@ func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f, ms uint64) []com
 					continue
 				}
 				if sprite, ok := cc.featureSprite(t, f, ms); ok {
+					found = append(found, placed{t, sprite})
+				}
+			}
+			for t, s := range c.sites {
+				if t.X < minTile.X || t.X > maxTile.X || t.Y < minTile.Y || t.Y > maxTile.Y {
+					continue
+				}
+				if sprite, ok := cc.siteSprite(t, s); ok {
 					found = append(found, placed{t, sprite})
 				}
 			}

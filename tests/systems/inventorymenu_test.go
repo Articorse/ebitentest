@@ -181,16 +181,16 @@ func TestAStackPutOnAnotherKeepsWhatDidntFitHeld(t *testing.T) {
 	a := click(inventorySlotCenter(11))
 	act(t, x, player, a.Kind, a.From, a.To)
 	if countOf(x, slotItem(inv, 10)) != 20 || !covers() {
-		t.Fatal("the 20 planks that didn't fit aren't still held")
+		t.Fatal("the 20 wood that didn't fit aren't still held")
 	}
 
 	a = click(inventorySlotCenter(12))
 	act(t, x, player, a.Kind, a.From, a.To)
 	if slotItem(inv, 10) != -1 || covers() {
-		t.Fatal("the menu still holds the planks that all went onto the stack")
+		t.Fatal("the menu still holds the wood that all went onto the stack")
 	}
 	if a := click(inventorySlotCenter(20)); a.Kind != ecs.InventoryAction_None {
-		t.Fatalf("clicking an empty slot after the held planks were used up did %v", a)
+		t.Fatalf("clicking an empty slot after the held wood were used up did %v", a)
 	}
 }
 

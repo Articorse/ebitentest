@@ -27,6 +27,7 @@ const (
 	FeatureAtlasPath = "assets/features/features.json"
 	ItemAtlasPath    = "assets/items/items.json"
 	BodyAtlasPath    = "assets/bodies/bodies.json"
+	BlueprintsPath   = "assets/blueprints/blueprints.json"
 	// Small, since every chunk it loads is generated, and chunks are big
 	PlayerLoaderRadius = 1
 	// Fixed rather than random like the game's, so that a failing test fails the same way every time
@@ -50,6 +51,11 @@ func NewECS(t testing.TB) *ecs.ECSContainer {
 		t.Fatal(err)
 	}
 	x.SetBodyAtlas(bodies)
+	blueprints, err := ecs.LoadBlueprintAtlasFromJson(filepath.Join(RepoRoot(), BlueprintsPath), x.ItemAtlas(), Assets(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	x.SetBlueprintAtlas(blueprints)
 	x.SetAssets(Assets(t))
 	x.TickState = *common.NewTickState()
 
@@ -228,7 +234,7 @@ func StartSession(t testing.TB) *Session {
 	if err := cc.GenerateTileAtlasFromJson(TileAtlasPath, x.ItemAtlas(), Assets(t)); err != nil {
 		t.Fatal(err)
 	}
-	if err := x.ItemAtlas().CheckPlacedTiles(cc.HasTile); err != nil {
+	if err := cc.SetBlueprintAtlas(x.BlueprintAtlas()); err != nil {
 		t.Fatal(err)
 	}
 	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath, x.ItemAtlas(), Assets(t)); err != nil {

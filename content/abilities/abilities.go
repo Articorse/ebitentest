@@ -13,16 +13,15 @@ const (
 	Ability_Dodge_Post   ecs.AbilityEnum = 3
 	Ability_Explode      ecs.AbilityEnum = 4
 	Ability_TileStrike   ecs.AbilityEnum = 5
-	Ability_PlaceTile    ecs.AbilityEnum = 6
 	Ability_Slash        ecs.AbilityEnum = 7
 	Ability_PlaceFeature ecs.AbilityEnum = 8
+	// 6 was the place tile ability, which items placing tiles had before tiles were built from blueprints
 )
 
 func Register(ecsContainer *ecs.ECSContainer) error {
 	gob.Register(&DodgeParams{})
 	gob.Register(&ExplodeParams{})
 	gob.Register(&TileStrikeParams{})
-	gob.Register(&PlaceTileParams{})
 	gob.Register(&SlashParams{})
 	gob.Register(&PlaceFeatureParams{})
 
@@ -35,7 +34,6 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 		{Ability_Dodge_Post, DodgeAbilityPost},
 		{Ability_Explode, ExplodeAbility},
 		{Ability_TileStrike, TileStrikeAbility},
-		{Ability_PlaceTile, PlaceTileAbility},
 		{Ability_Slash, SlashAbility},
 		{Ability_PlaceFeature, PlaceFeatureAbility},
 	}
@@ -46,9 +44,6 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 		}
 	}
 
-	if err := ecsContainer.RegisterAbilityParamsDecoder(Ability_PlaceTile, decodePlaceTileParams); err != nil {
-		return fmt.Errorf("error registering the params decoder of ability %v: %w", Ability_PlaceTile, err)
-	}
 	if err := ecsContainer.RegisterAbilityParamsDecoder(Ability_PlaceFeature, decodePlaceFeatureParams); err != nil {
 		return fmt.Errorf("error registering the params decoder of ability %v: %w", Ability_PlaceFeature, err)
 	}

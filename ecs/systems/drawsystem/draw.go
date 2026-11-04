@@ -249,6 +249,9 @@ func drawStaticSprite(
 	img := asset.Frames[s.Frame]
 	opts := ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(s.Pos.X-camera.X-float64(img.Bounds().Dx())/2, s.Pos.Y-camera.Y-float64(img.Bounds().Dy())/2)
+	if s.Ghost {
+		opts.ColorScale = GhostColorScale()
+	}
 	screen.DrawImage(img, &opts)
 
 	return nil
@@ -394,4 +397,11 @@ func applySwing(geoM *ebiten.GeoM, sw *ecs.Swing, angle float64, w, h int, scale
 	}
 	geoM.Rotate(angle)
 	geoM.Translate(grip.X, grip.Y)
+}
+
+func GhostColorScale() ebiten.ColorScale {
+	var c ebiten.ColorScale
+	c.Scale(data.GhostTintR, data.GhostTintG, data.GhostTintB, 1)
+	c.ScaleAlpha(data.GhostAlpha)
+	return c
 }

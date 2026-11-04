@@ -20,6 +20,7 @@ type chunkDto struct {
 	Entities        map[common.EntityId][]ecs.ComponentDto
 	TerrainModified bool
 	Features        []featureDto
+	Sites           []siteDto
 }
 
 type featureDto struct {
@@ -76,6 +77,7 @@ func (cc *ChunkContainer) chunkToDto(
 		Entities:        entitiesWithComps,
 		TerrainModified: c.terrainModified,
 		Features:        featureDtos(c),
+		Sites:           siteDtos(c),
 	}, nil
 }
 
@@ -115,6 +117,7 @@ func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 		promotedTiles:   promotedTiles,
 		features:        features,
 		featureHealth:   featureHealth,
+		sites:           sitesFromDtos(dto.Sites),
 		terrainModified: dto.TerrainModified,
 	}
 	return chunk

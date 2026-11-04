@@ -41,6 +41,13 @@ func (openGround) CanPlaceFeature(utils.Vec2i) bool { return false }
 func (openGround) PlaceFeature(utils.Vec2i, data.FeatureEnum) bool { return false }
 
 func (openGround) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {}
+func (openGround) CanPlaceSite(utils.Vec2i) bool                                        { return false }
+func (openGround) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool                       { return false }
+func (openGround) Site(utils.Vec2i) (ecs.ConstructionSite, bool) {
+	return ecs.ConstructionSite{}, false
+}
+func (openGround) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int { return 0 }
+func (openGround) BuildSite(utils.Vec2i, int) (worked, built bool)   { return false, false }
 
 func (openGround) WalkSpeedPercent(utils.Vec2i) int { return 100 }
 

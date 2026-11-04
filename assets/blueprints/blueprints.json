@@ -1,0 +1,10 @@
+[
+  {
+    "id": 1,
+    "name": "Planks",
+    "tile": 6,
+    "imageAsset": "tile_planks",
+    "costs": [{ "kind": 1, "count": 1 }],
+    "work": 10
+  }
+]

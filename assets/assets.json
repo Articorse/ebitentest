@@ -9,7 +9,7 @@
   { "tag": "gun", "path": "sprites/gun_ss.png", "frameCount": 2, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "bullet", "path": "sprites/bullet_ss.png", "frameCount": 3, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "mattock", "path": "sprites/mattock.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
-  { "tag": "planks", "path": "sprites/planks.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
+  { "tag": "wood", "path": "sprites/wood.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "torch_placed", "path": "sprites/torch_placed.png", "frameCount": 3, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "axe", "path": "sprites/axe.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "slash", "path": "sprites/slash.png", "frameCount": 1, "frameSize": { "x": 20, "y": 36 } },
@@ -23,6 +23,6 @@
   { "tag": "tile_shallow_water", "path": "tiles/watershallow.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "tile_deep_water", "path": "tiles/waterdeep.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "tile_rock_floor", "path": "tiles/rock_floor.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
-  { "tag": "tile_planks", "path": "tiles/planks.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
+  { "tag": "tile_planks", "path": "tiles/planks-ss.png", "frameCount": 4, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "debug_16x16", "path": "debug/16x16.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } }
 ]

@@ -21,6 +21,8 @@ type tileDef struct {
 	// what flies over it
 	water  bool
 	opaque bool
+	// Construction sites can be placed on it
+	buildable bool
 	// How much slower walking over it is, which only paths take into account for now
 	slowdownPercent int
 	// Nil for tiles that drop nothing when destroyed
@@ -40,6 +42,7 @@ type tileDefDTO struct {
 	Passable        bool             `json:"passable"`
 	Water           bool             `json:"water"`
 	Opaque          bool             `json:"opaque"`
+	Buildable       bool             `json:"buildable"`
 	SlowdownPercent int              `json:"slowdownPercent"`
 	Drops           []dropOutcomeDTO `json:"drops"`
 }
@@ -59,6 +62,7 @@ func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas, assets *assetmanager
 			passable:  dto.Passable,
 			water:     dto.Water,
 			opaque:    dto.Opaque,
+			buildable: dto.Buildable,
 
 			slowdownPercent: dto.SlowdownPercent,
 		}
