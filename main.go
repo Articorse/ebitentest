@@ -65,11 +65,14 @@ type game struct {
 	visionOverlay drawsystem.VisionOverlay
 	lightOverlay  drawsystem.LightOverlay
 	inventoryMenu drawsystem.InventoryMenu
-	// From a click the menu took until the mouse is let go, so that the press doesn't carry on into the world
-	menuHasMouse bool
+	placer        drawsystem.BlueprintPlacer
+	// From a click the menu or the placer took until the mouse is let go, so that the press doesn't carry on into the
+	// world
+	uiHasMouse bool
 	// Kept from the latest frame for the next tick, since a frame doesn't always run one
 	pendingInventory ecs.InventoryAction
-	menuTakesHand    bool
+	pendingPlacement ecs.BlueprintPlacement
+	uiTakesHand      bool
 	menuOverSlot     bool
 
 	showFPS       bool
@@ -217,7 +220,12 @@ func (g *game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
 		g.inventoryMenu.Toggle()
+		if g.inventoryMenu.IsOpen() {
+			g.placer.Stop()
+		}
 	}
+	// The placer goes first, so that the click choosing a blueprint in the menu doesn't also put it down
+	g.updateBlueprintPlacer()
 	g.updateInventoryMenu()
 	if in, ok := g.ecs.Inputs.Get(g.playerEntity); ok {
 		_, wheelUp := ebiten.Wheel()
@@ -471,15 +479,19 @@ func (g *game) updateInventoryMenu() {
 	cursor, screen := g.uiCursor(), g.screenSize.Multiply(1/g.uiScale)
 	canAct := g.pendingInventory.Kind == ecs.InventoryAction_None
 
-	covers := g.inventoryMenu.Covers(cursor, screen, inv, g.assetmanager)
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) || inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
-		g.menuHasMouse = covers
-		if covers && canAct && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+	blueprints := g.ecs.BlueprintAtlas()
+	covers := g.inventoryMenu.Covers(cursor, screen, inv, blueprints, g.assetmanager)
+	if covers && (inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) || inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight)) {
+		g.uiHasMouse = true
+		if kind, ok := g.inventoryMenu.BlueprintAt(cursor, screen, blueprints, g.assetmanager); ok && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			g.inventoryMenu.Toggle()
+			g.placer.Start(kind)
+		} else if canAct && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			g.pendingInventory = g.inventoryMenu.Click(cursor, screen, inv, g.assetmanager)
 		}
 	}
 	if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) && !ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
-		g.menuHasMouse = false
+		g.uiHasMouse = false
 	}
 
 	g.menuOverSlot = g.inventoryMenu.SlotAt(cursor, screen, inv, g.assetmanager) != -1
@@ -491,17 +503,51 @@ func (g *game) updateInventoryMenu() {
 		}
 	}
 
-	g.menuTakesHand = g.menuHasMouse || covers
+	_, placing := g.placer.Kind()
+	g.uiTakesHand = g.uiHasMouse || covers || placing
 }
 
-// Adds the inventory menu's pending action, keeps clicks on the menu from also using what's in hand, and hotbar keys
-// over its slots from also selecting
+// A click puts the blueprint down where it fits, as the next tick's input, and leaves placing unless shift is held;
+// escape or a right click leaves it
+func (g *game) updateBlueprintPlacer() {
+	kind, ok := g.placer.Kind()
+	if !ok {
+		return
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		g.uiHasMouse = inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight)
+		g.placer.Stop()
+		return
+	}
+	if !inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		return
+	}
+
+	g.uiHasMouse = true
+	tile := g.cursorTile()
+	if g.pendingPlacement.Kind != data.Blueprint_None || !g.chunkContainer.CanPlaceSite(tile) {
+		return
+	}
+	g.pendingPlacement = ecs.BlueprintPlacement{Kind: kind, Tile: tile}
+	if !ebiten.IsKeyPressed(ebiten.KeyShift) {
+		g.placer.Stop()
+	}
+}
+
+func (g *game) cursorTile() utils.Vec2i {
+	x, y := ebiten.CursorPosition()
+	return utils.WorldPosToTilePos(utils.Vec2f{X: float64(x), Y: float64(y)}.Multiply(1 / g.ecs.Zoom).Add(g.ecs.Camera))
+}
+
+// Adds the inventory menu's and the placer's pending actions, keeps clicks on the menu or while placing from also using
+// what's in hand, and hotbar keys over the menu's slots from also selecting
 func (g *game) withInventoryMenu(in ecs.InputState) ecs.InputState {
 	in.Inventory, g.pendingInventory = g.pendingInventory, ecs.InventoryAction{}
+	in.PlaceBlueprint, g.pendingPlacement = g.pendingPlacement, ecs.BlueprintPlacement{}
 	if g.menuOverSlot {
 		in.SelectSlot = 0
 	}
-	if g.menuTakesHand {
+	if g.uiTakesHand {
 		in.MainHandEqAbility1, in.MainHandEqAbility2 = 0, 0
 		in.OffHandEqAbility1, in.OffHandEqAbility2 = 0, 0
 	}
@@ -643,7 +689,14 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		g.visionOverlay.Draw(world, g.ecs.Camera, vision, g.drawMemory)
 	}
 
-	if err := drawsystem.DrawTileTarget(world, g.ecs.Camera, g.playerEntity, g.ecs); err != nil {
+	// Above the fog, since blueprints can go anywhere. A click while placing doesn't use what's in hand, so its target
+	// isn't shown.
+	if _, placing := g.placer.Kind(); placing {
+		tile := g.cursorTile()
+		if err := g.placer.Draw(world, g.ecs.Camera, tile, g.chunkContainer.CanPlaceSite(tile), g.ecs.BlueprintAtlas(), g.assetmanager); err != nil {
+			log.Println("error while drawing the blueprint being placed: ", err)
+		}
+	} else if err := drawsystem.DrawTileTarget(world, g.ecs.Camera, g.playerEntity, g.ecs); err != nil {
 		log.Println("error while drawing the tile target: ", err)
 	}
 

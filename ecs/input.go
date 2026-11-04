@@ -179,6 +179,14 @@ type InputState struct {
 	// What a click in an inventory menu changed. Menus send these rather than changing the inventory themselves, so
 	// that the change happens in the simulation's tick like any other input.
 	Inventory InventoryAction
+	// A blueprint put down, which can go anywhere it fits
+	PlaceBlueprint BlueprintPlacement
+}
+
+type BlueprintPlacement struct {
+	// None when nothing is put down
+	Kind data.BlueprintEnum
+	Tile utils.Vec2i
 }
 
 type InventoryActionKind uint8

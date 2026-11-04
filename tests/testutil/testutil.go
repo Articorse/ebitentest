@@ -51,11 +51,7 @@ func NewECS(t testing.TB) *ecs.ECSContainer {
 		t.Fatal(err)
 	}
 	x.SetBodyAtlas(bodies)
-	blueprints, err := ecs.LoadBlueprintAtlasFromJson(filepath.Join(RepoRoot(), BlueprintsPath), x.ItemAtlas(), Assets(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	x.SetBlueprintAtlas(blueprints)
+	x.SetBlueprintAtlas(Blueprints(t))
 	x.SetAssets(Assets(t))
 	x.TickState = *common.NewTickState()
 
@@ -74,6 +70,15 @@ func Assets(t testing.TB) *assetmanager.AssetManager {
 		t.Fatal(err)
 	}
 	return a
+}
+
+func Blueprints(t testing.TB) *ecs.BlueprintAtlas {
+	t.Helper()
+	atlas, err := ecs.LoadBlueprintAtlasFromJson(filepath.Join(RepoRoot(), BlueprintsPath), ItemAtlas(t), Assets(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return atlas
 }
 
 // From the repository, since tests run in their own package's directory unless they've moved to a temporary world

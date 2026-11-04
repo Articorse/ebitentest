@@ -6,6 +6,7 @@ import (
 	"ebittest/ecs/systems/drawsystem"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
+	"slices"
 	"testing"
 )
 
@@ -117,14 +118,16 @@ func TestAClosedMenuIgnoresClicks(t *testing.T) {
 	if a := click(inventorySlotCenter(0)); a.Kind != ecs.InventoryAction_None {
 		t.Fatalf("a click on the closed menu did %v", a)
 	}
-	if menu.Covers(inventorySlotCenter(0), menuScreen, inv, testutil.Assets(t)) {
+	if menu.Covers(inventorySlotCenter(0), menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) {
 		t.Fatal("the closed menu takes clicks")
 	}
 }
 
 func TestTheMenuTakesClicksOverItAndAnywhereWhileHolding(t *testing.T) {
 	menu, _, inv, click := newMenu(t)
-	covers := func(at utils.Vec2f) bool { return menu.Covers(at, menuScreen, inv, testutil.Assets(t)) }
+	covers := func(at utils.Vec2f) bool {
+		return menu.Covers(at, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t))
+	}
 	corner := inventorySlotCenter(0).Subtract(utils.Vec2f{X: menuSlotPx/2 + data.InventoryPanelPaddingPx - 1, Y: menuSlotPx/2 + data.InventoryPanelPaddingPx - 1})
 	away := utils.Vec2f{X: menuScreen.X - 1, Y: 1}
 
@@ -160,7 +163,7 @@ func TestPuttingAnItemDownOnAnotherPicksThatOneUp(t *testing.T) {
 	}
 	act(t, x, player, a.Kind, a.From, a.To)
 
-	if slotItem(inv, 0) != bazooka || !menu.Covers(utils.Vec2f{X: menuScreen.X - 1, Y: 1}, menuScreen, inv, testutil.Assets(t)) {
+	if slotItem(inv, 0) != bazooka || !menu.Covers(utils.Vec2f{X: menuScreen.X - 1, Y: 1}, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) {
 		t.Fatal("the bazooka wasn't picked up in the mattock's place")
 	}
 	if a := click(inventorySlotCenter(20)); a != (ecs.InventoryAction{Kind: ecs.InventoryAction_Move, From: 0, To: 20}) {
@@ -172,7 +175,7 @@ func TestAStackPutOnAnotherKeepsWhatDidntFitHeld(t *testing.T) {
 	menu, x, inv, click := newMenu(t)
 	player := x.Root(slotItem(inv, 0))
 	away := utils.Vec2f{X: menuScreen.X - 1, Y: 1}
-	covers := func() bool { return menu.Covers(away, menuScreen, inv, testutil.Assets(t)) }
+	covers := func() bool { return menu.Covers(away, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) }
 	putStack(t, x, player, 10, 50)
 	putStack(t, x, player, 11, 70)
 	putStack(t, x, player, 12, 10)
@@ -221,7 +224,60 @@ func TestTheInventorySitsAtTheBottomOfTheScreen(t *testing.T) {
 	menu, _, inv, _ := newMenu(t)
 	bottom := inventorySlotCenter(data.InventoryColumns * data.InventoryRows / 2)
 	bottom.Y = menuScreen.Y - data.InventoryMarginPx - 1
-	if !menu.Covers(bottom, menuScreen, inv, testutil.Assets(t)) || menu.Covers(utils.Vec2f{X: bottom.X, Y: menuScreen.Y - data.InventoryMarginPx}, menuScreen, inv, testutil.Assets(t)) {
+	if !menu.Covers(bottom, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) || menu.Covers(utils.Vec2f{X: bottom.X, Y: menuScreen.Y - data.InventoryMarginPx}, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) {
 		t.Fatal("the panel doesn't end its margin above the bottom of the screen")
+	}
+}
+
+// With the game's one blueprint, its panel is a single slot in the bottom right corner
+func blueprintSlotCenter() utils.Vec2f {
+	inset := float64(data.InventoryMarginPx + data.InventoryPanelPaddingPx + menuSlotPx/2)
+	return utils.Vec2f{X: menuScreen.X - inset, Y: menuScreen.Y - inset}
+}
+
+func TestBlueprintsAreChosenFromTheirPanelInTheBottomRightCorner(t *testing.T) {
+	menu, _, inv, click := newMenu(t)
+	blueprints, assets := testutil.Blueprints(t), testutil.Assets(t)
+
+	if kind, ok := menu.BlueprintAt(blueprintSlotCenter(), menuScreen, blueprints, assets); !ok || kind != data.Blueprint_Planks {
+		t.Fatalf("the blueprint panel has %v (%v) in its slot, want planks", kind, ok)
+	}
+	edge := utils.Vec2f{X: menuScreen.X - data.InventoryMarginPx - 1, Y: menuScreen.Y - data.InventoryMarginPx - 1}
+	if !menu.Covers(edge, menuScreen, inv, blueprints, assets) || menu.Covers(edge.Add(utils.Vec2f{X: 2}), menuScreen, inv, blueprints, assets) ||
+		menu.Covers(edge.Add(utils.Vec2f{Y: 2}), menuScreen, inv, blueprints, assets) {
+		t.Fatal("the menu doesn't take clicks on the blueprint panel's border, or takes them in the margin past it")
+	}
+	if _, ok := menu.BlueprintAt(edge, menuScreen, blueprints, assets); ok {
+		t.Fatal("the panel's border counts as its blueprint")
+	}
+	if a := click(blueprintSlotCenter()); a.Kind != ecs.InventoryAction_None {
+		t.Fatalf("clicking a blueprint did %v to the inventory", a)
+	}
+
+	menu.Toggle()
+	if _, ok := menu.BlueprintAt(blueprintSlotCenter(), menuScreen, blueprints, assets); ok {
+		t.Fatal("a blueprint can be chosen from the closed menu")
+	}
+}
+
+func TestABlueprintsTooltipHasItsNameAndCosts(t *testing.T) {
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
+	if lines := drawsystem.BlueprintTooltip(def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "1 Wood"}) {
+		t.Fatalf("the planks' tooltip says %q, want Planks and 1 Wood", lines)
+	}
+}
+
+func TestThePlacerHoldsTheChosenBlueprintUntilStopped(t *testing.T) {
+	var p drawsystem.BlueprintPlacer
+	if _, ok := p.Kind(); ok {
+		t.Fatal("a new placer is placing")
+	}
+	p.Start(data.Blueprint_Planks)
+	if kind, ok := p.Kind(); !ok || kind != data.Blueprint_Planks {
+		t.Fatal("the placer isn't placing the chosen blueprint")
+	}
+	p.Stop()
+	if _, ok := p.Kind(); ok {
+		t.Fatal("the placer is still placing after stopping")
 	}
 }

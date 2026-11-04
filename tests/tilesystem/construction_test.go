@@ -3,6 +3,8 @@ package tilesystem_test
 import (
 	"ebittest/data"
 	"ebittest/ecs"
+	"ebittest/ecs/common"
+	"ebittest/ecs/systems/inputsystem"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"os"
@@ -215,5 +217,31 @@ func TestBlueprintsMustBuildATileWithHealthToBuildUp(t *testing.T) {
 		if err := s.Chunks.SetBlueprintAtlas(atlas); err == nil {
 			t.Errorf("a blueprint building %s was accepted", name)
 		}
+	}
+}
+
+func TestABlueprintPutDownAsInputGoesAnywhereItFits(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	far := findTile(t, s, func(tile utils.Vec2i) bool {
+		_, hasFeature := s.Chunks.FeatureAt(tile)
+		return currentTile(s, tile) == data.Tile_Grass && !hasFeature && utils.Dist2(tile, utils.WorldPosToTilePos(testutil.PlayerStart)) > 20*20
+	})
+	rock := tileOf(t, s, data.Tile_Rock)
+
+	inputs := map[common.EntityId]ecs.InputState{s.Player: {PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tile: far}}}
+	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
+		t.Fatal(err)
+	}
+	if site, ok := s.Chunks.Site(far); !ok || site.Blueprint != data.Blueprint_Planks {
+		t.Fatal("a blueprint put down more than 20 tiles away wasn't placed")
+	}
+
+	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tile: rock}}
+	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := s.Chunks.Site(rock); ok {
+		t.Fatal("a blueprint was put down on rock")
 	}
 }
