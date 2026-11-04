@@ -18,7 +18,8 @@ func TestNewWorldSpawnIsTheClosestFreeTileCenter(t *testing.T) {
 	cc.SetSeed(testutil.WorldSeed)
 
 	free := func(t utils.Vec2i) bool {
-		return worldgen.Tile(testutil.WorldSeed, t) != data.Tile_Rock && worldgen.Feature(testutil.WorldSeed, t) == data.Feature_None
+		tile := worldgen.Tile(testutil.WorldSeed, t)
+		return tile != data.Tile_Rock && !worldgen.IsWater(tile) && worldgen.Feature(testutil.WorldSeed, t) == data.Feature_None
 	}
 
 	onRock, onTree, onGround := 0, 0, 0
@@ -43,7 +44,7 @@ func TestNewWorldSpawnIsTheClosestFreeTileCenter(t *testing.T) {
 			t.Fatalf("spawn %v isn't a tile center", pos)
 		}
 		if !free(got) {
-			t.Fatalf("spawn for tile %v is on rock or a tree at %v", start, got)
+			t.Fatalf("spawn for tile %v is on rock, water or a tree at %v", start, got)
 		}
 
 		gotDistSq := (got.X-start.X)*(got.X-start.X) + (got.Y-start.Y)*(got.Y-start.Y)
@@ -59,5 +60,32 @@ func TestNewWorldSpawnIsTheClosestFreeTileCenter(t *testing.T) {
 
 	if onRock == 0 || onTree == 0 || onGround == 0 {
 		t.Fatalf("%d starts on rock, %d on trees and %d on free ground, want some of each", onRock, onTree, onGround)
+	}
+}
+
+func TestNewWorldsDontSpawnInWater(t *testing.T) {
+	testutil.TempWorld(t)
+	cc := tilesystem.NewChunkContainer()
+	if err := cc.GenerateTileAtlasFromJson(testutil.AtlasPath, testutil.ItemAtlas(t)); err != nil {
+		t.Fatal(err)
+	}
+	cc.SetSeed(testutil.WorldSeed)
+
+	checked := 0
+	for y := -400; y <= 400 && checked < 20; y += 3 {
+		for x := -400; x <= 400 && checked < 20; x += 3 {
+			start := utils.Vec2i{X: x, Y: y}
+			if !worldgen.IsWater(worldgen.Tile(testutil.WorldSeed, start)) {
+				continue
+			}
+			checked++
+			pos, ok := cc.NewWorldSpawnPos(utils.TilePosToWorldPos(start))
+			if tile := worldgen.Tile(testutil.WorldSeed, utils.WorldPosToTilePos(pos)); !ok || worldgen.IsWater(tile) {
+				t.Fatalf("starting in water at %v, the spawn is at %v on %v (%v), want dry land", start, pos, tile, ok)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no water to start in near the origin")
 	}
 }

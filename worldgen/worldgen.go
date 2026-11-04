@@ -56,6 +56,12 @@ func Tile(seed uint64, tilePos utils.Vec2i) data.TileEnum {
 		}
 		return data.Tile_Rock
 	}
+	switch water(seed, tilePos) {
+	case deep:
+		return data.Tile_WaterDeep
+	case shallow:
+		return data.Tile_WaterShallow
+	}
 	if ground(seed, tilePos) > data.WorldgenGrassThreshold {
 		return data.Tile_Grass
 	}

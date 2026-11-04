@@ -6,7 +6,7 @@ import (
 	"ebittest/worldgen"
 )
 
-// The center of the passable tile without a feature closest to near, going by generated terrain only, so it's meant for a new world
+// The center of the passable dry tile without a feature closest to near, going by generated terrain only, so it's meant for a new world
 // that nothing has modified yet
 func (cc *ChunkContainer) NewWorldSpawnPos(near utils.Vec2f) (utils.Vec2f, bool) {
 	start := utils.WorldPosToTilePos(near)
@@ -30,8 +30,9 @@ func (cc *ChunkContainer) NewWorldSpawnPos(near utils.Vec2f) (utils.Vec2f, bool)
 				}
 
 				t := utils.Vec2i{X: start.X + dx, Y: start.Y + dy}
-				def, ok := cc.atlas[worldgen.Tile(cc.seed, t)]
-				if ok && def.passable && worldgen.Feature(cc.seed, t) == data.Feature_None {
+				tile := worldgen.Tile(cc.seed, t)
+				def, ok := cc.atlas[tile]
+				if ok && def.passable && !worldgen.IsWater(tile) && worldgen.Feature(cc.seed, t) == data.Feature_None {
 					best, bestDistSq = t, d
 				}
 			}
