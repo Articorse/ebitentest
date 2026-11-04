@@ -70,6 +70,7 @@ type game struct {
 	showColliders bool
 	showChunks    bool
 	showBody      bool
+	showPaths     bool
 	touching      touchingColliders
 
 	// In screen pixels, which are device pixels
@@ -273,6 +274,9 @@ func (g *game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
 		g.showBody = !g.showBody
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF5) {
+		g.showPaths = !g.showPaths
 	}
 
 	err = animationsystem.Tick(g.ecs, g.assetmanager)
@@ -536,6 +540,9 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	}
 	if g.showChunks {
 		g.chunkContainer.DrawChunkBorders(world, g.ecs.Camera)
+	}
+	if g.showPaths {
+		drawsystem.DrawPaths(world, g.ecs.Camera, g.ecs)
 	}
 }
 

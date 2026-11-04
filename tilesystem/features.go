@@ -222,6 +222,7 @@ func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum
 	}
 	c.terrainModified = true
 	c.lightsIndexed = false
+	c.walkSpeeds = nil
 }
 
 func (cc *ChunkContainer) featureOn(t utils.Vec2i) (*chunk, featureDef, bool) {

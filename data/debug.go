@@ -24,4 +24,5 @@ var (
 	Debug_ChunkUnbakedColor  = color.RGBA{230, 200, 0, 255}
 	Debug_ChunkInactiveColor = color.RGBA{0, 120, 230, 255}
 	Debug_ChunkLoadingColor  = color.RGBA{230, 0, 200, 255}
+	Debug_PathColor          = color.RGBA{255, 255, 0, 255}
 )

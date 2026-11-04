@@ -19,6 +19,7 @@ const (
 	Layer_Platform           = LayerMask(0b0000010000000000)
 	Layer_Ground = LayerMask(0b0000001000000000)
 	Layer_Feature = LayerMask(0b0000000100000000)
+	Layer_Water = LayerMask(0b0000000010000000)
 )
 
 type baseCollider struct {

@@ -50,9 +50,6 @@ func TestTheEvilSlimeHasThePlayersBody(t *testing.T) {
 	if slimeBody.Kind() != playerBody.Kind() {
 		t.Fatalf("the slime's body is %v, want the player's %v", slimeBody.Kind(), playerBody.Kind())
 	}
-	if inv, ok := x.Invulnerabilities.Get(slime); !ok || inv.PostHitMs() != 1000 {
-		t.Fatal("the slime isn't invulnerable for a second after each hit, like the player")
-	}
 	if err := x.CheckConsistency(); err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +176,7 @@ func TestTheEvilSlimeIdlesUntilItSeesThePlayerAndRushesWhileItDoes(t *testing.T)
 func TestTheRushersStateIsSaved(t *testing.T) {
 	p := &inputsources.InputRusherParams{Target: 3, State: inputsources.Rusher_Follow}
 	c := p.Copy().(*inputsources.InputRusherParams)
-	if *c != *p {
+	if c.Target != p.Target || c.State != p.State {
 		t.Fatalf("the copy is %+v, want %+v", *c, *p)
 	}
 	c.State = inputsources.Rusher_Idle

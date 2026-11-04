@@ -119,6 +119,13 @@ func (f *fakeTerrain) PlaceFeature(t utils.Vec2i, feature data.FeatureEnum) bool
 
 func (f *fakeTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {}
 
+func (f *fakeTerrain) WalkSpeedPercent(t utils.Vec2i) int {
+	if !f.loaded(t) || f.rock[t] || f.trees[t] {
+		return 0
+	}
+	return 100
+}
+
 func newMattockHolder(t *testing.T, terrain ecs.Terrain, mask ecs.LayerMask) (*ecs.ECSContainer, common.EntityId) {
 	t.Helper()
 	x := testutil.NewECS(t)

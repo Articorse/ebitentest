@@ -47,6 +47,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		ecs.Layer_Enemy|
 			ecs.Layer_EnemyProjectile|
 			ecs.Layer_Terrain|
+			ecs.Layer_Water|
 			ecs.Layer_Feature|
 			ecs.Layer_Platform,
 		ecs.Collider_Mob,

@@ -143,8 +143,8 @@ func GetAABBCollisions(
 	return collisions, nil
 }
 
-// A tile is on Layer_Terrain if it's impassable and on Layer_Ground otherwise, and collides with colliders whose mask
-// has its layer. A feature's collider is on Layer_Feature, unless it's walked through. Unloaded tiles count as impassable, so that nothing walks out of the simulated area.
+// A tile is on Layer_Terrain if it's impassable, Layer_Water if it's impassable water, and Layer_Ground otherwise, and
+// collides with colliders whose mask has its layer. A feature's collider is on Layer_Feature, unless it's walked through. Unloaded tiles count as impassable, so that nothing walks out of the simulated area.
 func (cc *ChunkContainer) GetTilesWithPotentialPhysicsCollisions(ecsContainer *ecs.ECSContainer) ([]EntityTiles, error) {
 	return cc.getTilesWithPotentialCollisions(ecs.Colliders(&ecsContainer.PhysicsColliders), true, false, ecsContainer, func(e common.EntityId) bool {
 		pc, _ := ecsContainer.PhysicsColliders.Get(e)
@@ -221,7 +221,7 @@ func (cc *ChunkContainer) getTilesWithPotentialCollisions(
 					continue
 				}
 
-				add(t, tileLayer(!tileDef.passable), !tileDef.passable, false, tileBounds(t))
+				add(t, tileDef.layer(), !tileDef.passable, false, tileBounds(t))
 				// Colliders of features are impassable, but only where they are on the tile, and on their own layer, so
 				// that what cuts trees can leave walls alone
 				if bounds, walkThrough, ok := cc.featureCollider(chunk, t); ok && (!walkThrough || walkThroughFeatures) {

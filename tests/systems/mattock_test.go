@@ -42,6 +42,8 @@ func (openGround) PlaceFeature(utils.Vec2i, data.FeatureEnum) bool { return fals
 
 func (openGround) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {}
 
+func (openGround) WalkSpeedPercent(utils.Vec2i) int { return 100 }
+
 func TestTheMattockStrikesTheTileUnderTheCursor(t *testing.T) {
 	x, player, _, _, _ := newArmedPlayer(t)
 	ground := openGround{damaged: map[utils.Vec2i]int{}}

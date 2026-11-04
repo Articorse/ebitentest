@@ -34,13 +34,15 @@
     "imagePath": "assets/tiles/watershallow.png",
     "maxHealth": -1,
     "passable": true,
-    "opaque": false
+    "opaque": false,
+    "slowdownPercent": 30
   },
   {
     "id": 5,
     "imagePath": "assets/tiles/waterdeep.png",
     "maxHealth": -1,
-    "passable": true,
+    "passable": false,
+    "water": true,
     "opaque": false
   },
   {

@@ -21,6 +21,9 @@ type chunk struct {
 	// The tiles of the features that give light, found when they're first asked for after the features change
 	lights        []utils.Vec2i
 	lightsIndexed bool
+	// Every tile's walking speed, worked out when it's first asked for after a tile or feature changes, since paths ask
+	// for it many times over
+	walkSpeeds *[data.ChunkSize * data.ChunkSize]uint8
 
 	Image *ebiten.Image
 }
@@ -111,6 +114,7 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, tile data.TileEnum) {
 	delete(c.promotedTiles, t)
 	c.tiles[idx] = tile
 	c.terrainModified = true
+	c.walkSpeeds = nil
 
 	if c.Image == nil {
 		return

@@ -17,7 +17,12 @@ type tileDef struct {
 	maxHealth     int
 	destroyedInto data.TileEnum
 	passable      bool
-	opaque        bool
+	// An impassable tile that's water is on Layer_Water rather than Layer_Terrain, so that it stops walkers but not
+	// what flies over it
+	water  bool
+	opaque bool
+	// How much slower walking over it is, which only paths take into account for now
+	slowdownPercent int
 	// Nil for tiles that drop nothing when destroyed
 	drops *ecs.DropTable
 }
@@ -31,10 +36,12 @@ type tileDefDTO struct {
 	ImagePath string `json:"imagePath"`
 	MaxHealth int    `json:"maxHealth"`
 	// Required for tiles that can be damaged
-	DestroyedInto *uint16          `json:"destroyedInto"`
-	Passable      bool             `json:"passable"`
-	Opaque        bool             `json:"opaque"`
-	Drops         []dropOutcomeDTO `json:"drops"`
+	DestroyedInto   *uint16          `json:"destroyedInto"`
+	Passable        bool             `json:"passable"`
+	Water           bool             `json:"water"`
+	Opaque          bool             `json:"opaque"`
+	SlowdownPercent int              `json:"slowdownPercent"`
+	Drops           []dropOutcomeDTO `json:"drops"`
 }
 
 func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas) (map[data.TileEnum]tileDef, error) {
@@ -53,7 +60,16 @@ func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas) (map[data.TileEnum]t
 			image:     img,
 			maxHealth: dto.MaxHealth,
 			passable:  dto.Passable,
+			water:     dto.Water,
 			opaque:    dto.Opaque,
+
+			slowdownPercent: dto.SlowdownPercent,
+		}
+		if dto.SlowdownPercent < 0 || dto.SlowdownPercent >= 100 {
+			return nil, fmt.Errorf("tile %d slows walking by %d%%, want 0 to 99, or the tile impassable", dto.Id, dto.SlowdownPercent)
+		}
+		if dto.Water && dto.Passable {
+			return nil, fmt.Errorf("tile %d is passable water, but only impassable water is kept apart from the terrain", dto.Id)
 		}
 
 		if def.maxHealth > 0 {
@@ -103,14 +119,18 @@ func (cc *ChunkContainer) TileLayer(t utils.Vec2i) (ecs.LayerMask, bool) {
 		return 0, false
 	}
 
-	return tileLayer(!def.passable), true
+	return def.layer(), true
 }
 
-func tileLayer(impassable bool) ecs.LayerMask {
-	if impassable {
+func (def tileDef) layer() ecs.LayerMask {
+	switch {
+	case def.passable:
+		return ecs.Layer_Ground
+	case def.water:
+		return ecs.Layer_Water
+	default:
 		return ecs.Layer_Terrain
 	}
-	return ecs.Layer_Ground
 }
 
 func (cc *ChunkContainer) IsBlockedAt(pos utils.Vec2f) bool {
