@@ -37,6 +37,7 @@ type ECSContainer struct {
 	itemAtlas      *ItemAtlas
 	bodyAtlas      *BodyAtlas
 	assets         *assetmanager.AssetManager
+	untargetable   map[common.EntityId]bool
 
 	storages []componentStorage
 
@@ -78,6 +79,7 @@ type ECSContainer struct {
 	DropTables        Storage[DropTable]
 	LightEmitters     Storage[LightEmitter]
 	SpawnedEnemies    Storage[SpawnedEnemy]
+	Factions          Storage[Faction]
 	Disabled          Storage[Disabled]
 }
 
@@ -116,6 +118,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&disabledDto{})
 	gob.Register(&lightEmitterDto{})
 	gob.Register(&spawnedEnemyDto{})
+	gob.Register(&factionDto{})
 
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
@@ -130,6 +133,7 @@ func NewECSContainer() *ECSContainer {
 
 		abilityFuncs:          make(map[AbilityEnum]AbilityFunc),
 		abilityParamsDecoders: make(map[AbilityEnum]AbilityParamsDecoder),
+		untargetable:          make(map[common.EntityId]bool),
 		timerFuncs:            make(map[TimerFuncEnum]TimerFunc),
 		itemAtlas:             NewItemAtlas(),
 		inputSourceFuncs:      make(map[InputTypeEnum]InputSourceFunc),
@@ -175,6 +179,7 @@ func NewECSContainer() *ECSContainer {
 		DropTables:        newStorage[DropTable](),
 		LightEmitters:     newStorage[LightEmitter](),
 		SpawnedEnemies:    newStorage[SpawnedEnemy](),
+		Factions:          newStorage[Faction](),
 		Disabled:          newStorage[Disabled](),
 	}
 
@@ -213,6 +218,7 @@ func NewECSContainer() *ECSContainer {
 		&x.DropTables,
 		&x.LightEmitters,
 		&x.SpawnedEnemies,
+		&x.Factions,
 		&x.Disabled,
 	}
 

@@ -10,9 +10,9 @@ import (
 	"fmt"
 )
 
-// Rushes at target once it sees it and hurts it on contact. Its body is the player's, so it's hurt the same way, and it
-// sees half as far.
-func SpawnEvilSlime(ecsContainer *ecs.ECSContainer, pos utils.Vec2f, target common.EntityId) (common.EntityId, error) {
+// Rushes at the closest hostile it sees and hurts it on contact. Its body is the player's, so it's hurt the same way,
+// and it sees half as far.
+func SpawnEvilSlime(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.EntityId, error) {
 	spr, err := ecs.NewSpriteComponent(common.AssetSheetEvilSlime, 20, false)
 	if err != nil {
 		return -1, err
@@ -69,7 +69,8 @@ func SpawnEvilSlime(ecsContainer *ecs.ECSContainer, pos utils.Vec2f, target comm
 		ecs.NewHurtboxColliderComponent(ecs.Layer_Enemy, ecs.Layer_Player, hurtboxShape),
 		ecs.NewContactDamageComponent(-1, 5, 5).WithRehitIntervalMs(1000),
 		ecs.NewBodyComponent(data.Body_Humanoid),
-		ecs.NewInputComponent(nil, inputsources.InputType_Rusher, &inputsources.InputRusherParams{Target: target}, ecs.Facing_None),
+		ecs.NewFactionComponent(data.Faction_Monsters),
+		ecs.NewInputComponent(nil, inputsources.InputType_Rusher, &inputsources.InputRusherParams{Target: -1}, ecs.Facing_None),
 		ecs.NewVisionComponent(data.PlayerVisionRangeTiles/2),
 		ecs.NewPersistentComponent(),
 	)

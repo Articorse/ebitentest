@@ -51,7 +51,7 @@ func Tick(ecsContainer *ecs.ECSContainer, player common.EntityId) error {
 			continue
 		}
 
-		slime, err := templates.SpawnEvilSlime(ecsContainer, utils.TilePosToWorldPos(t), player)
+		slime, err := templates.SpawnEvilSlime(ecsContainer, utils.TilePosToWorldPos(t))
 		if err != nil {
 			return err
 		}

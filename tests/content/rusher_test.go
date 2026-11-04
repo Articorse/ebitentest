@@ -2,6 +2,7 @@ package content_test
 
 import (
 	"ebittest/content/inputsources"
+	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/tests/testutil"
@@ -141,5 +142,30 @@ func TestTheRusherStandsStillWhenNoPathReachesItsTarget(t *testing.T) {
 	input, state := rush(t, x, slime)
 	if state != inputsources.Rusher_Follow || input != (ecs.InputState{}) {
 		t.Fatalf("with the player on an island, the slime is in state %v heading %v, %v; want it following but still", state, input.Analog1X, input.Analog1Y)
+	}
+}
+
+func TestTheRusherGoesForTheClosestHostileItSees(t *testing.T) {
+	x, player, slime := rusherBy(t, nil, utils.Vec2i{X: 6})
+	colonist := testutil.AddMovable(t, x, utils.TilePosToWorldPos(utils.Vec2i{X: 9}), false,
+		ecs.NewFactionComponent(data.Faction_Colony), ecs.NewBodyComponent(data.Body_Humanoid))
+	target := func() common.EntityId {
+		in, _ := x.Inputs.Get(slime)
+		return in.Params().(*inputsources.InputRusherParams).Target
+	}
+
+	if input, _ := rush(t, x, slime); target() != colonist || input.Analog1X <= 0 {
+		t.Fatalf("with a colonist 3 tiles away and the player 6, the slime goes for %d heading %v, want the colonist %d", target(), input.Analog1X, colonist)
+	}
+	if err := x.SetWorldPos(colonist, utils.TilePosToWorldPos(utils.Vec2i{X: 14})); err != nil {
+		t.Fatal(err)
+	}
+	if input, _ := rush(t, x, slime); target() != player || input.Analog1X >= 0 {
+		t.Fatalf("once the player is closer, the slime goes for %d heading %v, want the player %d", target(), input.Analog1X, player)
+	}
+
+	x.SetUntargetable(player, true)
+	if _, state := rush(t, x, slime); target() != colonist || state != inputsources.Rusher_Follow {
+		t.Fatalf("with the player untargetable, the slime goes for %d in state %v, want the colonist %d", target(), state, colonist)
 	}
 }

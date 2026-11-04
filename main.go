@@ -72,6 +72,8 @@ type game struct {
 	showBody      bool
 	showPaths     bool
 	touching      touchingColliders
+	// Only drawn without light and fog, so that the simulation, what's remembered included, plays out the same
+	fullBright bool
 
 	// In screen pixels, which are device pixels
 	screenSize utils.Vec2f
@@ -278,6 +280,12 @@ func (g *game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF5) {
 		g.showPaths = !g.showPaths
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF6) {
+		g.fullBright = !g.fullBright
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF7) {
+		g.ecs.SetUntargetable(g.playerEntity, !g.ecs.IsUntargetable(g.playerEntity))
+	}
 
 	err = animationsystem.Tick(g.ecs, g.assetmanager)
 	if err != nil {
@@ -465,7 +473,7 @@ func (g *game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(world, op)
 
 	isVisible := func(utils.Vec2f) bool { return true }
-	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
+	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok && !g.fullBright {
 		isVisible = func(pos utils.Vec2f) bool { return drawsystem.Revealed(pos, vision) }
 	}
 	if err := drawsystem.DrawFloatingTexts(screen, g.uiScale, isVisible, g.ecs); err != nil {
@@ -526,7 +534,7 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		}
 	}
 
-	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
+	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok && !g.fullBright {
 		g.lightOverlay.Draw(world, g.ecs.Camera, vision.Light())
 		g.visionOverlay.Draw(world, g.ecs.Camera, vision, g.drawMemory)
 	}

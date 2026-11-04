@@ -88,6 +88,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		pAniComp,
 		pPhyColComp,
 		ecs.NewBodyComponent(data.Body_Humanoid),
+		ecs.NewFactionComponent(data.Faction_Colony),
 		ecs.NewInvulnerabilityComponent(1000),
 		pHitboxComp,
 		pAbiComp,

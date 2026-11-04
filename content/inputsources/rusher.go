@@ -23,6 +23,7 @@ const (
 
 // Saved with its state, so that a loaded rusher carries on as it was. Its path isn't saved, since it's found again.
 type InputRusherParams struct {
+	// The hostile it's following, or last followed
 	Target common.EntityId
 	State  RusherState
 	// The tile the target was on when it was last seen
@@ -48,9 +49,9 @@ func (p *InputRusherParams) CurrentPath() []utils.Vec2i {
 	return p.path
 }
 
-// Follows its target while its vision sees the target's tile. Once it loses sight of it, it heads for the tile it last
-// saw it on, and idles once it's there or there's no way there. Its vision is as of the last tick, since vision is
-// worked out after inputs are handled. It stands still while no path reaches the target.
+// Follows the closest hostile its vision sees, switching whenever another one is closer. Once it sees none, it heads for
+// the tile it last saw its target on, and idles once it's there or there's no way there. Its vision is as of the last
+// tick, since vision is worked out after inputs are handled. It stands still while no path reaches the target.
 func RusherInputSource(
 	entityId common.EntityId,
 	tick uint64,
@@ -67,10 +68,16 @@ func RusherInputSource(
 		return ecs.InputState{}, fmt.Errorf("error getting world position of rusher %d: %v", entityId, err)
 	}
 
-	targetPos, seesTarget := seenPos(entityId, p.Target, ecsContainer)
+	var targetPos utils.Vec2f
+	target, seesTarget := ecsContainer.NearestVisibleHostile(entityId)
+	if seesTarget {
+		if targetPos, err = ecsContainer.WorldPos(target); err != nil {
+			return ecs.InputState{}, fmt.Errorf("error getting world position of rusher %d's target %d: %v", entityId, target, err)
+		}
+	}
 	switch {
 	case seesTarget:
-		p.State, p.LastSeen = Rusher_Follow, utils.WorldPosToTilePos(targetPos)
+		p.Target, p.State, p.LastSeen = target, Rusher_Follow, utils.WorldPosToTilePos(targetPos)
 	case p.State == Rusher_Follow:
 		p.State = Rusher_Search
 	case p.State == Rusher_Search && utils.WorldPosToTilePos(selfPos) == p.LastSeen:
@@ -144,15 +151,4 @@ func clearWalk(a, b utils.Vec2f, terrain ecs.Terrain) bool {
 func heading(from, to utils.Vec2f) ecs.InputState {
 	dir := to.Subtract(from).Normalized()
 	return ecs.InputState{Analog1X: dir.X, Analog1Y: dir.Y}
-}
-
-// Where the target is, if the viewer's vision sees its tile. False for a target that no longer exists, or a viewer
-// without vision.
-func seenPos(viewer, target common.EntityId, ecsContainer *ecs.ECSContainer) (utils.Vec2f, bool) {
-	vision, ok := ecsContainer.Visions.Get(viewer)
-	if !ok {
-		return utils.Vec2f{}, false
-	}
-	pos, err := ecsContainer.WorldPos(target)
-	return pos, err == nil && vision.CanSee(utils.WorldPosToTilePos(pos))
 }

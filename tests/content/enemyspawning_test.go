@@ -127,7 +127,7 @@ func TestSpawnedEnemiesTooFarAwayAreRemovedButOthersStay(t *testing.T) {
 	x, player := spawningPlayer(t, spawnWorld{walls: true}, 1)
 	add := func(tile utils.Vec2i, marked bool) common.EntityId {
 		t.Helper()
-		e, err := templates.SpawnEvilSlime(x, utils.TilePosToWorldPos(tile), player)
+		e, err := templates.SpawnEvilSlime(x, utils.TilePosToWorldPos(tile))
 		if err != nil {
 			t.Fatal(err)
 		}

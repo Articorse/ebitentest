@@ -23,7 +23,7 @@ func playerAndSlime(t *testing.T, slimePos utils.Vec2f) (*ecs.ECSContainer, comm
 	if err != nil {
 		t.Fatal(err)
 	}
-	slime, err := templates.SpawnEvilSlime(x, slimePos, player)
+	slime, err := templates.SpawnEvilSlime(x, slimePos)
 	if err != nil {
 		t.Fatal(err)
 	}
