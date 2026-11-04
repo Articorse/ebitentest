@@ -60,10 +60,12 @@ func HandleInputs(
 			}
 		}
 
+		// Only walking is slowed by the ground, not what pushes or flings the entity
 		if vel, ok := ecsContainer.Velocities.Get(e); ok {
 			dir := utils.Vec2f{X: input.Analog1X, Y: input.Analog1Y}.Normalized()
 			moving := float64(ecsContainer.Capacity(e, data.Capacity_Moving)) / data.FullEfficiency
-			vel.AddForce(dir.Multiply(vel.Acceleration() * moving))
+			ground := float64(ecsContainer.GroundSpeedPercent(e)) / 100
+			vel.AddForce(dir.Multiply(vel.Acceleration() * moving * ground))
 		}
 	}
 

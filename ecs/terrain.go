@@ -2,6 +2,7 @@ package ecs
 
 import (
 	"ebittest/data"
+	"ebittest/ecs/common"
 	"ebittest/utils"
 )
 
@@ -94,4 +95,17 @@ func (x *ECSContainer) IsTileOccupied(t utils.Vec2i) bool {
 	}
 
 	return false
+}
+
+// How fast e walks on the tile under it, in percent. A tile that can't be walked through doesn't slow it, since
+// something only stands partly on one, such as beside a tree's trunk.
+func (x *ECSContainer) GroundSpeedPercent(e common.EntityId) int {
+	pos, err := x.WorldPos(e)
+	if err != nil {
+		return 100
+	}
+	if speed := x.terrain.WalkSpeedPercent(utils.WorldPosToTilePos(pos)); speed > 0 {
+		return speed
+	}
+	return 100
 }
