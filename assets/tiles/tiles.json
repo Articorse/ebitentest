@@ -1,21 +1,21 @@
 [
   {
     "id": 0,
-    "imagePath": "assets/debug/16x16.png",
+    "imageAsset": "debug_16x16",
     "maxHealth": -1,
     "passable": true,
     "opaque": false
   },
   {
     "id": 1,
-    "imagePath": "assets/tiles/dirt.png",
+    "imageAsset": "tile_dirt",
     "maxHealth": -1,
     "passable": true,
     "opaque": false
   },
   {
     "id": 2,
-    "imagePath": "assets/tiles/grass.png",
+    "imageAsset": "tile_grass",
     "maxHealth": 50,
     "destroyedInto": 1,
     "passable": true,
@@ -23,7 +23,7 @@
   },
   {
     "id": 3,
-    "imagePath": "assets/tiles/rock.png",
+    "imageAsset": "tile_rock",
     "maxHealth": 200,
     "destroyedInto": 7,
     "passable": false,
@@ -31,7 +31,7 @@
   },
   {
     "id": 4,
-    "imagePath": "assets/tiles/watershallow.png",
+    "imageAsset": "tile_shallow_water",
     "maxHealth": -1,
     "passable": true,
     "opaque": false,
@@ -39,7 +39,7 @@
   },
   {
     "id": 5,
-    "imagePath": "assets/tiles/waterdeep.png",
+    "imageAsset": "tile_deep_water",
     "maxHealth": -1,
     "passable": false,
     "water": true,
@@ -47,7 +47,7 @@
   },
   {
     "id": 6,
-    "imagePath": "assets/tiles/planks.png",
+    "imageAsset": "tile_planks",
     "maxHealth": 100,
     "destroyedInto": 1,
     "passable": false,
@@ -56,7 +56,7 @@
   },
   {
     "id": 7,
-    "imagePath": "assets/tiles/rock_floor.png",
+    "imageAsset": "tile_rock_floor",
     "maxHealth": -1,
     "passable": true,
     "opaque": false

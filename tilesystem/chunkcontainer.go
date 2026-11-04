@@ -1,6 +1,7 @@
 package tilesystem
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -61,8 +62,8 @@ func NewChunkContainer() *ChunkContainer {
 }
 
 // Drop tables are checked against the item atlas, so that one naming an item that doesn't exist fails here rather than
-// when the tile is destroyed
-func (cc *ChunkContainer) GenerateTileAtlasFromJson(input string, items *ecs.ItemAtlas) error {
+// when the tile is destroyed. Images come from the asset list.
+func (cc *ChunkContainer) GenerateTileAtlasFromJson(input string, items *ecs.ItemAtlas, assets *assetmanager.AssetManager) error {
 	f, err := os.ReadFile(input)
 	if err != nil {
 		return fmt.Errorf("error reading tile atlas json file: %w", err)
@@ -74,7 +75,7 @@ func (cc *ChunkContainer) GenerateTileAtlasFromJson(input string, items *ecs.Ite
 		return fmt.Errorf("error unmarshalling tile atlas json: %w", err)
 	}
 
-	atlas, err := dtosToDefsMap(tileDefs, items)
+	atlas, err := dtosToDefsMap(tileDefs, items, assets)
 	if err != nil {
 		return fmt.Errorf("error converting tile atlas DTOs to defs: %w", err)
 	}

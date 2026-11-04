@@ -1,7 +1,6 @@
 package systems_test
 
 import (
-	"ebittest/assetmanager"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/ecs/systems/drawsystem"
@@ -25,7 +24,7 @@ func addSprite(t *testing.T, x *ecs.ECSContainer, pos utils.Vec2f, layer uint8) 
 func bottomRow(t *testing.T, tag common.ImageAssetTag) float64 {
 	t.Helper()
 	t.Chdir(testutil.RepoRoot())
-	asset, err := assetmanager.NewAssetManager().GetAsset(tag)
+	asset, err := testutil.Assets(t).GetAsset(tag)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +42,7 @@ func drawOrder(t *testing.T, x *ecs.ECSContainer, statics ...common.StaticSprite
 	t.Helper()
 	t.Chdir(testutil.RepoRoot())
 	treeBottom := bottomRow(t, common.AssetImageTree)
-	order, err := drawsystem.SpriteDrawOrder(drawsystem.DrawWindow(utils.Vec2f{}, utils.Vec2f{X: 640, Y: 360}), statics, x, assetmanager.NewAssetManager())
+	order, err := drawsystem.SpriteDrawOrder(drawsystem.DrawWindow(utils.Vec2f{}, utils.Vec2f{X: 640, Y: 360}), statics, x, testutil.Assets(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +108,7 @@ func TestStaticSpritesOnTheirOwnAreDrawnFromTheBackToTheFront(t *testing.T) {
 	}
 
 	front, behind, level, above := tree(t, 120, 20), stump(100, 20), tree(t, 100, 20), tree(t, 0, 25)
-	got, err := drawsystem.StaticSpriteDrawOrder([]common.StaticSprite{above, front, level, behind}, assetmanager.NewAssetManager())
+	got, err := drawsystem.StaticSpriteDrawOrder([]common.StaticSprite{above, front, level, behind}, testutil.Assets(t))
 	if err != nil {
 		t.Fatal(err)
 	}

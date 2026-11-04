@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/content"
 	"ebittest/data"
 	"ebittest/ecs"
@@ -15,12 +16,14 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
 const (
-	AtlasPath        = "assets/tiles/atlas.json"
+	TileAtlasPath    = "assets/tiles/tiles.json"
+	AssetsPath       = "assets/assets.json"
 	FeatureAtlasPath = "assets/features/features.json"
 	ItemAtlasPath    = "assets/items/items.json"
 	BodyAtlasPath    = "assets/bodies/bodies.json"
@@ -50,6 +53,20 @@ func NewECS(t testing.TB) *ecs.ECSContainer {
 	x.TickState = *common.NewTickState()
 
 	return x
+}
+
+var assets = sync.OnceValues(func() (*assetmanager.AssetManager, error) {
+	return assetmanager.LoadAssetManagerFromJson(filepath.Join(RepoRoot(), AssetsPath))
+})
+
+// The game's assets, loaded once for every test, since images are never changed
+func Assets(t testing.TB) *assetmanager.AssetManager {
+	t.Helper()
+	a, err := assets()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a
 }
 
 // From the repository, since tests run in their own package's directory unless they've moved to a temporary world
@@ -207,13 +224,13 @@ func StartSession(t testing.TB) *Session {
 
 	x := NewECS(t)
 	cc := tilesystem.NewChunkContainer()
-	if err := cc.GenerateTileAtlasFromJson(AtlasPath, x.ItemAtlas()); err != nil {
+	if err := cc.GenerateTileAtlasFromJson(TileAtlasPath, x.ItemAtlas(), Assets(t)); err != nil {
 		t.Fatal(err)
 	}
 	if err := x.ItemAtlas().CheckPlacedTiles(cc.HasTile); err != nil {
 		t.Fatal(err)
 	}
-	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath, x.ItemAtlas()); err != nil {
+	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath, x.ItemAtlas(), Assets(t)); err != nil {
 		t.Fatal(err)
 	}
 	if err := x.ItemAtlas().CheckPlacedFeatures(cc.HasFeature); err != nil {

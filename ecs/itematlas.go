@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs/common"
 	"encoding/json"
@@ -196,6 +197,22 @@ func (x *ItemAtlas) CheckPlacedFeatures(featureExists func(data.FeatureEnum) boo
 		}
 		if placer, ok := def.use.params.(FeaturePlacer); ok && !featureExists(placer.PlacedFeature()) {
 			return fmt.Errorf("item %d places feature %d, which isn't in the feature atlas", kind, placer.PlacedFeature())
+		}
+	}
+	return nil
+}
+
+// Like the tiles and features they're drawn with, items name images by tag, and the frames their animations show
+func (x *ItemAtlas) CheckImageAssets(assets *assetmanager.AssetManager) error {
+	for kind, def := range x.defs {
+		asset, err := assets.GetAsset(def.imageAsset)
+		if err != nil {
+			return fmt.Errorf("item %d's image: %w", kind, err)
+		}
+		for _, f := range def.animation {
+			if int(f.FrameIdx) >= len(asset.Frames) {
+				return fmt.Errorf("item %d's animation shows frame %d of %s, which has %d", kind, f.FrameIdx, def.imageAsset, len(asset.Frames))
+			}
 		}
 	}
 	return nil

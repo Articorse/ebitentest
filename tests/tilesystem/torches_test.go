@@ -166,7 +166,7 @@ func TestTheFeatureAtlasRefusesBrokenLightsAndAnimations(t *testing.T) {
 		if err := os.WriteFile(path, []byte(`[`+feature+`]`), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		return tilesystem.NewChunkContainer().GenerateFeatureAtlasFromJson(path, items)
+		return tilesystem.NewChunkContainer().GenerateFeatureAtlasFromJson(path, items, testutil.Assets(t))
 	}
 
 	if err := load(`{"id": 3, "imageAsset": "torch_placed", "maxHealth": 1, "destroyedInto": 0, "light": {"level": 150, "rangeTiles": 10},
@@ -181,6 +181,8 @@ func TestTheFeatureAtlasRefusesBrokenLightsAndAnimations(t *testing.T) {
 		{"light reaching nowhere", `{"id": 3, "imageAsset": "torch_placed", "light": {"level": 150, "rangeTiles": 0}}`},
 		{"a frame that doesn't last", `{"id": 3, "imageAsset": "torch_placed", "animation": [{"frame": 0, "durationMs": 0}]}`},
 		{"a negative frame", `{"id": 3, "imageAsset": "torch_placed", "animation": [{"frame": -1, "durationMs": 150}]}`},
+		{"a frame past its image's last", `{"id": 3, "imageAsset": "torch_placed", "animation": [{"frame": 3, "durationMs": 150}]}`},
+		{"an image that isn't in the asset list", `{"id": 3, "imageAsset": "nothing"}`},
 		{"destruction into a missing feature", `{"id": 3, "imageAsset": "torch_placed", "maxHealth": 1, "destroyedInto": 7}`},
 	} {
 		if err := load(c.feature); err == nil {

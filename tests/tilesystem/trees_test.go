@@ -348,7 +348,7 @@ func TestFeatureDropTablesMustAddUpAndDropKnownItems(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := tilesystem.NewChunkContainer().GenerateFeatureAtlasFromJson(path, items); err == nil {
+		if err := tilesystem.NewChunkContainer().GenerateFeatureAtlasFromJson(path, items, testutil.Assets(t)); err == nil {
 			t.Errorf("a drop table %s was accepted", c.name)
 		}
 	}

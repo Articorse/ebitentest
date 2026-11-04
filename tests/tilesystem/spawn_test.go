@@ -12,7 +12,7 @@ import (
 func TestNewWorldSpawnIsTheClosestFreeTileCenter(t *testing.T) {
 	testutil.TempWorld(t)
 	cc := tilesystem.NewChunkContainer()
-	if err := cc.GenerateTileAtlasFromJson(testutil.AtlasPath, testutil.ItemAtlas(t)); err != nil {
+	if err := cc.GenerateTileAtlasFromJson(testutil.TileAtlasPath, testutil.ItemAtlas(t), testutil.Assets(t)); err != nil {
 		t.Fatal(err)
 	}
 	cc.SetSeed(testutil.WorldSeed)
@@ -66,7 +66,7 @@ func TestNewWorldSpawnIsTheClosestFreeTileCenter(t *testing.T) {
 func TestNewWorldsDontSpawnInWater(t *testing.T) {
 	testutil.TempWorld(t)
 	cc := tilesystem.NewChunkContainer()
-	if err := cc.GenerateTileAtlasFromJson(testutil.AtlasPath, testutil.ItemAtlas(t)); err != nil {
+	if err := cc.GenerateTileAtlasFromJson(testutil.TileAtlasPath, testutil.ItemAtlas(t), testutil.Assets(t)); err != nil {
 		t.Fatal(err)
 	}
 	cc.SetSeed(testutil.WorldSeed)

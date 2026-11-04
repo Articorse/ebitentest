@@ -166,13 +166,13 @@ func TestProjectileWithoutGroundInItsMaskLeavesTheGroundAlone(t *testing.T) {
 
 func TestDamageableTileMustSayWhatItBecomes(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "atlas.json")
-	if err := os.WriteFile(path, []byte(`[{"id": 1, "imagePath": "missing.png", "maxHealth": 10, "passable": true}]`), 0o644); err != nil {
+	path := filepath.Join(dir, "tiles.json")
+	if err := os.WriteFile(path, []byte(`[{"id": 1, "imageAsset": "tile_dirt", "maxHealth": 10, "passable": true}]`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	t.Chdir(testutil.RepoRoot())
 
-	if err := tilesystem.NewChunkContainer().GenerateTileAtlasFromJson(path, testutil.ItemAtlas(t)); err == nil {
+	if err := tilesystem.NewChunkContainer().GenerateTileAtlasFromJson(path, testutil.ItemAtlas(t), testutil.Assets(t)); err == nil {
 		t.Fatal("a damageable tile without destroyedInto was accepted")
 	}
 }

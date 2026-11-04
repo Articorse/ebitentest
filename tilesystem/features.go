@@ -2,6 +2,7 @@ package tilesystem
 
 import (
 	"cmp"
+	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -78,7 +79,8 @@ type featureColliderDTO struct {
 	WalkThrough bool        `json:"walkThrough"`
 }
 
-func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.ItemAtlas) error {
+// Images, and the frames animations show, are checked against the asset list
+func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.ItemAtlas, assets *assetmanager.AssetManager) error {
 	f, err := os.ReadFile(input)
 	if err != nil {
 		return fmt.Errorf("error reading feature atlas json file: %w", err)
@@ -96,6 +98,10 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.
 			imageOffset: dto.ImageOffset,
 			spriteLayer: dto.SpriteLayer,
 		}
+		asset, err := assets.GetAsset(def.imageAsset)
+		if err != nil {
+			return fmt.Errorf("feature %d's image: %w", dto.Id, err)
+		}
 
 		if c := dto.Collider; c != nil {
 			if c.Width <= 0 || c.Height <= 0 {
@@ -108,8 +114,8 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.
 		}
 
 		for _, frame := range dto.Animation {
-			if frame.FrameIdx < 0 || frame.DurationMs <= 0 {
-				return fmt.Errorf("feature %d has an animation frame %d lasting %dms", dto.Id, frame.FrameIdx, frame.DurationMs)
+			if frame.FrameIdx < 0 || frame.FrameIdx >= len(asset.Frames) || frame.DurationMs <= 0 {
+				return fmt.Errorf("feature %d has an animation frame %d of %d lasting %dms", dto.Id, frame.FrameIdx, len(asset.Frames), frame.DurationMs)
 			}
 		}
 		def.animation = dto.Animation

@@ -42,7 +42,7 @@ import (
 )
 
 var (
-	g = game{ecs: ecs.NewECSContainer(), assetmanager: assetmanager.NewAssetManager(), zoom: data.DefaultZoom}
+	g = game{ecs: ecs.NewECSContainer(), zoom: data.DefaultZoom}
 
 	physicsColliders  = ecs.Colliders(&g.ecs.PhysicsColliders)
 	hurtboxColliders  = ecs.Colliders(&g.ecs.HurtboxColliders)
@@ -706,6 +706,15 @@ func main() {
 	ebiten.SetVsyncEnabled(false)
 	ebiten.SetTPS(data.TPS)
 
+	assets, err := assetmanager.LoadAssetManagerFromJson("assets/assets.json")
+	if err != nil {
+		log.Fatal("error loading assets: ", err)
+	}
+	if err := assets.CheckTags(common.CodeAssetTags); err != nil {
+		log.Fatal("error checking the assets code uses: ", err)
+	}
+	g.assetmanager = assets
+
 	// Content first, since the item atlas names its abilities
 	if err := content.Register(g.ecs); err != nil {
 		log.Fatal("error registering content: ", err)
@@ -724,15 +733,18 @@ func main() {
 	if err := g.ecs.SetItemAtlas(itemAtlas); err != nil {
 		log.Fatal("error setting item atlas: ", err)
 	}
+	if err := itemAtlas.CheckImageAssets(assets); err != nil {
+		log.Fatal("error checking the item atlas against the assets: ", err)
+	}
 
 	g.chunkContainer = tilesystem.NewChunkContainer()
-	if err := g.chunkContainer.GenerateTileAtlasFromJson("assets/tiles/atlas.json", itemAtlas); err != nil {
+	if err := g.chunkContainer.GenerateTileAtlasFromJson("assets/tiles/tiles.json", itemAtlas, assets); err != nil {
 		log.Fatal("error generating tile atlas from json: ", err)
 	}
 	if err := itemAtlas.CheckPlacedTiles(g.chunkContainer.HasTile); err != nil {
 		log.Fatal("error checking the item atlas against the tile atlas: ", err)
 	}
-	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json", itemAtlas); err != nil {
+	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json", itemAtlas, assets); err != nil {
 		log.Fatal("error generating feature atlas from json: ", err)
 	}
 	if err := itemAtlas.CheckPlacedFeatures(g.chunkContainer.HasFeature); err != nil {

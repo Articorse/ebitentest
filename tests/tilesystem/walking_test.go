@@ -88,16 +88,16 @@ func TestTheTileAtlasRefusesBrokenWalkingSpeeds(t *testing.T) {
 		name string
 		tile string
 	}{
-		{"a slowdown of 100%", `{"id": 1, "imagePath": "x.png", "maxHealth": -1, "passable": true, "slowdownPercent": 100}`},
-		{"a negative slowdown", `{"id": 1, "imagePath": "x.png", "maxHealth": -1, "passable": true, "slowdownPercent": -1}`},
-		{"passable water", `{"id": 1, "imagePath": "x.png", "maxHealth": -1, "passable": true, "water": true}`},
+		{"a slowdown of 100%", `{"id": 1, "imageAsset": "tile_dirt", "maxHealth": -1, "passable": true, "slowdownPercent": 100}`},
+		{"a negative slowdown", `{"id": 1, "imageAsset": "tile_dirt", "maxHealth": -1, "passable": true, "slowdownPercent": -1}`},
+		{"passable water", `{"id": 1, "imageAsset": "tile_dirt", "maxHealth": -1, "passable": true, "water": true}`},
 	} {
 		t.Chdir(testutil.RepoRoot())
-		path := filepath.Join(t.TempDir(), "atlas.json")
+		path := filepath.Join(t.TempDir(), "tiles.json")
 		if err := os.WriteFile(path, []byte(`[`+c.tile+`]`), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := tilesystem.NewChunkContainer().GenerateTileAtlasFromJson(path, testutil.ItemAtlas(t)); err == nil {
+		if err := tilesystem.NewChunkContainer().GenerateTileAtlasFromJson(path, testutil.ItemAtlas(t), testutil.Assets(t)); err == nil {
 			t.Errorf("a tile with %s was accepted", c.name)
 		}
 	}

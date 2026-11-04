@@ -1,14 +1,14 @@
 package tilesystem
 
 import (
+	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs"
+	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
-	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 type tileDef struct {
@@ -32,9 +32,9 @@ type promotedTile struct {
 }
 
 type tileDefDTO struct {
-	Id        uint16 `json:"id"`
-	ImagePath string `json:"imagePath"`
-	MaxHealth int    `json:"maxHealth"`
+	Id         uint16 `json:"id"`
+	ImageAsset string `json:"imageAsset"`
+	MaxHealth  int    `json:"maxHealth"`
 	// Required for tiles that can be damaged
 	DestroyedInto   *uint16          `json:"destroyedInto"`
 	Passable        bool             `json:"passable"`
@@ -44,17 +44,14 @@ type tileDefDTO struct {
 	Drops           []dropOutcomeDTO `json:"drops"`
 }
 
-func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas) (map[data.TileEnum]tileDef, error) {
+func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas, assets *assetmanager.AssetManager) (map[data.TileEnum]tileDef, error) {
 	tileDefs := make(map[data.TileEnum]tileDef, len(dtos))
 	for _, dto := range dtos {
-		img, _, err := ebitenutil.NewImageFromFile(dto.ImagePath)
+		asset, err := assets.GetAsset(common.ImageAssetTag(dto.ImageAsset))
 		if err != nil {
-			log.Printf("Error loading tile image from path %s: %v\n", dto.ImagePath, err)
-			img, _, err = ebitenutil.NewImageFromFile("assets/debug/16x16.png")
-			if err != nil {
-				return nil, fmt.Errorf("error loading fallback tile image: %v", err)
-			}
+			return nil, fmt.Errorf("tile %d's image: %w", dto.Id, err)
 		}
+		img := asset.Frames[0]
 
 		def := tileDef{
 			image:     img,
