@@ -66,13 +66,15 @@ type game struct {
 	lightOverlay  drawsystem.LightOverlay
 	inventoryMenu drawsystem.InventoryMenu
 	placer        drawsystem.BlueprintPlacer
-	// From a click the menu or the placer took until the mouse is let go, so that the press doesn't carry on into the
-	// world
+	homePainter   drawsystem.HomePainter
+	// From a click the menu, the placer or the home painter took until the mouse is let go, so that the press doesn't
+	// carry on into the world
 	uiHasMouse bool
 	// Kept from the latest frame for the next tick, since a frame doesn't always run one
 	pendingInventory ecs.InventoryAction
 	pendingPlacement ecs.BlueprintPlacement
 	pendingRemoval   ecs.BlueprintRemoval
+	pendingHome      ecs.HomeMarking
 	uiTakesHand      bool
 	menuOverSlot     bool
 
@@ -227,8 +229,19 @@ func (g *game) Update() error {
 		g.inventoryMenu.Toggle()
 		if g.inventoryMenu.IsOpen() {
 			g.placer.Stop()
+			g.homePainter.Stop()
 		}
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyH) {
+		g.homePainter.Toggle()
+		if g.homePainter.IsActive() {
+			g.placer.Stop()
+			if g.inventoryMenu.IsOpen() {
+				g.inventoryMenu.Toggle()
+			}
+		}
+	}
+	g.updateHomePainter()
 	// The placer goes first, so that the click choosing a blueprint in the menu doesn't also put it down
 	g.updateBlueprintPlacer()
 	g.updateInventoryMenu()
@@ -502,6 +515,7 @@ func (g *game) updateInventoryMenu() {
 		if kind, ok := g.inventoryMenu.BlueprintAt(cursor, screen, blueprints, g.assetmanager); ok && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			g.inventoryMenu.Toggle()
 			g.placer.Start(kind)
+			g.homePainter.Stop()
 		} else if canAct && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			g.pendingInventory = g.inventoryMenu.Click(cursor, screen, inv, g.assetmanager)
 		}
@@ -520,7 +534,29 @@ func (g *game) updateInventoryMenu() {
 	}
 
 	_, placing := g.placer.Kind()
-	g.uiTakesHand = g.uiHasMouse || covers || placing
+	g.uiTakesHand = g.uiHasMouse || covers || placing || g.homePainter.IsActive()
+}
+
+// A drag marks the rectangle from where it started to where it ended as home, or unmarks it with shift held as it ends,
+// as the next tick's input. H or escape stops.
+func (g *game) updateHomePainter() {
+	if !g.homePainter.IsActive() {
+		return
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.homePainter.Stop()
+		return
+	}
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		g.uiHasMouse = true
+		g.homePainter.Press(g.cursorTile())
+	}
+	if g.homePainter.IsDragging() && !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		marking := g.homePainter.Release(g.cursorTile(), ebiten.IsKeyPressed(ebiten.KeyShift))
+		if g.pendingHome.Mark == ecs.Home_None {
+			g.pendingHome = marking
+		}
+	}
 }
 
 // A click puts the blueprint down where it fits, as the next tick's input, and leaves placing unless shift is held;
@@ -569,7 +605,7 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	if !ok {
 		return nil
 	}
-	return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas()), g.assetmanager)
+	return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas(), g.chunkContainer.IsHome(tile)), g.assetmanager)
 }
 
 // Only on what's been seen, in sight now or remembered, so that placing can't find out what's in unexplored ground
@@ -606,6 +642,7 @@ func (g *game) withInventoryMenu(in ecs.InputState) ecs.InputState {
 	in.Inventory, g.pendingInventory = g.pendingInventory, ecs.InventoryAction{}
 	in.PlaceBlueprint, g.pendingPlacement = g.pendingPlacement, ecs.BlueprintPlacement{}
 	in.RemoveBlueprint, g.pendingRemoval = g.pendingRemoval, ecs.BlueprintRemoval{}
+	in.HomeArea, g.pendingHome = g.pendingHome, ecs.HomeMarking{}
 	if g.menuOverSlot {
 		in.SelectSlot = 0
 	}
@@ -754,9 +791,15 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		g.visionOverlay.Draw(world, g.ecs.Camera, vision, g.drawMemory)
 	}
 
-	// Above the fog, since blueprints can go anywhere. A click while placing doesn't use what's in hand, so its target
-	// isn't shown.
-	if _, placing := g.placer.Kind(); placing {
+	// Above the fog, since blueprints and home can go anywhere. A click while placing or marking out home doesn't use
+	// what's in hand, so its target isn't shown.
+	_, placing := g.placer.Kind()
+	if placing || g.homePainter.IsActive() {
+		drawsystem.DrawHomeArea(world, g.ecs.Camera, g.chunkContainer.IsHome)
+	}
+	if g.homePainter.IsActive() {
+		g.homePainter.Draw(world, g.ecs.Camera, g.cursorTile(), ebiten.IsKeyPressed(ebiten.KeyShift))
+	} else if placing {
 		tile := g.cursorTile()
 		if err := g.placer.Draw(world, g.ecs.Camera, tile, g.canPlaceBlueprint(tile), g.ecs.BlueprintAtlas(), g.assetmanager); err != nil {
 			log.Println("error while drawing the blueprint being placed: ", err)

@@ -104,8 +104,13 @@ func (x *ECSContainer) Construct(e common.EntityId, aim utils.Vec2f, all bool) (
 	if x.TickIdx < c.readyTick {
 		return true, nil
 	}
-	if worked, _ := x.terrain.BuildSite(tile, c.work, !x.IsTileOccupied(tile)); worked {
+	home := x.terrain.IsHome(tile)
+	worked, built := x.terrain.BuildSite(tile, c.work, !x.IsTileOccupied(tile))
+	if worked {
 		c.readyTick = x.TickIdx + uint64(c.cooldownMs/data.TickMs)
+	}
+	if built && home {
+		x.spreadHome(tile)
 	}
 	return true, nil
 }

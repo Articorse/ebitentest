@@ -186,6 +186,21 @@ type InputState struct {
 	PlaceBlueprint BlueprintPlacement
 	// A blueprint taken away, which only works while nothing has been delivered to it
 	RemoveBlueprint BlueprintRemoval
+	// The rectangle of tiles marked as home, or no longer
+	HomeArea HomeMarking
+}
+
+type HomeMarkEnum uint8
+
+const (
+	Home_None HomeMarkEnum = iota
+	Home_Mark
+	Home_Unmark
+)
+
+type HomeMarking struct {
+	Mark        HomeMarkEnum
+	First, Last utils.Vec2i
 }
 
 type BlueprintRemoval struct {

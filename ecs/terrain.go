@@ -53,6 +53,10 @@ type Terrain interface {
 	// unless it mustn't be finished yet, such as while something is in the tile's way. Worked is false if there's no such
 	// site, or the work would finish one that mustn't be.
 	BuildSite(t utils.Vec2i, work int, canFinish bool) (worked, built bool)
+	// Where colonists look for work, which the player marks out and finished building spreads
+	IsHome(t utils.Vec2i) bool
+	// Marks the tiles from first to last as home, or not
+	SetHome(first, last utils.Vec2i, home bool)
 }
 
 // Implemented by terrains that can answer for many tiles at once, and say when sight and light have to be worked out
@@ -137,6 +141,8 @@ func (noTerrain) Site(utils.Vec2i) (ConstructionSite, bool)             { return
 func (noTerrain) SitesIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i        { return nil }
 func (noTerrain) RemoveSite(utils.Vec2i) bool                           { return false }
 func (noTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
+func (noTerrain) IsHome(utils.Vec2i) bool                               { return false }
+func (noTerrain) SetHome(utils.Vec2i, utils.Vec2i, bool)                {}
 func (noTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {

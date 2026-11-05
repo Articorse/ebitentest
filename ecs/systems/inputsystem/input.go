@@ -68,6 +68,9 @@ func HandleInputs(
 		if r := input.RemoveBlueprint; r.Remove {
 			ecsContainer.Terrain().RemoveSite(r.Tile)
 		}
+		if h := input.HomeArea; h.Mark != ecs.Home_None {
+			ecsContainer.MarkHome(h.First, h.Last, h.Mark == ecs.Home_Mark)
+		}
 
 		if err := applyInventoryAction(e, input.Inventory, ecsContainer); err != nil {
 			log.Printf("error applying inventory action %+v of entity %d: %v\n", input.Inventory, e, err)

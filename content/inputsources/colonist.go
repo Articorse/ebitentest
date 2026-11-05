@@ -62,8 +62,8 @@ func (p *InputColonistParams) Copy() ecs.InputParams {
 	return &c
 }
 
-// Builds the closest site in the colony that has everything delivered, and otherwise delivers to the closest that it
-// has all that's still needed for, going by walking distance rather than as the crow flies, so that a site it can't get
+// Builds the closest site on the colony's home that has everything delivered, and otherwise delivers to the closest
+// that it has all that's still needed for, going by walking distance rather than as the crow flies, so that a site it can't get
 // to doesn't hold it up. It keeps to a site until it's done or no longer needs it, looking for building now and then
 // while delivering. It acts from where it's in reach and sees the site, but never from on it, since a tile can't be
 // finished with someone standing in it. What it uses goes on the first hotbar slot as it uses it, and comes off it to
@@ -118,7 +118,7 @@ func ColonistInputSource(
 func (p *InputColonistParams) stillWorthIt(e common.EntityId, ecsContainer *ecs.ECSContainer) bool {
 	site, def, ok := siteAt(p.Target, ecsContainer)
 	switch {
-	case !ok:
+	case !ok || !ecsContainer.Terrain().IsHome(p.Target):
 		return false
 	case p.State == Colonist_Construct:
 		return site.Supplied(def)
@@ -174,7 +174,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 	for _, t := range ecsContainer.Terrain().SitesIn(first, last) {
 		site, def, ok := siteAt(t, ecsContainer)
 		switch {
-		case !ok:
+		case !ok || !ecsContainer.Terrain().IsHome(t):
 		case site.Supplied(def):
 			construct = append(construct, t)
 		case canSupply(e, site, def, ecsContainer):

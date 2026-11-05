@@ -25,7 +25,17 @@ func colonistAtWork(t *testing.T) (s *testutil.Session, colony, colonist common.
 		t.Fatal("there's nowhere to stand near the colony center")
 	}
 	testutil.SetPos(t, s.ECS, colonist, spawn)
+	homeEverywhere(t, s, colony)
 	return s, colony, colonist
+}
+
+func homeEverywhere(t *testing.T, s *testutil.Session, colony common.EntityId) {
+	t.Helper()
+	first, last, err := s.ECS.ColonyBounds(colony)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.ECS.MarkHome(first, last, true)
 }
 
 func colonistTile(t *testing.T, s *testutil.Session, colonist common.EntityId) utils.Vec2i {
@@ -154,7 +164,7 @@ func TestBuildingComesBeforeDelivering(t *testing.T) {
 	if !live(t, s, 30*data.TPS, isBuilt(s, far)) {
 		t.Fatal("the colonist didn't build the supplied site")
 	}
-	if site, _ := s.Chunks.Site(near); !site.IsBlueprint() {
+	if site, ok := s.Chunks.Site(near); !ok || !site.IsBlueprint() {
 		t.Fatal("the colonist delivered to the closer blueprint before building the supplied site")
 	}
 }
@@ -179,6 +189,7 @@ func TestAColonistLeavesBlueprintsItCantFullySupplyOrReachAlone(t *testing.T) {
 	colony, colonist := spawnColonist(t, s)
 	spawn, _ := s.Chunks.NewWorldSpawnPos(testutil.WorldPos(t, s.ECS, colony))
 	testutil.SetPos(t, s.ECS, colonist, spawn)
+	homeEverywhere(t, s, colony)
 
 	pricey := groundAway(t, s, colonist, 5)
 	canBeWalledIn := func(tile utils.Vec2i) bool {
@@ -208,10 +219,10 @@ func TestAColonistLeavesBlueprintsItCantFullySupplyOrReachAlone(t *testing.T) {
 
 	start := colonistTile(t, s, colonist)
 	live(t, s, 3*data.TPS, func() bool { return false })
-	if site, _ := s.Chunks.Site(pricey); !site.IsBlueprint() {
+	if site, ok := s.Chunks.Site(pricey); !ok || !site.IsBlueprint() {
 		t.Fatal("the colonist delivered part of what it couldn't fully supply")
 	}
-	if site, _ := s.Chunks.Site(walled); !site.IsBlueprint() {
+	if site, ok := s.Chunks.Site(walled); !ok || !site.IsBlueprint() {
 		t.Fatal("the colonist delivered to a blueprint walled in all around")
 	}
 	if colonistState(s, colonist) != inputsources.Colonist_Idle || colonistTile(t, s, colonist) != start {
@@ -245,7 +256,7 @@ func TestAColonistLeavesBlueprintsOutsideTheColonyAlone(t *testing.T) {
 	s.Chunks.PlaceSite(outside, data.Blueprint_Planks)
 
 	live(t, s, 5*data.TPS, func() bool { return false })
-	if site, _ := s.Chunks.Site(outside); !site.IsBlueprint() || colonistState(s, colonist) != inputsources.Colonist_Idle {
+	if site, ok := s.Chunks.Site(outside); !ok || !site.IsBlueprint() || colonistState(s, colonist) != inputsources.Colonist_Idle {
 		t.Fatal("the colonist went for a blueprint outside the colony")
 	}
 }
@@ -296,7 +307,7 @@ func TestAColonistThatNoLongerHasEnoughGivesUp(t *testing.T) {
 		}
 	}
 	live(t, s, 10*data.TPS, func() bool { return false })
-	if state, _ := s.Chunks.Site(site); !state.IsBlueprint() || colonistState(s, colonist) != inputsources.Colonist_Idle {
+	if state, ok := s.Chunks.Site(site); !ok || !state.IsBlueprint() || colonistState(s, colonist) != inputsources.Colonist_Idle {
 		t.Fatal("the colonist delivered part of what was needed after it no longer had all of it")
 	}
 }
@@ -319,5 +330,42 @@ func TestWhatAColonistIsDoingIsSaved(t *testing.T) {
 	p, ok := in.Params().(*inputsources.InputColonistParams)
 	if !ok || p.Colony != colony || p.State != inputsources.Colonist_Deliver || p.Target != site {
 		t.Fatalf("after loading, the colonist is %+v, want delivering to %v for colony %d", p, site, colony)
+	}
+}
+
+func TestAColonistLeavesSitesOffHomeAlone(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	away := groundAway(t, s, colonist, 8)
+	s.ECS.MarkHome(away, away, false)
+	s.Chunks.PlaceSite(away, data.Blueprint_Planks)
+
+	live(t, s, 3*data.TPS, func() bool { return false })
+	if site, ok := s.Chunks.Site(away); !ok || !site.IsBlueprint() || colonistState(s, colonist) != inputsources.Colonist_Idle {
+		t.Fatal("the colonist went for a blueprint off home")
+	}
+	further := groundAway(t, s, colonist, 14, away)
+	s.Chunks.PlaceSite(further, data.Blueprint_Planks)
+	if !live(t, s, 30*data.TPS, isBuilt(s, further)) {
+		t.Fatal("the colonist didn't build a blueprint on home further than one off it")
+	}
+	s.ECS.MarkHome(away, away, true)
+	if !live(t, s, 30*data.TPS, isBuilt(s, away)) {
+		t.Fatal("the colonist didn't build the blueprint once it was on home")
+	}
+}
+
+func TestAColonistStopsWhenItsSiteIsTakenOffHome(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	site := groundAway(t, s, colonist, 12)
+	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	live(t, s, 2, func() bool { return false })
+	if colonistState(s, colonist) != inputsources.Colonist_Deliver {
+		t.Fatal("the colonist didn't set out to deliver")
+	}
+
+	s.ECS.MarkHome(site, site, false)
+	live(t, s, 10*data.TPS, func() bool { return false })
+	if state, ok := s.Chunks.Site(site); !ok || !state.IsBlueprint() || colonistState(s, colonist) != inputsources.Colonist_Idle {
+		t.Fatal("the colonist carried on to a site taken off home")
 	}
 }

@@ -42,6 +42,28 @@ func (x *ECSContainer) InColony(e common.EntityId, t utils.Vec2i) bool {
 	return err == nil && t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y
 }
 
+// Within the colonies' bounds only, since colonists never leave them
+func (x *ECSContainer) MarkHome(first, last utils.Vec2i, home bool) {
+	for _, colony := range x.Colonies.GetEntities() {
+		cFirst, cLast, err := x.ColonyBounds(colony)
+		if err != nil {
+			continue
+		}
+		from := utils.Vec2i{X: max(first.X, cFirst.X), Y: max(first.Y, cFirst.Y)}
+		to := utils.Vec2i{X: min(last.X, cLast.X), Y: min(last.Y, cLast.Y)}
+		if from.X <= to.X && from.Y <= to.Y {
+			x.terrain.SetHome(from, to, home)
+		}
+	}
+}
+
+// Building on home spreads it around what was built, so that a colony's home grows with it, while building elsewhere
+// leaves it as it was
+func (x *ECSContainer) spreadHome(built utils.Vec2i) {
+	r := data.HomeSpreadTiles
+	x.MarkHome(utils.Vec2i{X: built.X - r, Y: built.Y - r}, utils.Vec2i{X: built.X + r, Y: built.Y + r}, true)
+}
+
 func (x Colony) Copy() Colony {
 	return x
 }

@@ -285,11 +285,44 @@ func TestThePlacerHoldsTheChosenBlueprintUntilStopped(t *testing.T) {
 func TestASitesTooltipHasWhatsDeliveredAndHowFarBuildingHasCome(t *testing.T) {
 	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
 	site := ecs.ConstructionSite{Blueprint: data.Blueprint_Planks, Delivered: []ecs.ItemCost{{Kind: data.Item_Wood}}, Health: 1, MaxHealth: 100}
-	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "Wood 0/2", "Construction 0%"}) {
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Planks", "Wood 0/2", "Construction 0%"}) {
 		t.Fatalf("a new site's tooltip says %q", lines)
 	}
 	site.Delivered[0].Count, site.Health = 2, 34
-	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "Wood 2/2", "Construction 33%"}) {
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Planks", "Wood 2/2", "Construction 33%"}) {
 		t.Fatalf("a supplied site a third built has a tooltip saying %q", lines)
+	}
+}
+
+func TestASiteOffHomeSaysColonistsLeaveIt(t *testing.T) {
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
+	site := ecs.ConstructionSite{Blueprint: data.Blueprint_Planks, Delivered: []ecs.ItemCost{{Kind: data.Item_Wood}}, Health: 1, MaxHealth: 100}
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), false); lines[len(lines)-1] != "Outside the home area" {
+		t.Fatalf("a site off home has a tooltip saying %q", lines)
+	}
+}
+
+func TestDraggingOutHomeMarksTheRectangleBetweenItsEnds(t *testing.T) {
+	var p drawsystem.HomePainter
+	p.Press(utils.Vec2i{X: 3, Y: 3})
+	if p.IsDragging() {
+		t.Fatal("dragging started without the painter on")
+	}
+	p.Toggle()
+	p.Press(utils.Vec2i{X: 5, Y: -2})
+	if m := p.Release(utils.Vec2i{X: 1, Y: 4}, false); m != (ecs.HomeMarking{Mark: ecs.Home_Mark, First: utils.Vec2i{X: 1, Y: -2}, Last: utils.Vec2i{X: 5, Y: 4}}) {
+		t.Fatalf("dragging from 5, -2 to 1, 4 marked %+v", m)
+	}
+	if m := p.Release(utils.Vec2i{}, false); m.Mark != ecs.Home_None {
+		t.Fatalf("releasing without dragging marked %+v", m)
+	}
+	p.Press(utils.Vec2i{})
+	if m := p.Release(utils.Vec2i{}, true); m != (ecs.HomeMarking{Mark: ecs.Home_Unmark}) {
+		t.Fatalf("a shift drag over one tile did %+v, want it unmarked", m)
+	}
+	p.Press(utils.Vec2i{})
+	p.Toggle()
+	if p.IsActive() || p.IsDragging() {
+		t.Fatal("turning the painter off left it on or dragging")
 	}
 }

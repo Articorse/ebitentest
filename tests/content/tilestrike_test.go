@@ -124,6 +124,8 @@ func (f *fakeTerrain) Site(utils.Vec2i) (ecs.ConstructionSite, bool) {
 	return ecs.ConstructionSite{}, false
 }
 func (f *fakeTerrain) SitesIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i        { return nil }
+func (f *fakeTerrain) IsHome(utils.Vec2i) bool                               { return false }
+func (f *fakeTerrain) SetHome(utils.Vec2i, utils.Vec2i, bool)                {}
 func (f *fakeTerrain) RemoveSite(utils.Vec2i) bool                           { return false }
 func (f *fakeTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
 func (f *fakeTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }

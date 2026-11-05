@@ -73,8 +73,9 @@ func BlueprintTooltip(def ecs.BlueprintDef, items *ecs.ItemAtlas) []string {
 	return lines
 }
 
-// Its name, how much of each cost has been delivered, and how far building it has come, from 0% when it's placed
-func SiteTooltip(site ecs.ConstructionSite, def ecs.BlueprintDef, items *ecs.ItemAtlas) []string {
+// Its name, how much of each cost has been delivered, and how far building it has come, from 0% when it's placed, and
+// whether colonists leave it alone, being off home
+func SiteTooltip(site ecs.ConstructionSite, def ecs.BlueprintDef, items *ecs.ItemAtlas, home bool) []string {
 	lines := []string{def.Name()}
 	for _, c := range def.Costs() {
 		name := "?"
@@ -88,7 +89,11 @@ func SiteTooltip(site ecs.ConstructionSite, def ecs.BlueprintDef, items *ecs.Ite
 	if site.MaxHealth > 1 {
 		progress = (site.Health - 1) * 100 / (site.MaxHealth - 1)
 	}
-	return append(lines, fmt.Sprintf("Construction %d%%", progress))
+	lines = append(lines, fmt.Sprintf("Construction %d%%", progress))
+	if !home {
+		lines = append(lines, "Outside the home area")
+	}
+	return lines
 }
 
 // Below and to the right of the cursor, in UI pixels, moved back onto the screen where it would go off it
