@@ -65,6 +65,9 @@ func HandleInputs(
 		if p := input.PlaceBlueprint; p.Kind != data.Blueprint_None {
 			ecsContainer.Terrain().PlaceSite(p.Tile, p.Kind)
 		}
+		if r := input.RemoveBlueprint; r.Remove {
+			ecsContainer.Terrain().RemoveSite(r.Tile)
+		}
 
 		if err := applyInventoryAction(e, input.Inventory, ecsContainer); err != nil {
 			log.Printf("error applying inventory action %+v of entity %d: %v\n", input.Inventory, e, err)

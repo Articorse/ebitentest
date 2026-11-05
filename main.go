@@ -72,6 +72,7 @@ type game struct {
 	// Kept from the latest frame for the next tick, since a frame doesn't always run one
 	pendingInventory ecs.InventoryAction
 	pendingPlacement ecs.BlueprintPlacement
+	pendingRemoval   ecs.BlueprintRemoval
 	uiTakesHand      bool
 	menuOverSlot     bool
 
@@ -228,6 +229,7 @@ func (g *game) Update() error {
 	// The placer goes first, so that the click choosing a blueprint in the menu doesn't also put it down
 	g.updateBlueprintPlacer()
 	g.updateInventoryMenu()
+	g.updateBlueprintRemoval()
 	if in, ok := g.ecs.Inputs.Get(g.playerEntity); ok {
 		_, wheelUp := ebiten.Wheel()
 		in.AddWheel(-wheelUp)
@@ -526,7 +528,7 @@ func (g *game) updateBlueprintPlacer() {
 
 	g.uiHasMouse = true
 	tile := g.cursorTile()
-	if g.pendingPlacement.Kind != data.Blueprint_None || !g.chunkContainer.CanPlaceSite(tile) {
+	if g.pendingPlacement.Kind != data.Blueprint_None || !g.canPlaceBlueprint(tile) {
 		return
 	}
 	g.pendingPlacement = ecs.BlueprintPlacement{Kind: kind, Tile: tile}
@@ -545,8 +547,9 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	if g.inventoryMenu.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), inv, g.ecs.BlueprintAtlas(), g.assetmanager) {
 		return nil
 	}
-	site, ok := g.chunkContainer.Site(g.cursorTile())
-	if !ok {
+	tile := g.cursorTile()
+	site, ok := g.chunkContainer.Site(tile)
+	if _, seen := g.chunkContainer.RecallTile(tile); !ok || !seen {
 		return nil
 	}
 	def, ok := g.ecs.BlueprintAtlas().Def(site.Blueprint)
@@ -554,6 +557,29 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 		return nil
 	}
 	return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas()), g.assetmanager)
+}
+
+// Only on what's been seen, in sight now or remembered, so that placing can't find out what's in unexplored ground
+func (g *game) canPlaceBlueprint(tile utils.Vec2i) bool {
+	_, seen := g.chunkContainer.RecallTile(tile)
+	return seen && g.chunkContainer.CanPlaceSite(tile)
+}
+
+// R over a blueprint that has nothing delivered yet takes it away, on what's been seen like placing
+func (g *game) updateBlueprintRemoval() {
+	if !inpututil.IsKeyJustPressed(ebiten.KeyR) || g.pendingRemoval.Remove {
+		return
+	}
+	if inv, ok := g.ecs.Inventories.Get(g.playerEntity); ok &&
+		g.inventoryMenu.Covers(g.uiCursor(), g.screenSize.Multiply(1/g.uiScale), inv, g.ecs.BlueprintAtlas(), g.assetmanager) {
+		return
+	}
+	tile := g.cursorTile()
+	site, ok := g.chunkContainer.Site(tile)
+	if _, seen := g.chunkContainer.RecallTile(tile); !ok || !seen || !site.IsBlueprint() {
+		return
+	}
+	g.pendingRemoval = ecs.BlueprintRemoval{Remove: true, Tile: tile}
 }
 
 func (g *game) cursorTile() utils.Vec2i {
@@ -566,6 +592,7 @@ func (g *game) cursorTile() utils.Vec2i {
 func (g *game) withInventoryMenu(in ecs.InputState) ecs.InputState {
 	in.Inventory, g.pendingInventory = g.pendingInventory, ecs.InventoryAction{}
 	in.PlaceBlueprint, g.pendingPlacement = g.pendingPlacement, ecs.BlueprintPlacement{}
+	in.RemoveBlueprint, g.pendingRemoval = g.pendingRemoval, ecs.BlueprintRemoval{}
 	if g.menuOverSlot {
 		in.SelectSlot = 0
 	}
@@ -718,7 +745,7 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	// isn't shown.
 	if _, placing := g.placer.Kind(); placing {
 		tile := g.cursorTile()
-		if err := g.placer.Draw(world, g.ecs.Camera, tile, g.chunkContainer.CanPlaceSite(tile), g.ecs.BlueprintAtlas(), g.assetmanager); err != nil {
+		if err := g.placer.Draw(world, g.ecs.Camera, tile, g.canPlaceBlueprint(tile), g.ecs.BlueprintAtlas(), g.assetmanager); err != nil {
 			log.Println("error while drawing the blueprint being placed: ", err)
 		}
 	} else if err := drawsystem.DrawTileTarget(world, g.ecs.Camera, g.playerEntity, g.ecs); err != nil {

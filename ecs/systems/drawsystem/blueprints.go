@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/colorm"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
@@ -33,7 +34,7 @@ func (p *BlueprintPlacer) Kind() (data.BlueprintEnum, bool) {
 	return p.kind, p.kind != data.Blueprint_None
 }
 
-// The finished tile, see-through on the tile: light blue if the blueprint can go there and red if it can't
+// The finished tile as a blueprint on the tile: blue if it can go there and red if it can't
 func (p *BlueprintPlacer) Draw(
 	dst *ebiten.Image,
 	camera utils.Vec2f,
@@ -53,21 +54,10 @@ func (p *BlueprintPlacer) Draw(
 
 	img := asset.Frames[0]
 	pos := utils.TilePosToWorldPos(tile)
-	op := &ebiten.DrawImageOptions{}
+	op := &colorm.DrawImageOptions{}
 	op.GeoM.Translate(pos.X-camera.X-float64(img.Bounds().Dx())/2, pos.Y-camera.Y-float64(img.Bounds().Dy())/2)
-	op.ColorScale = GhostColorScale()
-	if !valid {
-		op.ColorScale = invalidGhostColorScale()
-	}
-	dst.DrawImage(img, op)
+	colorm.DrawImage(dst, img, blueprintColorM(valid), op)
 	return nil
-}
-
-func invalidGhostColorScale() ebiten.ColorScale {
-	var c ebiten.ColorScale
-	c.Scale(data.InvalidGhostTintR, data.InvalidGhostTintG, data.InvalidGhostTintB, 1)
-	c.ScaleAlpha(data.GhostAlpha)
-	return c
 }
 
 // Its name, then a line for each of its costs

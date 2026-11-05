@@ -15,6 +15,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/colorm"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
@@ -250,7 +251,8 @@ func drawStaticSprite(
 	opts := ebiten.DrawImageOptions{}
 	opts.GeoM.Translate(s.Pos.X-camera.X-float64(img.Bounds().Dx())/2, s.Pos.Y-camera.Y-float64(img.Bounds().Dy())/2)
 	if s.Ghost {
-		opts.ColorScale = GhostColorScale()
+		colorm.DrawImage(screen, img, blueprintColorM(true), &colorm.DrawImageOptions{GeoM: opts.GeoM})
+		return nil
 	}
 	screen.DrawImage(img, &opts)
 
@@ -399,9 +401,19 @@ func applySwing(geoM *ebiten.GeoM, sw *ecs.Swing, angle float64, w, h int, scale
 	geoM.Translate(grip.X, grip.Y)
 }
 
-func GhostColorScale() ebiten.ColorScale {
-	var c ebiten.ColorScale
-	c.Scale(data.GhostTintR, data.GhostTintG, data.GhostTintB, 1)
-	c.ScaleAlpha(data.GhostAlpha)
+// Every colour becomes the blueprint blue, or red where it can't go, as bright as the colour was, and half see-through
+func blueprintColorM(valid bool) colorm.ColorM {
+	tint := [3]float64{data.BlueprintR, data.BlueprintG, data.BlueprintB}
+	if !valid {
+		tint = [3]float64{data.InvalidBlueprintR, data.InvalidBlueprintG, data.InvalidBlueprintB}
+	}
+	var c colorm.ColorM
+	for i, t := range tint {
+		c.SetElement(i, 0, t*data.BlueprintShadeRange*0.299)
+		c.SetElement(i, 1, t*data.BlueprintShadeRange*0.587)
+		c.SetElement(i, 2, t*data.BlueprintShadeRange*0.114)
+		c.SetElement(i, 4, t*data.BlueprintShadeBase)
+	}
+	c.SetElement(3, 3, data.BlueprintAlpha)
 	return c
 }

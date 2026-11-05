@@ -10,11 +10,32 @@ import (
 	"slices"
 )
 
+// A blueprint until the first material is delivered, then a marker while it collects the rest, and under construction
+// once it has them all
 type constructionSite struct {
 	blueprint data.BlueprintEnum
 	// In the order of the blueprint's costs
 	delivered []int
 	health    int
+}
+
+// Only a plan, which isn't hit by anything, until something's been delivered to it
+func (s *constructionSite) isBlueprint() bool {
+	for _, n := range s.delivered {
+		if n > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *constructionSite) isSupplied(def ecs.BlueprintDef) bool {
+	for i, cost := range def.Costs() {
+		if s.delivered[i] < cost.Count {
+			return false
+		}
+	}
+	return true
 }
 
 // The tile atlas has to be loaded first, since blueprints build its tiles, and their health is the tile's
@@ -98,13 +119,8 @@ func (cc *ChunkContainer) DeliverToSite(t utils.Vec2i, item data.ItemEnum, count
 // work adds up to the tile's health
 func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int, canFinish bool) (worked, built bool) {
 	c, s, def, ok := cc.siteOn(t)
-	if !ok || work <= 0 {
+	if !ok || work <= 0 || !s.isSupplied(def) {
 		return false, false
-	}
-	for i, cost := range def.Costs() {
-		if s.delivered[i] < cost.Count {
-			return false, false
-		}
 	}
 
 	maxHealth := cc.atlas[def.Tile()].maxHealth
@@ -123,6 +139,45 @@ func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int, canFinish bool) (wo
 	return true, true
 }
 
+// Only a blueprint can be taken away like this, since a site with materials has to be broken to get them back
+func (cc *ChunkContainer) RemoveSite(t utils.Vec2i) bool {
+	c, s, _, ok := cc.siteOn(t)
+	if !ok || !s.isBlueprint() {
+		return false
+	}
+	delete(c.sites, t)
+	c.terrainModified = true
+	return true
+}
+
+// A site with materials is hit instead of the ground under it, and drops all of them when it's destroyed. Ok is false
+// where there's no such site, and the ground is hit instead.
+func (cc *ChunkContainer) damageSite(t utils.Vec2i, damage int) (drops *ecs.DropTable, ok bool) {
+	c, s, def, ok := cc.siteOn(t)
+	if !ok || s.isBlueprint() {
+		return nil, false
+	}
+
+	s.health -= damage
+	c.terrainModified = true
+	if s.health > 0 {
+		return nil, true
+	}
+
+	delete(c.sites, t)
+	items := []ecs.ItemDrop{}
+	for i, cost := range def.Costs() {
+		if s.delivered[i] > 0 {
+			items = append(items, ecs.ItemDrop{Kind: cost.Kind, Count: s.delivered[i]})
+		}
+	}
+	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: items})
+	if err != nil {
+		return nil, true
+	}
+	return table, true
+}
+
 func (cc *ChunkContainer) siteOn(t utils.Vec2i) (*chunk, *constructionSite, ecs.BlueprintDef, bool) {
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	if !ok {
@@ -136,7 +191,8 @@ func (cc *ChunkContainer) siteOn(t utils.Vec2i) (*chunk, *constructionSite, ecs.
 	return c, s, def, ok
 }
 
-// A ghost of the finished tile until building starts, and then the stage it's reached
+// The finished tile as a blueprint until something's delivered, a marker while it's collecting the rest, and then the
+// stage building has reached, starting at the first as soon as it has everything
 func (cc *ChunkContainer) siteSprite(t utils.Vec2i, s *constructionSite) (common.StaticSprite, bool) {
 	def, ok := cc.blueprints.Def(s.blueprint)
 	if !ok {
@@ -144,8 +200,12 @@ func (cc *ChunkContainer) siteSprite(t utils.Vec2i, s *constructionSite) (common
 	}
 
 	sprite := common.StaticSprite{ImageAsset: def.ImageAsset(), Pos: utils.TilePosToWorldPos(t), Layer: data.ConstructionSiteSpriteLayer}
-	if s.health <= 1 {
+	switch {
+	case s.isBlueprint():
 		sprite.Ghost = true
+		return sprite, true
+	case !s.isSupplied(def):
+		sprite.ImageAsset = common.AssetImageTileMarker
 		return sprite, true
 	}
 	maxHealth := cc.atlas[def.Tile()].maxHealth

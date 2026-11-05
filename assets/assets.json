@@ -16,6 +16,7 @@
   { "tag": "platform", "path": "sprites/platform.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "slot", "path": "sprites/slot.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "inventory_panel", "path": "sprites/inventory3x3.png", "frameCount": 1, "frameSize": { "x": 9, "y": 9 } },
+  { "tag": "tile_marker", "path": "sprites/tile_marker.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "slot_highlight", "path": "sprites/slot_highlight.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "tile_dirt", "path": "tiles/dirt.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "tile_grass", "path": "tiles/grass.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },

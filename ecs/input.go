@@ -184,6 +184,13 @@ type InputState struct {
 	Inventory InventoryAction
 	// A blueprint put down, which can go anywhere it fits
 	PlaceBlueprint BlueprintPlacement
+	// A blueprint taken away, which only works while nothing has been delivered to it
+	RemoveBlueprint BlueprintRemoval
+}
+
+type BlueprintRemoval struct {
+	Remove bool
+	Tile   utils.Vec2i
 }
 
 type BlueprintPlacement struct {

@@ -4,7 +4,7 @@
     "name": "Planks",
     "tile": 6,
     "imageAsset": "tile_planks",
-    "costs": [{ "kind": 1, "count": 1 }],
+    "costs": [{ "kind": 1, "count": 2 }],
     "work": 10
   }
 ]

@@ -43,6 +43,8 @@ type Terrain interface {
 	// False if a site can't be placed there, or the blueprint doesn't exist
 	PlaceSite(t utils.Vec2i, blueprint data.BlueprintEnum) bool
 	Site(t utils.Vec2i) (ConstructionSite, bool)
+	// False unless it's still a blueprint, with nothing delivered
+	RemoveSite(t utils.Vec2i) bool
 	// How many of the items the site took, which is no more than it still needs of them
 	DeliverToSite(t utils.Vec2i, item data.ItemEnum, count int) int
 	// Works on a site that has everything delivered, and turns it into its tile once its health reaches the tile's,
@@ -58,6 +60,16 @@ type ConstructionSite struct {
 	Delivered []ItemCost
 	Health    int
 	MaxHealth int
+}
+
+// Only a plan until something's been delivered to it
+func (x ConstructionSite) IsBlueprint() bool {
+	for _, d := range x.Delivered {
+		if d.Count > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // Every cost has been delivered, so building can start
@@ -109,6 +121,7 @@ func (noTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8,
 func (noTerrain) CanPlaceSite(utils.Vec2i) bool                         { return false }
 func (noTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool        { return false }
 func (noTerrain) Site(utils.Vec2i) (ConstructionSite, bool)             { return ConstructionSite{}, false }
+func (noTerrain) RemoveSite(utils.Vec2i) bool                           { return false }
 func (noTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
 func (noTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }
 

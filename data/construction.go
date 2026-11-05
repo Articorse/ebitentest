@@ -3,11 +3,14 @@ package data
 const (
 	// Under the entities' sprites, since a site is part of the ground until it's built
 	ConstructionSiteSpriteLayer = 10
-	// Light blue and half see-through, for what's planned rather than built
-	GhostTintR, GhostTintG, GhostTintB = 0.6, 0.85, 1
-	GhostAlpha                         = 0.5
-	// The ghost of a blueprint about to be put down where it can't go
-	InvalidGhostTintR, InvalidGhostTintG, InvalidGhostTintB = 1, 0.35, 0.35
+	// A blueprint is drawn in shades of this blue, from the brightness of the finished tile, so that it stands out from
+	// the ground whatever it's made of but still shows what it is
+	BlueprintR, BlueprintG, BlueprintB = 0.3, 0.6, 1
+	// Red for one about to be put down where it can't go
+	InvalidBlueprintR, InvalidBlueprintG, InvalidBlueprintB = 1, 0.3, 0.3
+	// The shade of the tile's darkest parts, and how much brighter its brightest get
+	BlueprintShadeBase, BlueprintShadeRange = 0.4, 1.2
+	BlueprintAlpha                          = 0.5
 
 	PlayerBuildRangeTiles = 3
 	// Planks take 10 work, so 10 strikes

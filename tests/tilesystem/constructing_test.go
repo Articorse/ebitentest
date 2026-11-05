@@ -258,3 +258,108 @@ func countOf(s *testutil.Session, item common.EntityId) int {
 	}
 	return itemComp.Count()
 }
+
+func woodLyingAround(s *testutil.Session) int {
+	n := 0
+	for _, e := range s.ECS.Items.GetEntities() {
+		if item, _ := s.ECS.Items.Get(e); item.Kind() == data.Item_Wood && s.ECS.Parent(e) == -1 {
+			n += item.Count()
+		}
+	}
+	return n
+}
+
+func TestASiteCollectingMaterialsIsAMarker(t *testing.T) {
+	s, site, _ := newBuilder(t, 5)
+	if sprite := siteImage(t, s, site); !sprite.Ghost || sprite.ImageAsset != common.ImageAssetTag("tile_planks") {
+		t.Fatalf("a new blueprint is drawn as %+v, want the blueprint of the finished tile", sprite)
+	}
+	construct(t, s, site, false)
+	if sprite := siteImage(t, s, site); sprite.Ghost || sprite.ImageAsset != common.AssetImageTileMarker {
+		t.Fatalf("a site with 1 of its 3 wood is drawn as %+v, want the marker", sprite)
+	}
+	waitOutTheCooldown(s)
+	construct(t, s, site, true)
+	if sprite := siteImage(t, s, site); sprite.Ghost || sprite.ImageAsset != common.ImageAssetTag("tile_planks") || sprite.Frame != 1 {
+		t.Fatalf("a site with all its wood is drawn as %+v, want the first stage", sprite)
+	}
+}
+
+func TestABlueprintIsHitThroughButASiteWithMaterialsIsHitAndDropsThem(t *testing.T) {
+	s, site, _ := newBuilder(t, 5)
+	ground := currentTile(s, site)
+	groundHealth, _ := s.Chunks.TileHealth(site)
+
+	s.ECS.DamageTile(site, 1)
+	if _, ok := s.Chunks.Site(site); !ok {
+		t.Fatal("hitting a blueprint destroyed it")
+	}
+	if health, _ := s.Chunks.TileHealth(site); ground == data.Tile_Grass && health != groundHealth-1 {
+		t.Fatalf("hitting a blueprint left the grass under it at %d health, want it hit instead", health)
+	}
+
+	construct(t, s, site, false)
+	if health, ok := s.Chunks.TileHealth(site); !ok || health != 1 {
+		t.Fatalf("a site with materials has %d health (%v), want its own 1", health, ok)
+	}
+	before := woodLyingAround(s)
+	if !s.ECS.DamageTile(site, 1) {
+		t.Fatal("a site with materials couldn't be hit")
+	}
+	testutil.RemoveScheduled(t, s.ECS)
+	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s)-before != 1 {
+		t.Fatalf("the destroyed site dropped %d wood, want the 1 delivered to it", woodLyingAround(s)-before)
+	}
+	if currentTile(s, site) != ground {
+		t.Fatal("the hit that destroyed the site also hit the ground under it")
+	}
+}
+
+func TestASiteUnderConstructionLosesProgressToHitsAndDropsAllItsMaterials(t *testing.T) {
+	s, site, _ := newBuilder(t, 3)
+	construct(t, s, site, true)
+	for range 4 {
+		waitOutTheCooldown(s)
+		construct(t, s, site, false)
+	}
+
+	s.ECS.DamageTile(site, 20)
+	if state, _ := s.Chunks.Site(site); state.Health != 21 {
+		t.Fatalf("a hit of 20 on a site at 41 left %d health, want 21", state.Health)
+	}
+	if frame, _ := siteSprite(t, s, site); frame != 1 {
+		t.Fatalf("the hit site is drawn as stage %d, want back at the first", frame)
+	}
+
+	before := woodLyingAround(s)
+	s.ECS.DamageTile(site, 50)
+	testutil.RemoveScheduled(t, s.ECS)
+	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s)-before != 3 {
+		t.Fatalf("the destroyed site dropped %d wood, want all 3", woodLyingAround(s)-before)
+	}
+}
+
+func TestOnlyABlueprintCanBeRemoved(t *testing.T) {
+	s, site, _ := newBuilder(t, 5)
+	remove := func() {
+		t.Helper()
+		inputs := map[common.EntityId]ecs.InputState{s.Player: {RemoveBlueprint: ecs.BlueprintRemoval{Remove: true, Tile: site}}}
+		if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	construct(t, s, site, false)
+	remove()
+	if _, ok := s.Chunks.Site(site); !ok {
+		t.Fatal("a site with wood delivered was removed, which would lose the wood")
+	}
+
+	other := findTile(t, s, func(tile utils.Vec2i) bool { return tile != site && s.Chunks.CanPlaceSite(tile) })
+	s.Chunks.PlaceSite(other, 1)
+	site = other
+	remove()
+	if _, ok := s.Chunks.Site(other); ok || !s.Chunks.CanPlaceSite(other) {
+		t.Fatal("the blueprint wasn't removed")
+	}
+}

@@ -15,14 +15,20 @@ import (
 
 func siteSprite(t *testing.T, s *testutil.Session, tile utils.Vec2i) (frame int, ghost bool) {
 	t.Helper()
+	sprite := siteImage(t, s, tile)
+	return sprite.Frame, sprite.Ghost
+}
+
+func siteImage(t *testing.T, s *testutil.Session, tile utils.Vec2i) common.StaticSprite {
+	t.Helper()
 	center := utils.TilePosToWorldPos(tile)
 	for _, sprite := range s.Chunks.FeatureSprites([2]utils.Vec2f{center, center}, 0) {
 		if sprite.Pos == center {
-			return sprite.Frame, sprite.Ghost
+			return sprite
 		}
 	}
 	t.Fatalf("nothing is drawn on %v", tile)
-	return 0, false
+	return common.StaticSprite{}
 }
 
 func TestBlueprintsArePlacedOnlyOnBareGroundThatCanBeBuiltOn(t *testing.T) {
@@ -114,6 +120,9 @@ func TestASiteIsBuiltOnceSuppliedOverItsWorkAndBecomesTheTile(t *testing.T) {
 	}
 	if site, _ := s.Chunks.Site(tile); len(site.Delivered) != 1 || site.Delivered[0] != (ecs.ItemCost{Kind: data.Item_Wood, Count: 1}) {
 		t.Fatalf("the site has %v delivered, want 1 wood", site.Delivered)
+	}
+	if frame, ghost := siteSprite(t, s, tile); frame != 1 || ghost {
+		t.Fatalf("a site with all its wood is drawn as frame %d, ghost %v; want the first stage before any work", frame, ghost)
 	}
 
 	// 10 work for planks' 100 health takes 10 strikes of 1, each adding 10 to the 1 it starts with

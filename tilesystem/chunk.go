@@ -59,6 +59,10 @@ func (x *chunk) getPromotedTiles() map[utils.Vec2i]promotedTile {
 // Returns false for tiles that can't be damaged, or that aren't in an active chunk. Returns what the tile drops, if
 // this destroyed it.
 func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) (bool, *ecs.DropTable) {
+	if drops, ok := cc.damageSite(t, damage); ok {
+		return true, drops
+	}
+
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	if !ok {
 		return false, nil
@@ -160,7 +164,12 @@ func (cc *ChunkContainer) CanDamageTile(t utils.Vec2i) bool {
 	return ok
 }
 
+// A site with materials has its own health, which is what's hit
 func (cc *ChunkContainer) TileHealth(t utils.Vec2i) (health int, ok bool) {
+	if _, s, _, ok := cc.siteOn(t); ok && !s.isBlueprint() {
+		return s.health, true
+	}
+
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	if !ok {
 		return 0, false
