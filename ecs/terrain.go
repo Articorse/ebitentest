@@ -45,9 +45,10 @@ type Terrain interface {
 	Site(t utils.Vec2i) (ConstructionSite, bool)
 	// How many of the items the site took, which is no more than it still needs of them
 	DeliverToSite(t utils.Vec2i, item data.ItemEnum, count int) int
-	// Works on a site that has everything delivered, and turns it into its tile once its health reaches the tile's.
-	// Worked is false if there's no such site.
-	BuildSite(t utils.Vec2i, work int) (worked, built bool)
+	// Works on a site that has everything delivered, and turns it into its tile once its health reaches the tile's,
+	// unless it mustn't be finished yet, such as while something is in the tile's way. Worked is false if there's no such
+	// site, or the work would finish one that mustn't be.
+	BuildSite(t utils.Vec2i, work int, canFinish bool) (worked, built bool)
 }
 
 // Its health is how far building it has come, from 1 when it's placed up to that of the tile it builds
@@ -105,11 +106,11 @@ func (noTerrain) PlaceFeature(utils.Vec2i, data.FeatureEnum) bool { return false
 func (noTerrain) WalkSpeedPercent(utils.Vec2i) int                { return 100 }
 func (noTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {
 }
-func (noTerrain) CanPlaceSite(utils.Vec2i) bool                     { return false }
-func (noTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool    { return false }
-func (noTerrain) Site(utils.Vec2i) (ConstructionSite, bool)         { return ConstructionSite{}, false }
-func (noTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int { return 0 }
-func (noTerrain) BuildSite(utils.Vec2i, int) (worked, built bool)   { return false, false }
+func (noTerrain) CanPlaceSite(utils.Vec2i) bool                         { return false }
+func (noTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool        { return false }
+func (noTerrain) Site(utils.Vec2i) (ConstructionSite, bool)             { return ConstructionSite{}, false }
+func (noTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
+func (noTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {
 	x.terrain = terrain

@@ -83,6 +83,24 @@ func BlueprintTooltip(def ecs.BlueprintDef, items *ecs.ItemAtlas) []string {
 	return lines
 }
 
+// Its name, how much of each cost has been delivered, and how far building it has come, from 0% when it's placed
+func SiteTooltip(site ecs.ConstructionSite, def ecs.BlueprintDef, items *ecs.ItemAtlas) []string {
+	lines := []string{def.Name()}
+	for _, c := range def.Costs() {
+		name := "?"
+		if item, ok := items.Def(c.Kind); ok {
+			name = item.Name()
+		}
+		delivered := c.Count - site.Needs(c.Kind, def)
+		lines = append(lines, fmt.Sprintf("%s %d/%d", name, delivered, c.Count))
+	}
+	progress := 0
+	if site.MaxHealth > 1 {
+		progress = (site.Health - 1) * 100 / (site.MaxHealth - 1)
+	}
+	return append(lines, fmt.Sprintf("Construction %d%%", progress))
+}
+
 // Below and to the right of the cursor, in UI pixels, moved back onto the screen where it would go off it
 func DrawTooltip(screen *ebiten.Image, scale float64, cursor utils.Vec2f, lines []string, assets *assetmanager.AssetManager) error {
 	if len(lines) == 0 {

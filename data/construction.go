@@ -8,4 +8,9 @@ const (
 	GhostAlpha                         = 0.5
 	// The ghost of a blueprint about to be put down where it can't go
 	InvalidGhostTintR, InvalidGhostTintG, InvalidGhostTintB = 1, 0.35, 0.35
+
+	PlayerBuildRangeTiles = 3
+	// Planks take 10 work, so 10 strikes
+	PlayerBuildWork       = 1
+	PlayerBuildCooldownMs = 250
 )

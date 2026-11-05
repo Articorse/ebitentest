@@ -187,6 +187,7 @@ func (g *game) Update() error {
 		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewMouseInputKey(ebiten.MouseButtonLeft, -1)
 		pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(ebiten.KeySpace, -1)
 		pInputConfig[ecs.Input_DropItem] = ecs.NewKeyboardInputKey(ebiten.KeyQ, -1)
+		pInputConfig[ecs.Input_All] = ecs.NewKeyboardInputKey(ebiten.KeyShift, -1)
 		for i, key := range hotbarKeys {
 			pInputConfig[ecs.Input_SelectSlot1+ecs.InputType(i)] = ecs.NewKeyboardInputKey(key, -1)
 		}
@@ -534,6 +535,27 @@ func (g *game) updateBlueprintPlacer() {
 	}
 }
 
+// For the site under the cursor, unless the cursor is on the menu or placing
+func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
+	inv, ok := g.ecs.Inventories.Get(g.playerEntity)
+	if _, placing := g.placer.Kind(); !ok || placing {
+		return nil
+	}
+	cursor := g.uiCursor()
+	if g.inventoryMenu.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), inv, g.ecs.BlueprintAtlas(), g.assetmanager) {
+		return nil
+	}
+	site, ok := g.chunkContainer.Site(g.cursorTile())
+	if !ok {
+		return nil
+	}
+	def, ok := g.ecs.BlueprintAtlas().Def(site.Blueprint)
+	if !ok {
+		return nil
+	}
+	return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas()), g.assetmanager)
+}
+
 func (g *game) cursorTile() utils.Vec2i {
 	x, y := ebiten.CursorPosition()
 	return utils.WorldPosToTilePos(utils.Vec2f{X: float64(x), Y: float64(y)}.Multiply(1 / g.ecs.Zoom).Add(g.ecs.Camera))
@@ -629,6 +651,9 @@ func (g *game) Draw(screen *ebiten.Image) {
 	}
 	if err := g.inventoryMenu.Draw(screen, g.uiScale, g.uiCursor(), g.playerEntity, g.ecs, g.assetmanager); err != nil {
 		log.Println("error while drawing the inventory: ", err)
+	}
+	if err := g.drawSiteTooltip(screen); err != nil {
+		log.Println("error while drawing the tooltip of a construction site: ", err)
 	}
 
 	if g.showFPS {

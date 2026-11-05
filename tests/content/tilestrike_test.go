@@ -123,8 +123,8 @@ func (f *fakeTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool           
 func (f *fakeTerrain) Site(utils.Vec2i) (ecs.ConstructionSite, bool) {
 	return ecs.ConstructionSite{}, false
 }
-func (f *fakeTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int { return 0 }
-func (f *fakeTerrain) BuildSite(utils.Vec2i, int) (worked, built bool)   { return false, false }
+func (f *fakeTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
+func (f *fakeTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }
 
 func (f *fakeTerrain) WalkSpeedPercent(t utils.Vec2i) int {
 	if !f.loaded(t) || f.rock[t] || f.trees[t] {

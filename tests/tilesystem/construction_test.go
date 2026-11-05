@@ -100,7 +100,7 @@ func TestASiteIsBuiltOnceSuppliedOverItsWorkAndBecomesTheTile(t *testing.T) {
 		t.Fatal("the blueprint wasn't placed")
 	}
 
-	if worked, _ := s.Chunks.BuildSite(tile, 1); worked {
+	if worked, _ := s.Chunks.BuildSite(tile, 1, true); worked {
 		t.Fatal("a site was worked on before its wood was delivered")
 	}
 	if taken := s.Chunks.DeliverToSite(tile, data.Item_Torch, 3); taken != 0 {
@@ -119,7 +119,7 @@ func TestASiteIsBuiltOnceSuppliedOverItsWorkAndBecomesTheTile(t *testing.T) {
 	// 10 work for planks' 100 health takes 10 strikes of 1, each adding 10 to the 1 it starts with
 	wantFrames := []int{1, 1, 1, 2, 2, 2, 3, 3, 3}
 	for i, want := range wantFrames {
-		worked, built := s.Chunks.BuildSite(tile, 1)
+		worked, built := s.Chunks.BuildSite(tile, 1, true)
 		site, _ := s.Chunks.Site(tile)
 		if !worked || built || site.Health != 1+10*(i+1) {
 			t.Fatalf("strike %d worked %v, built %v, left %d health; want worked to %d", i+1, worked, built, site.Health, 1+10*(i+1))
@@ -129,7 +129,7 @@ func TestASiteIsBuiltOnceSuppliedOverItsWorkAndBecomesTheTile(t *testing.T) {
 		}
 	}
 
-	if worked, built := s.Chunks.BuildSite(tile, 1); !worked || !built {
+	if worked, built := s.Chunks.BuildSite(tile, 1, true); !worked || !built {
 		t.Fatal("the tenth strike didn't build the planks")
 	}
 	if _, ok := s.Chunks.Site(tile); ok || currentTile(s, tile) != data.Tile_Planks {
@@ -147,10 +147,10 @@ func TestMoreWorkBuildsInFewerStrikes(t *testing.T) {
 	s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
 	s.Chunks.DeliverToSite(tile, data.Item_Wood, 1)
 
-	if _, built := s.Chunks.BuildSite(tile, 5); built {
+	if _, built := s.Chunks.BuildSite(tile, 5, true); built {
 		t.Fatal("half the work built the planks")
 	}
-	if _, built := s.Chunks.BuildSite(tile, 5); !built {
+	if _, built := s.Chunks.BuildSite(tile, 5, true); !built {
 		t.Fatal("two strikes of half the work didn't build the planks")
 	}
 }
@@ -174,7 +174,7 @@ func TestEveryStrikeAddsAtLeastOneHealth(t *testing.T) {
 	s.Chunks.PlaceSite(tile, 1)
 	s.Chunks.DeliverToSite(tile, data.Item_Wood, 1)
 
-	s.Chunks.BuildSite(tile, 1)
+	s.Chunks.BuildSite(tile, 1, true)
 	if site, _ := s.Chunks.Site(tile); site.Health != 2 {
 		t.Fatalf("a strike worth a tenth of a health point left %d health, want 2", site.Health)
 	}
@@ -187,7 +187,7 @@ func TestSitesAreSavedWithTheirChunk(t *testing.T) {
 	s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
 	s.Chunks.DeliverToSite(tile, data.Item_Wood, 1)
 	for range 4 {
-		s.Chunks.BuildSite(tile, 1)
+		s.Chunks.BuildSite(tile, 1, true)
 	}
 
 	s.Commit()

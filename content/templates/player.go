@@ -97,6 +97,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		ecs.NewVisionComponent(data.PlayerVisionRangeTiles),
 		ecs.NewInventoryComponent(data.InventoryRows*data.InventoryColumns, data.HotbarSlots),
 		ecs.NewAimComponent(),
+		ecs.NewConstructorComponent(data.PlayerBuildRangeTiles, data.PlayerBuildWork, data.PlayerBuildCooldownMs),
 	)
 	if err != nil {
 		return -1, fmt.Errorf("error spawning player: %w", err)

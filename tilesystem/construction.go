@@ -96,7 +96,7 @@ func (cc *ChunkContainer) DeliverToSite(t utils.Vec2i, item data.ItemEnum, count
 
 // Each strike adds the share of the tile's health that its work is of the blueprint's, and at least 1, so that the
 // work adds up to the tile's health
-func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int) (worked, built bool) {
+func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int, canFinish bool) (worked, built bool) {
 	c, s, def, ok := cc.siteOn(t)
 	if !ok || work <= 0 {
 		return false, false
@@ -108,7 +108,11 @@ func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int) (worked, built bool
 	}
 
 	maxHealth := cc.atlas[def.Tile()].maxHealth
-	s.health += max(1, maxHealth*work/def.Work())
+	health := s.health + max(1, maxHealth*work/def.Work())
+	if health >= maxHealth && !canFinish {
+		return false, false
+	}
+	s.health = health
 	c.terrainModified = true
 	if s.health < maxHealth {
 		return true, false

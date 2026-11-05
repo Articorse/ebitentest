@@ -46,7 +46,7 @@ func (p *PlaceFeatureParams) TargetTile(from, aim utils.Vec2f, ecsContainer *ecs
 		return utils.Vec2i{}, false
 	}
 
-	aimed, ok := aimedTileInReach(from, aim, p.RangeTiles, ecsContainer.Terrain())
+	aimed, ok := ecsContainer.AimedTileInReach(from, aim, p.RangeTiles)
 	if !ok || !ecsContainer.Terrain().CanPlaceFeature(aimed) {
 		return utils.Vec2i{}, false
 	}

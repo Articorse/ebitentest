@@ -38,6 +38,8 @@ const (
 	Input_SelectSlot8
 	Input_SelectSlot9
 	Input_DropItem
+	// Held to do all of something at once, such as delivering every piece of a material that's needed
+	Input_All
 )
 
 type InputSourceFunc func(
@@ -176,6 +178,7 @@ type InputState struct {
 	// Steps the selected hotbar slot this far down, wrapping around, when SelectSlot doesn't select one
 	ScrollSlot int
 	DropItem   bool
+	All        bool
 	// What a click in an inventory menu changed. Menus send these rather than changing the inventory themselves, so
 	// that the change happens in the simulation's tick like any other input.
 	Inventory InventoryAction

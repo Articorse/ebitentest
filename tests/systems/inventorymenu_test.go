@@ -281,3 +281,15 @@ func TestThePlacerHoldsTheChosenBlueprintUntilStopped(t *testing.T) {
 		t.Fatal("the placer is still placing after stopping")
 	}
 }
+
+func TestASitesTooltipHasWhatsDeliveredAndHowFarBuildingHasCome(t *testing.T) {
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
+	site := ecs.ConstructionSite{Blueprint: data.Blueprint_Planks, Delivered: []ecs.ItemCost{{Kind: data.Item_Wood}}, Health: 1, MaxHealth: 100}
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "Wood 0/1", "Construction 0%"}) {
+		t.Fatalf("a new site's tooltip says %q", lines)
+	}
+	site.Delivered[0].Count, site.Health = 1, 34
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "Wood 1/1", "Construction 33%"}) {
+		t.Fatalf("a supplied site a third built has a tooltip saying %q", lines)
+	}
+}

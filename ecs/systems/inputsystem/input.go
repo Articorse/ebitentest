@@ -106,9 +106,18 @@ func useAbilities(e common.EntityId, input ecs.InputState, ecsContainer *ecs.ECS
 		{input.OffHandEqAbility2, ecs.Equip_OffHand, 1, "off hand ability 2"},
 	}
 
+	// Before what's in hand, which isn't also used on a construction site the click delivers to or builds
+	constructing := false
+	if input.MainHandEqAbility1 > 0 && target.HasPos {
+		var err error
+		if constructing, err = ecsContainer.Construct(e, target.Pos, input.All); err != nil {
+			log.Printf("error constructing for entity %d: %v\n", e, err)
+		}
+	}
+
 	if ecsContainer.Equippers.HasComponent(e) {
-		for _, t := range equipTriggers {
-			if math.Abs(t.value) <= 0 {
+		for i, t := range equipTriggers {
+			if math.Abs(t.value) <= 0 || (constructing && i == 0) {
 				continue
 			}
 			if _, err := ecsContainer.ActivateEquipmentAbility(e, t.slot, target, t.abiIdx); err != nil {
