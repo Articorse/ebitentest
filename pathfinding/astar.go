@@ -1,9 +1,8 @@
-// A* over the tile grid in eight directions, in integers and with every tie broken the same way, so that the same
-// query always finds the same path.
+// A*, and Dijkstra for the nearest of many goals, over the tile grid in eight directions, in integers and with every tie
+// broken the same way, so that the same query always finds the same path.
 package pathfinding
 
 import (
-	"container/heap"
 	"ebittest/utils"
 )
 
@@ -25,12 +24,29 @@ var directions = [8]utils.Vec2i{
 // whatever they are, since something can stand partly on a tile it couldn't walk through, such as beside a tree trunk.
 // A diagonal step needs both tiles beside it walkable, so that paths don't cut the corners of walls.
 func Find(from, to utils.Vec2i, maxExpanded int, speedPercent func(utils.Vec2i) int) ([]utils.Vec2i, bool) {
-	if from == to {
+	speed := func(t utils.Vec2i) int {
+		if t == to {
+			return 100
+		}
+		return speedPercent(t)
+	}
+	isGoal := func(t utils.Vec2i) bool { return t == to }
+	return search(from, isGoal, func(t utils.Vec2i) int { return heuristic(t, to) }, maxExpanded, speed)
+}
+
+func search(
+	from utils.Vec2i,
+	isGoal func(utils.Vec2i) bool,
+	h func(utils.Vec2i) int,
+	maxExpanded int,
+	speedPercent func(utils.Vec2i) int,
+) ([]utils.Vec2i, bool) {
+	if isGoal(from) {
 		return nil, true
 	}
 
 	speed := func(t utils.Vec2i) int {
-		if t == from || t == to {
+		if t == from {
 			return 100
 		}
 		return speedPercent(t)
@@ -44,10 +60,10 @@ func Find(from, to utils.Vec2i, maxExpanded int, speedPercent func(utils.Vec2i) 
 	visits := map[utils.Vec2i]*visit{from: {}}
 	open := &queue{}
 	seq := 0
-	heap.Push(open, entry{tile: from, f: heuristic(from, to), h: heuristic(from, to), seq: seq})
+	open.push(entry{tile: from, f: h(from), h: h(from), seq: seq})
 
-	for expanded := 0; open.Len() > 0 && expanded < maxExpanded; {
-		current := heap.Pop(open).(entry)
+	for expanded := 0; len(*open) > 0 && expanded < maxExpanded; {
+		current := open.pop()
 		v := visits[current.tile]
 		if v.closed {
 			continue
@@ -55,9 +71,9 @@ func Find(from, to utils.Vec2i, maxExpanded int, speedPercent func(utils.Vec2i) 
 		v.closed = true
 		expanded++
 
-		if current.tile == to {
+		if isGoal(current.tile) {
 			path := []utils.Vec2i{}
-			for t := to; t != from; t = visits[t].parent {
+			for t := current.tile; t != from; t = visits[t].parent {
 				path = append(path, t)
 			}
 			for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
@@ -86,8 +102,8 @@ func Find(from, to utils.Vec2i, maxExpanded int, speedPercent func(utils.Vec2i) 
 			}
 			visits[next] = &visit{cost: cost, parent: current.tile}
 			seq++
-			h := heuristic(next, to)
-			heap.Push(open, entry{tile: next, f: cost + h, h: h, seq: seq})
+			nh := h(next)
+			open.push(entry{tile: next, f: cost + nh, h: nh, seq: seq})
 		}
 	}
 	return nil, false
@@ -105,11 +121,11 @@ type entry struct {
 	seq  int
 }
 
-// Cheapest first, then closest to the goal, then the earliest found
+// Cheapest first, then closest to the goal, then the earliest found. A binary heap of its own rather than
+// container/heap's, which boxes every entry pushed and popped, since a search pushes and pops one for every tile.
 type queue []entry
 
-func (q queue) Len() int { return len(q) }
-func (q queue) Less(i, j int) bool {
+func (q queue) less(i, j int) bool {
 	if q[i].f != q[j].f {
 		return q[i].f < q[j].f
 	}
@@ -118,11 +134,38 @@ func (q queue) Less(i, j int) bool {
 	}
 	return q[i].seq < q[j].seq
 }
-func (q queue) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
-func (q *queue) Push(x any)   { *q = append(*q, x.(entry)) }
-func (q *queue) Pop() any {
+
+func (q *queue) push(e entry) {
+	*q = append(*q, e)
+	for i := len(*q) - 1; i > 0; {
+		parent := (i - 1) / 2
+		if !q.less(i, parent) {
+			break
+		}
+		(*q)[i], (*q)[parent] = (*q)[parent], (*q)[i]
+		i = parent
+	}
+}
+
+func (q *queue) pop() entry {
 	old := *q
-	e := old[len(old)-1]
-	*q = old[:len(old)-1]
-	return e
+	top := old[0]
+	last := len(old) - 1
+	old[0] = old[last]
+	*q = old[:last]
+	for i := 0; ; {
+		smallest, l, r := i, 2*i+1, 2*i+2
+		if l < last && q.less(l, smallest) {
+			smallest = l
+		}
+		if r < last && q.less(r, smallest) {
+			smallest = r
+		}
+		if smallest == i {
+			break
+		}
+		(*q)[i], (*q)[smallest] = (*q)[smallest], (*q)[i]
+		i = smallest
+	}
+	return top
 }

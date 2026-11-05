@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"ebittest/content/inputsources"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -42,6 +43,7 @@ func SpawnColonist(ecsContainer *ecs.ECSContainer, colony common.EntityId) (comm
 		ecs.NewAimComponent(),
 		ecs.NewConstructorComponent(data.PlayerBuildRangeTiles, data.PlayerBuildWork, data.PlayerBuildCooldownMs),
 		ecs.NewTetherComponent(colony),
+		ecs.NewInputComponent(nil, inputsources.InputType_Colonist, &inputsources.InputColonistParams{Colony: colony}, ecs.Facing_None),
 	)
 	if err != nil {
 		return -1, fmt.Errorf("error spawning a colonist: %w", err)

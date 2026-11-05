@@ -9,4 +9,9 @@ const (
 
 	ColonistInventorySlots = 9
 	ColonistStartingWood   = 20
+	// How often a colonist looks for work while it has none, and for building while it's delivering, since looking can
+	// mean searching the whole colony
+	ColonistPlanEveryTicks = TPS
+	// The whole colony, so that work anywhere in it is found
+	ColonistSearchMaxTiles = ((2*ColonyRadiusChunks + 1) * ChunkSize) * ((2*ColonyRadiusChunks + 1) * ChunkSize)
 )

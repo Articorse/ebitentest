@@ -15,6 +15,8 @@ const (
 	InputType_Loop   ecs.InputTypeEnum = 4
 	InputType_Replay ecs.InputTypeEnum = 5
 	InputType_Rusher ecs.InputTypeEnum = 6
+	// Works on the colony's sites
+	InputType_Colonist ecs.InputTypeEnum = 7
 )
 
 func Register(ecsContainer *ecs.ECSContainer) error {
@@ -23,6 +25,7 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 	gob.Register(&InputLoopParams{})
 	gob.Register(&InputReplayParams{})
 	gob.Register(&InputRusherParams{})
+	gob.Register(&InputColonistParams{})
 
 	inputSources := []struct {
 		id              ecs.InputTypeEnum
@@ -35,6 +38,7 @@ func Register(ecsContainer *ecs.ECSContainer) error {
 		{InputType_Loop, LoopInputSource},
 		{InputType_Replay, ReplayInputSource},
 		{InputType_Rusher, RusherInputSource},
+		{InputType_Colonist, ColonistInputSource},
 	}
 
 	for _, s := range inputSources {

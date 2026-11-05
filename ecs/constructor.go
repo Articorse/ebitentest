@@ -23,6 +23,10 @@ func NewConstructorComponent(rangeTiles, work, cooldownMs int) *Constructor {
 	return &Constructor{rangeTiles: rangeTiles, work: work, cooldownMs: cooldownMs}
 }
 
+func (x *Constructor) RangeTiles() int {
+	return x.rangeTiles
+}
+
 // The tile under the aim, if it's within the range of the tile at from and can be seen from there
 func (x *ECSContainer) AimedTileInReach(from, aim utils.Vec2f, rangeTiles int) (utils.Vec2i, bool) {
 	origin := utils.WorldPosToTilePos(from)
