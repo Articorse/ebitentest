@@ -30,7 +30,10 @@ func Tick(ecsContainer *ecs.ECSContainer) {
 	}
 
 	collectors := []collector{}
-	for e := range ecs.Query1(&ecsContainer.Inventories, ecs.With(&ecsContainer.Transforms), ecs.Without(&ecsContainer.Disabled)) {
+	for e, inv := range ecs.Query1(&ecsContainer.Inventories, ecs.With(&ecsContainer.Transforms), ecs.Without(&ecsContainer.Disabled)) {
+		if inv.ManualPickup() {
+			continue
+		}
 		pos, err := ecsContainer.WorldPos(e)
 		if err != nil {
 			log.Printf("error getting world position of entity %d to pick up items: %v", e, err)

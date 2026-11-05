@@ -8,6 +8,7 @@ const (
 	AssetImageTree          ImageAssetTag = "tree"
 	AssetImageTreeStump     ImageAssetTag = "treestump"
 	AssetSheetEvilSlime     ImageAssetTag = "evilslime"
+	AssetSheetGoldSlime     ImageAssetTag = "goldslime"
 	AssetSheetBazooka       ImageAssetTag = "bazooka"
 	AssetSheetRocket        ImageAssetTag = "rocket"
 	AssetSheetExplosion     ImageAssetTag = "explosion"
@@ -35,5 +36,5 @@ var CodeAssetTags = []ImageAssetTag{
 	AssetSheetSlime, AssetImageTree, AssetImageTreeStump, AssetSheetEvilSlime, AssetSheetBazooka, AssetSheetRocket,
 	AssetSheetExplosion, AssetSheetGun, AssetSheetBullet, AssetImageMattock, AssetImageWood, AssetSheetTorchPlaced,
 	AssetImageAxe, AssetImageSlash, AssetImagePlatform, AssetImageSlot, AssetImageSlotHighlight,
-	AssetImageInventoryPanel, AssetImageTileMarker, AssetDebug16x16,
+	AssetImageInventoryPanel, AssetImageTileMarker, AssetSheetGoldSlime, AssetDebug16x16,
 }

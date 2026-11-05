@@ -2,6 +2,7 @@
   { "tag": "slime", "path": "sprites/slime_ss.png", "frameCount": 3, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "tree", "path": "sprites/tree.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "treestump", "path": "sprites/treestump.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
+  { "tag": "goldslime", "path": "sprites/goldslime_ss.png", "frameCount": 3, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "evilslime", "path": "sprites/evilslime_ss.png", "frameCount": 5, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "bazooka", "path": "sprites/bazooka_ss.png", "frameCount": 2, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "rocket", "path": "sprites/rocket_ss.png", "frameCount": 2, "frameSize": { "x": 32, "y": 32 } },

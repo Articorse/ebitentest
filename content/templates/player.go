@@ -21,50 +21,10 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 	if err != nil {
 		return -1, err
 	}
-	pAniStateFrames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
-	pAniStateFrames[ecs.Anim_Idle] = []ecs.AnimationFrame{
-		{FrameIdx: 0, DurationMs: 100},
-		{FrameIdx: 1, DurationMs: 100},
-		{FrameIdx: 2, DurationMs: 100},
-		{FrameIdx: 1, DurationMs: 100},
-	}
-	pAniStateFrames[ecs.Anim_Jump] = []ecs.AnimationFrame{
-		{FrameIdx: 0, DurationMs: 50},
-		{FrameIdx: 1, DurationMs: 50},
-		{FrameIdx: 2, DurationMs: 50},
-		{FrameIdx: 1, DurationMs: 50},
-	}
-	pAniComp, err := ecs.NewAnimationComponent(common.AssetSheetSlime, pAniStateFrames)
+	pAniComp, pPhyColComp, pHitboxComp, err := colonySlimeParts(common.AssetSheetSlime)
 	if err != nil {
 		return -1, err
 	}
-	pPhyColShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
-	if err != nil {
-		return -1, err
-	}
-	pPhyColComp := ecs.NewPhysicsColliderComponent(
-		ecs.Layer_Player,
-		ecs.Layer_Enemy|
-			ecs.Layer_EnemyProjectile|
-			ecs.Layer_Terrain|
-			ecs.Layer_Water|
-			ecs.Layer_Feature|
-			ecs.Layer_Platform,
-		ecs.Collider_Mob,
-		pPhyColShape,
-	)
-	pHitboxShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
-	if err != nil {
-		return -1, err
-	}
-	pHitboxComp := ecs.NewHitboxColliderComponent(
-		ecs.Layer_Player,
-		ecs.Layer_Enemy|
-			ecs.Layer_EnemyProjectile|
-			ecs.Layer_Terrain|
-			ecs.Layer_Platform,
-		pHitboxShape,
-	)
 	pAbis := [16]ecs.EntityAbility{}
 	pAbis[0] = ecs.EntityAbility{
 		Def: ecs.NewAbilityDef(
@@ -431,4 +391,53 @@ func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.
 		ecs.NewItemComponent(),
 		ecs.NewPersistentComponent(),
 	)
+}
+
+// The animation and colliders that the player and colonists share, as slimes of the colony drawn from sheet
+func colonySlimeParts(sheet common.ImageAssetTag) (*ecs.Animation, *ecs.PhysicsCollider, *ecs.HitboxCollider, error) {
+	frames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
+	frames[ecs.Anim_Idle] = []ecs.AnimationFrame{
+		{FrameIdx: 0, DurationMs: 100},
+		{FrameIdx: 1, DurationMs: 100},
+		{FrameIdx: 2, DurationMs: 100},
+		{FrameIdx: 1, DurationMs: 100},
+	}
+	frames[ecs.Anim_Jump] = []ecs.AnimationFrame{
+		{FrameIdx: 0, DurationMs: 50},
+		{FrameIdx: 1, DurationMs: 50},
+		{FrameIdx: 2, DurationMs: 50},
+		{FrameIdx: 1, DurationMs: 50},
+	}
+	anim, err := ecs.NewAnimationComponent(sheet, frames)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	physicsShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	physics := ecs.NewPhysicsColliderComponent(
+		ecs.Layer_Player,
+		ecs.Layer_Enemy|
+			ecs.Layer_EnemyProjectile|
+			ecs.Layer_Terrain|
+			ecs.Layer_Water|
+			ecs.Layer_Feature|
+			ecs.Layer_Platform,
+		ecs.Collider_Mob,
+		physicsShape,
+	)
+	hitboxShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	hitbox := ecs.NewHitboxColliderComponent(
+		ecs.Layer_Player,
+		ecs.Layer_Enemy|
+			ecs.Layer_EnemyProjectile|
+			ecs.Layer_Terrain|
+			ecs.Layer_Platform,
+		hitboxShape,
+	)
+	return anim, physics, hitbox, nil
 }

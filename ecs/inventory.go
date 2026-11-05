@@ -15,6 +15,8 @@ type Inventory struct {
 	hotbar []common.EntityId
 	// The hotbar slot whose item is in hand
 	selected int
+	// Only picks up what it's told to, rather than whatever it comes across, so that colonists take what they need
+	manualPickup bool
 }
 
 func NewInventoryComponent(capacity, hotbarSize int) *Inventory {
@@ -235,8 +237,16 @@ func (x *ECSContainer) takeOutOfInventory(owner, item common.EntityId) {
 	}
 }
 
+func (x *Inventory) ManualPickup() bool {
+	return x.manualPickup
+}
+
+func (x *Inventory) SetManualPickup(manual bool) {
+	x.manualPickup = manual
+}
+
 func (x Inventory) Copy() Inventory {
-	return Inventory{slots: slices.Clone(x.slots), hotbar: slices.Clone(x.hotbar), selected: x.selected}
+	return Inventory{slots: slices.Clone(x.slots), hotbar: slices.Clone(x.hotbar), selected: x.selected, manualPickup: x.manualPickup}
 }
 
 func (x Inventory) addTo(ecsContainer *ECSContainer, e common.EntityId) {
@@ -244,15 +254,16 @@ func (x Inventory) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 }
 
 type inventoryDto struct {
-	Slots    []common.EntityId
-	Hotbar   []common.EntityId
-	Selected int
+	Slots        []common.EntityId
+	Hotbar       []common.EntityId
+	Selected     int
+	ManualPickup bool
 }
 
 func (x Inventory) toDto() (ComponentDto, error) {
-	return &inventoryDto{Slots: slices.Clone(x.slots), Hotbar: slices.Clone(x.hotbar), Selected: x.selected}, nil
+	return &inventoryDto{Slots: slices.Clone(x.slots), Hotbar: slices.Clone(x.hotbar), Selected: x.selected, ManualPickup: x.manualPickup}, nil
 }
 
 func (x inventoryDto) toComponent() (Component, error) {
-	return &Inventory{slots: slices.Clone(x.Slots), hotbar: slices.Clone(x.Hotbar), selected: x.Selected}, nil
+	return &Inventory{slots: slices.Clone(x.Slots), hotbar: slices.Clone(x.Hotbar), selected: x.Selected, manualPickup: x.ManualPickup}, nil
 }
