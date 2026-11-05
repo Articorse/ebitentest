@@ -94,7 +94,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		pAbiComp,
 		pCLComp,
 		ecs.NewPersistentComponent(),
-		ecs.NewVisionComponent(data.PlayerVisionRangeTiles),
+		ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1),
 		ecs.NewInventoryComponent(data.InventoryRows*data.InventoryColumns, data.HotbarSlots),
 		ecs.NewAimComponent(),
 		ecs.NewConstructorComponent(data.PlayerBuildRangeTiles, data.PlayerBuildWork, data.PlayerBuildCooldownMs),

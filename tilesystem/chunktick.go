@@ -155,6 +155,7 @@ func (cc *ChunkContainer) activateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContain
 	delete(cc.queuedEntities, pos)
 
 	cc.chunks[pos] = c
+	cc.sightVersion++
 
 	return nil
 }
@@ -229,6 +230,7 @@ func (cc *ChunkContainer) deactivateChunk(pos utils.Vec2i, ecsCont *ecs.ECSConta
 
 	c.freeImage()
 	delete(cc.chunks, pos)
+	cc.sightVersion++
 
 	return nil
 }

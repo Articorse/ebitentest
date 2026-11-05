@@ -240,7 +240,7 @@ func TestHurtEyesShortenVisionAndDestroyedOnesBlind(t *testing.T) {
 			{"name": "eyes", "maxHealth": 10, "coverage": 100, "capacities": [2]}]}]}`))
 	x.SetTerrain(skyTerrain{Terrain: x.Terrain(), roofFromX: 1000})
 	viewer := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0),
-		ecs.NewVisionComponent(40), ecs.NewBodyComponent(data.Body_Humanoid))
+		ecs.NewVisionComponent(40, 1), ecs.NewBodyComponent(data.Body_Humanoid))
 	v, _ := x.Visions.Get(viewer)
 
 	for _, c := range []struct{ eyes, rangeTiles int }{{10, 40}, {6, 24}, {1, 4}, {0, 0}} {

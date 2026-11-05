@@ -54,7 +54,7 @@
     "destroyedInto": 1,
     "passable": false,
     "opaque": true,
-    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 1 }] }]
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 2 }] }]
   },
   {
     "id": 7,

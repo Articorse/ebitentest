@@ -13,6 +13,13 @@ import (
 	"testing"
 )
 
+// How much wood the game's planks blueprint costs, so that tests don't break when it's retuned
+func planksCost(t *testing.T) int {
+	t.Helper()
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
+	return def.Costs()[0].Count
+}
+
 func siteSprite(t *testing.T, s *testutil.Session, tile utils.Vec2i) (frame int, ghost bool) {
 	t.Helper()
 	sprite := siteImage(t, s, tile)
@@ -112,14 +119,14 @@ func TestASiteIsBuiltOnceSuppliedOverItsWorkAndBecomesTheTile(t *testing.T) {
 	if taken := s.Chunks.DeliverToSite(tile, data.Item_Torch, 3); taken != 0 {
 		t.Fatalf("the site took %d torches, which it doesn't need", taken)
 	}
-	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5); taken != 1 {
-		t.Fatalf("the site took %d of 5 wood, want the 1 it needs", taken)
+	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5); taken != planksCost(t) {
+		t.Fatalf("the site took %d of 5 wood, want the %d it needs", taken, planksCost(t))
 	}
 	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5); taken != 0 {
 		t.Fatalf("the supplied site took %d more wood", taken)
 	}
-	if site, _ := s.Chunks.Site(tile); len(site.Delivered) != 1 || site.Delivered[0] != (ecs.ItemCost{Kind: data.Item_Wood, Count: 1}) {
-		t.Fatalf("the site has %v delivered, want 1 wood", site.Delivered)
+	if site, _ := s.Chunks.Site(tile); len(site.Delivered) != 1 || site.Delivered[0] != (ecs.ItemCost{Kind: data.Item_Wood, Count: planksCost(t)}) {
+		t.Fatalf("the site has %v delivered, want %d wood", site.Delivered, planksCost(t))
 	}
 	if frame, ghost := siteSprite(t, s, tile); frame != 1 || ghost {
 		t.Fatalf("a site with all its wood is drawn as frame %d, ghost %v; want the first stage before any work", frame, ghost)
@@ -154,7 +161,7 @@ func TestMoreWorkBuildsInFewerStrikes(t *testing.T) {
 	s := testutil.StartSession(t)
 	tile := bareGrass(t, s)
 	s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(tile, data.Item_Wood, 1)
+	s.Chunks.DeliverToSite(tile, data.Item_Wood, planksCost(t))
 
 	if _, built := s.Chunks.BuildSite(tile, 5, true); built {
 		t.Fatal("half the work built the planks")
@@ -194,7 +201,7 @@ func TestSitesAreSavedWithTheirChunk(t *testing.T) {
 	s := testutil.StartSession(t)
 	tile := bareGrass(t, s)
 	s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(tile, data.Item_Wood, 1)
+	s.Chunks.DeliverToSite(tile, data.Item_Wood, planksCost(t))
 	for range 4 {
 		s.Chunks.BuildSite(tile, 1, true)
 	}
@@ -202,7 +209,7 @@ func TestSitesAreSavedWithTheirChunk(t *testing.T) {
 	s.Commit()
 	r := testutil.StartSession(t)
 	site, ok := r.Chunks.Site(tile)
-	if !ok || site.Blueprint != data.Blueprint_Planks || site.Health != 41 || site.Delivered[0].Count != 1 {
+	if !ok || site.Blueprint != data.Blueprint_Planks || site.Health != 41 || site.Delivered[0].Count != planksCost(t) {
 		t.Fatalf("after restarting, the site is %+v (%v), want planks with its wood and 41 health", site, ok)
 	}
 	if frame, _ := siteSprite(t, r, tile); frame != 2 {

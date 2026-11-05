@@ -13,4 +13,6 @@ const (
 	// How far the player sees in full light with unhurt eyes, whatever the light. It's fixed, rather than the screen's
 	// edge, since vision is part of the simulation and mustn't depend on the window or zoom.
 	PlayerVisionRangeTiles = 64
+	// Enemies see a little behind, which isn't noticeable, so that many of them don't all have to see every tick
+	EnemyVisionEveryTicks = 3
 )

@@ -11,16 +11,26 @@ import (
 type Vision struct {
 	// How far it sees in full light with nothing impairing it
 	baseRangeTiles int
+	// Ticks from one update to the next, staggered by entity, so that many viewers don't all cost every tick. 1 updates
+	// every tick.
+	everyTicks int
 
 	// What was visible at the last update, as a square around origin. It's derived from the world, so it isn't saved.
 	origin     utils.Vec2i
 	rangeTiles int
 	visible    []bool
 	light      LightMap
+	// Goes up with every update, so that what's done with what's seen can be skipped while it hasn't changed
+	updates uint64
 }
 
-func NewVisionComponent(baseRangeTiles int) *Vision {
-	return &Vision{baseRangeTiles: baseRangeTiles}
+func NewVisionComponent(baseRangeTiles, everyTicks int) *Vision {
+	return &Vision{baseRangeTiles: baseRangeTiles, everyTicks: max(everyTicks, 1)}
+}
+
+// Its turn comes every everyTicks ticks, at a tick that depends on the entity, and before its first update
+func (x *Vision) IsDue(e common.EntityId, tick uint64) bool {
+	return x.visible == nil || x.everyTicks <= 1 || (tick+uint64(e))%uint64(x.everyTicks) == 0
 }
 
 func (x *Vision) BaseRangeTiles() int {
@@ -31,6 +41,7 @@ func (x *Vision) BaseRangeTiles() int {
 // reaches, and the dimmer it is, the closer it has to be. A tile at light 0 is never seen, the viewer's own included,
 // and nothing is seen with a range of 0.
 func (x *Vision) Update(origin utils.Vec2i, rangeTiles int, isOpaque func(utils.Vec2i) bool, lightAt func(utils.Vec2i) uint8) {
+	x.updates++
 	x.origin, x.rangeTiles = origin, rangeTiles
 	side := 2*rangeTiles + 1
 	if cap(x.visible) < side*side {
@@ -54,6 +65,10 @@ func (x *Vision) Update(origin utils.Vec2i, rangeTiles int, isOpaque func(utils.
 func litEnough(dx, dy int, light uint8, rangeTiles int) bool {
 	reach := int(light) * rangeTiles
 	return light > 0 && (dx*dx+dy*dy)*data.MaxLight*data.MaxLight <= reach*reach
+}
+
+func (x *Vision) Updates() uint64 {
+	return x.updates
 }
 
 // The light around the viewer, kept with the vision so that working it out every tick doesn't allocate
@@ -80,7 +95,7 @@ func (x *Vision) index(t utils.Vec2i) int {
 }
 
 func (x Vision) Copy() Vision {
-	return Vision{baseRangeTiles: x.baseRangeTiles}
+	return Vision{baseRangeTiles: x.baseRangeTiles, everyTicks: x.everyTicks}
 }
 
 func (x Vision) addTo(ecsContainer *ECSContainer, e common.EntityId) {
@@ -89,12 +104,13 @@ func (x Vision) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 
 type visionDto struct {
 	BaseRangeTiles int
+	EveryTicks     int
 }
 
 func (x Vision) toDto() (ComponentDto, error) {
-	return &visionDto{BaseRangeTiles: x.baseRangeTiles}, nil
+	return &visionDto{BaseRangeTiles: x.baseRangeTiles, EveryTicks: x.everyTicks}, nil
 }
 
 func (x visionDto) toComponent() (Component, error) {
-	return NewVisionComponent(x.BaseRangeTiles), nil
+	return NewVisionComponent(x.BaseRangeTiles, x.EveryTicks), nil
 }

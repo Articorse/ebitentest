@@ -53,6 +53,17 @@ type Terrain interface {
 	BuildSite(t utils.Vec2i, work int, canFinish bool) (worked, built bool)
 }
 
+// Implemented by terrains that can answer for many tiles at once, and say when sight and light have to be worked out
+// again, which light and vision use to avoid asking tile by tile and doing the same work every tick. Terrains without
+// it, such as those of tests, are asked tile by tile and worked out every tick.
+type SightTerrain interface {
+	// Whether each tile of the w×h rectangle from from is opaque and open to the sky, row by row, as IsOpaqueTile and
+	// IsOpenToSky would answer them. Either slice can be nil.
+	TileFlags(from utils.Vec2i, w, h int, opaque, openToSky []bool)
+	// Changes whenever the terrain changes in a way that could change what's seen or lit
+	SightVersion() uint64
+}
+
 // Its health is how far building it has come, from 1 when it's placed up to that of the tile it builds
 type ConstructionSite struct {
 	Blueprint data.BlueprintEnum

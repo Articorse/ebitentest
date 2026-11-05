@@ -262,8 +262,8 @@ func TestBlueprintsAreChosenFromTheirPanelInTheBottomRightCorner(t *testing.T) {
 
 func TestABlueprintsTooltipHasItsNameAndCosts(t *testing.T) {
 	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
-	if lines := drawsystem.BlueprintTooltip(def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "1 Wood"}) {
-		t.Fatalf("the planks' tooltip says %q, want Planks and 1 Wood", lines)
+	if lines := drawsystem.BlueprintTooltip(def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "2 Wood"}) {
+		t.Fatalf("the planks' tooltip says %q, want Planks and 2 Wood", lines)
 	}
 }
 
@@ -285,11 +285,11 @@ func TestThePlacerHoldsTheChosenBlueprintUntilStopped(t *testing.T) {
 func TestASitesTooltipHasWhatsDeliveredAndHowFarBuildingHasCome(t *testing.T) {
 	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
 	site := ecs.ConstructionSite{Blueprint: data.Blueprint_Planks, Delivered: []ecs.ItemCost{{Kind: data.Item_Wood}}, Health: 1, MaxHealth: 100}
-	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "Wood 0/1", "Construction 0%"}) {
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "Wood 0/2", "Construction 0%"}) {
 		t.Fatalf("a new site's tooltip says %q", lines)
 	}
-	site.Delivered[0].Count, site.Health = 1, 34
-	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "Wood 1/1", "Construction 33%"}) {
+	site.Delivered[0].Count, site.Health = 2, 34
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "Wood 2/2", "Construction 33%"}) {
 		t.Fatalf("a supplied site a third built has a tooltip saying %q", lines)
 	}
 }

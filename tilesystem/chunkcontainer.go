@@ -17,6 +17,9 @@ type ChunkContainer struct {
 	atlas        map[data.TileEnum]tileDef
 	featureAtlas map[data.FeatureEnum]featureDef
 	blueprints   *ecs.BlueprintAtlas
+	// Indexed by tile, since sight asks for it for every tile it looks at
+	opaqueTiles  []bool
+	sightVersion uint64
 	// How far the light of the furthest-reaching feature goes
 	maxLightRange int
 
@@ -83,6 +86,13 @@ func (cc *ChunkContainer) GenerateTileAtlasFromJson(input string, items *ecs.Ite
 	}
 
 	cc.atlas = atlas
+	cc.opaqueTiles = nil
+	for id, def := range atlas {
+		for int(id) >= len(cc.opaqueTiles) {
+			cc.opaqueTiles = append(cc.opaqueTiles, true)
+		}
+		cc.opaqueTiles[id] = def.opaque
+	}
 
 	return nil
 }

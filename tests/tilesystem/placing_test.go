@@ -49,8 +49,8 @@ func TestPlacedPlanksAreAWallThatBreaksIntoDirtAndWood(t *testing.T) {
 	}
 
 	dropped := len(r.ECS.Items.GetEntities()) - items
-	if dropped != 1 {
-		t.Fatalf("destroyed planks dropped %d items, want 1 wood", dropped)
+	if dropped != 2 {
+		t.Fatalf("destroyed planks dropped %d items, want 2 wood", dropped)
 	}
 	for _, e := range r.ECS.Items.GetEntities() {
 		if item, _ := r.ECS.Items.Get(e); item.Kind() == data.Item_Wood && item.Count() != 1 {

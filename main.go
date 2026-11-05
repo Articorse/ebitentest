@@ -85,6 +85,9 @@ type game struct {
 	touching      touchingColliders
 	// Only drawn without light and fog, so that the simulation, what's remembered included, plays out the same
 	fullBright bool
+	// The player's vision update last remembered, since remembering the same again changes nothing
+	rememberedVision  *ecs.Vision
+	rememberedUpdates uint64
 
 	// Simulated time per real time, which isn't saved
 	timescalePercent int
@@ -436,8 +439,9 @@ func (g *game) tick() {
 	}
 
 	visionsystem.Tick(g.ecs)
-	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok {
+	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok && (vision != g.rememberedVision || vision.Updates() != g.rememberedUpdates) {
 		g.chunkContainer.RememberSeenTiles(vision)
+		g.rememberedVision, g.rememberedUpdates = vision, vision.Updates()
 	}
 
 	// After vision, so that nothing spawns where the player sees this tick

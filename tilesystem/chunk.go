@@ -123,6 +123,7 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, tile data.TileEnum) {
 	delete(c.promotedTiles, t)
 	c.tiles[idx] = tile
 	c.terrainModified = true
+	cc.sightVersion++
 	c.walkSpeeds = nil
 
 	if c.Image == nil {

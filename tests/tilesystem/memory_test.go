@@ -11,7 +11,7 @@ import (
 )
 
 func see(s *testutil.Session, viewer utils.Vec2f) *ecs.Vision {
-	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
+	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1)
 	origin := utils.WorldPosToTilePos(viewer)
 	s.ECS.LightAround(origin, data.PlayerVisionRangeTiles, v.Light())
 	v.Update(origin, data.PlayerVisionRangeTiles, s.Chunks.IsOpaqueTile, v.Light().At)
@@ -20,7 +20,7 @@ func see(s *testutil.Session, viewer utils.Vec2f) *ecs.Vision {
 }
 
 func seeLitBy(s *testutil.Session, viewer utils.Vec2f, lightAt func(utils.Vec2i) uint8) *ecs.Vision {
-	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
+	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1)
 	v.Update(utils.WorldPosToTilePos(viewer), data.PlayerVisionRangeTiles, s.Chunks.IsOpaqueTile, lightAt)
 	s.Chunks.RememberSeenTiles(v)
 	return v

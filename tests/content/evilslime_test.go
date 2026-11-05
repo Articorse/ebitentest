@@ -123,9 +123,13 @@ func TestTheEvilSlimeHurtsThePlayerFor5EverySecondOfContact(t *testing.T) {
 	}
 }
 
+// Its vision is updated once, which takes as many ticks as it waits between updates
 func rush(t *testing.T, x *ecs.ECSContainer, slime common.EntityId) (ecs.InputState, inputsources.RusherState) {
 	t.Helper()
-	visionsystem.Tick(x)
+	for range data.EnemyVisionEveryTicks {
+		visionsystem.Tick(x)
+		x.TickIdx++
+	}
 	in, _ := x.Inputs.Get(slime)
 	rusher, err := x.InputSourceFunc(in.Type())
 	if err != nil {

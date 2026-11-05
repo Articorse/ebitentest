@@ -71,7 +71,7 @@ func SpawnEvilSlime(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Ent
 		ecs.NewBodyComponent(data.Body_Humanoid),
 		ecs.NewFactionComponent(data.Faction_Monsters),
 		ecs.NewInputComponent(nil, inputsources.InputType_Rusher, &inputsources.InputRusherParams{Target: -1}, ecs.Facing_None),
-		ecs.NewVisionComponent(data.PlayerVisionRangeTiles/2),
+		ecs.NewVisionComponent(data.PlayerVisionRangeTiles/2, data.EnemyVisionEveryTicks),
 		ecs.NewPersistentComponent(),
 	)
 	if err != nil {

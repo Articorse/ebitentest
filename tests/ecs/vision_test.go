@@ -26,7 +26,7 @@ func TestTilesAreSeenAsFarAsTheirLightReaches(t *testing.T) {
 		{"night sky light, diagonally", data.NightSkyLight, utils.Vec2i{X: 8, Y: 8}, utils.Vec2i{X: 9, Y: 9}},
 		{"a quarter of full light", data.MaxLight / 4, utils.Vec2i{Y: -15}, utils.Vec2i{Y: -16}},
 	} {
-		v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
+		v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1)
 		v.Update(utils.Vec2i{}, data.PlayerVisionRangeTiles, noWalls, evenLight(c.light))
 		if !v.CanSee(c.seen) || v.CanSee(c.not) {
 			t.Errorf("%s: sees %v %v and %v %v, want only the first", c.name, c.seen, v.CanSee(c.seen), c.not, v.CanSee(c.not))
@@ -35,7 +35,7 @@ func TestTilesAreSeenAsFarAsTheirLightReaches(t *testing.T) {
 }
 
 func TestNothingIsSeenInTheDarkNotEvenTheViewersOwnTile(t *testing.T) {
-	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
+	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1)
 	v.Update(utils.Vec2i{}, data.PlayerVisionRangeTiles, noWalls, evenLight(0))
 	for _, tile := range []utils.Vec2i{{}, {X: 1}} {
 		if v.CanSee(tile) {
@@ -54,7 +54,7 @@ func TestALitTileIsSeenFromAfarOnlyInLineOfSight(t *testing.T) {
 		return 0
 	}
 
-	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
+	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1)
 	v.Update(utils.Vec2i{}, data.PlayerVisionRangeTiles, wall, lit)
 	if !v.CanSee(lamp) {
 		t.Fatal("a brightly lit tile 40 tiles away in line of sight isn't seen")
@@ -68,7 +68,7 @@ func TestALitTileIsSeenFromAfarOnlyInLineOfSight(t *testing.T) {
 }
 
 func TestVisionFollowsTheViewerAtTheNextUpdate(t *testing.T) {
-	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
+	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1)
 	v.Update(utils.Vec2i{}, data.PlayerVisionRangeTiles, noWalls, evenLight(data.NightSkyLight))
 	if v.CanSee(utils.Vec2i{X: 100}) {
 		t.Fatal("sees a tile far away before moving there")
@@ -81,7 +81,7 @@ func TestVisionFollowsTheViewerAtTheNextUpdate(t *testing.T) {
 
 func TestOnlyTheVisionsBaseRangeIsSaved(t *testing.T) {
 	x := testutil.NewECS(t)
-	e := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0), ecs.NewVisionComponent(23))
+	e := testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, 0), ecs.NewVisionComponent(23, 1))
 	v, _ := x.Visions.Get(e)
 	v.Update(utils.Vec2i{}, data.PlayerVisionRangeTiles, noWalls, evenLight(data.MaxLight))
 
@@ -104,7 +104,7 @@ func TestOnlyTheVisionsBaseRangeIsSaved(t *testing.T) {
 }
 
 func TestVisionSeesOnlyWithinItsRange(t *testing.T) {
-	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles)
+	v := ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1)
 	v.Update(utils.Vec2i{X: 5}, 10, noWalls, evenLight(data.MaxLight))
 	if origin, radius := v.VisibleArea(); origin != (utils.Vec2i{X: 5}) || radius != 10 {
 		t.Fatalf("the visible area is %d around %v, want 10 around (5, 0)", radius, origin)

@@ -25,7 +25,7 @@ func TestColonyAndMonstersAreHostileEitherWayRound(t *testing.T) {
 // A monster at the origin that sees everything within 20 tiles
 func watchingMonster(t *testing.T, x *ecs.ECSContainer) common.EntityId {
 	t.Helper()
-	m := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewFactionComponent(data.Faction_Monsters), ecs.NewVisionComponent(20))
+	m := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewFactionComponent(data.Faction_Monsters), ecs.NewVisionComponent(20, 1))
 	v, _ := x.Visions.Get(m)
 	v.Update(utils.Vec2i{}, 20, func(utils.Vec2i) bool { return false }, func(utils.Vec2i) uint8 { return data.MaxLight })
 	return m

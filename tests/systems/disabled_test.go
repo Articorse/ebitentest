@@ -144,7 +144,7 @@ func TestDisabledEntitiesNeitherLoseInvulnerabilityNorSee(t *testing.T) {
 	x := testutil.NewECS(t)
 	x.SetTerrain(openGround{damaged: map[utils.Vec2i]int{}})
 	enabled, disabled := enabledAndDisabled(t, x, func() []ecs.Component {
-		return []ecs.Component{ecs.NewInvulnerabilityComponent(1000), ecs.NewVisionComponent(data.PlayerVisionRangeTiles)}
+		return []ecs.Component{ecs.NewInvulnerabilityComponent(1000), ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1)}
 	})
 	for _, e := range []common.EntityId{enabled, disabled} {
 		inv, _ := x.Invulnerabilities.Get(e)

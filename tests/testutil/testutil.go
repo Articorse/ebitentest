@@ -186,7 +186,7 @@ func ApproxEqual(a, b utils.Vec2f) bool {
 
 // Worlds are saved and assets loaded relative to the working directory, so each test gets a directory of its own
 // with a copy of the assets
-func TempWorld(t *testing.T) string {
+func TempWorld(t testing.TB) string {
 	t.Helper()
 
 	dir := t.TempDir()
