@@ -369,3 +369,93 @@ func TestAColonistStopsWhenItsSiteIsTakenOffHome(t *testing.T) {
 		t.Fatal("the colonist carried on to a site taken off home")
 	}
 }
+
+func TestAColonistGoesPastTheClosestBlueprintsWhenItCantGetToThem(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	// Three blueprints in a sealed room, closer than the one outside it
+	const r = 3
+	ringable := func(center utils.Vec2i) bool {
+		for dy := -r; dy <= r; dy++ {
+			for dx := -r; dx <= r; dx++ {
+				tile := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
+				onRing := max(utils.AbsInt(dx), utils.AbsInt(dy)) == r
+				if onRing && !s.Chunks.CanPlaceTile(tile) && !s.Chunks.IsOpaqueTile(tile) || !onRing && !s.Chunks.CanPlaceSite(tile) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	room := groundAwayWhere(t, s, colonist, 8, ringable)
+	for dy := -r; dy <= r; dy++ {
+		for dx := -r; dx <= r; dx++ {
+			if max(utils.AbsInt(dx), utils.AbsInt(dy)) == r {
+				s.Chunks.PlaceTile(utils.Vec2i{X: room.X + dx, Y: room.Y + dy}, data.Tile_Planks)
+			}
+		}
+	}
+	sealed := []utils.Vec2i{room, {X: room.X - 1, Y: room.Y}, {X: room.X + 1, Y: room.Y}}
+	for _, tile := range sealed {
+		s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
+	}
+	outside := groundAway(t, s, colonist, 16, room)
+	s.Chunks.PlaceSite(outside, data.Blueprint_Planks)
+
+	if !live(t, s, 30*data.TPS, isBuilt(s, outside)) {
+		t.Fatal("the colonist didn't build the blueprint it could get to")
+	}
+	for _, tile := range sealed {
+		if site, ok := s.Chunks.Site(tile); !ok || !site.IsBlueprint() {
+			t.Fatalf("the colonist delivered to the blueprint at %v in a sealed room", tile)
+		}
+	}
+}
+
+func TestAColonistChoosesTheBlueprintClosestToWalkToOfTheClosestFew(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	// One 6 tiles east behind a wall across the way, closest as the crow flies but not to walk to, and one 8 tiles west
+	const half = 8
+	fits := func(self utils.Vec2i) bool {
+		if s.Chunks.WalkSpeedPercent(self) <= 0 {
+			return false
+		}
+		for x := self.X - 8; x <= self.X+6; x++ {
+			if s.Chunks.WalkSpeedPercent(utils.Vec2i{X: x, Y: self.Y}) <= 0 && x != self.X+5 {
+				return false
+			}
+		}
+		for y := self.Y - half; y <= self.Y+half; y++ {
+			if !s.Chunks.CanPlaceTile(utils.Vec2i{X: self.X + 5, Y: y}) {
+				return false
+			}
+		}
+		return s.Chunks.CanPlaceSite(utils.Vec2i{X: self.X + 6, Y: self.Y}) && s.Chunks.CanPlaceSite(utils.Vec2i{X: self.X - 8, Y: self.Y})
+	}
+	start := colonistTile(t, s, colonist)
+	self, found := start, false
+	for r := 0; r <= 40 && !found; r++ {
+		for dy := -r; dy <= r && !found; dy++ {
+			for dx := -r; dx <= r && !found; dx++ {
+				self = utils.Vec2i{X: start.X + dx, Y: start.Y + dy}
+				found = max(utils.AbsInt(dx), utils.AbsInt(dy)) == r && fits(self)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("there's no open ground for a wall near the colonist")
+	}
+	testutil.SetPos(t, s.ECS, colonist, utils.TilePosToWorldPos(self))
+	for y := self.Y - half; y <= self.Y+half; y++ {
+		s.Chunks.PlaceTile(utils.Vec2i{X: self.X + 5, Y: y}, data.Tile_Planks)
+	}
+	behind, open := utils.Vec2i{X: self.X + 6, Y: self.Y}, utils.Vec2i{X: self.X - 8, Y: self.Y}
+	s.Chunks.PlaceSite(behind, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(open, data.Blueprint_Planks)
+
+	if !live(t, s, 30*data.TPS, isBuilt(s, open)) {
+		t.Fatal("the colonist didn't build the blueprint in the open")
+	}
+	if site, ok := s.Chunks.Site(behind); !ok || site.Health != 1 {
+		t.Fatal("the colonist worked on the blueprint behind the wall first, though it's further to walk to")
+	}
+}

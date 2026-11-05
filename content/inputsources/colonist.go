@@ -1,6 +1,7 @@
 package inputsources
 
 import (
+	"cmp"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -35,7 +36,8 @@ type InputColonistParams struct {
 
 	walk
 	// What it last found no way to build or deliver to, for each, which isn't looked for again until something changes,
-	// since that searches all the colony it can walk to. Not saved, so a loaded colonist looks once.
+	// since a path that's never found is searched for until the search gives up. Not saved, so a loaded colonist looks
+	// once.
 	fruitless [2]*planKey
 }
 
@@ -63,11 +65,11 @@ func (p *InputColonistParams) Copy() ecs.InputParams {
 }
 
 // Builds the closest site on the colony's home that has everything delivered, and otherwise delivers to the closest
-// that it has all that's still needed for, going by walking distance rather than as the crow flies, so that a site it can't get
-// to doesn't hold it up. It keeps to a site until it's done or no longer needs it, looking for building now and then
-// while delivering. It acts from where it's in reach and sees the site, but never from on it, since a tile can't be
-// finished with someone standing in it. What it uses goes on the first hotbar slot as it uses it, and comes off it to
-// build with an empty hand.
+// that it has all that's still needed for, going by walking distance among the few closest as the crow flies, so that
+// a site it can't get to doesn't hold it up. It keeps to a site until it's done or no longer needs it, looking for
+// building now and then while delivering. It acts from where it's in reach and sees the site, but never from on it,
+// since a tile can't be finished with someone standing in it. What it uses goes on the first hotbar slot as it uses
+// it, and comes off it to build with an empty hand.
 func ColonistInputSource(
 	entityId common.EntityId,
 	tick uint64,
@@ -209,7 +211,10 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 	p.State = Colonist_Idle
 }
 
-// The tiles around each site that it can be worked on from, and the first of them reached walking out from self
+// Of the few sites closest as the crow flies, the one cheapest to walk to somewhere it can be worked on from, which
+// keeps the searching to a few paths heading for their sites, while a site that's close but hard to get to still loses
+// out to one a little further that isn't. A path is given up on after data.PathMaxExpandedTiles, so a site far enough
+// round a maze can be missed.
 func nearestSite(
 	self utils.Vec2i,
 	sites []utils.Vec2i,
@@ -217,41 +222,58 @@ func nearestSite(
 	first, last utils.Vec2i,
 	ecsContainer *ecs.ECSContainer,
 ) (site, stand utils.Vec2i, path []utils.Vec2i, ok bool) {
-	if len(sites) == 0 {
-		return utils.Vec2i{}, utils.Vec2i{}, nil, false
-	}
 	terrain := ecsContainer.Terrain()
 	inColony := func(t utils.Vec2i) bool {
 		return t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y
 	}
-	standFor := map[utils.Vec2i]utils.Vec2i{}
-	for _, s := range sites {
-		for dy := -rangeTiles; dy <= rangeTiles; dy++ {
-			for dx := -rangeTiles; dx <= rangeTiles; dx++ {
-				t := utils.Vec2i{X: s.X + dx, Y: s.Y + dy}
-				if _, taken := standFor[t]; taken || t == s || !inColony(t) || terrain.WalkSpeedPercent(t) <= 0 {
-					continue
-				}
-				if _, sees := ecsContainer.AimedTileInReach(utils.TilePosToWorldPos(t), utils.TilePosToWorldPos(s), rangeTiles); sees {
-					standFor[t] = s
-				}
+	speed := func(t utils.Vec2i) int {
+		if !inColony(t) {
+			return 0
+		}
+		return terrain.WalkSpeedPercent(t)
+	}
+
+	closest := slices.Clone(sites)
+	slices.SortStableFunc(closest, func(a, b utils.Vec2i) int {
+		return cmp.Compare(utils.Dist2(a, self), utils.Dist2(b, self))
+	})
+	// The next few are only tried when none of these can be got to
+	bestCost := -1
+	for from := 0; from < len(closest) && bestCost == -1; from += data.ColonistJobCandidates {
+		for _, s := range closest[from:min(len(closest), from+data.ColonistJobCandidates)] {
+			spots := standSpots(s, rangeTiles, inColony, ecsContainer)
+			isSpot := func(t utils.Vec2i) bool { return spots[t] }
+			p, cost, found := pathfinding.FindTowards(self, s, rangeTiles, isSpot, data.PathMaxExpandedTiles, speed)
+			if found && (bestCost == -1 || cost < bestCost) {
+				site, path, bestCost = s, p, cost
 			}
 		}
 	}
-
-	isGoal := func(t utils.Vec2i) bool {
-		_, ok := standFor[t]
-		return ok
-	}
-	path, ok = pathfinding.FindNearest(self, first, last, isGoal, data.ColonistSearchMaxTiles, terrain.WalkSpeedPercent)
-	if !ok {
+	if bestCost == -1 {
 		return utils.Vec2i{}, utils.Vec2i{}, nil, false
 	}
 	stand = self
 	if len(path) > 0 {
 		stand = path[len(path)-1]
 	}
-	return standFor[stand], stand, path, true
+	return site, stand, path, true
+}
+
+// The walkable tiles within reach that see the site, other than the site itself
+func standSpots(site utils.Vec2i, rangeTiles int, inColony func(utils.Vec2i) bool, ecsContainer *ecs.ECSContainer) map[utils.Vec2i]bool {
+	spots := map[utils.Vec2i]bool{}
+	for dy := -rangeTiles; dy <= rangeTiles; dy++ {
+		for dx := -rangeTiles; dx <= rangeTiles; dx++ {
+			t := utils.Vec2i{X: site.X + dx, Y: site.Y + dy}
+			if t == site || !inColony(t) || ecsContainer.Terrain().WalkSpeedPercent(t) <= 0 {
+				continue
+			}
+			if _, sees := ecsContainer.AimedTileInReach(utils.TilePosToWorldPos(t), utils.TilePosToWorldPos(site), rangeTiles); sees {
+				spots[t] = true
+			}
+		}
+	}
+	return spots
 }
 
 // What's needed goes on the first hotbar slot and is delivered all at once; to build, the slot is emptied

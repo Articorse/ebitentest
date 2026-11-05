@@ -1,4 +1,4 @@
-// A*, and Dijkstra for the nearest of many goals, over the tile grid in eight directions, in integers and with every tie
+// A* over the tile grid in eight directions, in integers and with every tie
 // broken the same way, so that the same query always finds the same path.
 package pathfinding
 
@@ -31,7 +31,23 @@ func Find(from, to utils.Vec2i, maxExpanded int, speedPercent func(utils.Vec2i) 
 		return speedPercent(t)
 	}
 	isGoal := func(t utils.Vec2i) bool { return t == to }
-	return search(from, isGoal, func(t utils.Vec2i) int { return heuristic(t, to) }, maxExpanded, speed)
+	path, _, ok := search(from, isGoal, func(t utils.Vec2i) int { return heuristic(t, to) }, maxExpanded, speed)
+	return path, ok
+}
+
+// The cheapest path to any tile that isGoal, all of which are within reach tiles of toward, and what walking it costs.
+// It's Find heading for toward, with its estimate lowered by as much as reach could save, so that it never thinks a goal
+// further than it is. Only the start counts as walkable whatever it is, since a goal is somewhere to stand. Nil and true
+// if the start is a goal.
+func FindTowards(
+	from, toward utils.Vec2i,
+	reach int,
+	isGoal func(utils.Vec2i) bool,
+	maxExpanded int,
+	speedPercent func(utils.Vec2i) int,
+) (path []utils.Vec2i, cost int, ok bool) {
+	h := func(t utils.Vec2i) int { return max(heuristic(t, toward)-reach*diagonalStepCost, 0) }
+	return search(from, isGoal, h, maxExpanded, speedPercent)
 }
 
 func search(
@@ -40,9 +56,9 @@ func search(
 	h func(utils.Vec2i) int,
 	maxExpanded int,
 	speedPercent func(utils.Vec2i) int,
-) ([]utils.Vec2i, bool) {
+) ([]utils.Vec2i, int, bool) {
 	if isGoal(from) {
-		return nil, true
+		return nil, 0, true
 	}
 
 	speed := func(t utils.Vec2i) int {
@@ -79,7 +95,7 @@ func search(
 			for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
 				path[i], path[j] = path[j], path[i]
 			}
-			return path, true
+			return path, v.cost, true
 		}
 
 		for i, d := range directions {
@@ -106,7 +122,7 @@ func search(
 			open.push(entry{tile: next, f: cost + nh, h: nh, seq: seq})
 		}
 	}
-	return nil, false
+	return nil, 0, false
 }
 
 // The cost of the shortest path over open ground, which no path can beat
