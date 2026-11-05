@@ -82,6 +82,7 @@ type ECSContainer struct {
 	SpawnedEnemies    Storage[SpawnedEnemy]
 	Factions          Storage[Faction]
 	Constructors      Storage[Constructor]
+	Colonies          Storage[Colony]
 	Disabled          Storage[Disabled]
 }
 
@@ -122,6 +123,7 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&spawnedEnemyDto{})
 	gob.Register(&factionDto{})
 	gob.Register(&constructorDto{})
+	gob.Register(&colonyDto{})
 
 	gob.Register(&shapes.CircleParams{})
 	gob.Register(&shapes.RectangleParams{})
@@ -185,6 +187,7 @@ func NewECSContainer() *ECSContainer {
 		SpawnedEnemies:    newStorage[SpawnedEnemy](),
 		Factions:          newStorage[Faction](),
 		Constructors:      newStorage[Constructor](),
+		Colonies:          newStorage[Colony](),
 		Disabled:          newStorage[Disabled](),
 	}
 
@@ -225,6 +228,7 @@ func NewECSContainer() *ECSContainer {
 		&x.SpawnedEnemies,
 		&x.Factions,
 		&x.Constructors,
+		&x.Colonies,
 		&x.Disabled,
 	}
 

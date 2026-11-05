@@ -1022,6 +1022,9 @@ func main() {
 		if err := g.moveToNewWorldSpawn(g.playerEntity); err != nil {
 			log.Fatal("error moving player to spawn: ", err)
 		}
+		if _, err := templates.SpawnColonyCenter(g.ecs); err != nil {
+			log.Fatal(err)
+		}
 		g.newWorld = true
 	}
 

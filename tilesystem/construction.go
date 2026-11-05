@@ -139,6 +139,28 @@ func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int, canFinish bool) (wo
 	return true, true
 }
 
+func (cc *ChunkContainer) SitesIn(first, last utils.Vec2i) []utils.Vec2i {
+	tiles := []utils.Vec2i{}
+	for cy := floorDiv(first.Y, data.ChunkSize); cy <= floorDiv(last.Y, data.ChunkSize); cy++ {
+		for cx := floorDiv(first.X, data.ChunkSize); cx <= floorDiv(last.X, data.ChunkSize); cx++ {
+			c, ok := cc.chunks[utils.Vec2i{X: cx, Y: cy}]
+			if !ok {
+				continue
+			}
+			for t := range c.sites {
+				if t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y {
+					tiles = append(tiles, t)
+				}
+			}
+		}
+	}
+	// Map order differs from run to run, and what colonists choose mustn't
+	slices.SortFunc(tiles, func(a, b utils.Vec2i) int {
+		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
+	})
+	return tiles
+}
+
 // Only a blueprint can be taken away like this, since a site with materials has to be broken to get them back
 func (cc *ChunkContainer) RemoveSite(t utils.Vec2i) bool {
 	c, s, _, ok := cc.siteOn(t)

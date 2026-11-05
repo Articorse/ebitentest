@@ -43,6 +43,8 @@ type Terrain interface {
 	// False if a site can't be placed there, or the blueprint doesn't exist
 	PlaceSite(t utils.Vec2i, blueprint data.BlueprintEnum) bool
 	Site(t utils.Vec2i) (ConstructionSite, bool)
+	// The tiles of the sites from first to last that are in the simulation, in tile order, row by row
+	SitesIn(first, last utils.Vec2i) []utils.Vec2i
 	// False unless it's still a blueprint, with nothing delivered
 	RemoveSite(t utils.Vec2i) bool
 	// How many of the items the site took, which is no more than it still needs of them
@@ -132,6 +134,7 @@ func (noTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8,
 func (noTerrain) CanPlaceSite(utils.Vec2i) bool                         { return false }
 func (noTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool        { return false }
 func (noTerrain) Site(utils.Vec2i) (ConstructionSite, bool)             { return ConstructionSite{}, false }
+func (noTerrain) SitesIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i        { return nil }
 func (noTerrain) RemoveSite(utils.Vec2i) bool                           { return false }
 func (noTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
 func (noTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }

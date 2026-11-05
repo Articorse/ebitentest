@@ -36,15 +36,9 @@ func (cc *ChunkContainer) relocateTethered(e common.EntityId, ecsCont *ecs.ECSCo
 		return false
 	}
 
-	center := utils.WorldPosToChunkGridPos(anchorPos)
-	minTile := utils.Vec2i{
-		X: (center.X-radius)*data.ChunkSize + data.TetherBorderTiles,
-		Y: (center.Y-radius)*data.ChunkSize + data.TetherBorderTiles,
-	}
-	maxTile := utils.Vec2i{
-		X: (center.X+radius+1)*data.ChunkSize - 1 - data.TetherBorderTiles,
-		Y: (center.Y+radius+1)*data.ChunkSize - 1 - data.TetherBorderTiles,
-	}
+	first, last := ecs.ChunkLoaderTiles(anchorPos, radius)
+	minTile := utils.Vec2i{X: first.X + data.TetherBorderTiles, Y: first.Y + data.TetherBorderTiles}
+	maxTile := utils.Vec2i{X: last.X - data.TetherBorderTiles, Y: last.Y - data.TetherBorderTiles}
 
 	eTile := utils.WorldPosToTilePos(ePos)
 	start := utils.Vec2i{
