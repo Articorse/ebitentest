@@ -261,3 +261,36 @@ func TestABlueprintPutDownAsInputGoesAnywhereItFits(t *testing.T) {
 		t.Fatal("a blueprint was put down on rock")
 	}
 }
+
+func TestOnlyTheSitesPassingTheFilterAreGivenForDrawingOverTheFog(t *testing.T) {
+	testutil.TempWorld(t)
+	s := testutil.StartSession(t)
+	first := bareGrass(t, s)
+	second := findTile(t, s, func(tile utils.Vec2i) bool {
+		return tile.Y > first.Y && s.Chunks.CanPlaceSite(tile)
+	})
+	third := findTile(t, s, func(tile utils.Vec2i) bool {
+		return tile.Y > second.Y && s.Chunks.CanPlaceSite(tile)
+	})
+	for _, tile := range []utils.Vec2i{third, first, second} {
+		if !s.Chunks.PlaceSite(tile, data.Blueprint_Planks) {
+			t.Fatalf("couldn't place a blueprint on %v", tile)
+		}
+	}
+
+	bounds := [2]utils.Vec2f{utils.TilePosToWorldPos(first), utils.TilePosToWorldPos(third)}
+	bounds[0].X, bounds[1].X = min(bounds[0].X, utils.TilePosToWorldPos(second).X, bounds[1].X), max(bounds[0].X, utils.TilePosToWorldPos(second).X, bounds[1].X)
+	outOfSight := func(tile utils.Vec2i) bool { return tile != second }
+	sprites := s.Chunks.SiteSprites(bounds, outOfSight)
+	if len(sprites) != 2 || sprites[0].Pos != utils.TilePosToWorldPos(first) || sprites[1].Pos != utils.TilePosToWorldPos(third) {
+		t.Fatalf("the sites out of sight are drawn at %v, want %v then %v", sprites, first, third)
+	}
+	if !sprites[0].Ghost {
+		t.Fatal("a blueprint out of sight isn't drawn as one")
+	}
+	everywhere := func(utils.Vec2i) bool { return true }
+	center := utils.TilePosToWorldPos(first)
+	if n := len(s.Chunks.SiteSprites([2]utils.Vec2f{center, center}, everywhere)); n != 1 {
+		t.Fatalf("%d sites are given within the bounds of one tile", n)
+	}
+}

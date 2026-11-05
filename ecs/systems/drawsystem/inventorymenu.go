@@ -95,9 +95,9 @@ func (l inventoryLayout) hotbarSlotAt(cursor utils.Vec2f, slots int) int {
 	return -1
 }
 
-// Whether clicks at the cursor are the menu's rather than the world's: over its panels or the hotbar while it's open,
+// Whether clicks at the cursor are the menu's rather than the world's: over its panel or the hotbar while it's open,
 // and anywhere while an item is held
-func (m *InventoryMenu) Covers(cursor, screenSize utils.Vec2f, inv *ecs.Inventory, blueprints *ecs.BlueprintAtlas, assets *assetmanager.AssetManager) bool {
+func (m *InventoryMenu) Covers(cursor, screenSize utils.Vec2f, inv *ecs.Inventory, assets *assetmanager.AssetManager) bool {
 	if !m.open {
 		return false
 	}
@@ -107,25 +107,8 @@ func (m *InventoryMenu) Covers(cursor, screenSize utils.Vec2f, inv *ecs.Inventor
 	}
 	overPanel := cursor.X >= float64(l.panel.Min.X) && cursor.X < float64(l.panel.Max.X) &&
 		cursor.Y >= float64(l.panel.Min.Y) && cursor.Y < float64(l.panel.Max.Y)
-	overBlueprints := newBlueprintLayout(screenSize, len(blueprints.Kinds()), l.slotSize).covers(cursor)
 	_, holding := m.heldItem(inv)
-	return holding || overPanel || overBlueprints || l.hotbarSlotAt(cursor, inv.HotbarSize()) != -1
-}
-
-// The blueprint under the cursor, in the menu's blueprint panel
-func (m *InventoryMenu) BlueprintAt(cursor, screenSize utils.Vec2f, blueprints *ecs.BlueprintAtlas, assets *assetmanager.AssetManager) (data.BlueprintEnum, bool) {
-	if !m.open {
-		return data.Blueprint_None, false
-	}
-	l, err := newInventoryLayout(screenSize, assets)
-	if err != nil {
-		return data.Blueprint_None, false
-	}
-	kinds := blueprints.Kinds()
-	if i := newBlueprintLayout(screenSize, len(kinds), l.slotSize).slotAt(cursor, len(kinds)); i != -1 {
-		return kinds[i], true
-	}
-	return data.Blueprint_None, false
+	return holding || overPanel || l.hotbarSlotAt(cursor, inv.HotbarSize()) != -1
 }
 
 // The inventory slot under the cursor, or -1
@@ -193,8 +176,8 @@ func (m *InventoryMenu) Click(cursor, screenSize utils.Vec2f, inv *ecs.Inventory
 	return ecs.InventoryAction{}
 }
 
-// The panel and its slots, each item with the number of the hotbar slot pointing at it, the blueprint panel with the
-// tooltip of the blueprint under the cursor, and the held item under the cursor
+// The panel and its slots, each item with the number of the hotbar slot pointing at it, and the held item under the
+// cursor
 func (m *InventoryMenu) Draw(
 	screen *ebiten.Image,
 	scale float64,
@@ -240,18 +223,8 @@ func (m *InventoryMenu) Draw(
 		}
 	}
 
-	blueprints := ecsContainer.BlueprintAtlas()
-	bl := newBlueprintLayout(ImageSize(screen).Multiply(1/scale), len(blueprints.Kinds()), l.slotSize)
-	if err := drawBlueprintPanel(screen, scale, bl, blueprints, slot, assets); err != nil {
-		return err
-	}
-
 	if item, ok := m.heldItem(inv); ok {
 		return drawSlotItem(screen, scale, item, cursor.X, cursor.Y, l.slotSize, ecsContainer, assets)
-	}
-	if kind, ok := m.BlueprintAt(cursor, ImageSize(screen).Multiply(1/scale), blueprints, assets); ok {
-		def, _ := blueprints.Def(kind)
-		return DrawTooltip(screen, scale, cursor, BlueprintTooltip(def, ecsContainer.ItemAtlas()), assets)
 	}
 	return nil
 }

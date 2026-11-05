@@ -241,8 +241,12 @@ func (g *game) Update() error {
 			}
 		}
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyB) {
+		g.placer.Toggle(g.ecs.BlueprintAtlas())
+		g.startedBuilding()
+	}
+	g.updateBlueprintCopy()
 	g.updateHomePainter()
-	// The placer goes first, so that the click choosing a blueprint in the menu doesn't also put it down
 	g.updateBlueprintPlacer()
 	g.updateInventoryMenu()
 	g.updateBlueprintRemoval()
@@ -508,15 +512,10 @@ func (g *game) updateInventoryMenu() {
 	cursor, screen := g.uiCursor(), g.screenSize.Multiply(1/g.uiScale)
 	canAct := g.pendingInventory.Kind == ecs.InventoryAction_None
 
-	blueprints := g.ecs.BlueprintAtlas()
-	covers := g.inventoryMenu.Covers(cursor, screen, inv, blueprints, g.assetmanager)
+	covers := g.inventoryMenu.Covers(cursor, screen, inv, g.assetmanager)
 	if covers && (inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) || inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight)) {
 		g.uiHasMouse = true
-		if kind, ok := g.inventoryMenu.BlueprintAt(cursor, screen, blueprints, g.assetmanager); ok && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			g.inventoryMenu.Toggle()
-			g.placer.Start(kind)
-			g.homePainter.Stop()
-		} else if canAct && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		if canAct && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			g.pendingInventory = g.inventoryMenu.Click(cursor, screen, inv, g.assetmanager)
 		}
 	}
@@ -559,8 +558,44 @@ func (g *game) updateHomePainter() {
 	}
 }
 
-// A click puts the blueprint down where it fits, as the next tick's input, and leaves placing unless shift is held;
-// escape or a right click leaves it
+// Build mode, the placer, is on with nothing else: no inventory menu and no home painting
+func (g *game) startedBuilding() {
+	if _, on := g.placer.Kind(); !on {
+		return
+	}
+	g.homePainter.Stop()
+	if g.inventoryMenu.IsOpen() {
+		g.inventoryMenu.Toggle()
+	}
+}
+
+// A middle click on a seen tile that a blueprint builds, or on a site, starts build mode with that blueprint. What's
+// remembered of the tile is what's copied, so that copying can't find out what's changed out of sight.
+func (g *game) updateBlueprintCopy() {
+	if !inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonMiddle) {
+		return
+	}
+	if inv, ok := g.ecs.Inventories.Get(g.playerEntity); ok && g.inventoryMenu.Covers(g.uiCursor(), g.screenSize.Multiply(1/g.uiScale), inv, g.assetmanager) {
+		return
+	}
+	tile := g.cursorTile()
+	remembered, seen := g.chunkContainer.RecallTile(tile)
+	if !seen {
+		return
+	}
+	kind, ok := g.ecs.BlueprintAtlas().ForTile(remembered)
+	if site, onSite := g.chunkContainer.Site(tile); onSite {
+		kind, ok = site.Blueprint, true
+	}
+	if !ok {
+		return
+	}
+	g.placer.Start(kind)
+	g.startedBuilding()
+}
+
+// A click on the panel chooses the blueprint, and anywhere else puts it down where it fits, as the next tick's input,
+// and leaves build mode unless shift is held; B, escape or a right click leaves it
 func (g *game) updateBlueprintPlacer() {
 	kind, ok := g.placer.Kind()
 	if !ok {
@@ -576,6 +611,13 @@ func (g *game) updateBlueprintPlacer() {
 	}
 
 	g.uiHasMouse = true
+	cursor, screen := g.uiCursor(), g.screenSize.Multiply(1/g.uiScale)
+	if g.placer.Covers(cursor, screen, g.ecs.BlueprintAtlas(), g.assetmanager) {
+		if chosen, ok := g.placer.BlueprintAt(cursor, screen, g.ecs.BlueprintAtlas(), g.assetmanager); ok {
+			g.placer.Start(chosen)
+		}
+		return
+	}
 	tile := g.cursorTile()
 	if g.pendingPlacement.Kind != data.Blueprint_None || !g.canPlaceBlueprint(tile) {
 		return
@@ -593,7 +635,7 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 		return nil
 	}
 	cursor := g.uiCursor()
-	if g.inventoryMenu.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), inv, g.ecs.BlueprintAtlas(), g.assetmanager) {
+	if g.inventoryMenu.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), inv, g.assetmanager) {
 		return nil
 	}
 	tile := g.cursorTile()
@@ -619,8 +661,9 @@ func (g *game) updateBlueprintRemoval() {
 	if !inpututil.IsKeyJustPressed(ebiten.KeyR) || g.pendingRemoval.Remove {
 		return
 	}
-	if inv, ok := g.ecs.Inventories.Get(g.playerEntity); ok &&
-		g.inventoryMenu.Covers(g.uiCursor(), g.screenSize.Multiply(1/g.uiScale), inv, g.ecs.BlueprintAtlas(), g.assetmanager) {
+	cursor, screen := g.uiCursor(), g.screenSize.Multiply(1/g.uiScale)
+	if inv, ok := g.ecs.Inventories.Get(g.playerEntity); ok && g.inventoryMenu.Covers(cursor, screen, inv, g.assetmanager) ||
+		g.placer.Covers(cursor, screen, g.ecs.BlueprintAtlas(), g.assetmanager) {
 		return
 	}
 	tile := g.cursorTile()
@@ -729,6 +772,9 @@ func (g *game) Draw(screen *ebiten.Image) {
 	if err := g.inventoryMenu.Draw(screen, g.uiScale, g.uiCursor(), g.playerEntity, g.ecs, g.assetmanager); err != nil {
 		log.Println("error while drawing the inventory: ", err)
 	}
+	if err := g.placer.DrawPanel(screen, g.uiScale, g.uiCursor(), g.ecs.BlueprintAtlas(), g.ecs.ItemAtlas(), g.assetmanager); err != nil {
+		log.Println("error while drawing the blueprint panel: ", err)
+	}
 	if err := g.drawSiteTooltip(screen); err != nil {
 		log.Println("error while drawing the tooltip of a construction site: ", err)
 	}
@@ -789,10 +835,17 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok && !g.fullBright {
 		g.lightOverlay.Draw(world, g.ecs.Camera, vision.Light())
 		g.visionOverlay.Draw(world, g.ecs.Camera, vision, g.drawMemory)
+		// Out of sight, so that what's planned can always be made out. In sight they're under what stands on them.
+		outOfSight := func(t utils.Vec2i) bool { return !vision.CanSee(t) }
+		sites := g.chunkContainer.SiteSprites(drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world)), outOfSight)
+		if err := drawsystem.DrawStaticSprites(world, g.ecs.Camera, sites, g.assetmanager); err != nil {
+			log.Println("error while drawing construction sites out of sight: ", err)
+		}
 	}
 
 	// Above the fog, since blueprints and home can go anywhere. A click while placing or marking out home doesn't use
-	// what's in hand, so its target isn't shown.
+	// what's in hand, so its target isn't shown, and nor is the blueprint under the panel, which a click would choose
+	// from rather than put down.
 	_, placing := g.placer.Kind()
 	if placing || g.homePainter.IsActive() {
 		drawsystem.DrawHomeArea(world, g.ecs.Camera, g.chunkContainer.IsHome)
@@ -801,8 +854,11 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		g.homePainter.Draw(world, g.ecs.Camera, g.cursorTile(), ebiten.IsKeyPressed(ebiten.KeyShift))
 	} else if placing {
 		tile := g.cursorTile()
-		if err := g.placer.Draw(world, g.ecs.Camera, tile, g.canPlaceBlueprint(tile), g.ecs.BlueprintAtlas(), g.assetmanager); err != nil {
-			log.Println("error while drawing the blueprint being placed: ", err)
+		overPanel := g.placer.Covers(g.uiCursor(), g.screenSize.Multiply(1/g.uiScale), g.ecs.BlueprintAtlas(), g.assetmanager)
+		if !overPanel {
+			if err := g.placer.Draw(world, g.ecs.Camera, tile, g.canPlaceBlueprint(tile), g.ecs.BlueprintAtlas(), g.assetmanager); err != nil {
+				log.Println("error while drawing the blueprint being placed: ", err)
+			}
 		}
 	} else if err := drawsystem.DrawTileTarget(world, g.ecs.Camera, g.playerEntity, g.ecs); err != nil {
 		log.Println("error while drawing the tile target: ", err)

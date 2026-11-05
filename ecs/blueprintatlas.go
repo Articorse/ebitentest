@@ -148,6 +148,16 @@ func (x *BlueprintAtlas) Kinds() []data.BlueprintEnum {
 	return slices.SortedFunc(maps.Keys(x.defs), cmp.Compare)
 }
 
+// The first that builds the tile, in the order they're shown in
+func (x *BlueprintAtlas) ForTile(tile data.TileEnum) (data.BlueprintEnum, bool) {
+	for _, kind := range x.Kinds() {
+		if x.defs[kind].tile == tile {
+			return kind, true
+		}
+	}
+	return data.Blueprint_None, false
+}
+
 func (x *ECSContainer) SetBlueprintAtlas(atlas *BlueprintAtlas) {
 	x.blueprintAtlas = atlas
 }

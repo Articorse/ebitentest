@@ -118,7 +118,7 @@ func TestAClosedMenuIgnoresClicks(t *testing.T) {
 	if a := click(inventorySlotCenter(0)); a.Kind != ecs.InventoryAction_None {
 		t.Fatalf("a click on the closed menu did %v", a)
 	}
-	if menu.Covers(inventorySlotCenter(0), menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) {
+	if menu.Covers(inventorySlotCenter(0), menuScreen, inv, testutil.Assets(t)) {
 		t.Fatal("the closed menu takes clicks")
 	}
 }
@@ -126,7 +126,7 @@ func TestAClosedMenuIgnoresClicks(t *testing.T) {
 func TestTheMenuTakesClicksOverItAndAnywhereWhileHolding(t *testing.T) {
 	menu, _, inv, click := newMenu(t)
 	covers := func(at utils.Vec2f) bool {
-		return menu.Covers(at, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t))
+		return menu.Covers(at, menuScreen, inv, testutil.Assets(t))
 	}
 	corner := inventorySlotCenter(0).Subtract(utils.Vec2f{X: menuSlotPx/2 + data.InventoryPanelPaddingPx - 1, Y: menuSlotPx/2 + data.InventoryPanelPaddingPx - 1})
 	away := utils.Vec2f{X: menuScreen.X - 1, Y: 1}
@@ -163,7 +163,7 @@ func TestPuttingAnItemDownOnAnotherPicksThatOneUp(t *testing.T) {
 	}
 	act(t, x, player, a.Kind, a.From, a.To)
 
-	if slotItem(inv, 0) != bazooka || !menu.Covers(utils.Vec2f{X: menuScreen.X - 1, Y: 1}, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) {
+	if slotItem(inv, 0) != bazooka || !menu.Covers(utils.Vec2f{X: menuScreen.X - 1, Y: 1}, menuScreen, inv, testutil.Assets(t)) {
 		t.Fatal("the bazooka wasn't picked up in the mattock's place")
 	}
 	if a := click(inventorySlotCenter(20)); a != (ecs.InventoryAction{Kind: ecs.InventoryAction_Move, From: 0, To: 20}) {
@@ -175,7 +175,7 @@ func TestAStackPutOnAnotherKeepsWhatDidntFitHeld(t *testing.T) {
 	menu, x, inv, click := newMenu(t)
 	player := x.Root(slotItem(inv, 0))
 	away := utils.Vec2f{X: menuScreen.X - 1, Y: 1}
-	covers := func() bool { return menu.Covers(away, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) }
+	covers := func() bool { return menu.Covers(away, menuScreen, inv, testutil.Assets(t)) }
 	putStack(t, x, player, 10, 50)
 	putStack(t, x, player, 11, 70)
 	putStack(t, x, player, 12, 10)
@@ -224,7 +224,7 @@ func TestTheInventorySitsAtTheBottomOfTheScreen(t *testing.T) {
 	menu, _, inv, _ := newMenu(t)
 	bottom := inventorySlotCenter(data.InventoryColumns * data.InventoryRows / 2)
 	bottom.Y = menuScreen.Y - data.InventoryMarginPx - 1
-	if !menu.Covers(bottom, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) || menu.Covers(utils.Vec2f{X: bottom.X, Y: menuScreen.Y - data.InventoryMarginPx}, menuScreen, inv, testutil.Blueprints(t), testutil.Assets(t)) {
+	if !menu.Covers(bottom, menuScreen, inv, testutil.Assets(t)) || menu.Covers(utils.Vec2f{X: bottom.X, Y: menuScreen.Y - data.InventoryMarginPx}, menuScreen, inv, testutil.Assets(t)) {
 		t.Fatal("the panel doesn't end its margin above the bottom of the screen")
 	}
 }
@@ -235,28 +235,61 @@ func blueprintSlotCenter() utils.Vec2f {
 	return utils.Vec2f{X: menuScreen.X - inset, Y: menuScreen.Y - inset}
 }
 
-func TestBlueprintsAreChosenFromTheirPanelInTheBottomRightCorner(t *testing.T) {
-	menu, _, inv, click := newMenu(t)
+func TestBlueprintsAreChosenFromTheirPanelInTheBottomRightCornerWhileBuilding(t *testing.T) {
+	var placer drawsystem.BlueprintPlacer
 	blueprints, assets := testutil.Blueprints(t), testutil.Assets(t)
+	if placer.Covers(blueprintSlotCenter(), menuScreen, blueprints, assets) {
+		t.Fatal("the blueprint panel takes clicks outside build mode")
+	}
+	if _, ok := placer.BlueprintAt(blueprintSlotCenter(), menuScreen, blueprints, assets); ok {
+		t.Fatal("a blueprint can be chosen outside build mode")
+	}
 
-	if kind, ok := menu.BlueprintAt(blueprintSlotCenter(), menuScreen, blueprints, assets); !ok || kind != data.Blueprint_Planks {
+	placer.Start(data.Blueprint_Planks)
+	if kind, ok := placer.BlueprintAt(blueprintSlotCenter(), menuScreen, blueprints, assets); !ok || kind != data.Blueprint_Planks {
 		t.Fatalf("the blueprint panel has %v (%v) in its slot, want planks", kind, ok)
 	}
 	edge := utils.Vec2f{X: menuScreen.X - data.InventoryMarginPx - 1, Y: menuScreen.Y - data.InventoryMarginPx - 1}
-	if !menu.Covers(edge, menuScreen, inv, blueprints, assets) || menu.Covers(edge.Add(utils.Vec2f{X: 2}), menuScreen, inv, blueprints, assets) ||
-		menu.Covers(edge.Add(utils.Vec2f{Y: 2}), menuScreen, inv, blueprints, assets) {
-		t.Fatal("the menu doesn't take clicks on the blueprint panel's border, or takes them in the margin past it")
+	if !placer.Covers(edge, menuScreen, blueprints, assets) || placer.Covers(edge.Add(utils.Vec2f{X: 2}), menuScreen, blueprints, assets) ||
+		placer.Covers(edge.Add(utils.Vec2f{Y: 2}), menuScreen, blueprints, assets) {
+		t.Fatal("the panel doesn't take clicks on its border, or takes them in the margin past it")
 	}
-	if _, ok := menu.BlueprintAt(edge, menuScreen, blueprints, assets); ok {
+	if _, ok := placer.BlueprintAt(edge, menuScreen, blueprints, assets); ok {
 		t.Fatal("the panel's border counts as its blueprint")
 	}
-	if a := click(blueprintSlotCenter()); a.Kind != ecs.InventoryAction_None {
-		t.Fatalf("clicking a blueprint did %v to the inventory", a)
-	}
+}
 
-	menu.Toggle()
-	if _, ok := menu.BlueprintAt(blueprintSlotCenter(), menuScreen, blueprints, assets); ok {
-		t.Fatal("a blueprint can be chosen from the closed menu")
+func TestTheInventoryMenuHasNoBlueprints(t *testing.T) {
+	menu, _, inv, click := newMenu(t)
+	if menu.Covers(blueprintSlotCenter(), menuScreen, inv, testutil.Assets(t)) {
+		t.Fatal("the inventory menu takes clicks where the blueprint panel goes")
+	}
+	if a := click(blueprintSlotCenter()); a.Kind != ecs.InventoryAction_None {
+		t.Fatalf("clicking where the blueprint panel goes did %v to the inventory", a)
+	}
+}
+
+func TestBuildModeStartsWithTheFirstBlueprintAndTogglesOff(t *testing.T) {
+	var placer drawsystem.BlueprintPlacer
+	blueprints := testutil.Blueprints(t)
+	placer.Toggle(blueprints)
+	if kind, ok := placer.Kind(); !ok || kind != blueprints.Kinds()[0] {
+		t.Fatalf("build mode started with %v (%v), want the first blueprint", kind, ok)
+	}
+	placer.Toggle(blueprints)
+	if _, ok := placer.Kind(); ok {
+		t.Fatal("toggling build mode again left it on")
+	}
+}
+
+func TestATileIsCopiedAsTheBlueprintThatBuildsIt(t *testing.T) {
+	blueprints := testutil.Blueprints(t)
+	def, _ := blueprints.Def(data.Blueprint_Planks)
+	if kind, ok := blueprints.ForTile(def.Tile()); !ok || kind != data.Blueprint_Planks {
+		t.Fatalf("the planks tile copies as %v (%v), want planks", kind, ok)
+	}
+	if kind, ok := blueprints.ForTile(data.Tile_Dirt); ok {
+		t.Fatalf("dirt, which nothing builds, copies as %v", kind)
 	}
 }
 

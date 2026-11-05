@@ -4,6 +4,7 @@ import (
 	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs"
+	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
 	"image"
@@ -16,8 +17,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// The blueprint chosen in the inventory menu, to be put down with a click. Like the menu, it only changes what's drawn
-// and what a click sends.
+// Build mode: the blueprint chosen, to be put down with a click, and the panel of blueprints to choose from in the
+// bottom right corner while it's on. Like the inventory menu, it only changes what's drawn and what a click sends.
+// Positions on the panel are in UI pixels.
 type BlueprintPlacer struct {
 	kind data.BlueprintEnum
 }
@@ -26,12 +28,74 @@ func (p *BlueprintPlacer) Start(kind data.BlueprintEnum) {
 	p.kind = kind
 }
 
+// Starts with the first blueprint chosen
+func (p *BlueprintPlacer) Toggle(atlas *ecs.BlueprintAtlas) {
+	if _, ok := p.Kind(); ok {
+		p.Stop()
+		return
+	}
+	if kinds := atlas.Kinds(); len(kinds) > 0 {
+		p.Start(kinds[0])
+	}
+}
+
 func (p *BlueprintPlacer) Stop() {
 	p.kind = data.Blueprint_None
 }
 
 func (p *BlueprintPlacer) Kind() (data.BlueprintEnum, bool) {
 	return p.kind, p.kind != data.Blueprint_None
+}
+
+func (p *BlueprintPlacer) layout(screenSize utils.Vec2f, atlas *ecs.BlueprintAtlas, assets *assetmanager.AssetManager) (blueprintLayout, bool) {
+	slot, err := assets.GetAsset(common.AssetImageSlot)
+	if _, on := p.Kind(); !on || err != nil {
+		return blueprintLayout{}, false
+	}
+	return newBlueprintLayout(screenSize, len(atlas.Kinds()), slot.FrameSize), true
+}
+
+// Whether clicks at the cursor are the panel's rather than the world's
+func (p *BlueprintPlacer) Covers(cursor, screenSize utils.Vec2f, atlas *ecs.BlueprintAtlas, assets *assetmanager.AssetManager) bool {
+	l, ok := p.layout(screenSize, atlas, assets)
+	return ok && l.covers(cursor)
+}
+
+// The blueprint under the cursor on the panel
+func (p *BlueprintPlacer) BlueprintAt(cursor, screenSize utils.Vec2f, atlas *ecs.BlueprintAtlas, assets *assetmanager.AssetManager) (data.BlueprintEnum, bool) {
+	l, ok := p.layout(screenSize, atlas, assets)
+	if !ok {
+		return data.Blueprint_None, false
+	}
+	kinds := atlas.Kinds()
+	if i := l.slotAt(cursor, len(kinds)); i != -1 {
+		return kinds[i], true
+	}
+	return data.Blueprint_None, false
+}
+
+// The panel with the chosen blueprint's slot highlighted, and the tooltip of the blueprint under the cursor
+func (p *BlueprintPlacer) DrawPanel(
+	screen *ebiten.Image,
+	scale float64,
+	cursor utils.Vec2f,
+	atlas *ecs.BlueprintAtlas,
+	items *ecs.ItemAtlas,
+	assets *assetmanager.AssetManager,
+) error {
+	screenSize := ImageSize(screen).Multiply(1 / scale)
+	l, ok := p.layout(screenSize, atlas, assets)
+	if !ok {
+		return nil
+	}
+	if err := drawBlueprintPanel(screen, scale, l, atlas, p.kind, assets); err != nil {
+		return err
+	}
+	if kind, ok := p.BlueprintAt(cursor, screenSize, atlas, assets); ok {
+		def, _ := atlas.Def(kind)
+		return DrawTooltip(screen, scale, cursor, BlueprintTooltip(def, items), assets)
+	}
+	return nil
 }
 
 // The finished tile as a blueprint on the tile: blue if it can go there and red if it can't
@@ -172,16 +236,28 @@ func (l blueprintLayout) covers(cursor utils.Vec2f) bool {
 		utils.Vec2f{X: float64(l.panel.Dx()), Y: float64(l.panel.Dy())})
 }
 
-func drawBlueprintPanel(screen *ebiten.Image, scale float64, l blueprintLayout, atlas *ecs.BlueprintAtlas, slot *assetmanager.ImageAsset, assets *assetmanager.AssetManager) error {
+func drawBlueprintPanel(screen *ebiten.Image, scale float64, l blueprintLayout, atlas *ecs.BlueprintAtlas, chosen data.BlueprintEnum, assets *assetmanager.AssetManager) error {
 	if err := drawNineSlice(screen, scale, l.panel, assets); err != nil {
+		return err
+	}
+	slot, err := assets.GetAsset(common.AssetImageSlot)
+	if err != nil {
+		return err
+	}
+	highlight, err := assets.GetAsset(common.AssetImageSlotHighlight)
+	if err != nil {
 		return err
 	}
 	for i, kind := range atlas.Kinds() {
 		p := l.slotPos(i)
+		bg := slot.Frames[0]
+		if kind == chosen {
+			bg = highlight.Frames[0]
+		}
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(p.X, p.Y)
 		op.GeoM.Scale(scale, scale)
-		screen.DrawImage(slot.Frames[0], op)
+		screen.DrawImage(bg, op)
 
 		def, _ := atlas.Def(kind)
 		icon, err := assets.GetAsset(def.ImageAsset())

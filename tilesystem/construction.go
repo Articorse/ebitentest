@@ -215,6 +215,22 @@ func (cc *ChunkContainer) siteOn(t utils.Vec2i) (*chunk, *constructionSite, ecs.
 
 // The finished tile as a blueprint until something's delivered, a marker while it's collecting the rest, and then the
 // stage building has reached, starting at the first as soon as it has everything
+// The sprites of the sites within the bounds whose tiles pass the filter, in tile order
+func (cc *ChunkContainer) SiteSprites(bounds [2]utils.Vec2f, include func(utils.Vec2i) bool) []common.StaticSprite {
+	minTile, maxTile := utils.WorldPosToTilePos(bounds[0]), utils.WorldPosToTilePos(bounds[1])
+	sprites := []common.StaticSprite{}
+	for _, t := range cc.SitesIn(minTile, maxTile) {
+		if !include(t) {
+			continue
+		}
+		_, site, _, _ := cc.siteOn(t)
+		if sprite, ok := cc.siteSprite(t, site); ok {
+			sprites = append(sprites, sprite)
+		}
+	}
+	return sprites
+}
+
 func (cc *ChunkContainer) siteSprite(t utils.Vec2i, s *constructionSite) (common.StaticSprite, bool) {
 	def, ok := cc.blueprints.Def(s.blueprint)
 	if !ok {
