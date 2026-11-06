@@ -247,7 +247,7 @@ func TestABlueprintPutDownAsInputGoesAnywhereItFits(t *testing.T) {
 	})
 	rock := tileOf(t, s, data.Tile_Rock)
 
-	inputs := map[common.EntityId]ecs.InputState{s.Player: {PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tile: far}}}
+	inputs := map[common.EntityId]ecs.InputState{s.Player: {PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: []utils.Vec2i{far}}}}
 	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
 		t.Fatal(err)
 	}
@@ -255,12 +255,29 @@ func TestABlueprintPutDownAsInputGoesAnywhereItFits(t *testing.T) {
 		t.Fatal("a blueprint put down more than 20 tiles away wasn't placed")
 	}
 
-	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tile: rock}}
+	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: []utils.Vec2i{rock}}}
 	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := s.Chunks.Site(rock); ok {
 		t.Fatal("a blueprint was put down on rock")
+	}
+
+	row := []utils.Vec2i{}
+	for x := far.X + 2; x < far.X+6; x++ {
+		row = append(row, utils.Vec2i{X: x, Y: far.Y})
+	}
+	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: append(row, rock)}}
+	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
+		t.Fatal(err)
+	}
+	for _, tile := range row {
+		if _, ok := s.Chunks.Site(tile); !ok && s.Chunks.CanPlaceSite(tile) {
+			t.Fatalf("of several blueprints put down at once, none went on %v", tile)
+		}
+	}
+	if _, ok := s.Chunks.Site(rock); ok {
+		t.Fatal("of several blueprints put down at once, one went on rock")
 	}
 }
 

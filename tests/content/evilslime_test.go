@@ -13,6 +13,7 @@ import (
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"math"
+	"reflect"
 	"testing"
 )
 
@@ -153,7 +154,7 @@ func TestTheEvilSlimeIdlesUntilItSeesThePlayerAndRushesWhileItDoes(t *testing.T)
 	if err := x.SetWorldPos(player, utils.TilePosToWorldPos(utils.Vec2i{X: 20})); err != nil {
 		t.Fatal(err)
 	}
-	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || input != (ecs.InputState{}) {
+	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || !reflect.DeepEqual(input, ecs.InputState{}) {
 		t.Fatalf("with the player in the dark, the slime is in state %v moving %v, %v; want it idle", state, input.Analog1X, input.Analog1Y)
 	}
 
@@ -165,7 +166,7 @@ func TestTheEvilSlimeIdlesUntilItSeesThePlayerAndRushesWhileItDoes(t *testing.T)
 	}
 
 	x.SetTerrain(newFakeTerrain(utils.Vec2i{X: 0}, utils.Vec2i{X: 0, Y: 1}, utils.Vec2i{X: 0, Y: -1}))
-	if input, state := rush(t, x, slime); state != inputsources.Rusher_Search || input == (ecs.InputState{}) {
+	if input, state := rush(t, x, slime); state != inputsources.Rusher_Search || reflect.DeepEqual(input, ecs.InputState{}) {
 		t.Fatalf("with the player behind a wall, the slime is in state %v moving %v, %v; want it searching", state, input.Analog1X, input.Analog1Y)
 	}
 	if path := pathOf(x, slime); len(path) == 0 || path[len(path)-1] != (utils.Vec2i{X: -2}) {
@@ -183,7 +184,7 @@ func TestTheEvilSlimeIdlesUntilItSeesThePlayerAndRushesWhileItDoes(t *testing.T)
 	if err := x.SetWorldPos(slime, utils.TilePosToWorldPos(utils.Vec2i{X: -2})); err != nil {
 		t.Fatal(err)
 	}
-	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || input != (ecs.InputState{}) || len(pathOf(x, slime)) != 0 {
+	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || !reflect.DeepEqual(input, ecs.InputState{}) || len(pathOf(x, slime)) != 0 {
 		t.Fatalf("where it last saw the player, the slime is in state %v moving %v, %v; want it idle", state, input.Analog1X, input.Analog1Y)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
+	"reflect"
 	"testing"
 )
 
@@ -129,7 +130,7 @@ func TestTheRusherGivesUpSearchingWhereItCantGo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || input != (ecs.InputState{}) {
+	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || !reflect.DeepEqual(input, ecs.InputState{}) {
 		t.Fatalf("with the player last seen on an island, the slime is in state %v heading %v, %v; want it idle", state, input.Analog1X, input.Analog1Y)
 	}
 }
@@ -140,7 +141,7 @@ func TestTheRusherStandsStillWhenNoPathReachesItsTarget(t *testing.T) {
 	x, _, slime := rusherBy(t, water, utils.Vec2i{X: 6})
 
 	input, state := rush(t, x, slime)
-	if state != inputsources.Rusher_Follow || input != (ecs.InputState{}) {
+	if state != inputsources.Rusher_Follow || !reflect.DeepEqual(input, ecs.InputState{}) {
 		t.Fatalf("with the player on an island, the slime is in state %v heading %v, %v; want it following but still", state, input.Analog1X, input.Analog1Y)
 	}
 }

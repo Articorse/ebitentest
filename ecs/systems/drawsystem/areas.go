@@ -167,7 +167,7 @@ func DrawArea(dst *ebiten.Image, camera utils.Vec2f, area data.AreaEnum, inArea 
 	drawTilesWhere(dst, camera, func(t utils.Vec2i) bool { return inArea(area, t) }, areaLooks[area].shown)
 }
 
-// Shown like the areas, alongside them and while building, which storage gets in the way of
+// Its tiles tinted like an area's
 func DrawStorageAreas(dst *ebiten.Image, camera utils.Vec2f, inStorage func(utils.Vec2i) bool) {
 	drawTilesWhere(dst, camera, inStorage, data.StorageAreaColor)
 }

@@ -222,7 +222,7 @@ func TestStorageIsMarkedOutByInputAndBlueprintsDontGoOnIt(t *testing.T) {
 		t.Fatal("marking out storage didn't")
 	}
 
-	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tile: first}}
+	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: []utils.Vec2i{first}}}
 	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
 		t.Fatal(err)
 	}

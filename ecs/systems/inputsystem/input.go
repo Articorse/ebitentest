@@ -63,8 +63,10 @@ func HandleInputs(
 		}
 
 		if p := input.PlaceBlueprint; p.Kind != data.Blueprint_None {
-			if _, onStorage := ecsContainer.StorageAt(p.Tile); !onStorage {
-				ecsContainer.Terrain().PlaceSite(p.Tile, p.Kind)
+			for _, t := range p.Tiles {
+				if _, onStorage := ecsContainer.StorageAt(t); !onStorage {
+					ecsContainer.Terrain().PlaceSite(t, p.Kind)
+				}
 			}
 		}
 		if r := input.RemoveBlueprint; r.Remove {

@@ -18,8 +18,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// Build mode: the blueprint chosen, to be put down with a click, or storage, marked out by dragging rectangles, and the
-// panel to choose from in the bottom right corner while it's on, with storage after the blueprints. Like the inventory
+// Build mode: the blueprint chosen, put down with a click or along the outline of a dragged rectangle, or storage,
+// marked out by dragging rectangles, and the panel to choose from in the bottom right corner while it's on, with
+// storage after the blueprints. Like the inventory
 // menu, it only changes what's drawn and what a click sends. Positions on the panel are in UI pixels.
 type BlueprintPlacer struct {
 	kind     data.BlueprintEnum
@@ -148,9 +149,8 @@ func (p *BlueprintPlacer) DrawPanel(
 	return nil
 }
 
-// Starts dragging out storage, while storage is chosen
 func (p *BlueprintPlacer) Press(tile utils.Vec2i) {
-	if p.storage {
+	if p.IsActive() {
 		p.dragging, p.start = true, tile
 	}
 }
@@ -160,19 +160,50 @@ func (p *BlueprintPlacer) IsDragging() bool {
 }
 
 // From where the drag started to tile, whichever way it went
-func (p *BlueprintPlacer) StorageRect(tile utils.Vec2i) (first, last utils.Vec2i) {
+func (p *BlueprintPlacer) Rect(tile utils.Vec2i) (first, last utils.Vec2i) {
 	return utils.Vec2i{X: min(p.start.X, tile.X), Y: min(p.start.Y, tile.Y)},
 		utils.Vec2i{X: max(p.start.X, tile.X), Y: max(p.start.Y, tile.Y)}
 }
 
 // Ends the drag at tile, marking the rectangle out as storage, or taking away all storage it touches
 func (p *BlueprintPlacer) Release(tile utils.Vec2i, erase bool) ecs.StorageMarking {
-	if !p.dragging {
+	if !p.dragging || !p.storage {
 		return ecs.StorageMarking{}
 	}
 	p.dragging = false
-	first, last := p.StorageRect(tile)
+	first, last := p.Rect(tile)
 	return ecs.StorageMarking{Mark: true, Erase: erase, First: first, Last: last}
+}
+
+// Ends the drag at tile, with the chosen blueprint on each of the tiles it goes on that pass the filter
+func (p *BlueprintPlacer) ReleaseBlueprints(tile utils.Vec2i, fits func(utils.Vec2i) bool) ecs.BlueprintPlacement {
+	if !p.dragging || p.storage {
+		return ecs.BlueprintPlacement{}
+	}
+	tiles := slices.DeleteFunc(p.BlueprintTiles(tile), func(t utils.Vec2i) bool { return !fits(t) })
+	p.dragging = false
+	if len(tiles) == 0 {
+		return ecs.BlueprintPlacement{}
+	}
+	return ecs.BlueprintPlacement{Kind: p.kind, Tiles: tiles}
+}
+
+// Where blueprints go for a drag to tile, or for the tile itself without one: the outline of the rectangle, which is a
+// line when it's a tile across, row by row
+func (p *BlueprintPlacer) BlueprintTiles(tile utils.Vec2i) []utils.Vec2i {
+	if !p.dragging {
+		return []utils.Vec2i{tile}
+	}
+	first, last := p.Rect(tile)
+	tiles := []utils.Vec2i{}
+	for y := first.Y; y <= last.Y; y++ {
+		for x := first.X; x <= last.X; x++ {
+			if y == first.Y || y == last.Y || x == first.X || x == last.X {
+				tiles = append(tiles, utils.Vec2i{X: x, Y: y})
+			}
+		}
+	}
+	return tiles
 }
 
 // The storage being dragged out to tile: purple if it can go there, and red if it can't or it's erasing
@@ -184,16 +215,17 @@ func (p *BlueprintPlacer) DrawStorage(dst *ebiten.Image, camera utils.Vec2f, til
 	if !valid {
 		c = data.AreaUnmarkColor
 	}
-	first, last := p.StorageRect(tile)
+	first, last := p.Rect(tile)
 	fillTiles(dst, camera, first, last, c)
 }
 
-// The finished tile as a blueprint on the tile: blue if it can go there and red if it can't
+// The finished tile as a blueprint on each tile it would go on for the cursor's tile: blue where it fits and red where
+// it doesn't
 func (p *BlueprintPlacer) Draw(
 	dst *ebiten.Image,
 	camera utils.Vec2f,
 	tile utils.Vec2i,
-	valid bool,
+	fits func(utils.Vec2i) bool,
 	atlas *ecs.BlueprintAtlas,
 	assets *assetmanager.AssetManager,
 ) error {
@@ -207,10 +239,12 @@ func (p *BlueprintPlacer) Draw(
 	}
 
 	img := asset.Frames[0]
-	pos := utils.TilePosToWorldPos(tile)
-	op := &colorm.DrawImageOptions{}
-	op.GeoM.Translate(pos.X-camera.X-float64(img.Bounds().Dx())/2, pos.Y-camera.Y-float64(img.Bounds().Dy())/2)
-	colorm.DrawImage(dst, img, blueprintColorM(valid), op)
+	for _, t := range p.BlueprintTiles(tile) {
+		pos := utils.TilePosToWorldPos(t)
+		op := &colorm.DrawImageOptions{}
+		op.GeoM.Translate(pos.X-camera.X-float64(img.Bounds().Dx())/2, pos.Y-camera.Y-float64(img.Bounds().Dy())/2)
+		colorm.DrawImage(dst, img, blueprintColorM(fits(t)), op)
+	}
 	return nil
 }
 

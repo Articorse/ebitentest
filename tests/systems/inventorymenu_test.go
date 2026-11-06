@@ -399,8 +399,8 @@ func TestStorageIsDraggedOutInBuildModeAndStaysChosen(t *testing.T) {
 	var placer drawsystem.BlueprintPlacer
 	placer.Start(data.Blueprint_Planks)
 	placer.Press(utils.Vec2i{})
-	if placer.IsDragging() {
-		t.Fatal("dragging started with a blueprint chosen")
+	if m := placer.Release(utils.Vec2i{X: 2}, false); m.Mark {
+		t.Fatalf("a drag with a blueprint chosen marked out storage: %+v", m)
 	}
 
 	placer.StartStorage()
@@ -425,5 +425,57 @@ func TestStorageIsDraggedOutInBuildModeAndStaysChosen(t *testing.T) {
 	placer.Toggle(testutil.Blueprints(t))
 	if placer.IsActive() || placer.IsDragging() {
 		t.Fatal("toggling build mode off left it on or dragging")
+	}
+}
+
+func TestBlueprintsGoAlongTheOutlineOfWhatsDraggedOut(t *testing.T) {
+	var placer drawsystem.BlueprintPlacer
+	everywhere := func(utils.Vec2i) bool { return true }
+	v := func(x, y int) utils.Vec2i { return utils.Vec2i{X: x, Y: y} }
+	placer.Press(v(0, 0))
+	if placer.IsDragging() {
+		t.Fatal("dragging started outside build mode")
+	}
+	placer.Start(data.Blueprint_Planks)
+	if tiles := placer.BlueprintTiles(v(3, 4)); !slices.Equal(tiles, []utils.Vec2i{v(3, 4)}) {
+		t.Fatalf("without a drag, a blueprint would go on %v, want just the cursor's tile", tiles)
+	}
+
+	for _, c := range []struct {
+		what     string
+		from, to utils.Vec2i
+		want     []utils.Vec2i
+	}{
+		{"a click", v(2, 2), v(2, 2), []utils.Vec2i{v(2, 2)}},
+		{"a drag along a row, backwards", v(4, 1), v(1, 1), []utils.Vec2i{v(1, 1), v(2, 1), v(3, 1), v(4, 1)}},
+		{"a drag down a column", v(0, 0), v(0, 2), []utils.Vec2i{v(0, 0), v(0, 1), v(0, 2)}},
+		{"a 3×3 drag", v(2, 2), v(0, 0), []utils.Vec2i{v(0, 0), v(1, 0), v(2, 0), v(0, 1), v(2, 1), v(0, 2), v(1, 2), v(2, 2)}},
+	} {
+		placer.Press(c.from)
+		if tiles := placer.BlueprintTiles(c.to); !slices.Equal(tiles, c.want) {
+			t.Fatalf("%s would put blueprints on %v, want %v", c.what, tiles, c.want)
+		}
+		if p := placer.ReleaseBlueprints(c.to, everywhere); p.Kind != data.Blueprint_Planks || !slices.Equal(p.Tiles, c.want) {
+			t.Fatalf("%s put down %+v, want planks on %v", c.what, p, c.want)
+		}
+	}
+
+	placer.Press(v(0, 0))
+	notTheCorner := func(t utils.Vec2i) bool { return t != v(1, 0) }
+	if p := placer.ReleaseBlueprints(v(1, 0), notTheCorner); !slices.Equal(p.Tiles, []utils.Vec2i{v(0, 0)}) {
+		t.Fatalf("a drag over a tile a blueprint doesn't fit on put down %+v, want just the one it fits on", p)
+	}
+	placer.Press(v(0, 0))
+	if p := placer.ReleaseBlueprints(v(0, 0), func(utils.Vec2i) bool { return false }); p.Kind != data.Blueprint_None {
+		t.Fatalf("a click where nothing fits put down %+v", p)
+	}
+	if p := placer.ReleaseBlueprints(v(0, 0), everywhere); p.Kind != data.Blueprint_None {
+		t.Fatalf("releasing without a drag put down %+v", p)
+	}
+
+	placer.StartStorage()
+	placer.Press(v(0, 0))
+	if p := placer.ReleaseBlueprints(v(2, 0), everywhere); p.Kind != data.Blueprint_None || len(p.Tiles) > 0 {
+		t.Fatalf("a storage drag put down blueprints: %+v", p)
 	}
 }

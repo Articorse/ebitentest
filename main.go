@@ -603,9 +603,10 @@ func (g *game) updateBlueprintCopy() {
 	g.startedBuilding()
 }
 
-// A click on the panel chooses what to build. A blueprint is put down where it fits with a click anywhere else, as the
-// next tick's input, which leaves build mode unless shift is held. Storage is marked out by dragging, like an area,
-// and taken away with shift held as the drag ends, staying in build mode. B, escape or a right click leaves it.
+// A click on the panel chooses what to build. Elsewhere, blueprints are put down where they fit as a drag ends, on the
+// tile clicked or along the outline of the rectangle dragged out, as the next tick's input, which leaves build mode
+// unless shift is held. Storage is marked out by dragging, like an area, and taken away with shift held as the drag
+// ends, staying in build mode. B, escape or a right click leaves it.
 func (g *game) updateBlueprintPlacer() {
 	if !g.placer.IsActive() {
 		return
@@ -616,12 +617,7 @@ func (g *game) updateBlueprintPlacer() {
 		return
 	}
 	if g.placer.IsDragging() && !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-		erase := ebiten.IsKeyPressed(ebiten.KeyShift)
-		first, last := g.placer.StorageRect(g.cursorTile())
-		marking := g.placer.Release(g.cursorTile(), erase)
-		if !g.pendingStorage.Mark && (erase || g.canPlaceStorage(first, last)) {
-			g.pendingStorage = marking
-		}
+		g.releaseBuildDrag()
 	}
 	if !inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		return
@@ -637,17 +633,25 @@ func (g *game) updateBlueprintPlacer() {
 		}
 		return
 	}
-	kind, ok := g.placer.Kind()
-	if !ok {
-		g.placer.Press(g.cursorTile())
+	g.placer.Press(g.cursorTile())
+}
+
+func (g *game) releaseBuildDrag() {
+	tile, shift := g.cursorTile(), ebiten.IsKeyPressed(ebiten.KeyShift)
+	if g.placer.IsStorage() {
+		first, last := g.placer.Rect(tile)
+		marking := g.placer.Release(tile, shift)
+		if !g.pendingStorage.Mark && (shift || g.canPlaceStorage(first, last)) {
+			g.pendingStorage = marking
+		}
 		return
 	}
-	tile := g.cursorTile()
-	if g.pendingPlacement.Kind != data.Blueprint_None || !g.canPlaceBlueprint(tile) {
+	placement := g.placer.ReleaseBlueprints(tile, g.canPlaceBlueprint)
+	if g.pendingPlacement.Kind != data.Blueprint_None || placement.Kind == data.Blueprint_None {
 		return
 	}
-	g.pendingPlacement = ecs.BlueprintPlacement{Kind: kind, Tile: tile}
-	if !ebiten.IsKeyPressed(ebiten.KeyShift) {
+	g.pendingPlacement = placement
+	if !shift {
 		g.placer.Stop()
 	}
 }
@@ -861,6 +865,12 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		log.Println("error while drawing chunks: ", err)
 	}
 
+	// On the ground, under what's on it and the light and fog, except while building or marking out areas, when it's
+	// drawn above the fog with them
+	inStorage := func(t utils.Vec2i) bool { _, ok := g.ecs.StorageAt(t); return ok }
+	if !g.placer.IsActive() && !g.areaPainter.IsActive() {
+		drawsystem.DrawStorageAreas(world, g.ecs.Camera, inStorage)
+	}
 	window := drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world))
 	staticSprites := append(
 		g.chunkContainer.FeatureSprites(window, g.ecs.TickIdx*data.TickMs),
@@ -892,7 +902,6 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	// use what's in hand, so its target isn't shown, and nor is the blueprint under the panel, which a click would
 	// choose from rather than put down.
 	_, placing := g.placer.Kind()
-	inStorage := func(t utils.Vec2i) bool { _, ok := g.ecs.StorageAt(t); return ok }
 	if g.areaPainter.IsActive() {
 		for _, area := range drawsystem.Areas() {
 			drawsystem.DrawArea(world, g.ecs.Camera, area, g.chunkContainer.InArea)
@@ -904,15 +913,15 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	}
 	if g.areaPainter.IsActive() {
 		g.areaPainter.Draw(world, g.ecs.Camera, g.cursorTile(), ebiten.IsKeyPressed(ebiten.KeyShift))
-	} else if g.placer.IsDragging() {
-		first, last := g.placer.StorageRect(g.cursorTile())
+	} else if g.placer.IsStorage() && g.placer.IsDragging() {
+		first, last := g.placer.Rect(g.cursorTile())
 		erase := ebiten.IsKeyPressed(ebiten.KeyShift)
 		g.placer.DrawStorage(world, g.ecs.Camera, g.cursorTile(), !erase && g.canPlaceStorage(first, last))
 	} else if g.placer.IsActive() {
 		tile := g.cursorTile()
 		overPanel := g.placer.Covers(g.uiCursor(), g.screenSize.Multiply(1/g.uiScale), g.ecs.BlueprintAtlas(), g.assetmanager)
-		if placing && !overPanel {
-			if err := g.placer.Draw(world, g.ecs.Camera, tile, g.canPlaceBlueprint(tile), g.ecs.BlueprintAtlas(), g.assetmanager); err != nil {
+		if placing && (!overPanel || g.placer.IsDragging()) {
+			if err := g.placer.Draw(world, g.ecs.Camera, tile, g.canPlaceBlueprint, g.ecs.BlueprintAtlas(), g.assetmanager); err != nil {
 				log.Println("error while drawing the blueprint being placed: ", err)
 			}
 		}
