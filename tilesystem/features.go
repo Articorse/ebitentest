@@ -247,6 +247,28 @@ func (cc *ChunkContainer) featureOn(t utils.Vec2i) (*chunk, featureDef, bool) {
 	return c, def, ok
 }
 
+func (cc *ChunkContainer) FeaturesIn(first, last utils.Vec2i, feature data.FeatureEnum) []utils.Vec2i {
+	tiles := []utils.Vec2i{}
+	for cy := floorDiv(first.Y, data.ChunkSize); cy <= floorDiv(last.Y, data.ChunkSize); cy++ {
+		for cx := floorDiv(first.X, data.ChunkSize); cx <= floorDiv(last.X, data.ChunkSize); cx++ {
+			c, ok := cc.chunks[utils.Vec2i{X: cx, Y: cy}]
+			if !ok {
+				continue
+			}
+			for t, f := range c.features {
+				if f == feature && t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y {
+					tiles = append(tiles, t)
+				}
+			}
+		}
+	}
+	// Map order differs from run to run, and what colonists choose mustn't
+	slices.SortFunc(tiles, func(a, b utils.Vec2i) int {
+		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
+	})
+	return tiles
+}
+
 func (cc *ChunkContainer) FeatureAt(t utils.Vec2i) (data.FeatureEnum, bool) {
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	if !ok {

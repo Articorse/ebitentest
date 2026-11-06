@@ -1,6 +1,7 @@
 package tilesystem_test
 
 import (
+	"ebittest/content/abilities"
 	"ebittest/content/templates"
 	"ebittest/data"
 	"ebittest/ecs/common"
@@ -57,6 +58,10 @@ func TestAColonistStartsAtTheColonyWithThePlayersBodyAndAStackOfWood(t *testing.
 	}
 	if _, inHand := inv.HotbarItem(inv.Selected()); inHand || inv.HotbarSlotOf(wood) != -1 {
 		t.Fatal("the colonist's wood is on its hotbar, which it only uses for what it's using")
+	}
+	axe, _ := inv.Slot(inv.Capacity() - 1)
+	if eq, ok := s.ECS.Equipments.Get(axe); !ok || !eq.HasAbility(abilities.Ability_Slash) || inv.HotbarSlotOf(axe) != -1 {
+		t.Fatal("the colonist doesn't start with an axe in its last slot, off its hotbar")
 	}
 }
 

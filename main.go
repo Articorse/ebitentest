@@ -225,7 +225,7 @@ func (g *game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
 		g.ecs.CameraFollow = !g.ecs.CameraFollow
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) || g.inventoryMenu.IsOpen() && inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.inventoryMenu.Toggle()
 		if g.inventoryMenu.IsOpen() {
 			g.placer.Stop()

@@ -49,6 +49,9 @@ func (openGround) Site(utils.Vec2i) (ecs.ConstructionSite, bool) {
 func (openGround) SitesIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i        { return nil }
 func (openGround) InArea(data.AreaEnum, utils.Vec2i) bool                { return false }
 func (openGround) SetArea(data.AreaEnum, utils.Vec2i, utils.Vec2i, bool) {}
+func (openGround) FeaturesIn(utils.Vec2i, utils.Vec2i, data.FeatureEnum) []utils.Vec2i {
+	return nil
+}
 func (openGround) RemoveSite(utils.Vec2i) bool                           { return false }
 func (openGround) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
 func (openGround) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }

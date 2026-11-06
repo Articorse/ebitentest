@@ -5,8 +5,10 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/ecs/systems/abilitysystem"
 	"ebittest/ecs/systems/inputsystem"
 	"ebittest/ecs/systems/movementsystem"
+	"ebittest/ecs/systems/timersystem"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"os"
@@ -80,7 +82,8 @@ func groundAwayWhere(
 	return utils.Vec2i{}
 }
 
-// Runs every input source, the inputs and movement, which is all a colonist needs, until done or the ticks run out
+// Runs every input source, the inputs, movement, timers, abilities and what hits the terrain, which is all a colonist needs, until
+// done or the ticks run out
 func live(t *testing.T, s *testutil.Session, ticks int, done func() bool) bool {
 	t.Helper()
 	for range ticks {
@@ -100,6 +103,13 @@ func live(t *testing.T, s *testutil.Session, ticks int, done func() bool) bool {
 		if err := movementsystem.Tick(s.ECS); err != nil {
 			t.Fatal(err)
 		}
+		if err := timersystem.Tick(s.ECS); err != nil {
+			t.Fatal(err)
+		}
+		if err := abilitysystem.Tick(s.ECS); err != nil {
+			t.Fatal(err)
+		}
+		touchTerrain(t, s)
 		s.Tick(1)
 		if done() {
 			return true
@@ -122,7 +132,9 @@ func woodCarried(s *testutil.Session, colonist common.EntityId) int {
 	n := 0
 	for i := range inv.Capacity() {
 		if item, ok := inv.Slot(i); ok {
-			n += countOf(s, item)
+			if comp, ok := s.ECS.Items.Get(item); ok && comp.Kind() == data.Item_Wood {
+				n += comp.Count()
+			}
 		}
 	}
 	return n

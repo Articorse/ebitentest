@@ -4,6 +4,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs/common"
 	"fmt"
+	"slices"
 )
 
 type EquipableSlotEnum uint8
@@ -37,6 +38,10 @@ func NewEquipmentComponent(slot EquipableSlotEnum, abilities [data.MaxEquipmentA
 		slot:      slot,
 		abilities: abis,
 	}
+}
+
+func (x *Equipment) HasAbility(id AbilityEnum) bool {
+	return slices.ContainsFunc(x.abilities[:], func(a EntityAbility) bool { return a.Def.AbilityId == id })
 }
 
 func (x *Equipment) Fits(slot EquipSlotEnum) bool {

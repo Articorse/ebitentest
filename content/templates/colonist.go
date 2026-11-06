@@ -8,8 +8,8 @@ import (
 	"fmt"
 )
 
-// A colonist at the colony center, tethered to it, with the player's body and a stack of wood. It only picks up what
-// it's told to, and only uses its hotbar for what it's using at the moment, so it starts with an empty hand.
+// A colonist at the colony center, tethered to it, with the player's body, a stack of wood and an axe. It only picks up
+// what it's told to, and only uses its hotbar for what it's using at the moment, so it starts with an empty hand.
 func SpawnColonist(ecsContainer *ecs.ECSContainer, colony common.EntityId) (common.EntityId, error) {
 	pos, err := ecsContainer.WorldPos(colony)
 	if err != nil {
@@ -55,6 +55,14 @@ func SpawnColonist(ecsContainer *ecs.ECSContainer, colony common.EntityId) (comm
 	}
 	if err := ecsContainer.PutInInventory(colonist, 0, wood); err != nil {
 		return -1, fmt.Errorf("error giving colonist %d its wood: %w", colonist, err)
+	}
+	axe, err := spawnAxe(ecsContainer, pos)
+	if err != nil {
+		return -1, fmt.Errorf("error spawning the axe of colonist %d: %w", colonist, err)
+	}
+	// In the last slot, out of the way of what it picks up
+	if err := ecsContainer.PutInInventory(colonist, data.ColonistInventorySlots-1, axe); err != nil {
+		return -1, fmt.Errorf("error giving colonist %d its axe: %w", colonist, err)
 	}
 	return colonist, nil
 }

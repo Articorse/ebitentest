@@ -2,6 +2,7 @@ package inputsources
 
 import (
 	"cmp"
+	"ebittest/content/abilities"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -20,6 +21,8 @@ const (
 	Colonist_Construct
 	// Takes what a site still needs to it
 	Colonist_Deliver
+	// Fells a tree on the harvest area with its axe
+	Colonist_Chop
 )
 
 // Saved with what it's doing and where, so that a loaded colonist carries on as it was
@@ -27,7 +30,7 @@ type InputColonistParams struct {
 	// Whose sites it works on, only inside its bounds
 	Colony common.EntityId
 	State  ColonistState
-	// The site it's working on or delivering to
+	// The site it's working on or delivering to, or the tree it's felling
 	Target utils.Vec2i
 	// Where it's headed to reach the target from
 	Stand utils.Vec2i
@@ -35,21 +38,21 @@ type InputColonistParams struct {
 	NextPlanTick uint64
 
 	walk
-	// What it last found no way to build or deliver to, for each, which isn't looked for again until something changes,
-	// since a path that's never found is searched for until the search gives up. Not saved, so a loaded colonist looks
-	// once.
-	fruitless [2]*planKey
+	// What it last found no way to build, deliver to or fell, for each, which isn't looked for again until something
+	// changes, since a path that's never found is searched for until the search gives up. Not saved, so a loaded
+	// colonist looks once.
+	fruitless [3]*planKey
 }
 
 // Where it is isn't part of it, since walking can't take it anywhere it couldn't reach before
 type planKey struct {
-	sightVersion       uint64
-	construct, deliver []utils.Vec2i
+	sightVersion             uint64
+	construct, deliver, chop []utils.Vec2i
 }
 
 func (k *planKey) equal(o planKey) bool {
 	return k != nil && k.sightVersion == o.sightVersion &&
-		slices.Equal(k.construct, o.construct) && slices.Equal(k.deliver, o.deliver)
+		slices.Equal(k.construct, o.construct) && slices.Equal(k.deliver, o.deliver) && slices.Equal(k.chop, o.chop)
 }
 
 func (InputColonistParams) IsInputParams() {}
@@ -60,16 +63,16 @@ func (p *InputColonistParams) Copy() ecs.InputParams {
 	}
 	c := *p
 	c.path = slices.Clone(p.path)
-	c.fruitless = [2]*planKey{}
+	c.fruitless = [3]*planKey{}
 	return &c
 }
 
-// Builds the closest site on the colony's home that has everything delivered, and otherwise delivers to the closest
-// that it has all that's still needed for, going by walking distance among the few closest as the crow flies, so that
-// a site it can't get to doesn't hold it up. It keeps to a site until it's done or no longer needs it, looking for
-// building now and then while delivering. It acts from where it's in reach and sees the site, but never from on it,
-// since a tile can't be finished with someone standing in it. What it uses goes on the first hotbar slot as it uses
-// it, and comes off it to build with an empty hand.
+// Builds the closest site on the colony's home that has everything delivered, otherwise delivers to the closest that
+// it has all that's still needed for, and otherwise fells the closest tree on the harvest area, going by walking
+// distance among the few closest as the crow flies, so that one it can't get to doesn't hold it up. It keeps to its
+// target until it's done or no longer worth it, looking for something more important now and then. It acts from where
+// it's in reach and sees the target, but never from on a site, since a tile can't be finished with someone standing in
+// it. What it uses goes on the first hotbar slot as it uses it, and comes off it to build with an empty hand.
 func ColonistInputSource(
 	entityId common.EntityId,
 	tick uint64,
@@ -105,7 +108,7 @@ func ColonistInputSource(
 	}
 
 	target := utils.TilePosToWorldPos(p.Target)
-	if _, inReach := ecsContainer.AimedTileInReach(selfPos, target, constructor.RangeTiles()); inReach && self != p.Target {
+	if _, inReach := ecsContainer.AimedTileInReach(selfPos, target, p.rangeTiles(constructor)); inReach && self != p.Target {
 		p.path = nil
 		return p.use(entityId, target, ecsContainer), nil
 	}
@@ -117,7 +120,18 @@ func ColonistInputSource(
 	return input, nil
 }
 
+func (p *InputColonistParams) rangeTiles(constructor *ecs.Constructor) int {
+	if p.State == Colonist_Chop {
+		return data.ColonistChopRangeTiles
+	}
+	return constructor.RangeTiles()
+}
+
 func (p *InputColonistParams) stillWorthIt(e common.EntityId, ecsContainer *ecs.ECSContainer) bool {
+	if p.State == Colonist_Chop {
+		_, hasAxe := axeSlot(e, ecsContainer)
+		return hasAxe && isTree(p.Target, ecsContainer) && ecsContainer.Terrain().InArea(data.Area_Harvest, p.Target)
+	}
 	site, def, ok := siteAt(p.Target, ecsContainer)
 	switch {
 	case !ok || !ecsContainer.Terrain().InArea(data.Area_Home, p.Target):
@@ -127,6 +141,26 @@ func (p *InputColonistParams) stillWorthIt(e common.EntityId, ecsContainer *ecs.
 	default:
 		return !site.Supplied(def) && canSupply(e, site, def, ecsContainer)
 	}
+}
+
+func isTree(t utils.Vec2i, ecsContainer *ecs.ECSContainer) bool {
+	return len(ecsContainer.Terrain().FeaturesIn(t, t, data.Feature_Tree)) == 1
+}
+
+// The inventory slot of what it fells trees with
+func axeSlot(e common.EntityId, ecsContainer *ecs.ECSContainer) (int, bool) {
+	inv, ok := ecsContainer.Inventories.Get(e)
+	if !ok {
+		return -1, false
+	}
+	for i := range inv.Capacity() {
+		if item, ok := inv.Slot(i); ok {
+			if eq, ok := ecsContainer.Equipments.Get(item); ok && eq.HasAbility(abilities.Ability_Slash) {
+				return i, true
+			}
+		}
+	}
+	return -1, false
 }
 
 func siteAt(t utils.Vec2i, ecsContainer *ecs.ECSContainer) (ecs.ConstructionSite, ecs.BlueprintDef, bool) {
@@ -164,7 +198,8 @@ func carried(e common.EntityId, kind data.ItemEnum, ecsContainer *ecs.ECSContain
 	return n
 }
 
-// Building comes first, and delivering only while there's none, each to the site closest to walk to
+// Building comes first, delivering only while there's none, and felling only while there's neither, each to what's
+// closest to walk to
 func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTiles int, ecsContainer *ecs.ECSContainer) {
 	first, last, err := ecsContainer.ColonyBounds(p.Colony)
 	if err != nil {
@@ -184,25 +219,40 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 		}
 	}
 
+	chop := []utils.Vec2i{}
+	if _, hasAxe := axeSlot(e, ecsContainer); hasAxe {
+		for _, t := range ecsContainer.Terrain().FeaturesIn(first, last, data.Feature_Tree) {
+			if ecsContainer.Terrain().InArea(data.Area_Harvest, t) {
+				chop = append(chop, t)
+			}
+		}
+	}
+
 	sightTerrain, versioned := ecsContainer.Terrain().(ecs.SightTerrain)
-	key := planKey{construct: construct, deliver: deliver}
+	key := planKey{construct: construct, deliver: deliver, chop: chop}
 	if versioned {
 		key.sightVersion = sightTerrain.SightVersion()
 	}
 
 	for i, job := range []struct {
-		state ColonistState
-		sites []utils.Vec2i
-	}{{Colonist_Construct, construct}, {Colonist_Deliver, deliver}} {
-		if p.State == Colonist_Deliver && job.state == Colonist_Deliver {
+		state      ColonistState
+		targets    []utils.Vec2i
+		rangeTiles int
+	}{
+		{Colonist_Construct, construct, rangeTiles},
+		{Colonist_Deliver, deliver, rangeTiles},
+		{Colonist_Chop, chop, data.ColonistChopRangeTiles},
+	} {
+		// It keeps to what it's doing when nothing more important turned up
+		if p.State == job.state {
 			return
 		}
 		if versioned && p.fruitless[i].equal(key) {
 			continue
 		}
-		if target, stand, path, ok := nearestSite(self, job.sites, rangeTiles, first, last, ecsContainer); ok {
+		if target, stand, path, ok := nearestSite(self, job.targets, job.rangeTiles, first, last, ecsContainer); ok {
 			p.State, p.Target, p.Stand = job.state, target, stand
-			p.fruitless = [2]*planKey{}
+			p.fruitless = [3]*planKey{}
 			p.follow(self, path)
 			return
 		}
@@ -211,9 +261,9 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 	p.State = Colonist_Idle
 }
 
-// Of the few sites closest as the crow flies, the one cheapest to walk to somewhere it can be worked on from, which
-// keeps the searching to a few paths heading for their sites, while a site that's close but hard to get to still loses
-// out to one a little further that isn't. A path is given up on after data.PathMaxExpandedTiles, so a site far enough
+// Of the few sites, or trees, closest as the crow flies, the one cheapest to walk to somewhere it can be worked on
+// from, which keeps the searching to a few paths heading for them, while one that's close but hard to get to still
+// loses out to one a little further that isn't. A path is given up on after data.PathMaxExpandedTiles, so a site far enough
 // round a maze can be missed.
 func nearestSite(
 	self utils.Vec2i,
@@ -276,9 +326,13 @@ func standSpots(site utils.Vec2i, rangeTiles int, inColony func(utils.Vec2i) boo
 	return spots
 }
 
-// What's needed goes on the first hotbar slot and is delivered all at once; to build, the slot is emptied
+// What's needed, or the axe, goes on the first hotbar slot, and what's needed is delivered all at once; to build, the
+// slot is emptied
 func (p *InputColonistParams) use(e common.EntityId, target utils.Vec2f, ecsContainer *ecs.ECSContainer) ecs.InputState {
 	input := p.emptyHand(e, ecsContainer)
+	if slot, ok := axeSlot(e, ecsContainer); ok && p.State == Colonist_Chop {
+		input.Inventory = ecs.InventoryAction{Kind: ecs.InventoryAction_Bind, From: slot, To: 0}
+	}
 	if p.State == Colonist_Deliver {
 		input.Inventory = ecs.InventoryAction{}
 		if slot, ok := p.neededSlot(e, ecsContainer); ok {

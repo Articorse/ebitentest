@@ -33,4 +33,7 @@ const (
 	ColonistPlanEveryTicks = TPS
 	// How many of the sites closest as the crow flies it finds paths to, choosing the one cheapest to walk to
 	ColonistJobCandidates = 3
+	// Chopping is done from next to a tree, not diagonally, where an axe swung from the far side of the tile can fall
+	// short of it
+	ColonistChopRangeTiles = 1
 )

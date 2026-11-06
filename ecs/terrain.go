@@ -53,6 +53,8 @@ type Terrain interface {
 	// unless it mustn't be finished yet, such as while something is in the tile's way. Worked is false if there's no such
 	// site, or the work would finish one that mustn't be.
 	BuildSite(t utils.Vec2i, work int, canFinish bool) (worked, built bool)
+	// The tiles from first to last that are in the simulation with the feature on them, in tile order, row by row
+	FeaturesIn(first, last utils.Vec2i, feature data.FeatureEnum) []utils.Vec2i
 	// Where colonists look for work and what work, which the player marks out, and finished building spreads home
 	InArea(area data.AreaEnum, t utils.Vec2i) bool
 	// Puts the tiles from first to last in the area, or takes them out of it
@@ -143,6 +145,9 @@ func (noTerrain) RemoveSite(utils.Vec2i) bool                           { return
 func (noTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
 func (noTerrain) InArea(data.AreaEnum, utils.Vec2i) bool                { return false }
 func (noTerrain) SetArea(data.AreaEnum, utils.Vec2i, utils.Vec2i, bool) {}
+func (noTerrain) FeaturesIn(utils.Vec2i, utils.Vec2i, data.FeatureEnum) []utils.Vec2i {
+	return nil
+}
 func (noTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {
