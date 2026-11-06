@@ -253,6 +253,10 @@ func (x *ECSContainer) PickUpItem(collector, item common.EntityId) (bool, error)
 		t.SetLocalRotation(0)
 	}
 
+	// What only picks up what it's told to uses its hotbar for what it's using at the moment, so it's left to bind it
+	if inv.ManualPickup() {
+		return true, nil
+	}
 	if err := x.bindToFreeHotbarSlot(collector, item); err != nil {
 		return false, err
 	}

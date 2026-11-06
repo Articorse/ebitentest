@@ -72,6 +72,12 @@ func HandleInputs(
 			ecsContainer.MarkArea(a.Area, a.First, a.Last, !a.Erase)
 		}
 
+		if p := input.PickUp; p.PickUp {
+			if err := pickUpOnPurpose(e, p.Item, ecsContainer); err != nil {
+				log.Printf("error picking up item %d for entity %d: %v\n", p.Item, e, err)
+			}
+		}
+
 		if err := applyInventoryAction(e, input.Inventory, ecsContainer); err != nil {
 			log.Printf("error applying inventory action %+v of entity %d: %v\n", input.Inventory, e, err)
 		}
@@ -167,4 +173,24 @@ func applyInventoryAction(e common.EntityId, action ecs.InventoryAction, ecsCont
 		return ecsContainer.BindHotbar(e, action.To, -1)
 	}
 	return nil
+}
+
+// From further than walking over it picks an item up, since it's headed for rather than walked over
+func pickUpOnPurpose(e, item common.EntityId, ecsContainer *ecs.ECSContainer) error {
+	if !ecsContainer.HasEntity(item) {
+		return nil
+	}
+	pos, err := ecsContainer.WorldPos(e)
+	if err != nil {
+		return err
+	}
+	itemPos, err := ecsContainer.WorldPos(item)
+	if err != nil {
+		return err
+	}
+	if d := itemPos.Subtract(pos); d.X*d.X+d.Y*d.Y > data.ItemPickUpOnPurposeReachPx*data.ItemPickUpOnPurposeReachPx {
+		return nil
+	}
+	_, err = ecsContainer.PickUpItem(e, item)
+	return err
 }
