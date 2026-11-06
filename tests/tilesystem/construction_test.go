@@ -9,6 +9,7 @@ import (
 	"ebittest/utils"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"testing"
 )
@@ -29,7 +30,8 @@ func siteSprite(t *testing.T, s *testutil.Session, tile utils.Vec2i) (frame int,
 func siteImage(t *testing.T, s *testutil.Session, tile utils.Vec2i) common.StaticSprite {
 	t.Helper()
 	center := utils.TilePosToWorldPos(tile)
-	for _, sprite := range s.Chunks.FeatureSprites([2]utils.Vec2f{center, center}, 0) {
+	bounds := [2]utils.Vec2f{center, center}
+	for _, sprite := range append(s.Chunks.FeatureSprites(bounds, 0), s.Chunks.BlueprintSprites(bounds)...) {
 		if sprite.Pos == center {
 			return sprite
 		}
@@ -262,35 +264,39 @@ func TestABlueprintPutDownAsInputGoesAnywhereItFits(t *testing.T) {
 	}
 }
 
-func TestOnlyTheSitesPassingTheFilterAreGivenForDrawingOverTheFog(t *testing.T) {
+func TestBlueprintsAreDrawnApartFromFeaturesAndOtherSites(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
-	first := bareGrass(t, s)
-	second := findTile(t, s, func(tile utils.Vec2i) bool {
-		return tile.Y > first.Y && s.Chunks.CanPlaceSite(tile)
+	plan := bareGrass(t, s)
+	supplied := findTile(t, s, func(tile utils.Vec2i) bool {
+		return tile.Y > plan.Y && s.Chunks.CanPlaceSite(tile)
 	})
-	third := findTile(t, s, func(tile utils.Vec2i) bool {
-		return tile.Y > second.Y && s.Chunks.CanPlaceSite(tile)
+	later := findTile(t, s, func(tile utils.Vec2i) bool {
+		return tile.Y > supplied.Y && s.Chunks.CanPlaceSite(tile)
 	})
-	for _, tile := range []utils.Vec2i{third, first, second} {
+	for _, tile := range []utils.Vec2i{later, plan, supplied} {
 		if !s.Chunks.PlaceSite(tile, data.Blueprint_Planks) {
 			t.Fatalf("couldn't place a blueprint on %v", tile)
 		}
 	}
+	if s.Chunks.DeliverToSite(supplied, data.Item_Wood, 1) != 1 {
+		t.Fatal("couldn't deliver to a blueprint")
+	}
 
-	bounds := [2]utils.Vec2f{utils.TilePosToWorldPos(first), utils.TilePosToWorldPos(third)}
-	bounds[0].X, bounds[1].X = min(bounds[0].X, utils.TilePosToWorldPos(second).X, bounds[1].X), max(bounds[0].X, utils.TilePosToWorldPos(second).X, bounds[1].X)
-	outOfSight := func(tile utils.Vec2i) bool { return tile != second }
-	sprites := s.Chunks.SiteSprites(bounds, outOfSight)
-	if len(sprites) != 2 || sprites[0].Pos != utils.TilePosToWorldPos(first) || sprites[1].Pos != utils.TilePosToWorldPos(third) {
-		t.Fatalf("the sites out of sight are drawn at %v, want %v then %v", sprites, first, third)
+	xs := []float64{utils.TilePosToWorldPos(plan).X, utils.TilePosToWorldPos(supplied).X, utils.TilePosToWorldPos(later).X}
+	bounds := [2]utils.Vec2f{{X: slices.Min(xs), Y: utils.TilePosToWorldPos(plan).Y}, {X: slices.Max(xs), Y: utils.TilePosToWorldPos(later).Y}}
+	blueprints := s.Chunks.BlueprintSprites(bounds)
+	if len(blueprints) != 2 || blueprints[0].Pos != utils.TilePosToWorldPos(plan) || blueprints[1].Pos != utils.TilePosToWorldPos(later) || !blueprints[0].Ghost {
+		t.Fatalf("the blueprints are drawn as %v, want ghosts on %v then %v", blueprints, plan, later)
 	}
-	if !sprites[0].Ghost {
-		t.Fatal("a blueprint out of sight isn't drawn as one")
+	markerDrawn := false
+	for _, sprite := range s.Chunks.FeatureSprites(bounds, 0) {
+		if sprite.Ghost {
+			t.Fatalf("a blueprint is drawn with the features, at %v", sprite.Pos)
+		}
+		markerDrawn = markerDrawn || sprite.Pos == utils.TilePosToWorldPos(supplied)
 	}
-	everywhere := func(utils.Vec2i) bool { return true }
-	center := utils.TilePosToWorldPos(first)
-	if n := len(s.Chunks.SiteSprites([2]utils.Vec2f{center, center}, everywhere)); n != 1 {
-		t.Fatalf("%d sites are given within the bounds of one tile", n)
+	if !markerDrawn {
+		t.Fatal("a site with something delivered isn't drawn with the features")
 	}
 }

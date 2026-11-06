@@ -336,7 +336,7 @@ func (cc *ChunkContainer) FeatureSprites(bounds [2]utils.Vec2f, ms uint64) []com
 				}
 			}
 			for t, s := range c.sites {
-				if t.X < minTile.X || t.X > maxTile.X || t.Y < minTile.Y || t.Y > maxTile.Y {
+				if t.X < minTile.X || t.X > maxTile.X || t.Y < minTile.Y || t.Y > maxTile.Y || s.isBlueprint() {
 					continue
 				}
 				if sprite, ok := cc.siteSprite(t, s); ok {

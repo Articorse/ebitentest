@@ -835,12 +835,11 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok && !g.fullBright {
 		g.lightOverlay.Draw(world, g.ecs.Camera, vision.Light())
 		g.visionOverlay.Draw(world, g.ecs.Camera, vision, g.drawMemory)
-		// Out of sight, so that what's planned can always be made out. In sight they're under what stands on them.
-		outOfSight := func(t utils.Vec2i) bool { return !vision.CanSee(t) }
-		sites := g.chunkContainer.SiteSprites(drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world)), outOfSight)
-		if err := drawsystem.DrawStaticSprites(world, g.ecs.Camera, sites, g.assetmanager); err != nil {
-			log.Println("error while drawing construction sites out of sight: ", err)
-		}
+	}
+	// Above everything, even what stands on them, so that what's planned looks the same in the light, the dark and the fog
+	blueprints := g.chunkContainer.BlueprintSprites(drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world)))
+	if err := drawsystem.DrawStaticSprites(world, g.ecs.Camera, blueprints, g.assetmanager); err != nil {
+		log.Println("error while drawing blueprints: ", err)
 	}
 
 	// Above the fog, since blueprints and home can go anywhere. A click while placing or marking out home doesn't use
