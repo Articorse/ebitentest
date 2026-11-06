@@ -186,20 +186,14 @@ type InputState struct {
 	PlaceBlueprint BlueprintPlacement
 	// A blueprint taken away, which only works while nothing has been delivered to it
 	RemoveBlueprint BlueprintRemoval
-	// The rectangle of tiles marked as home, or no longer
-	HomeArea HomeMarking
+	// The rectangle of tiles put in an area, or taken out of it
+	Area AreaMarking
 }
 
-type HomeMarkEnum uint8
-
-const (
-	Home_None HomeMarkEnum = iota
-	Home_Mark
-	Home_Unmark
-)
-
-type HomeMarking struct {
-	Mark        HomeMarkEnum
+// No area is no marking
+type AreaMarking struct {
+	Area        data.AreaEnum
+	Erase       bool
 	First, Last utils.Vec2i
 }
 

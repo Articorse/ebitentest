@@ -3,11 +3,18 @@ package data
 import "image/color"
 
 var (
-	// Premultiplied, and faint, since home can cover much of the screen
+	// Premultiplied, and faint, since an area can cover much of the screen
 	HomeAreaColor = color.RGBA{R: 20, G: 60, B: 20, A: 60}
+	// Yellow-orange
+	HarvestAreaColor = color.RGBA{R: 70, G: 45, B: 5, A: 70}
 	// The rectangle being dragged out, marking or unmarking
 	HomeMarkColor   = color.RGBA{R: 30, G: 110, B: 30, A: 110}
-	HomeUnmarkColor = color.RGBA{R: 110, G: 25, B: 25, A: 110}
+	AreaUnmarkColor = color.RGBA{R: 110, G: 25, B: 25, A: 110}
+	// Yellow-orange
+	HarvestMarkColor = color.RGBA{R: 120, G: 80, B: 10, A: 120}
+	// The squares on the area menu's buttons, opaque so they read as the area's colour against the slot
+	HomeButtonColor    = color.RGBA{R: 60, G: 170, B: 60, A: 255}
+	HarvestButtonColor = color.RGBA{R: 230, G: 160, B: 30, A: 255}
 )
 
 const (

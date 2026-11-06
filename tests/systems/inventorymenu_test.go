@@ -335,27 +335,55 @@ func TestASiteOffHomeSaysColonistsLeaveIt(t *testing.T) {
 	}
 }
 
-func TestDraggingOutHomeMarksTheRectangleBetweenItsEnds(t *testing.T) {
-	var p drawsystem.HomePainter
+func TestDraggingOutAnAreaMarksTheRectangleBetweenItsEnds(t *testing.T) {
+	var p drawsystem.AreaPainter
 	p.Press(utils.Vec2i{X: 3, Y: 3})
 	if p.IsDragging() {
-		t.Fatal("dragging started without the painter on")
+		t.Fatal("dragging started without the area menu open")
 	}
 	p.Toggle()
 	p.Press(utils.Vec2i{X: 5, Y: -2})
-	if m := p.Release(utils.Vec2i{X: 1, Y: 4}, false); m != (ecs.HomeMarking{Mark: ecs.Home_Mark, First: utils.Vec2i{X: 1, Y: -2}, Last: utils.Vec2i{X: 5, Y: 4}}) {
+	if m := p.Release(utils.Vec2i{X: 1, Y: 4}, false); m != (ecs.AreaMarking{Area: data.Area_Home, First: utils.Vec2i{X: 1, Y: -2}, Last: utils.Vec2i{X: 5, Y: 4}}) {
 		t.Fatalf("dragging from 5, -2 to 1, 4 marked %+v", m)
 	}
-	if m := p.Release(utils.Vec2i{}, false); m.Mark != ecs.Home_None {
+	if m := p.Release(utils.Vec2i{}, false); m.Area != data.Area_None {
 		t.Fatalf("releasing without dragging marked %+v", m)
 	}
+	p.Choose(data.Area_Harvest)
 	p.Press(utils.Vec2i{})
-	if m := p.Release(utils.Vec2i{}, true); m != (ecs.HomeMarking{Mark: ecs.Home_Unmark}) {
-		t.Fatalf("a shift drag over one tile did %+v, want it unmarked", m)
+	if m := p.Release(utils.Vec2i{}, true); m != (ecs.AreaMarking{Area: data.Area_Harvest, Erase: true}) {
+		t.Fatalf("a shift drag over one tile with harvest chosen did %+v, want it erased from harvest", m)
 	}
 	p.Press(utils.Vec2i{})
 	p.Toggle()
 	if p.IsActive() || p.IsDragging() {
-		t.Fatal("turning the painter off left it on or dragging")
+		t.Fatal("closing the area menu left it open or dragging")
+	}
+}
+
+func TestTheAreaMenuOpensOnHomeWithItsButtonsInTheBottomRightCorner(t *testing.T) {
+	var p drawsystem.AreaPainter
+	assets := testutil.Assets(t)
+	if p.Covers(blueprintSlotCenter(), menuScreen, assets) {
+		t.Fatal("the area menu takes clicks while closed")
+	}
+	if _, ok := p.AreaAt(blueprintSlotCenter(), menuScreen, assets); ok {
+		t.Fatal("an area can be chosen while the menu is closed")
+	}
+
+	p.Toggle()
+	if area, ok := p.Area(); !ok || area != data.Area_Home {
+		t.Fatalf("the area menu opened on %v (%v), want home", area, ok)
+	}
+	home := blueprintSlotCenter().Subtract(utils.Vec2f{X: menuSlotPx + data.HotbarSlotGapPx})
+	if area, ok := p.AreaAt(home, menuScreen, assets); !ok || area != data.Area_Home {
+		t.Fatalf("the first button is %v (%v), want home", area, ok)
+	}
+	if area, ok := p.AreaAt(blueprintSlotCenter(), menuScreen, assets); !ok || area != data.Area_Harvest {
+		t.Fatalf("the last button is %v (%v), want harvest", area, ok)
+	}
+	between := blueprintSlotCenter().Subtract(utils.Vec2f{X: menuSlotPx/2 + data.HotbarSlotGapPx/2.0})
+	if _, ok := p.AreaAt(between, menuScreen, assets); ok || !p.Covers(between, menuScreen, assets) {
+		t.Fatal("the gap between buttons isn't the panel's without being a button")
 	}
 }

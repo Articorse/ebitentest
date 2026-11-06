@@ -68,8 +68,8 @@ func HandleInputs(
 		if r := input.RemoveBlueprint; r.Remove {
 			ecsContainer.Terrain().RemoveSite(r.Tile)
 		}
-		if h := input.HomeArea; h.Mark != ecs.Home_None {
-			ecsContainer.MarkHome(h.First, h.Last, h.Mark == ecs.Home_Mark)
+		if a := input.Area; a.Area != data.Area_None {
+			ecsContainer.MarkArea(a.Area, a.First, a.Last, !a.Erase)
 		}
 
 		if err := applyInventoryAction(e, input.Inventory, ecsContainer); err != nil {

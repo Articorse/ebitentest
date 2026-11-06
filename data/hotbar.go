@@ -14,9 +14,11 @@ const (
 	// The inventory panel's image is cut into nine slices this many pixels across: corners kept as they are, edges
 	// stretched along, and the middle stretched both ways
 	InventoryPanelSlicePx = 3
-	BlueprintColumns      = 4
+	CornerPanelColumns    = 4
 	TooltipTextSizePx     = 8
 	TooltipPaddingPx      = 4
 	// From the cursor to the tooltip's corner, so that the cursor doesn't hide its first letters
 	TooltipOffsetPx = 8
+	// How far each area button's colour is inset from its slot's edges
+	AreaButtonInsetPx = 8
 )

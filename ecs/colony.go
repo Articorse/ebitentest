@@ -43,7 +43,7 @@ func (x *ECSContainer) InColony(e common.EntityId, t utils.Vec2i) bool {
 }
 
 // Within the colonies' bounds only, since colonists never leave them
-func (x *ECSContainer) MarkHome(first, last utils.Vec2i, home bool) {
+func (x *ECSContainer) MarkArea(area data.AreaEnum, first, last utils.Vec2i, in bool) {
 	for _, colony := range x.Colonies.GetEntities() {
 		cFirst, cLast, err := x.ColonyBounds(colony)
 		if err != nil {
@@ -52,7 +52,7 @@ func (x *ECSContainer) MarkHome(first, last utils.Vec2i, home bool) {
 		from := utils.Vec2i{X: max(first.X, cFirst.X), Y: max(first.Y, cFirst.Y)}
 		to := utils.Vec2i{X: min(last.X, cLast.X), Y: min(last.Y, cLast.Y)}
 		if from.X <= to.X && from.Y <= to.Y {
-			x.terrain.SetHome(from, to, home)
+			x.terrain.SetArea(area, from, to, in)
 		}
 	}
 }
@@ -61,7 +61,7 @@ func (x *ECSContainer) MarkHome(first, last utils.Vec2i, home bool) {
 // leaves it as it was
 func (x *ECSContainer) spreadHome(built utils.Vec2i) {
 	r := data.HomeSpreadTiles
-	x.MarkHome(utils.Vec2i{X: built.X - r, Y: built.Y - r}, utils.Vec2i{X: built.X + r, Y: built.Y + r}, true)
+	x.MarkArea(data.Area_Home, utils.Vec2i{X: built.X - r, Y: built.Y - r}, utils.Vec2i{X: built.X + r, Y: built.Y + r}, true)
 }
 
 func (x Colony) Copy() Colony {

@@ -10,6 +10,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"slices"
 	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -47,12 +48,12 @@ func (p *BlueprintPlacer) Kind() (data.BlueprintEnum, bool) {
 	return p.kind, p.kind != data.Blueprint_None
 }
 
-func (p *BlueprintPlacer) layout(screenSize utils.Vec2f, atlas *ecs.BlueprintAtlas, assets *assetmanager.AssetManager) (blueprintLayout, bool) {
+func (p *BlueprintPlacer) layout(screenSize utils.Vec2f, atlas *ecs.BlueprintAtlas, assets *assetmanager.AssetManager) (cornerLayout, bool) {
 	slot, err := assets.GetAsset(common.AssetImageSlot)
 	if _, on := p.Kind(); !on || err != nil {
-		return blueprintLayout{}, false
+		return cornerLayout{}, false
 	}
-	return newBlueprintLayout(screenSize, len(atlas.Kinds()), slot.FrameSize), true
+	return newCornerLayout(screenSize, len(atlas.Kinds()), slot.FrameSize), true
 }
 
 // Whether clicks at the cursor are the panel's rather than the world's
@@ -197,77 +198,18 @@ func DrawTooltip(screen *ebiten.Image, scale float64, cursor utils.Vec2f, lines 
 }
 
 // The panel of blueprints in the bottom right corner of the screen, in UI pixels
-type blueprintLayout struct {
-	slotSize utils.Vec2f
-	panel    image.Rectangle
-	start    utils.Vec2f
-}
-
-func newBlueprintLayout(screenSize utils.Vec2f, count int, slotSize utils.Vec2f) blueprintLayout {
-	cols := min(max(count, 1), data.BlueprintColumns)
-	rows := max(1, (count+data.BlueprintColumns-1)/data.BlueprintColumns)
-	gridW := float64(cols)*slotSize.X + float64(cols-1)*data.HotbarSlotGapPx
-	gridH := float64(rows)*slotSize.Y + float64(rows-1)*data.HotbarSlotGapPx
-	pad := float64(data.InventoryPanelPaddingPx)
-	start := utils.Vec2f{X: screenSize.X - data.InventoryMarginPx - pad - gridW, Y: screenSize.Y - data.InventoryMarginPx - pad - gridH}
-	panel := image.Rect(int(start.X-pad), int(start.Y-pad), int(start.X+gridW+pad), int(start.Y+gridH+pad))
-	return blueprintLayout{slotSize: slotSize, panel: panel, start: start}
-}
-
-func (l blueprintLayout) slotPos(i int) utils.Vec2f {
-	col, row := i%data.BlueprintColumns, i/data.BlueprintColumns
-	return utils.Vec2f{
-		X: l.start.X + float64(col)*(l.slotSize.X+data.HotbarSlotGapPx),
-		Y: l.start.Y + float64(row)*(l.slotSize.Y+data.HotbarSlotGapPx),
-	}
-}
-
-func (l blueprintLayout) slotAt(cursor utils.Vec2f, count int) int {
-	for i := range count {
-		if within(cursor, l.slotPos(i), l.slotSize) {
-			return i
-		}
-	}
-	return -1
-}
-
-func (l blueprintLayout) covers(cursor utils.Vec2f) bool {
-	return within(cursor, utils.Vec2f{X: float64(l.panel.Min.X), Y: float64(l.panel.Min.Y)},
-		utils.Vec2f{X: float64(l.panel.Dx()), Y: float64(l.panel.Dy())})
-}
-
-func drawBlueprintPanel(screen *ebiten.Image, scale float64, l blueprintLayout, atlas *ecs.BlueprintAtlas, chosen data.BlueprintEnum, assets *assetmanager.AssetManager) error {
-	if err := drawNineSlice(screen, scale, l.panel, assets); err != nil {
-		return err
-	}
-	slot, err := assets.GetAsset(common.AssetImageSlot)
-	if err != nil {
-		return err
-	}
-	highlight, err := assets.GetAsset(common.AssetImageSlotHighlight)
-	if err != nil {
-		return err
-	}
-	for i, kind := range atlas.Kinds() {
-		p := l.slotPos(i)
-		bg := slot.Frames[0]
-		if kind == chosen {
-			bg = highlight.Frames[0]
-		}
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(p.X, p.Y)
-		op.GeoM.Scale(scale, scale)
-		screen.DrawImage(bg, op)
-
-		def, _ := atlas.Def(kind)
+func drawBlueprintPanel(screen *ebiten.Image, scale float64, l cornerLayout, atlas *ecs.BlueprintAtlas, chosen data.BlueprintEnum, assets *assetmanager.AssetManager) error {
+	kinds := atlas.Kinds()
+	return drawCornerPanel(screen, scale, l, len(kinds), slices.Index(kinds, chosen), assets, func(i int, p utils.Vec2f) error {
+		def, _ := atlas.Def(kinds[i])
 		icon, err := assets.GetAsset(def.ImageAsset())
 		if err != nil {
-			return fmt.Errorf("error getting the image of blueprint %d: %w", kind, err)
+			return fmt.Errorf("error getting the image of blueprint %d: %w", kinds[i], err)
 		}
-		op = &ebiten.DrawImageOptions{}
+		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(p.X+(l.slotSize.X-icon.FrameSize.X)/2, p.Y+(l.slotSize.Y-icon.FrameSize.Y)/2)
 		op.GeoM.Scale(scale, scale)
 		screen.DrawImage(icon.Frames[0], op)
-	}
-	return nil
+		return nil
+	})
 }

@@ -18,8 +18,8 @@ type chunk struct {
 	featureHealth   map[utils.Vec2i]int
 	sites           map[utils.Vec2i]*constructionSite
 	terrainModified bool
-	// One bit per tile, nil for a chunk with no home in it, since most have none
-	home *[data.ChunkSize * data.ChunkSize / 64]uint64
+	// One bit per tile for each area, nil for a chunk with none of it, since most have none
+	areas [data.AreaCount]*[data.ChunkSize * data.ChunkSize / 64]uint64
 
 	// The tiles of the features that give light, found when they're first asked for after the features change
 	lights        []utils.Vec2i

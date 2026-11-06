@@ -120,7 +120,7 @@ func ColonistInputSource(
 func (p *InputColonistParams) stillWorthIt(e common.EntityId, ecsContainer *ecs.ECSContainer) bool {
 	site, def, ok := siteAt(p.Target, ecsContainer)
 	switch {
-	case !ok || !ecsContainer.Terrain().IsHome(p.Target):
+	case !ok || !ecsContainer.Terrain().InArea(data.Area_Home, p.Target):
 		return false
 	case p.State == Colonist_Construct:
 		return site.Supplied(def)
@@ -176,7 +176,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 	for _, t := range ecsContainer.Terrain().SitesIn(first, last) {
 		site, def, ok := siteAt(t, ecsContainer)
 		switch {
-		case !ok || !ecsContainer.Terrain().IsHome(t):
+		case !ok || !ecsContainer.Terrain().InArea(data.Area_Home, t):
 		case site.Supplied(def):
 			construct = append(construct, t)
 		case canSupply(e, site, def, ecsContainer):

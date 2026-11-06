@@ -35,7 +35,7 @@ func homeEverywhere(t *testing.T, s *testutil.Session, colony common.EntityId) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.ECS.MarkHome(first, last, true)
+	s.ECS.MarkArea(data.Area_Home, first, last, true)
 }
 
 func colonistTile(t *testing.T, s *testutil.Session, colonist common.EntityId) utils.Vec2i {
@@ -336,7 +336,7 @@ func TestWhatAColonistIsDoingIsSaved(t *testing.T) {
 func TestAColonistLeavesSitesOffHomeAlone(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	away := groundAway(t, s, colonist, 8)
-	s.ECS.MarkHome(away, away, false)
+	s.ECS.MarkArea(data.Area_Home, away, away, false)
 	s.Chunks.PlaceSite(away, data.Blueprint_Planks)
 
 	live(t, s, 3*data.TPS, func() bool { return false })
@@ -348,7 +348,7 @@ func TestAColonistLeavesSitesOffHomeAlone(t *testing.T) {
 	if !live(t, s, 30*data.TPS, isBuilt(s, further)) {
 		t.Fatal("the colonist didn't build a blueprint on home further than one off it")
 	}
-	s.ECS.MarkHome(away, away, true)
+	s.ECS.MarkArea(data.Area_Home, away, away, true)
 	if !live(t, s, 30*data.TPS, isBuilt(s, away)) {
 		t.Fatal("the colonist didn't build the blueprint once it was on home")
 	}
@@ -363,7 +363,7 @@ func TestAColonistStopsWhenItsSiteIsTakenOffHome(t *testing.T) {
 		t.Fatal("the colonist didn't set out to deliver")
 	}
 
-	s.ECS.MarkHome(site, site, false)
+	s.ECS.MarkArea(data.Area_Home, site, site, false)
 	live(t, s, 10*data.TPS, func() bool { return false })
 	if state, ok := s.Chunks.Site(site); !ok || !state.IsBlueprint() || colonistState(s, colonist) != inputsources.Colonist_Idle {
 		t.Fatal("the colonist carried on to a site taken off home")
