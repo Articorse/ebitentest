@@ -15,6 +15,8 @@ import (
 type Item struct {
 	kind  data.ItemEnum
 	count int
+	// A unique item's, since it has no kind to look it up by
+	name string
 
 	// So that what was just dropped isn't picked straight back up by whoever dropped it
 	pickupDelayMs int
@@ -24,6 +26,11 @@ type Item struct {
 
 func NewItemComponent() *Item {
 	return &Item{count: 1}
+}
+
+// A unique item with a name to show
+func NewNamedItemComponent(name string) *Item {
+	return &Item{count: 1, name: name}
 }
 
 func (x *Item) Kind() data.ItemEnum {
@@ -211,11 +218,24 @@ func (x *ECSContainer) PickUpItem(collector, item common.EntityId) (bool, error)
 	if !x.CanPickUp(collector, item) {
 		return false, nil
 	}
-	inv, _ := x.Inventories.Get(collector)
 	itemComp, _ := x.Items.Get(item)
 
 	x.EndToss(item)
 	itemComp.StopPull()
+	return true, x.giveItem(collector, item)
+}
+
+// Into the collector's inventory, topping up stacks like it first, then into the first free slot, bound to a free
+// hotbar slot. What there's no room for is left as it is.
+func (x *ECSContainer) giveItem(collector, item common.EntityId) error {
+	inv, ok := x.Inventories.Get(collector)
+	if !ok {
+		return fmt.Errorf("entity %d has no inventory", collector)
+	}
+	itemComp, ok := x.Items.Get(item)
+	if !ok {
+		return fmt.Errorf("entity %d isn't an item", item)
+	}
 
 	for i := range inv.Capacity() {
 		held, ok := x.heldItem(inv, i)
@@ -228,15 +248,15 @@ func (x *ECSContainer) PickUpItem(collector, item common.EntityId) (bool, error)
 	}
 	if itemComp.count == 0 {
 		x.ScheduleRemoveEntity(item)
-		return true, nil
+		return nil
 	}
 
 	slot := inv.FirstFreeSlot()
 	if slot == -1 {
-		return true, nil
+		return nil
 	}
 	if err := x.PutInInventory(collector, slot, item); err != nil {
-		return false, err
+		return err
 	}
 	if t, ok := x.Transforms.Get(item); ok {
 		t.SetLocalPos(utils.Vec2f{})
@@ -245,13 +265,9 @@ func (x *ECSContainer) PickUpItem(collector, item common.EntityId) (bool, error)
 
 	// What only picks up what it's told to uses its hotbar for what it's using at the moment, so it's left to bind it
 	if inv.ManualPickup() {
-		return true, nil
+		return nil
 	}
-	if err := x.bindToFreeHotbarSlot(collector, item); err != nil {
-		return false, err
-	}
-
-	return true, nil
+	return x.bindToFreeHotbarSlot(collector, item)
 }
 
 func (x Item) Copy() Item {
@@ -312,6 +328,7 @@ type itemDto struct {
 	Count         int
 	PickupDelayMs int
 	PullSpeedPx   float64
+	Name          string
 }
 
 func (x Item) toDto() (ComponentDto, error) {
@@ -320,6 +337,7 @@ func (x Item) toDto() (ComponentDto, error) {
 		Count:         x.count,
 		PickupDelayMs: x.pickupDelayMs,
 		PullSpeedPx:   x.pullSpeedPx,
+		Name:          x.name,
 	}, nil
 }
 
@@ -329,6 +347,7 @@ func (x itemDto) toComponent() (Component, error) {
 		count:         x.Count,
 		pickupDelayMs: x.PickupDelayMs,
 		pullSpeedPx:   x.PullSpeedPx,
+		name:          x.Name,
 	}, nil
 }
 

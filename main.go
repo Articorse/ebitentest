@@ -33,6 +33,7 @@ import (
 	"math"
 	"os"
 	"runtime/pprof"
+	"slices"
 	"strings"
 	"time"
 
@@ -656,7 +657,7 @@ func (g *game) releaseBuildDrag() {
 	}
 }
 
-// For the storage or site under the cursor, unless the cursor is on a menu or building
+// For what lies on the tile under the cursor, or the storage or site there, unless the cursor is on a menu or building
 func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	inv, ok := g.ecs.Inventories.Get(g.playerEntity)
 	if !ok || g.placer.IsActive() {
@@ -668,6 +669,11 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 		return nil
 	}
 	tile := g.cursorTile()
+	if stack, ok := g.chunkContainer.GroundStack(tile); ok {
+		if _, seen := g.chunkContainer.RecallTile(tile); seen {
+			return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.GroundStackTooltip(stack, g.ecs), g.assetmanager)
+		}
+	}
 	if storage, ok := g.ecs.StorageAt(tile); ok {
 		lines := drawsystem.StorageTooltip(g.ecs.StorageContents(storage), g.ecs.ItemAtlas())
 		return drawsystem.DrawTooltip(screen, g.uiScale, cursor, lines, g.assetmanager)
@@ -872,9 +878,10 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		drawsystem.DrawStorageAreas(world, g.ecs.Camera, inStorage)
 	}
 	window := drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world))
-	staticSprites := append(
+	staticSprites := slices.Concat(
 		g.chunkContainer.FeatureSprites(window, g.ecs.TickIdx*data.TickMs),
-		drawsystem.StoredItemSprites(window, g.ecs)...,
+		drawsystem.StoredItemSprites(window, g.ecs),
+		drawsystem.GroundItemSprites(window, g.ecs),
 	)
 	if err := drawsystem.DrawSprites(world, g.ecs.Camera, staticSprites, g.ecs, g.assetmanager); err != nil {
 		log.Println("error while drawing frame, removing offending entity: ", err)

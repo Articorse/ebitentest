@@ -52,6 +52,15 @@ func (openGround) SetArea(data.AreaEnum, utils.Vec2i, utils.Vec2i, bool) {}
 func (openGround) FeaturesIn(utils.Vec2i, utils.Vec2i, data.FeatureEnum) []utils.Vec2i {
 	return nil
 }
+func (openGround) GroundStack(utils.Vec2i) (ecs.GroundStack, bool) {
+	return ecs.GroundStack{}, false
+}
+func (openGround) GroundStacksIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i {
+	return nil
+}
+func (openGround) SetGroundStack(utils.Vec2i, ecs.GroundStack) bool {
+	return false
+}
 func (openGround) RemoveSite(utils.Vec2i) bool                           { return false }
 func (openGround) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
 func (openGround) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }

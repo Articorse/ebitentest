@@ -29,6 +29,8 @@ type chunk struct {
 	walkSpeeds *[data.ChunkSize * data.ChunkSize]uint8
 
 	Image *ebiten.Image
+	// What lies on each tile
+	ground map[utils.Vec2i]ecs.GroundStack
 }
 
 func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
@@ -40,6 +42,7 @@ func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
 	c.promotedTiles = make(map[utils.Vec2i]promotedTile)
 	c.featureHealth = make(map[utils.Vec2i]int)
 	c.sites = make(map[utils.Vec2i]*constructionSite)
+	c.ground = make(map[utils.Vec2i]ecs.GroundStack)
 
 	return &c, nil
 }

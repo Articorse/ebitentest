@@ -55,6 +55,13 @@ type Terrain interface {
 	BuildSite(t utils.Vec2i, work int, canFinish bool) (worked, built bool)
 	// The tiles from first to last that are in the simulation with the feature on them, in tile order, row by row
 	FeaturesIn(first, last utils.Vec2i, feature data.FeatureEnum) []utils.Vec2i
+	// What lies on the tile
+	GroundStack(t utils.Vec2i) (GroundStack, bool)
+	// The tiles from first to last with something lying on them, in tile order, row by row
+	GroundStacksIn(first, last utils.Vec2i) []utils.Vec2i
+	// Puts the stack on the tile in place of what was there, or clears it with an empty one. False outside the active
+	// chunks.
+	SetGroundStack(t utils.Vec2i, s GroundStack) bool
 	// Where colonists look for work and what work, which the player marks out, and finished building spreads home
 	InArea(area data.AreaEnum, t utils.Vec2i) bool
 	// Puts the tiles from first to last in the area, or takes them out of it
@@ -148,6 +155,15 @@ func (noTerrain) SetArea(data.AreaEnum, utils.Vec2i, utils.Vec2i, bool) {}
 func (noTerrain) FeaturesIn(utils.Vec2i, utils.Vec2i, data.FeatureEnum) []utils.Vec2i {
 	return nil
 }
+func (noTerrain) GroundStack(utils.Vec2i) (GroundStack, bool) {
+	return GroundStack{}, false
+}
+func (noTerrain) GroundStacksIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i {
+	return nil
+}
+func (noTerrain) SetGroundStack(utils.Vec2i, GroundStack) bool {
+	return false
+}
 func (noTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {
@@ -174,6 +190,9 @@ func (x *ECSContainer) IsTileOccupied(t utils.Vec2i) bool {
 		}
 	}
 
+	if _, onGround := x.terrain.GroundStack(t); onGround {
+		return true
+	}
 	for e := range Query1(&x.Items, With(&x.Transforms), Without(&x.Disabled)) {
 		if x.Parent(e) != -1 {
 			continue

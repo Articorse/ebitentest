@@ -186,7 +186,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		bazookaSpaComp,
 		bazookaFacingComp,
 		bazookaEquipmentComp,
-		ecs.NewItemComponent(),
+		ecs.NewNamedItemComponent("Bazooka"),
 		ecs.NewPersistentComponent(),
 	)
 	if err != nil {
@@ -267,7 +267,7 @@ func spawnMattock(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Entit
 		sprComp,
 		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, abis),
 		ecs.NewSwingComponent(2*math.Pi/3, 0.15, utils.Vec2f{X: 15.5, Y: 21.5}),
-		ecs.NewItemComponent(),
+		ecs.NewNamedItemComponent("Mattock"),
 		ecs.NewPersistentComponent(),
 	)
 }
@@ -303,7 +303,7 @@ func spawnAxe(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.EntityId,
 		sprComp,
 		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, abis),
 		ecs.NewSwingComponent(2*math.Pi/3, 0.15, utils.Vec2f{X: 15.5, Y: 21.5}),
-		ecs.NewItemComponent(),
+		ecs.NewNamedItemComponent("Axe"),
 		ecs.NewPersistentComponent(),
 	)
 }
@@ -388,7 +388,7 @@ func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.
 		gunSpaComp,
 		ecs.NewFacingComponent(),
 		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis),
-		ecs.NewItemComponent(),
+		ecs.NewNamedItemComponent("Gun"),
 		ecs.NewPersistentComponent(),
 	)
 }

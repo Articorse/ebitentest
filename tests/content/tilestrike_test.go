@@ -129,6 +129,15 @@ func (f *fakeTerrain) SetArea(data.AreaEnum, utils.Vec2i, utils.Vec2i, bool) {}
 func (f *fakeTerrain) FeaturesIn(utils.Vec2i, utils.Vec2i, data.FeatureEnum) []utils.Vec2i {
 	return nil
 }
+func (f *fakeTerrain) GroundStack(utils.Vec2i) (ecs.GroundStack, bool) {
+	return ecs.GroundStack{}, false
+}
+func (f *fakeTerrain) GroundStacksIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i {
+	return nil
+}
+func (f *fakeTerrain) SetGroundStack(utils.Vec2i, ecs.GroundStack) bool {
+	return false
+}
 func (f *fakeTerrain) RemoveSite(utils.Vec2i) bool                           { return false }
 func (f *fakeTerrain) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
 func (f *fakeTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }
