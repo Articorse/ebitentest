@@ -30,7 +30,8 @@ func (x *ECSContainer) CheckConsistency() error {
 	}
 
 	for e, inv := range Query1(&x.Inventories) {
-		if inv.selected < 0 || inv.selected >= len(inv.hotbar) {
+		// One without a hotbar, such as a storage area's, has nothing to select
+		if inv.selected < 0 || len(inv.hotbar) > 0 && inv.selected >= len(inv.hotbar) {
 			errs = errors.Join(errs, fmt.Errorf("inventory %d has hotbar slot %d selected, outside its %d", e, inv.selected, len(inv.hotbar)))
 		}
 		for slot, item := range inv.hotbar {

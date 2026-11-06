@@ -189,21 +189,11 @@ func (x *ECSContainer) tossItem(item common.EntityId, angle float64) {
 // Whether the collector has room for at least some of the loose item, which isn't flying through the air or waiting
 // out its pickup delay
 func (x *ECSContainer) CanPickUp(collector, item common.EntityId) bool {
-	inv, invOk := x.Inventories.Get(collector)
-	itemComp, itemOk := x.Items.Get(item)
-	if !invOk || !itemOk || !itemComp.CanBePickedUp() || x.Parent(item) != -1 || x.Tosses.HasComponent(item) {
+	itemComp, ok := x.Items.Get(item)
+	if !ok || !itemComp.CanBePickedUp() || x.Parent(item) != -1 || x.Tosses.HasComponent(item) {
 		return false
 	}
-
-	if inv.FirstFreeSlot() != -1 {
-		return true
-	}
-	for i := range inv.Capacity() {
-		if held, ok := x.heldItem(inv, i); ok && x.stacks(held, itemComp) && held.count < x.stackLimit(held) {
-			return true
-		}
-	}
-	return false
+	return x.HasRoomFor(collector, item)
 }
 
 func (x *ECSContainer) heldItem(inv *Inventory, slot int) (*Item, bool) {

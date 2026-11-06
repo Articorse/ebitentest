@@ -18,42 +18,60 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-// Build mode: the blueprint chosen, to be put down with a click, and the panel of blueprints to choose from in the
-// bottom right corner while it's on. Like the inventory menu, it only changes what's drawn and what a click sends.
-// Positions on the panel are in UI pixels.
+// Build mode: the blueprint chosen, to be put down with a click, or storage, marked out by dragging rectangles, and the
+// panel to choose from in the bottom right corner while it's on, with storage after the blueprints. Like the inventory
+// menu, it only changes what's drawn and what a click sends. Positions on the panel are in UI pixels.
 type BlueprintPlacer struct {
-	kind data.BlueprintEnum
+	kind     data.BlueprintEnum
+	storage  bool
+	dragging bool
+	start    utils.Vec2i
 }
 
 func (p *BlueprintPlacer) Start(kind data.BlueprintEnum) {
-	p.kind = kind
+	p.kind, p.storage, p.dragging = kind, false, false
+}
+
+func (p *BlueprintPlacer) StartStorage() {
+	p.kind, p.storage, p.dragging = data.Blueprint_None, true, false
 }
 
 // Starts with the first blueprint chosen
 func (p *BlueprintPlacer) Toggle(atlas *ecs.BlueprintAtlas) {
-	if _, ok := p.Kind(); ok {
+	if p.IsActive() {
 		p.Stop()
 		return
 	}
 	if kinds := atlas.Kinds(); len(kinds) > 0 {
 		p.Start(kinds[0])
+	} else {
+		p.StartStorage()
 	}
 }
 
 func (p *BlueprintPlacer) Stop() {
-	p.kind = data.Blueprint_None
+	p.kind, p.storage, p.dragging = data.Blueprint_None, false, false
 }
 
+func (p *BlueprintPlacer) IsActive() bool {
+	return p.kind != data.Blueprint_None || p.storage
+}
+
+// The blueprint chosen, if it's a blueprint rather than storage
 func (p *BlueprintPlacer) Kind() (data.BlueprintEnum, bool) {
 	return p.kind, p.kind != data.Blueprint_None
 }
 
+func (p *BlueprintPlacer) IsStorage() bool {
+	return p.storage
+}
+
 func (p *BlueprintPlacer) layout(screenSize utils.Vec2f, atlas *ecs.BlueprintAtlas, assets *assetmanager.AssetManager) (cornerLayout, bool) {
 	slot, err := assets.GetAsset(common.AssetImageSlot)
-	if _, on := p.Kind(); !on || err != nil {
+	if !p.IsActive() || err != nil {
 		return cornerLayout{}, false
 	}
-	return newCornerLayout(screenSize, len(atlas.Kinds()), slot.FrameSize), true
+	return newCornerLayout(screenSize, len(atlas.Kinds())+1, slot.FrameSize), true
 }
 
 // Whether clicks at the cursor are the panel's rather than the world's
@@ -75,7 +93,14 @@ func (p *BlueprintPlacer) BlueprintAt(cursor, screenSize utils.Vec2f, atlas *ecs
 	return data.Blueprint_None, false
 }
 
-// The panel with the chosen blueprint's slot highlighted, and the tooltip of the blueprint under the cursor
+// Whether the cursor is on the panel's storage button
+func (p *BlueprintPlacer) StorageAt(cursor, screenSize utils.Vec2f, atlas *ecs.BlueprintAtlas, assets *assetmanager.AssetManager) bool {
+	l, ok := p.layout(screenSize, atlas, assets)
+	kinds := len(atlas.Kinds())
+	return ok && l.slotAt(cursor, kinds+1) == kinds
+}
+
+// The panel with what's chosen highlighted, and the tooltip of what's under the cursor
 func (p *BlueprintPlacer) DrawPanel(
 	screen *ebiten.Image,
 	scale float64,
@@ -89,14 +114,78 @@ func (p *BlueprintPlacer) DrawPanel(
 	if !ok {
 		return nil
 	}
-	if err := drawBlueprintPanel(screen, scale, l, atlas, p.kind, assets); err != nil {
+	kinds := atlas.Kinds()
+	chosen := slices.Index(kinds, p.kind)
+	if p.storage {
+		chosen = len(kinds)
+	}
+	err := drawCornerPanel(screen, scale, l, len(kinds)+1, chosen, assets, func(i int, pos utils.Vec2f) error {
+		if i == len(kinds) {
+			drawButtonSquare(screen, scale, pos, l.slotSize, data.StorageButtonColor)
+			return nil
+		}
+		def, _ := atlas.Def(kinds[i])
+		icon, err := assets.GetAsset(def.ImageAsset())
+		if err != nil {
+			return fmt.Errorf("error getting the image of blueprint %d: %w", kinds[i], err)
+		}
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(pos.X+(l.slotSize.X-icon.FrameSize.X)/2, pos.Y+(l.slotSize.Y-icon.FrameSize.Y)/2)
+		op.GeoM.Scale(scale, scale)
+		screen.DrawImage(icon.Frames[0], op)
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 	if kind, ok := p.BlueprintAt(cursor, screenSize, atlas, assets); ok {
 		def, _ := atlas.Def(kind)
 		return DrawTooltip(screen, scale, cursor, BlueprintTooltip(def, items), assets)
 	}
+	if p.StorageAt(cursor, screenSize, atlas, assets) {
+		return DrawTooltip(screen, scale, cursor, []string{"Storage"}, assets)
+	}
 	return nil
+}
+
+// Starts dragging out storage, while storage is chosen
+func (p *BlueprintPlacer) Press(tile utils.Vec2i) {
+	if p.storage {
+		p.dragging, p.start = true, tile
+	}
+}
+
+func (p *BlueprintPlacer) IsDragging() bool {
+	return p.dragging
+}
+
+// From where the drag started to tile, whichever way it went
+func (p *BlueprintPlacer) StorageRect(tile utils.Vec2i) (first, last utils.Vec2i) {
+	return utils.Vec2i{X: min(p.start.X, tile.X), Y: min(p.start.Y, tile.Y)},
+		utils.Vec2i{X: max(p.start.X, tile.X), Y: max(p.start.Y, tile.Y)}
+}
+
+// Ends the drag at tile, marking the rectangle out as storage, or taking away all storage it touches
+func (p *BlueprintPlacer) Release(tile utils.Vec2i, erase bool) ecs.StorageMarking {
+	if !p.dragging {
+		return ecs.StorageMarking{}
+	}
+	p.dragging = false
+	first, last := p.StorageRect(tile)
+	return ecs.StorageMarking{Mark: true, Erase: erase, First: first, Last: last}
+}
+
+// The storage being dragged out to tile: purple if it can go there, and red if it can't or it's erasing
+func (p *BlueprintPlacer) DrawStorage(dst *ebiten.Image, camera utils.Vec2f, tile utils.Vec2i, valid bool) {
+	if !p.dragging {
+		return
+	}
+	c := data.StorageMarkColor
+	if !valid {
+		c = data.AreaUnmarkColor
+	}
+	first, last := p.StorageRect(tile)
+	fillTiles(dst, camera, first, last, c)
 }
 
 // The finished tile as a blueprint on the tile: blue if it can go there and red if it can't
@@ -198,18 +287,3 @@ func DrawTooltip(screen *ebiten.Image, scale float64, cursor utils.Vec2f, lines 
 }
 
 // The panel of blueprints in the bottom right corner of the screen, in UI pixels
-func drawBlueprintPanel(screen *ebiten.Image, scale float64, l cornerLayout, atlas *ecs.BlueprintAtlas, chosen data.BlueprintEnum, assets *assetmanager.AssetManager) error {
-	kinds := atlas.Kinds()
-	return drawCornerPanel(screen, scale, l, len(kinds), slices.Index(kinds, chosen), assets, func(i int, p utils.Vec2f) error {
-		def, _ := atlas.Def(kinds[i])
-		icon, err := assets.GetAsset(def.ImageAsset())
-		if err != nil {
-			return fmt.Errorf("error getting the image of blueprint %d: %w", kinds[i], err)
-		}
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(p.X+(l.slotSize.X-icon.FrameSize.X)/2, p.Y+(l.slotSize.Y-icon.FrameSize.Y)/2)
-		op.GeoM.Scale(scale, scale)
-		screen.DrawImage(icon.Frames[0], op)
-		return nil
-	})
-}

@@ -103,10 +103,7 @@ func (p *AreaPainter) DrawPanel(screen *ebiten.Image, scale float64, cursor util
 		}
 	}
 	err := drawCornerPanel(screen, scale, l, len(areas), chosen, assets, func(i int, pos utils.Vec2f) error {
-		inset := float64(data.AreaButtonInsetPx)
-		x, y := (pos.X+inset)*scale, (pos.Y+inset)*scale
-		w, h := (l.slotSize.X-2*inset)*scale, (l.slotSize.Y-2*inset)*scale
-		vector.DrawFilledRect(screen, float32(x), float32(y), float32(w), float32(h), areaLooks[areas[i]].button, false)
+		drawButtonSquare(screen, scale, pos, l.slotSize, areaLooks[areas[i]].button)
 		return nil
 	})
 	if err != nil {
@@ -157,20 +154,37 @@ func (p *AreaPainter) Draw(dst *ebiten.Image, camera utils.Vec2f, tile utils.Vec
 	fillTiles(dst, camera, first, last, c)
 }
 
+// A button's colour, in from the edges of its slot
+func drawButtonSquare(screen *ebiten.Image, scale float64, slotPos, slotSize utils.Vec2f, c color.Color) {
+	inset := float64(data.AreaButtonInsetPx)
+	x, y := (slotPos.X+inset)*scale, (slotPos.Y+inset)*scale
+	w, h := (slotSize.X-2*inset)*scale, (slotSize.Y-2*inset)*scale
+	vector.DrawFilledRect(screen, float32(x), float32(y), float32(w), float32(h), c, false)
+}
+
 // The area's tiles in view, since areas are only shown while they're being marked out or built on
 func DrawArea(dst *ebiten.Image, camera utils.Vec2f, area data.AreaEnum, inArea func(data.AreaEnum, utils.Vec2i) bool) {
+	drawTilesWhere(dst, camera, func(t utils.Vec2i) bool { return inArea(area, t) }, areaLooks[area].shown)
+}
+
+// Shown like the areas, alongside them and while building, which storage gets in the way of
+func DrawStorageAreas(dst *ebiten.Image, camera utils.Vec2f, inStorage func(utils.Vec2i) bool) {
+	drawTilesWhere(dst, camera, inStorage, data.StorageAreaColor)
+}
+
+func drawTilesWhere(dst *ebiten.Image, camera utils.Vec2f, in func(utils.Vec2i) bool, c color.Color) {
 	first, last := utils.WorldPosToTilePos(camera), utils.WorldPosToTilePos(camera.Add(ImageSize(dst)))
 	for y := first.Y; y <= last.Y; y++ {
 		// Runs along the row are drawn as one rectangle, which is far fewer to draw
 		for x := first.X; x <= last.X; x++ {
-			if !inArea(area, utils.Vec2i{X: x, Y: y}) {
+			if !in(utils.Vec2i{X: x, Y: y}) {
 				continue
 			}
 			end := x
-			for end+1 <= last.X && inArea(area, utils.Vec2i{X: end + 1, Y: y}) {
+			for end+1 <= last.X && in(utils.Vec2i{X: end + 1, Y: y}) {
 				end++
 			}
-			fillTiles(dst, camera, utils.Vec2i{X: x, Y: y}, utils.Vec2i{X: end, Y: y}, areaLooks[area].shown)
+			fillTiles(dst, camera, utils.Vec2i{X: x, Y: y}, utils.Vec2i{X: end, Y: y}, c)
 			x = end
 		}
 	}

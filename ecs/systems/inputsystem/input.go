@@ -63,13 +63,30 @@ func HandleInputs(
 		}
 
 		if p := input.PlaceBlueprint; p.Kind != data.Blueprint_None {
-			ecsContainer.Terrain().PlaceSite(p.Tile, p.Kind)
+			if _, onStorage := ecsContainer.StorageAt(p.Tile); !onStorage {
+				ecsContainer.Terrain().PlaceSite(p.Tile, p.Kind)
+			}
 		}
 		if r := input.RemoveBlueprint; r.Remove {
 			ecsContainer.Terrain().RemoveSite(r.Tile)
 		}
 		if a := input.Area; a.Area != data.Area_None {
 			ecsContainer.MarkArea(a.Area, a.First, a.Last, !a.Erase)
+		}
+
+		if m := input.Storage; m.Mark && m.Erase {
+			if err := ecsContainer.RemoveStorages(m.First, m.Last); err != nil {
+				log.Printf("error taking away the storage from %v to %v: %v\n", m.First, m.Last, err)
+			}
+		} else if m.Mark {
+			if _, _, err := ecsContainer.PlaceStorage(m.First, m.Last); err != nil {
+				log.Printf("error marking out storage from %v to %v: %v\n", m.First, m.Last, err)
+			}
+		}
+		if st := input.Store; st.Store {
+			if err := storeInReach(e, st, ecsContainer); err != nil {
+				log.Printf("error storing slot %d of entity %d in %d: %v\n", st.From+1, e, st.Storage, err)
+			}
 		}
 
 		if p := input.PickUp; p.PickUp {
@@ -192,5 +209,23 @@ func pickUpOnPurpose(e, item common.EntityId, ecsContainer *ecs.ECSContainer) er
 		return nil
 	}
 	_, err = ecsContainer.PickUpItem(e, item)
+	return err
+}
+
+// Within reach of the storage area's closest tile, as building is
+func storeInReach(e common.EntityId, st ecs.ItemStoring, ecsContainer *ecs.ECSContainer) error {
+	area, ok := ecsContainer.StorageAreas.Get(st.Storage)
+	if !ok {
+		return nil
+	}
+	pos, err := ecsContainer.WorldPos(e)
+	if err != nil {
+		return err
+	}
+	from := utils.WorldPosToTilePos(pos)
+	if utils.Dist2(from, area.ClosestTile(from)) > data.StoreRangeTiles*data.StoreRangeTiles {
+		return nil
+	}
+	_, err = ecsContainer.Store(e, st.From, st.Storage)
 	return err
 }

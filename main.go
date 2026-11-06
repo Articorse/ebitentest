@@ -75,6 +75,7 @@ type game struct {
 	pendingPlacement ecs.BlueprintPlacement
 	pendingRemoval   ecs.BlueprintRemoval
 	pendingArea      ecs.AreaMarking
+	pendingStorage   ecs.StorageMarking
 	uiTakesHand      bool
 	menuOverSlot     bool
 
@@ -532,8 +533,7 @@ func (g *game) updateInventoryMenu() {
 		}
 	}
 
-	_, placing := g.placer.Kind()
-	g.uiTakesHand = g.uiHasMouse || covers || placing || g.areaPainter.IsActive()
+	g.uiTakesHand = g.uiHasMouse || covers || g.placer.IsActive() || g.areaPainter.IsActive()
 }
 
 // A click on the panel chooses the area, and a drag elsewhere puts the rectangle from where it started to where it
@@ -567,7 +567,7 @@ func (g *game) updateAreaPainter() {
 
 // Build mode, the placer, is on with nothing else: no inventory menu and no area menu
 func (g *game) startedBuilding() {
-	if _, on := g.placer.Kind(); !on {
+	if !g.placer.IsActive() {
 		return
 	}
 	g.areaPainter.Stop()
@@ -603,17 +603,25 @@ func (g *game) updateBlueprintCopy() {
 	g.startedBuilding()
 }
 
-// A click on the panel chooses the blueprint, and anywhere else puts it down where it fits, as the next tick's input,
-// and leaves build mode unless shift is held; B, escape or a right click leaves it
+// A click on the panel chooses what to build. A blueprint is put down where it fits with a click anywhere else, as the
+// next tick's input, which leaves build mode unless shift is held. Storage is marked out by dragging, like an area,
+// and taken away with shift held as the drag ends, staying in build mode. B, escape or a right click leaves it.
 func (g *game) updateBlueprintPlacer() {
-	kind, ok := g.placer.Kind()
-	if !ok {
+	if !g.placer.IsActive() {
 		return
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		g.uiHasMouse = inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight)
 		g.placer.Stop()
 		return
+	}
+	if g.placer.IsDragging() && !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		erase := ebiten.IsKeyPressed(ebiten.KeyShift)
+		first, last := g.placer.StorageRect(g.cursorTile())
+		marking := g.placer.Release(g.cursorTile(), erase)
+		if !g.pendingStorage.Mark && (erase || g.canPlaceStorage(first, last)) {
+			g.pendingStorage = marking
+		}
 	}
 	if !inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		return
@@ -624,7 +632,14 @@ func (g *game) updateBlueprintPlacer() {
 	if g.placer.Covers(cursor, screen, g.ecs.BlueprintAtlas(), g.assetmanager) {
 		if chosen, ok := g.placer.BlueprintAt(cursor, screen, g.ecs.BlueprintAtlas(), g.assetmanager); ok {
 			g.placer.Start(chosen)
+		} else if g.placer.StorageAt(cursor, screen, g.ecs.BlueprintAtlas(), g.assetmanager) {
+			g.placer.StartStorage()
 		}
+		return
+	}
+	kind, ok := g.placer.Kind()
+	if !ok {
+		g.placer.Press(g.cursorTile())
 		return
 	}
 	tile := g.cursorTile()
@@ -637,17 +652,22 @@ func (g *game) updateBlueprintPlacer() {
 	}
 }
 
-// For the site under the cursor, unless the cursor is on the menu or placing
+// For the storage or site under the cursor, unless the cursor is on a menu or building
 func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	inv, ok := g.ecs.Inventories.Get(g.playerEntity)
-	if _, placing := g.placer.Kind(); !ok || placing {
+	if !ok || g.placer.IsActive() {
 		return nil
 	}
 	cursor := g.uiCursor()
-	if g.inventoryMenu.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), inv, g.assetmanager) {
+	if g.inventoryMenu.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), inv, g.assetmanager) ||
+		g.areaPainter.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), g.assetmanager) {
 		return nil
 	}
 	tile := g.cursorTile()
+	if storage, ok := g.ecs.StorageAt(tile); ok {
+		lines := drawsystem.StorageTooltip(g.ecs.StorageContents(storage), g.ecs.ItemAtlas())
+		return drawsystem.DrawTooltip(screen, g.uiScale, cursor, lines, g.assetmanager)
+	}
 	site, ok := g.chunkContainer.Site(tile)
 	if _, seen := g.chunkContainer.RecallTile(tile); !ok || !seen {
 		return nil
@@ -659,10 +679,24 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas(), g.chunkContainer.InArea(data.Area_Home, tile)), g.assetmanager)
 }
 
-// Only on what's been seen, in sight now or remembered, so that placing can't find out what's in unexplored ground
+// Only on what's been seen, in sight now or remembered, so that placing can't find out what's in unexplored ground, and
+// not on storage
 func (g *game) canPlaceBlueprint(tile utils.Vec2i) bool {
 	_, seen := g.chunkContainer.RecallTile(tile)
-	return seen && g.chunkContainer.CanPlaceSite(tile)
+	_, onStorage := g.ecs.StorageAt(tile)
+	return seen && !onStorage && g.chunkContainer.CanPlaceSite(tile)
+}
+
+// Only on what's been seen, like a blueprint
+func (g *game) canPlaceStorage(first, last utils.Vec2i) bool {
+	for y := first.Y; y <= last.Y; y++ {
+		for x := first.X; x <= last.X; x++ {
+			if _, seen := g.chunkContainer.RecallTile(utils.Vec2i{X: x, Y: y}); !seen {
+				return false
+			}
+		}
+	}
+	return g.ecs.CanPlaceStorage(first, last)
 }
 
 // R over a blueprint that has nothing delivered yet takes it away, on what's been seen like placing
@@ -695,6 +729,7 @@ func (g *game) withInventoryMenu(in ecs.InputState) ecs.InputState {
 	in.PlaceBlueprint, g.pendingPlacement = g.pendingPlacement, ecs.BlueprintPlacement{}
 	in.RemoveBlueprint, g.pendingRemoval = g.pendingRemoval, ecs.BlueprintRemoval{}
 	in.Area, g.pendingArea = g.pendingArea, ecs.AreaMarking{}
+	in.Storage, g.pendingStorage = g.pendingStorage, ecs.StorageMarking{}
 	if g.menuOverSlot {
 		in.SelectSlot = 0
 	}
@@ -826,13 +861,12 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		log.Println("error while drawing chunks: ", err)
 	}
 
-	if err := drawsystem.DrawSprites(
-		world,
-		g.ecs.Camera,
-		g.chunkContainer.FeatureSprites(drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world)), g.ecs.TickIdx*data.TickMs),
-		g.ecs,
-		g.assetmanager,
-	); err != nil {
+	window := drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world))
+	staticSprites := append(
+		g.chunkContainer.FeatureSprites(window, g.ecs.TickIdx*data.TickMs),
+		drawsystem.StoredItemSprites(window, g.ecs)...,
+	)
+	if err := drawsystem.DrawSprites(world, g.ecs.Camera, staticSprites, g.ecs, g.assetmanager); err != nil {
 		log.Println("error while drawing frame, removing offending entity: ", err)
 		var missingDependencyError *common.ErrorMissingComponentDependency
 		if errors.As(err, &missingDependencyError) {
@@ -858,19 +892,26 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	// use what's in hand, so its target isn't shown, and nor is the blueprint under the panel, which a click would
 	// choose from rather than put down.
 	_, placing := g.placer.Kind()
+	inStorage := func(t utils.Vec2i) bool { _, ok := g.ecs.StorageAt(t); return ok }
 	if g.areaPainter.IsActive() {
 		for _, area := range drawsystem.Areas() {
 			drawsystem.DrawArea(world, g.ecs.Camera, area, g.chunkContainer.InArea)
 		}
-	} else if placing {
+		drawsystem.DrawStorageAreas(world, g.ecs.Camera, inStorage)
+	} else if g.placer.IsActive() {
 		drawsystem.DrawArea(world, g.ecs.Camera, data.Area_Home, g.chunkContainer.InArea)
+		drawsystem.DrawStorageAreas(world, g.ecs.Camera, inStorage)
 	}
 	if g.areaPainter.IsActive() {
 		g.areaPainter.Draw(world, g.ecs.Camera, g.cursorTile(), ebiten.IsKeyPressed(ebiten.KeyShift))
-	} else if placing {
+	} else if g.placer.IsDragging() {
+		first, last := g.placer.StorageRect(g.cursorTile())
+		erase := ebiten.IsKeyPressed(ebiten.KeyShift)
+		g.placer.DrawStorage(world, g.ecs.Camera, g.cursorTile(), !erase && g.canPlaceStorage(first, last))
+	} else if g.placer.IsActive() {
 		tile := g.cursorTile()
 		overPanel := g.placer.Covers(g.uiCursor(), g.screenSize.Multiply(1/g.uiScale), g.ecs.BlueprintAtlas(), g.assetmanager)
-		if !overPanel {
+		if placing && !overPanel {
 			if err := g.placer.Draw(world, g.ecs.Camera, tile, g.canPlaceBlueprint(tile), g.ecs.BlueprintAtlas(), g.assetmanager); err != nil {
 				log.Println("error while drawing the blueprint being placed: ", err)
 			}

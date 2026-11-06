@@ -15,6 +15,10 @@ var (
 	// The squares on the area menu's buttons, opaque so they read as the area's colour against the slot
 	HomeButtonColor    = color.RGBA{R: 60, G: 170, B: 60, A: 255}
 	HarvestButtonColor = color.RGBA{R: 230, G: 160, B: 30, A: 255}
+	// Purple, shown, dragged out and on build mode's button
+	StorageAreaColor   = color.RGBA{R: 50, G: 20, B: 70, A: 70}
+	StorageMarkColor   = color.RGBA{R: 90, G: 40, B: 120, A: 120}
+	StorageButtonColor = color.RGBA{R: 150, G: 70, B: 200, A: 255}
 )
 
 const (
@@ -36,6 +40,8 @@ const (
 	// Chopping is done from next to a tree, not diagonally, where an axe swung from the far side of the tile can fall
 	// short of it
 	ColonistChopRangeTiles = 1
+	// How far from a storage area's closest tile what's carried can be put in it, which is as far as building reaches
+	StoreRangeTiles = PlayerBuildRangeTiles
 )
 
 // What colonists gather where it lies loose on the harvest area

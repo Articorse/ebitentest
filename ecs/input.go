@@ -190,6 +190,21 @@ type InputState struct {
 	Area AreaMarking
 	// A loose item picked up on purpose, which is how what doesn't pick up whatever it walks over gets anything
 	PickUp ItemPickUp
+	// A storage area marked out, or every one the rectangle touches taken away
+	Storage StorageMarking
+	// What's in an inventory slot put in a storage area within reach
+	Store ItemStoring
+}
+
+type StorageMarking struct {
+	Mark, Erase bool
+	First, Last utils.Vec2i
+}
+
+type ItemStoring struct {
+	Store   bool
+	From    int
+	Storage common.EntityId
 }
 
 type ItemPickUp struct {

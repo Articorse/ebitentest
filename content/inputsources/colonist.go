@@ -26,6 +26,8 @@ const (
 	Colonist_Chop
 	// Picks up what lies loose on the harvest area
 	Colonist_Gather
+	// Puts what it carries in a storage area, apart from what it works with
+	Colonist_Store
 )
 
 // Saved with what it's doing and where, so that a loaded colonist carries on as it was
@@ -37,27 +39,30 @@ type InputColonistParams struct {
 	Target utils.Vec2i
 	// What it's gathering
 	Item common.EntityId
+	// Where it's putting what it carries
+	Storage common.EntityId
 	// Where it's headed to reach the target from
 	Stand utils.Vec2i
 	// When it next looks for work, while it has none, or for building, while it's delivering
 	NextPlanTick uint64
 
 	walk
-	// What it last found no way to build, deliver to, gather or fell, for each, which isn't looked for again until something
+	// What it last found no way to build, deliver to, gather, fell or store in, for each, which isn't looked for again until something
 	// changes, since a path that's never found is searched for until the search gives up. Not saved, so a loaded
 	// colonist looks once.
-	fruitless [4]*planKey
+	fruitless [5]*planKey
 }
 
 // Where it is isn't part of it, since walking can't take it anywhere it couldn't reach before
 type planKey struct {
-	sightVersion                     uint64
-	construct, deliver, gather, chop []utils.Vec2i
+	sightVersion                            uint64
+	construct, deliver, gather, chop, store []utils.Vec2i
 }
 
 func (k *planKey) equal(o planKey) bool {
 	return k != nil && k.sightVersion == o.sightVersion && slices.Equal(k.construct, o.construct) &&
-		slices.Equal(k.deliver, o.deliver) && slices.Equal(k.gather, o.gather) && slices.Equal(k.chop, o.chop)
+		slices.Equal(k.deliver, o.deliver) && slices.Equal(k.gather, o.gather) && slices.Equal(k.chop, o.chop) &&
+		slices.Equal(k.store, o.store)
 }
 
 func (InputColonistParams) IsInputParams() {}
@@ -68,14 +73,14 @@ func (p *InputColonistParams) Copy() ecs.InputParams {
 	}
 	c := *p
 	c.path = slices.Clone(p.path)
-	c.fruitless = [4]*planKey{}
+	c.fruitless = [5]*planKey{}
 	return &c
 }
 
 // Builds the closest site on the colony's home that has everything delivered, otherwise delivers to the closest that
 // it has all that's still needed for, otherwise picks up what lies closest on the harvest area, and otherwise fells
 // the closest tree there, going by walking distance among the few closest as the crow flies, so that one it can't get
-// to doesn't hold it up. It keeps to its
+// to doesn't hold it up. With none of that to do, it puts away what it carries in the closest storage area with room. It keeps to its
 // target until it's done or no longer worth it, looking for something more important now and then. It acts from where
 // it's in reach and sees the target, but never from on a site, since a tile can't be finished with someone standing in
 // it. What it uses goes on the first hotbar slot as it uses it, and comes off it to build with an empty hand.
@@ -116,6 +121,9 @@ func ColonistInputSource(
 	if p.State == Colonist_Gather {
 		return p.gather(entityId, selfPos, tick, ecsContainer), nil
 	}
+	if p.State == Colonist_Store {
+		return p.store(entityId, selfPos, tick, ecsContainer), nil
+	}
 	target := utils.TilePosToWorldPos(p.Target)
 	if _, inReach := ecsContainer.AimedTileInReach(selfPos, target, p.rangeTiles(constructor)); inReach && self != p.Target {
 		p.path = nil
@@ -150,6 +158,59 @@ func (p *InputColonistParams) gather(e common.EntityId, selfPos utils.Vec2f, tic
 	return input
 }
 
+// From within reach of the storage area, a slot at a time, standing anywhere, even in it
+func (p *InputColonistParams) store(e common.EntityId, selfPos utils.Vec2f, tick uint64, ecsContainer *ecs.ECSContainer) ecs.InputState {
+	target := utils.TilePosToWorldPos(p.Target)
+	if _, inReach := ecsContainer.AimedTileInReach(selfPos, target, data.StoreRangeTiles); inReach {
+		p.path = nil
+		input := p.emptyHand(e, ecsContainer)
+		if slot, ok := storableSlot(e, p.Storage, ecsContainer); ok {
+			input.Store = ecs.ItemStoring{Store: true, From: slot, Storage: p.Storage}
+		}
+		return input
+	}
+	input, ok := p.moveTo(selfPos, utils.TilePosToWorldPos(p.Stand), ecsContainer.Terrain())
+	if !ok {
+		p.State, p.NextPlanTick = Colonist_Idle, tick
+	}
+	return input
+}
+
+// The first slot holding something it doesn't work with, which is anything of a kind, that there's room for in the
+// storage area
+func storableSlot(e, storage common.EntityId, ecsContainer *ecs.ECSContainer) (int, bool) {
+	inv, ok := ecsContainer.Inventories.Get(e)
+	if !ok || !ecsContainer.StorageAreas.HasComponent(storage) {
+		return -1, false
+	}
+	for i := range inv.Capacity() {
+		item, ok := inv.Slot(i)
+		if !ok {
+			continue
+		}
+		if comp, ok := ecsContainer.Items.Get(item); ok && comp.Kind() != data.Item_None && ecsContainer.HasRoomFor(storage, item) {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+// The closest tile of each storage area in the colony with room for something it carries, and the area of each
+func storeTargets(e common.EntityId, self, first, last utils.Vec2i, ecsContainer *ecs.ECSContainer) ([]utils.Vec2i, map[utils.Vec2i]common.EntityId) {
+	tiles, storages := []utils.Vec2i{}, map[utils.Vec2i]common.EntityId{}
+	for s, area := range ecs.Query1(&ecsContainer.StorageAreas) {
+		t := area.ClosestTile(self)
+		if t.X < first.X || t.X > last.X || t.Y < first.Y || t.Y > last.Y {
+			continue
+		}
+		if _, ok := storableSlot(e, s, ecsContainer); ok {
+			tiles = append(tiles, t)
+			storages[t] = s
+		}
+	}
+	return tiles, storages
+}
+
 func (p *InputColonistParams) rangeTiles(constructor *ecs.Constructor) int {
 	if p.State == Colonist_Chop {
 		return data.ColonistChopRangeTiles
@@ -160,6 +221,10 @@ func (p *InputColonistParams) rangeTiles(constructor *ecs.Constructor) int {
 func (p *InputColonistParams) stillWorthIt(e common.EntityId, ecsContainer *ecs.ECSContainer) bool {
 	if p.State == Colonist_Gather {
 		return gatherable(e, p.Item, ecsContainer)
+	}
+	if p.State == Colonist_Store {
+		_, ok := storableSlot(e, p.Storage, ecsContainer)
+		return ok
 	}
 	if p.State == Colonist_Chop {
 		_, hasAxe := axeSlot(e, ecsContainer)
@@ -265,8 +330,8 @@ func carried(e common.EntityId, kind data.ItemEnum, ecsContainer *ecs.ECSContain
 	return n
 }
 
-// Building comes first, then delivering, gathering and felling, each only while there's none of what comes before it,
-// and each to what's closest to walk to
+// Building comes first, then delivering, gathering, felling and storing, each only while there's none of what comes
+// before it, and each to what's closest to walk to
 func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTiles int, ecsContainer *ecs.ECSContainer) {
 	first, last, err := ecsContainer.ColonyBounds(p.Colony)
 	if err != nil {
@@ -296,9 +361,10 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 	}
 
 	gather, items := gatherables(e, first, last, ecsContainer)
+	store, storages := storeTargets(e, self, first, last, ecsContainer)
 
 	sightTerrain, versioned := ecsContainer.Terrain().(ecs.SightTerrain)
-	key := planKey{construct: construct, deliver: deliver, gather: gather, chop: chop}
+	key := planKey{construct: construct, deliver: deliver, gather: gather, chop: chop, store: store}
 	if versioned {
 		key.sightVersion = sightTerrain.SightVersion()
 	}
@@ -312,6 +378,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 		{Colonist_Deliver, deliver, rangeTiles},
 		{Colonist_Gather, gather, 0},
 		{Colonist_Chop, chop, data.ColonistChopRangeTiles},
+		{Colonist_Store, store, data.StoreRangeTiles},
 	} {
 		// It keeps to what it's doing when nothing more important turned up
 		if p.State == job.state {
@@ -321,11 +388,14 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 			continue
 		}
 		if target, stand, path, ok := nearestSite(self, job.targets, job.rangeTiles, first, last, ecsContainer); ok {
-			p.State, p.Target, p.Stand, p.Item = job.state, target, stand, -1
+			p.State, p.Target, p.Stand, p.Item, p.Storage = job.state, target, stand, -1, -1
 			if job.state == Colonist_Gather {
 				p.Item = items[target]
 			}
-			p.fruitless = [4]*planKey{}
+			if job.state == Colonist_Store {
+				p.Storage = storages[target]
+			}
+			p.fruitless = [5]*planKey{}
 			p.follow(self, path)
 			return
 		}

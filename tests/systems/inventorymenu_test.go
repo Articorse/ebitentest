@@ -246,8 +246,15 @@ func TestBlueprintsAreChosenFromTheirPanelInTheBottomRightCornerWhileBuilding(t 
 	}
 
 	placer.Start(data.Blueprint_Planks)
-	if kind, ok := placer.BlueprintAt(blueprintSlotCenter(), menuScreen, blueprints, assets); !ok || kind != data.Blueprint_Planks {
-		t.Fatalf("the blueprint panel has %v (%v) in its slot, want planks", kind, ok)
+	planks := blueprintSlotCenter().Subtract(utils.Vec2f{X: menuSlotPx + data.HotbarSlotGapPx})
+	if kind, ok := placer.BlueprintAt(planks, menuScreen, blueprints, assets); !ok || kind != data.Blueprint_Planks {
+		t.Fatalf("the blueprint panel has %v (%v) in its first slot, want planks", kind, ok)
+	}
+	if !placer.StorageAt(blueprintSlotCenter(), menuScreen, blueprints, assets) || placer.StorageAt(planks, menuScreen, blueprints, assets) {
+		t.Fatal("storage isn't the panel's last slot, after the blueprints")
+	}
+	if _, ok := placer.BlueprintAt(blueprintSlotCenter(), menuScreen, blueprints, assets); ok {
+		t.Fatal("the storage slot counts as a blueprint")
 	}
 	edge := utils.Vec2f{X: menuScreen.X - data.InventoryMarginPx - 1, Y: menuScreen.Y - data.InventoryMarginPx - 1}
 	if !placer.Covers(edge, menuScreen, blueprints, assets) || placer.Covers(edge.Add(utils.Vec2f{X: 2}), menuScreen, blueprints, assets) ||
@@ -385,5 +392,38 @@ func TestTheAreaMenuOpensOnHomeWithItsButtonsInTheBottomRightCorner(t *testing.T
 	between := blueprintSlotCenter().Subtract(utils.Vec2f{X: menuSlotPx/2 + data.HotbarSlotGapPx/2.0})
 	if _, ok := p.AreaAt(between, menuScreen, assets); ok || !p.Covers(between, menuScreen, assets) {
 		t.Fatal("the gap between buttons isn't the panel's without being a button")
+	}
+}
+
+func TestStorageIsDraggedOutInBuildModeAndStaysChosen(t *testing.T) {
+	var placer drawsystem.BlueprintPlacer
+	placer.Start(data.Blueprint_Planks)
+	placer.Press(utils.Vec2i{})
+	if placer.IsDragging() {
+		t.Fatal("dragging started with a blueprint chosen")
+	}
+
+	placer.StartStorage()
+	if _, ok := placer.Kind(); ok || !placer.IsStorage() || !placer.IsActive() {
+		t.Fatal("choosing storage didn't leave build mode on with storage and no blueprint chosen")
+	}
+	placer.Press(utils.Vec2i{X: 4, Y: 1})
+	if m := placer.Release(utils.Vec2i{X: 2, Y: 3}, false); m != (ecs.StorageMarking{Mark: true, First: utils.Vec2i{X: 2, Y: 1}, Last: utils.Vec2i{X: 4, Y: 3}}) {
+		t.Fatalf("dragging storage from 4, 1 to 2, 3 marked %+v", m)
+	}
+	if m := placer.Release(utils.Vec2i{}, false); m.Mark {
+		t.Fatalf("releasing without dragging marked %+v", m)
+	}
+	placer.Press(utils.Vec2i{})
+	if m := placer.Release(utils.Vec2i{}, true); !m.Mark || !m.Erase {
+		t.Fatalf("a shift drag did %+v, want storage taken away", m)
+	}
+	if !placer.IsStorage() {
+		t.Fatal("marking out storage left build mode")
+	}
+	placer.Press(utils.Vec2i{})
+	placer.Toggle(testutil.Blueprints(t))
+	if placer.IsActive() || placer.IsDragging() {
+		t.Fatal("toggling build mode off left it on or dragging")
 	}
 }
