@@ -53,7 +53,7 @@ func storeWood(t *testing.T, s *testutil.Session, storage common.EntityId, count
 		if err := s.ECS.PutInInventory(holder, 0, wood); err != nil {
 			t.Fatal(err)
 		}
-		if ok, err := s.ECS.Store(holder, 0, storage); err != nil || !ok {
+		if moved, err := s.ECS.Store(holder, 0, storage, n); err != nil || moved != n {
 			t.Fatalf("couldn't store %d wood: %v", n, err)
 		}
 		testutil.RemoveScheduled(t, s.ECS)
@@ -163,7 +163,7 @@ func TestStoringTopsUpWhatsThereThenTakesTheFirstFreeSlot(t *testing.T) {
 		t.Fatalf("the storage holds %+v, want 120 wood", contents)
 	}
 
-	storeWood(t, s, storage, 90)
+	storeWood(t, s, storage, 80)
 	if stored(s, storage) != 200 {
 		t.Fatalf("the full storage holds %d wood, want 200", stored(s, storage))
 	}
@@ -172,7 +172,7 @@ func TestStoringTopsUpWhatsThereThenTakesTheFirstFreeSlot(t *testing.T) {
 	if err := s.ECS.PutInInventory(holder, 0, wood); err != nil {
 		t.Fatal(err)
 	}
-	if ok, _ := s.ECS.Store(holder, 0, storage); ok || s.ECS.HasRoomFor(storage, wood) {
+	if moved, _ := s.ECS.Store(holder, 0, storage, 5); moved != 0 || s.ECS.HasRoomFor(storage, wood) {
 		t.Fatal("wood went into a full storage area")
 	}
 }
@@ -330,7 +330,7 @@ func TestStoringOnlyReachesSoFar(t *testing.T) {
 	}
 
 	for _, storage := range []common.EntityId{farStorage, nearStorage} {
-		inputs := map[common.EntityId]ecs.InputState{colonist: {Store: ecs.ItemStoring{Store: true, From: slot, Storage: storage}}}
+		inputs := map[common.EntityId]ecs.InputState{colonist: {Store: ecs.ItemStoring{Store: true, From: slot, Count: 1, Storage: storage}}}
 		if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
 			t.Fatal(err)
 		}

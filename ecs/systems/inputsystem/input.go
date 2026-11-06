@@ -83,9 +83,14 @@ func HandleInputs(
 				log.Printf("error marking out storage from %v to %v: %v\n", m.First, m.Last, err)
 			}
 		}
-		if st := input.Store; st.Store {
-			if err := storeInReach(e, st, ecsContainer); err != nil {
+		if st := input.Store; st.Store && inReachOfStorage(e, st.Storage, ecsContainer) {
+			if _, err := ecsContainer.Store(e, st.From, st.Storage, st.Count); err != nil {
 				log.Printf("error storing slot %d of entity %d in %d: %v\n", st.From+1, e, st.Storage, err)
+			}
+		}
+		if tk := input.Take; tk.Take && inReachOfStorage(e, tk.Storage, ecsContainer) {
+			if _, err := ecsContainer.TakeFromStorage(e, tk.Storage, tk.Kind, tk.Count); err != nil {
+				log.Printf("error taking %d of %v out of %d for entity %d: %v\n", tk.Count, tk.Kind, tk.Storage, e, err)
 			}
 		}
 
@@ -213,19 +218,15 @@ func pickUpOnPurpose(e, item common.EntityId, ecsContainer *ecs.ECSContainer) er
 }
 
 // Within reach of the storage area's closest tile, as building is
-func storeInReach(e common.EntityId, st ecs.ItemStoring, ecsContainer *ecs.ECSContainer) error {
-	area, ok := ecsContainer.StorageAreas.Get(st.Storage)
+func inReachOfStorage(e, storage common.EntityId, ecsContainer *ecs.ECSContainer) bool {
+	area, ok := ecsContainer.StorageAreas.Get(storage)
 	if !ok {
-		return nil
+		return false
 	}
 	pos, err := ecsContainer.WorldPos(e)
 	if err != nil {
-		return err
+		return false
 	}
 	from := utils.WorldPosToTilePos(pos)
-	if utils.Dist2(from, area.ClosestTile(from)) > data.StoreRangeTiles*data.StoreRangeTiles {
-		return nil
-	}
-	_, err = ecsContainer.Store(e, st.From, st.Storage)
-	return err
+	return utils.Dist2(from, area.ClosestTile(from)) <= data.StoreRangeTiles*data.StoreRangeTiles
 }

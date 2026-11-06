@@ -2,6 +2,7 @@ package ecs
 
 import (
 	"cmp"
+	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
@@ -175,42 +176,95 @@ func (x *ECSContainer) HasRoomFor(owner, item common.EntityId) bool {
 	return false
 }
 
-// What's in the owner's slot goes in the storage area, topping up what's there like it first and then in the first
-// free slot, as much as there's room for. False if none of it went in.
-func (x *ECSContainer) Store(owner common.EntityId, slot int, storage common.EntityId) (bool, error) {
-	inv, ok := x.Inventories.Get(owner)
-	if !ok {
-		return false, fmt.Errorf("entity %d has no inventory", owner)
+// Up to count of what's in the owner's slot goes in the storage area. How many went in.
+func (x *ECSContainer) Store(owner common.EntityId, slot int, storage common.EntityId, count int) (int, error) {
+	if !x.StorageAreas.HasComponent(storage) {
+		return 0, nil
 	}
-	item, ok := inv.Slot(slot)
-	if !ok || !x.StorageAreas.HasComponent(storage) || !x.HasRoomFor(storage, item) {
-		return false, nil
-	}
-	store, _ := x.Inventories.Get(storage)
-	itemComp, _ := x.Items.Get(item)
+	return x.MoveItems(owner, slot, storage, count)
+}
 
-	for i := range store.Capacity() {
-		held, ok := x.heldItem(store, i)
+// Up to count of the kind come out of the storage area into the owner's inventory, from its first slots first. How many
+// came out.
+func (x *ECSContainer) TakeFromStorage(owner, storage common.EntityId, kind data.ItemEnum, count int) (int, error) {
+	inv, ok := x.Inventories.Get(storage)
+	if !ok || !x.StorageAreas.HasComponent(storage) {
+		return 0, nil
+	}
+	taken := 0
+	for i := 0; i < inv.Capacity() && taken < count; i++ {
+		if held, ok := x.heldItem(inv, i); !ok || held.kind != kind {
+			continue
+		}
+		n, err := x.MoveItems(storage, i, owner, count-taken)
+		if err != nil {
+			return taken, err
+		}
+		if n == 0 {
+			break
+		}
+		taken += n
+	}
+	return taken, nil
+}
+
+// Up to count of what's in from's slot goes into to's inventory, topping up stacks like it there first and then into
+// its first free slot, as much as there's room for. Only what moves is split off a stack. How many moved.
+func (x *ECSContainer) MoveItems(from common.EntityId, slot int, to common.EntityId, count int) (int, error) {
+	fromInv, ok := x.Inventories.Get(from)
+	if !ok {
+		return 0, fmt.Errorf("entity %d has no inventory", from)
+	}
+	toInv, ok := x.Inventories.Get(to)
+	if !ok {
+		return 0, fmt.Errorf("entity %d has no inventory", to)
+	}
+	item, ok := fromInv.Slot(slot)
+	if !ok || count <= 0 {
+		return 0, nil
+	}
+	itemComp, ok := x.Items.Get(item)
+	if !ok {
+		return 0, fmt.Errorf("entity %d in slot %d of entity %d isn't an item", item, slot, from)
+	}
+
+	moving := min(count, itemComp.count)
+	left := moving
+	for i := 0; i < toInv.Capacity() && left > 0; i++ {
+		held, ok := x.heldItem(toInv, i)
 		if !ok || !x.stacks(held, itemComp) {
 			continue
 		}
-		moved := min(x.stackLimit(held)-held.count, itemComp.count)
-		held.count += moved
-		itemComp.count -= moved
+		n := min(x.stackLimit(held)-held.count, left)
+		held.count += n
+		itemComp.count -= n
+		left -= n
 	}
+	if free := toInv.FirstFreeSlot(); left > 0 && free != -1 {
+		part := item
+		if left < itemComp.count {
+			pos, err := x.WorldPos(from)
+			if err != nil {
+				return 0, fmt.Errorf("error getting the world position of entity %d: %w", from, err)
+			}
+			if part, err = x.SpawnItemStack(itemComp.kind, left, pos); err != nil {
+				return 0, fmt.Errorf("error splitting %d off item %d: %w", left, item, err)
+			}
+			itemComp.count -= left
+		}
+		if err := x.PutInInventory(to, free, part); err != nil {
+			return 0, fmt.Errorf("error putting item %d in entity %d's inventory: %w", part, to, err)
+		}
+		left = 0
+	}
+
 	if itemComp.count == 0 {
-		x.ScheduleRemoveEntity(item)
 		if err := x.Detach(item); err != nil {
-			return false, fmt.Errorf("error taking item %d out of entity %d: %w", item, owner, err)
+			return 0, fmt.Errorf("error taking item %d out of entity %d: %w", item, from, err)
 		}
-		return true, x.refreshHand(owner)
+		x.ScheduleRemoveEntity(item)
 	}
-	if free := store.FirstFreeSlot(); free != -1 {
-		if err := x.PutInInventory(storage, free, item); err != nil {
-			return false, fmt.Errorf("error putting item %d in storage area %d: %w", item, storage, err)
-		}
-	}
-	return true, x.refreshHand(owner)
+	return moving - left, x.refreshHand(from)
 }
 
 // How many of each kind of item it holds, by kind

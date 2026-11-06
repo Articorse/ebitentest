@@ -192,8 +192,10 @@ type InputState struct {
 	PickUp ItemPickUp
 	// A storage area marked out, or every one the rectangle touches taken away
 	Storage StorageMarking
-	// What's in an inventory slot put in a storage area within reach
+	// Some of what's in an inventory slot put in a storage area within reach
 	Store ItemStoring
+	// Some of a kind of item taken out of a storage area within reach
+	Take ItemTaking
 }
 
 type StorageMarking struct {
@@ -204,6 +206,14 @@ type StorageMarking struct {
 type ItemStoring struct {
 	Store   bool
 	From    int
+	Count   int
+	Storage common.EntityId
+}
+
+type ItemTaking struct {
+	Take    bool
+	Kind    data.ItemEnum
+	Count   int
 	Storage common.EntityId
 }
 
