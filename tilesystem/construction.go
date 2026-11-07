@@ -62,7 +62,7 @@ func (cc *ChunkContainer) CanPlaceSite(t utils.Vec2i) bool {
 	if _, hasFeature := c.features[t]; hasFeature {
 		return false
 	}
-	if _, hasSite := c.sites[t]; hasSite {
+	if _, hasSite := c.sites[t]; hasSite || cc.InArea(data.Area_Storage, t) {
 		return false
 	}
 	def, ok := cc.atlas[c.getTileDefId(t)]

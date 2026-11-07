@@ -260,3 +260,6 @@ func TestWhatLiesOnATileIsDrawnThereInTileOrderAndBlocksBuilding(t *testing.T) {
 		t.Fatal("a tile with something on it doesn't count as occupied, or an empty one does")
 	}
 }
+
+func groundTorches(n int) ecs.GroundStack { return ecs.GroundStack{Kind: data.Item_Torch, Count: n} }
+func groundWood(n int) ecs.GroundStack    { return ecs.GroundStack{Kind: data.Item_Wood, Count: n} }

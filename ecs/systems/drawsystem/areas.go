@@ -20,9 +20,10 @@ type areaLook struct {
 var areaLooks = [data.AreaCount]areaLook{
 	data.Area_Home:    {name: "Home", shown: data.HomeAreaColor, mark: data.HomeMarkColor, button: data.HomeButtonColor},
 	data.Area_Harvest: {name: "Harvest", shown: data.HarvestAreaColor, mark: data.HarvestMarkColor, button: data.HarvestButtonColor},
+	data.Area_Storage: {name: "Storage", shown: data.StorageAreaColor, mark: data.StorageMarkColor, button: data.StorageButtonColor},
 }
 
-// In the order of the area menu's buttons
+// In the order of the area menu's buttons, which storage, in build mode, isn't one of
 func Areas() []data.AreaEnum {
 	return []data.AreaEnum{data.Area_Home, data.Area_Harvest}
 }
@@ -165,11 +166,6 @@ func drawButtonSquare(screen *ebiten.Image, scale float64, slotPos, slotSize uti
 // The area's tiles in view, since areas are only shown while they're being marked out or built on
 func DrawArea(dst *ebiten.Image, camera utils.Vec2f, area data.AreaEnum, inArea func(data.AreaEnum, utils.Vec2i) bool) {
 	drawTilesWhere(dst, camera, func(t utils.Vec2i) bool { return inArea(area, t) }, areaLooks[area].shown)
-}
-
-// Its tiles tinted like an area's
-func DrawStorageAreas(dst *ebiten.Image, camera utils.Vec2f, inStorage func(utils.Vec2i) bool) {
-	drawTilesWhere(dst, camera, inStorage, data.StorageAreaColor)
 }
 
 func drawTilesWhere(dst *ebiten.Image, camera utils.Vec2f, in func(utils.Vec2i) bool, c color.Color) {

@@ -639,9 +639,7 @@ func (g *game) updateBlueprintPlacer() {
 func (g *game) releaseBuildDrag() {
 	tile, shift := g.cursorTile(), ebiten.IsKeyPressed(ebiten.KeyShift)
 	if g.placer.IsStorage() {
-		first, last := g.placer.Rect(tile)
-		marking := g.placer.Release(tile, shift)
-		if !g.pendingStorage.Mark && (shift || g.canPlaceStorage(first, last)) {
+		if marking := g.placer.Release(tile, shift, g.canPlaceStorage); !g.pendingStorage.Mark {
 			g.pendingStorage = marking
 		}
 		return
@@ -656,7 +654,7 @@ func (g *game) releaseBuildDrag() {
 	}
 }
 
-// For what lies on the tile under the cursor, or the storage or site there, unless the cursor is on a menu or building
+// For what lies on the tile under the cursor, or the site there, unless the cursor is on a menu or building
 func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	inv, ok := g.ecs.Inventories.Get(g.playerEntity)
 	if !ok || g.placer.IsActive() {
@@ -673,10 +671,6 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 			return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.GroundStackTooltip(stack, g.ecs), g.assetmanager)
 		}
 	}
-	if storage, ok := g.ecs.StorageAt(tile); ok {
-		lines := drawsystem.StorageTooltip(g.ecs.StorageContents(storage), g.ecs.ItemAtlas())
-		return drawsystem.DrawTooltip(screen, g.uiScale, cursor, lines, g.assetmanager)
-	}
 	site, ok := g.chunkContainer.Site(tile)
 	if _, seen := g.chunkContainer.RecallTile(tile); !ok || !seen {
 		return nil
@@ -688,24 +682,16 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas(), g.chunkContainer.InArea(data.Area_Home, tile)), g.assetmanager)
 }
 
-// Only on what's been seen, in sight now or remembered, so that placing can't find out what's in unexplored ground, and
-// not on storage
+// Only on what's been seen, in sight now or remembered, so that placing can't find out what's in unexplored ground
 func (g *game) canPlaceBlueprint(tile utils.Vec2i) bool {
 	_, seen := g.chunkContainer.RecallTile(tile)
-	_, onStorage := g.ecs.StorageAt(tile)
-	return seen && !onStorage && g.chunkContainer.CanPlaceSite(tile)
+	return seen && g.chunkContainer.CanPlaceSite(tile)
 }
 
 // Only on what's been seen, like a blueprint
-func (g *game) canPlaceStorage(first, last utils.Vec2i) bool {
-	for y := first.Y; y <= last.Y; y++ {
-		for x := first.X; x <= last.X; x++ {
-			if _, seen := g.chunkContainer.RecallTile(utils.Vec2i{X: x, Y: y}); !seen {
-				return false
-			}
-		}
-	}
-	return g.ecs.CanPlaceStorage(first, last)
+func (g *game) canPlaceStorage(tile utils.Vec2i) bool {
+	_, seen := g.chunkContainer.RecallTile(tile)
+	return seen && g.ecs.CanPlaceStorage(tile)
 }
 
 // R over a blueprint that has nothing delivered yet takes it away, on what's been seen like placing
@@ -891,14 +877,12 @@ func (g *game) drawWorld(world *ebiten.Image) {
 
 	// On the ground, under what's on it and the light and fog, except while building or marking out areas, when it's
 	// drawn above the fog with them
-	inStorage := func(t utils.Vec2i) bool { _, ok := g.ecs.StorageAt(t); return ok }
 	if !g.placer.IsActive() && !g.areaPainter.IsActive() {
-		drawsystem.DrawStorageAreas(world, g.ecs.Camera, inStorage)
+		drawsystem.DrawArea(world, g.ecs.Camera, data.Area_Storage, g.chunkContainer.InArea)
 	}
 	window := drawsystem.DrawWindow(g.ecs.Camera, drawsystem.ImageSize(world))
 	staticSprites := slices.Concat(
 		g.chunkContainer.FeatureSprites(window, g.ecs.TickIdx*data.TickMs),
-		drawsystem.StoredItemSprites(window, g.ecs),
 		drawsystem.GroundItemSprites(window, g.ecs),
 	)
 	if err := drawsystem.DrawSprites(world, g.ecs.Camera, staticSprites, g.ecs, g.assetmanager); err != nil {
@@ -931,17 +915,15 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		for _, area := range drawsystem.Areas() {
 			drawsystem.DrawArea(world, g.ecs.Camera, area, g.chunkContainer.InArea)
 		}
-		drawsystem.DrawStorageAreas(world, g.ecs.Camera, inStorage)
+		drawsystem.DrawArea(world, g.ecs.Camera, data.Area_Storage, g.chunkContainer.InArea)
 	} else if g.placer.IsActive() {
 		drawsystem.DrawArea(world, g.ecs.Camera, data.Area_Home, g.chunkContainer.InArea)
-		drawsystem.DrawStorageAreas(world, g.ecs.Camera, inStorage)
+		drawsystem.DrawArea(world, g.ecs.Camera, data.Area_Storage, g.chunkContainer.InArea)
 	}
 	if g.areaPainter.IsActive() {
 		g.areaPainter.Draw(world, g.ecs.Camera, g.cursorTile(), ebiten.IsKeyPressed(ebiten.KeyShift))
 	} else if g.placer.IsStorage() && g.placer.IsDragging() {
-		first, last := g.placer.Rect(g.cursorTile())
-		erase := ebiten.IsKeyPressed(ebiten.KeyShift)
-		g.placer.DrawStorage(world, g.ecs.Camera, g.cursorTile(), !erase && g.canPlaceStorage(first, last))
+		g.placer.DrawStorage(world, g.ecs.Camera, g.cursorTile(), ebiten.IsKeyPressed(ebiten.KeyShift), g.canPlaceStorage)
 	} else if g.placer.IsActive() {
 		tile := g.cursorTile()
 		overPanel := g.placer.Covers(g.uiCursor(), g.screenSize.Multiply(1/g.uiScale), g.ecs.BlueprintAtlas(), g.assetmanager)

@@ -89,7 +89,7 @@ func TestAFullHotbarWithFullStacksLeavesItemsAlone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if x.HasRoomFor(player, wood) {
+	if x.RoomFor(player, data.Item_Wood) != 0 {
 		t.Fatal("there's room for wood with every slot taken and the stack full")
 	}
 	if err := x.GiveItem(player, wood); err != nil {
@@ -105,7 +105,10 @@ func TestUniqueItemsNeverStack(t *testing.T) {
 	fillFreeSlots(t, x, player)
 
 	loose := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewItemComponent())
-	if x.HasRoomFor(player, loose) {
-		t.Fatal("a unique item can be stacked onto another one")
+	if err := x.GiveItem(player, loose); err != nil {
+		t.Fatal(err)
+	}
+	if x.Parent(loose) != -1 {
+		t.Fatal("a unique item was stacked onto another one")
 	}
 }

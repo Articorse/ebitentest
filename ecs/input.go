@@ -190,36 +190,37 @@ type InputState struct {
 	Area AreaMarking
 	// What lies on a tile within reach picked up, as much as there's room for
 	PickUp ItemPickUp
-	// A storage area marked out, or every one the rectangle touches taken away
+	// Storage marked out on the tiles, or taken off them
 	Storage StorageMarking
-	// Some of what's in an inventory slot put in a storage area within reach
-	Store ItemStoring
-	// Some of a kind of item taken out of a storage area within reach
-	Take ItemTaking
+	// Some of what's in an inventory slot put down on a tile within reach, and only it
+	PutDown ItemPutDown
+	// What lies on a tile within reach moved onto another within reach, without being carried
+	MoveOnGround GroundMove
 }
 
+type GroundMove struct {
+	Move     bool
+	From, To utils.Vec2i
+}
+
+// Tiles rather than a rectangle, since only the UI knows which tiles have been seen
 type StorageMarking struct {
 	Mark, Erase bool
-	First, Last utils.Vec2i
-}
-
-type ItemStoring struct {
-	Store   bool
-	From    int
-	Count   int
-	Storage common.EntityId
-}
-
-type ItemTaking struct {
-	Take    bool
-	Kind    data.ItemEnum
-	Count   int
-	Storage common.EntityId
+	Tiles       []utils.Vec2i
 }
 
 type ItemPickUp struct {
 	PickUp bool
 	Tile   utils.Vec2i
+	// Up to how many, or as many as there are with none
+	Count int
+}
+
+type ItemPutDown struct {
+	PutDown bool
+	From    int
+	Count   int
+	Tile    utils.Vec2i
 }
 
 // No area is no marking

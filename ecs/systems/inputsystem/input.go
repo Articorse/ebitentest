@@ -64,9 +64,7 @@ func HandleInputs(
 
 		if p := input.PlaceBlueprint; p.Kind != data.Blueprint_None {
 			for _, t := range p.Tiles {
-				if _, onStorage := ecsContainer.StorageAt(t); !onStorage {
-					ecsContainer.Terrain().PlaceSite(t, p.Kind)
-				}
+				ecsContainer.Terrain().PlaceSite(t, p.Kind)
 			}
 		}
 		if r := input.RemoveBlueprint; r.Remove {
@@ -76,29 +74,26 @@ func HandleInputs(
 			ecsContainer.MarkArea(a.Area, a.First, a.Last, !a.Erase)
 		}
 
-		if m := input.Storage; m.Mark && m.Erase {
-			if err := ecsContainer.RemoveStorages(m.First, m.Last); err != nil {
-				log.Printf("error taking away the storage from %v to %v: %v\n", m.First, m.Last, err)
-			}
-		} else if m.Mark {
-			if _, _, err := ecsContainer.PlaceStorage(m.First, m.Last); err != nil {
-				log.Printf("error marking out storage from %v to %v: %v\n", m.First, m.Last, err)
-			}
-		}
-		if st := input.Store; st.Store && inReachOfStorage(e, st.Storage, ecsContainer) {
-			if _, err := ecsContainer.Store(e, st.From, st.Storage, st.Count); err != nil {
-				log.Printf("error storing slot %d of entity %d in %d: %v\n", st.From+1, e, st.Storage, err)
-			}
-		}
-		if tk := input.Take; tk.Take && inReachOfStorage(e, tk.Storage, ecsContainer) {
-			if _, err := ecsContainer.TakeFromStorage(e, tk.Storage, tk.Kind, tk.Count); err != nil {
-				log.Printf("error taking %d of %v out of %d for entity %d: %v\n", tk.Count, tk.Kind, tk.Storage, e, err)
+		if m := input.Storage; m.Mark {
+			for _, t := range m.Tiles {
+				if m.Erase || ecsContainer.CanPlaceStorage(t) {
+					ecsContainer.MarkArea(data.Area_Storage, t, t, !m.Erase)
+				}
 			}
 		}
 
 		if p := input.PickUp; p.PickUp {
-			if err := pickUpInReach(e, p.Tile, ecsContainer); err != nil {
+			if err := pickUpInReach(e, p, ecsContainer); err != nil {
 				log.Printf("error picking up what's on %v for entity %d: %v\n", p.Tile, e, err)
+			}
+		}
+		if m := input.MoveOnGround; m.Move && inItemReach(e, m.From, ecsContainer) && inItemReach(e, m.To, ecsContainer) {
+			ecsContainer.MoveOnGround(m.From, m.To)
+		}
+		// After picking up, so that what's picked up can be put down elsewhere in the same tick
+		if d := input.PutDown; d.PutDown && inItemReach(e, d.Tile, ecsContainer) {
+			if _, err := ecsContainer.PutDownOn(e, d.From, d.Count, d.Tile); err != nil {
+				log.Printf("error putting slot %d of entity %d down on %v: %v\n", d.From+1, e, d.Tile, err)
 			}
 		}
 
@@ -199,16 +194,26 @@ func applyInventoryAction(e common.EntityId, action ecs.InventoryAction, ecsCont
 }
 
 // From within reach and in sight, as building is
-func pickUpInReach(e common.EntityId, t utils.Vec2i, ecsContainer *ecs.ECSContainer) error {
-	pos, err := ecsContainer.WorldPos(e)
-	if err != nil {
-		return err
-	}
-	if _, inReach := ecsContainer.AimedTileInReach(pos, utils.TilePosToWorldPos(t), data.ItemReachTiles); !inReach {
+func pickUpInReach(e common.EntityId, p ecs.ItemPickUp, ecsContainer *ecs.ECSContainer) error {
+	if !inItemReach(e, p.Tile, ecsContainer) {
 		return nil
 	}
-	_, err = ecsContainer.PickUpFromGround(e, t)
+	var err error
+	if p.Count > 0 {
+		_, err = ecsContainer.PickUpSomeFromGround(e, p.Tile, p.Count)
+	} else {
+		_, err = ecsContainer.PickUpFromGround(e, p.Tile)
+	}
 	return err
+}
+
+func inItemReach(e common.EntityId, t utils.Vec2i, ecsContainer *ecs.ECSContainer) bool {
+	pos, err := ecsContainer.WorldPos(e)
+	if err != nil {
+		return false
+	}
+	_, inReach := ecsContainer.AimedTileInReach(pos, utils.TilePosToWorldPos(t), data.ItemReachTiles)
+	return inReach
 }
 
 // On the aimed tile while it's within reach and in sight, and otherwise where the entity stands
@@ -223,18 +228,4 @@ func dropOnAim(e common.EntityId, input ecs.InputState, ecsContainer *ecs.ECSCon
 	}
 	_, err = ecsContainer.DropSelected(e, t)
 	return err
-}
-
-// Within reach of the storage area's closest tile, as building is
-func inReachOfStorage(e, storage common.EntityId, ecsContainer *ecs.ECSContainer) bool {
-	area, ok := ecsContainer.StorageAreas.Get(storage)
-	if !ok {
-		return false
-	}
-	pos, err := ecsContainer.WorldPos(e)
-	if err != nil {
-		return false
-	}
-	from := utils.WorldPosToTilePos(pos)
-	return utils.Dist2(from, area.ClosestTile(from)) <= data.StoreRangeTiles*data.StoreRangeTiles
 }

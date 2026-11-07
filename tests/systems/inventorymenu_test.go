@@ -399,7 +399,8 @@ func TestStorageIsDraggedOutInBuildModeAndStaysChosen(t *testing.T) {
 	var placer drawsystem.BlueprintPlacer
 	placer.Start(data.Blueprint_Planks)
 	placer.Press(utils.Vec2i{})
-	if m := placer.Release(utils.Vec2i{X: 2}, false); m.Mark {
+	everywhere := func(utils.Vec2i) bool { return true }
+	if m := placer.Release(utils.Vec2i{X: 2}, false, everywhere); m.Mark {
 		t.Fatalf("a drag with a blueprint chosen marked out storage: %+v", m)
 	}
 
@@ -407,16 +408,26 @@ func TestStorageIsDraggedOutInBuildModeAndStaysChosen(t *testing.T) {
 	if _, ok := placer.Kind(); ok || !placer.IsStorage() || !placer.IsActive() {
 		t.Fatal("choosing storage didn't leave build mode on with storage and no blueprint chosen")
 	}
-	placer.Press(utils.Vec2i{X: 4, Y: 1})
-	if m := placer.Release(utils.Vec2i{X: 2, Y: 3}, false); m != (ecs.StorageMarking{Mark: true, First: utils.Vec2i{X: 2, Y: 1}, Last: utils.Vec2i{X: 4, Y: 3}}) {
-		t.Fatalf("dragging storage from 4, 1 to 2, 3 marked %+v", m)
+	v := func(x, y int) utils.Vec2i { return utils.Vec2i{X: x, Y: y} }
+	placer.Press(v(3, 1))
+	if m := placer.Release(v(2, 2), false, everywhere); !m.Mark || m.Erase || !slices.Equal(m.Tiles, []utils.Vec2i{v(2, 1), v(3, 1), v(2, 2), v(3, 2)}) {
+		t.Fatalf("dragging storage from 3, 1 to 2, 2 marked %+v, want its 4 tiles row by row", m)
 	}
-	if m := placer.Release(utils.Vec2i{}, false); m.Mark {
+	if m := placer.Release(utils.Vec2i{}, false, everywhere); m.Mark {
 		t.Fatalf("releasing without dragging marked %+v", m)
 	}
-	placer.Press(utils.Vec2i{})
-	if m := placer.Release(utils.Vec2i{}, true); !m.Mark || !m.Erase {
-		t.Fatalf("a shift drag did %+v, want storage taken away", m)
+	notTheCorner := func(t utils.Vec2i) bool { return t != v(0, 0) }
+	placer.Press(v(0, 0))
+	if m := placer.Release(v(1, 0), false, notTheCorner); !slices.Equal(m.Tiles, []utils.Vec2i{v(1, 0)}) {
+		t.Fatalf("a drag over a tile storage can't go on marked %+v, want just the one it can", m)
+	}
+	placer.Press(v(0, 0))
+	if m := placer.Release(v(0, 0), false, func(utils.Vec2i) bool { return false }); m.Mark {
+		t.Fatalf("a drag where storage can't go marked %+v", m)
+	}
+	placer.Press(v(0, 0))
+	if m := placer.Release(v(1, 0), true, func(utils.Vec2i) bool { return false }); !m.Mark || !m.Erase || len(m.Tiles) != 2 {
+		t.Fatalf("a shift drag did %+v, want storage taken off both tiles, whether it could go there or not", m)
 	}
 	if !placer.IsStorage() {
 		t.Fatal("marking out storage left build mode")

@@ -165,14 +165,32 @@ func (p *BlueprintPlacer) Rect(tile utils.Vec2i) (first, last utils.Vec2i) {
 		utils.Vec2i{X: max(p.start.X, tile.X), Y: max(p.start.Y, tile.Y)}
 }
 
-// Ends the drag at tile, marking the rectangle out as storage, or taking away all storage it touches
-func (p *BlueprintPlacer) Release(tile utils.Vec2i, erase bool) ecs.StorageMarking {
+// Ends the drag at tile, marking out storage on the rectangle's tiles that pass the filter, or taking it off all of
+// them
+func (p *BlueprintPlacer) Release(tile utils.Vec2i, erase bool, fits func(utils.Vec2i) bool) ecs.StorageMarking {
 	if !p.dragging || !p.storage {
 		return ecs.StorageMarking{}
 	}
+	tiles := p.rectTiles(tile)
 	p.dragging = false
+	if !erase {
+		tiles = slices.DeleteFunc(tiles, func(t utils.Vec2i) bool { return !fits(t) })
+	}
+	if len(tiles) == 0 {
+		return ecs.StorageMarking{}
+	}
+	return ecs.StorageMarking{Mark: true, Erase: erase, Tiles: tiles}
+}
+
+func (p *BlueprintPlacer) rectTiles(tile utils.Vec2i) []utils.Vec2i {
 	first, last := p.Rect(tile)
-	return ecs.StorageMarking{Mark: true, Erase: erase, First: first, Last: last}
+	tiles := []utils.Vec2i{}
+	for y := first.Y; y <= last.Y; y++ {
+		for x := first.X; x <= last.X; x++ {
+			tiles = append(tiles, utils.Vec2i{X: x, Y: y})
+		}
+	}
+	return tiles
 }
 
 // Ends the drag at tile, with the chosen blueprint on each of the tiles it goes on that pass the filter
@@ -206,17 +224,23 @@ func (p *BlueprintPlacer) BlueprintTiles(tile utils.Vec2i) []utils.Vec2i {
 	return tiles
 }
 
-// The storage being dragged out to tile: purple if it can go there, and red if it can't or it's erasing
-func (p *BlueprintPlacer) DrawStorage(dst *ebiten.Image, camera utils.Vec2f, tile utils.Vec2i, valid bool) {
+// The storage being dragged out to tile: purple on each tile it can go on, and red on the rest, or all red erasing
+func (p *BlueprintPlacer) DrawStorage(dst *ebiten.Image, camera utils.Vec2f, tile utils.Vec2i, erase bool, fits func(utils.Vec2i) bool) {
 	if !p.dragging {
 		return
 	}
-	c := data.StorageMarkColor
-	if !valid {
-		c = data.AreaUnmarkColor
+	if erase {
+		first, last := p.Rect(tile)
+		fillTiles(dst, camera, first, last, data.AreaUnmarkColor)
+		return
 	}
-	first, last := p.Rect(tile)
-	fillTiles(dst, camera, first, last, c)
+	for _, t := range p.rectTiles(tile) {
+		c := data.StorageMarkColor
+		if !fits(t) {
+			c = data.AreaUnmarkColor
+		}
+		fillTiles(dst, camera, t, t, c)
+	}
 }
 
 // The finished tile as a blueprint on each tile it would go on for the cursor's tile: blue where it fits and red where

@@ -40,8 +40,6 @@ const (
 	// Chopping is done from next to a tree, not diagonally, where an axe swung from the far side of the tile can fall
 	// short of it
 	ColonistChopRangeTiles = 1
-	// How far from a storage area's closest tile what's carried can be put in it, which is as far as building reaches
-	StoreRangeTiles = PlayerBuildRangeTiles
 )
 
 // What colonists gather where it lies loose on the harvest area

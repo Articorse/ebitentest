@@ -179,6 +179,12 @@ func (x *ECSContainer) letGo(item common.EntityId) error {
 // As much of what lies on the tile as there's room for goes into the collector's inventory, the rest staying. How
 // many it took.
 func (x *ECSContainer) PickUpFromGround(collector common.EntityId, t utils.Vec2i) (int, error) {
+	stack, _ := x.terrain.GroundStack(t)
+	return x.PickUpSomeFromGround(collector, t, stack.Count)
+}
+
+// Up to count of what lies on the tile, as much as there's room for. A unique item is all or nothing.
+func (x *ECSContainer) PickUpSomeFromGround(collector common.EntityId, t utils.Vec2i, count int) (int, error) {
 	stack, ok := x.terrain.GroundStack(t)
 	inv, invOk := x.Inventories.Get(collector)
 	if !ok || !invOk {
@@ -214,7 +220,7 @@ func (x *ECSContainer) PickUpFromGround(collector common.EntityId, t utils.Vec2i
 	if !ok {
 		return 0, fmt.Errorf("the stack on %v is of item %v, which isn't in the item atlas", t, stack.Kind)
 	}
-	taking := min(stack.Count, x.roomFor(inv, stack.Kind, def.maxStack))
+	taking := min(count, stack.Count, x.roomFor(inv, stack.Kind, def.maxStack))
 	for left := taking; left > 0; {
 		n := min(left, def.maxStack)
 		item, err := x.SpawnItemStack(stack.Kind, n, pos)
@@ -228,6 +234,69 @@ func (x *ECSContainer) PickUpFromGround(collector common.EntityId, t utils.Vec2i
 	}
 	x.terrain.SetGroundStack(t, GroundStack{Kind: stack.Kind, Count: stack.Count - taking})
 	return taking, nil
+}
+
+// Up to count of what's in the owner's slot goes onto the tile and only it, which has to be empty or hold a stack of
+// the same kind with room. How many went.
+func (x *ECSContainer) PutDownOn(owner common.EntityId, slot, count int, t utils.Vec2i) (int, error) {
+	inv, ok := x.Inventories.Get(owner)
+	if !ok {
+		return 0, fmt.Errorf("entity %d has no inventory", owner)
+	}
+	item, ok := inv.Slot(slot)
+	if !ok {
+		return 0, nil
+	}
+	itemComp, ok := x.Items.Get(item)
+	if !ok || itemComp.kind == data.Item_None {
+		return 0, nil
+	}
+	n := min(count, itemComp.count, x.groundRoom(t, itemComp.kind, false))
+	if n <= 0 {
+		return 0, nil
+	}
+	on, _ := x.terrain.GroundStack(t)
+	if !x.terrain.SetGroundStack(t, GroundStack{Kind: itemComp.kind, Count: on.Count + n}) {
+		return 0, nil
+	}
+	itemComp.count -= n
+	if itemComp.count > 0 {
+		return n, nil
+	}
+	if err := x.letGo(item); err != nil {
+		return n, err
+	}
+	x.removeEntity(item, false)
+	return n, nil
+}
+
+// What lies on from goes onto to, as much as fits there: all of a unique item onto empty ground, or of a stack as much
+// as tops up what's there or makes a new one. How many moved.
+func (x *ECSContainer) MoveOnGround(from, to utils.Vec2i) int {
+	stack, ok := x.terrain.GroundStack(from)
+	if !ok || from == to {
+		return 0
+	}
+	if stack.Unique != nil {
+		if x.groundRoom(to, data.Item_None, true) <= 0 || !x.terrain.SetGroundStack(to, stack) {
+			return 0
+		}
+		x.terrain.SetGroundStack(from, GroundStack{})
+		return 1
+	}
+	n := min(stack.Count, x.groundRoom(to, stack.Kind, false))
+	on, _ := x.terrain.GroundStack(to)
+	if n <= 0 || !x.terrain.SetGroundStack(to, GroundStack{Kind: stack.Kind, Count: on.Count + n}) {
+		return 0
+	}
+	x.terrain.SetGroundStack(from, GroundStack{Kind: stack.Kind, Count: stack.Count - n})
+	return n
+}
+
+// How many of the kind fit on the tile: on empty ground that can be walked on a full stack, and on a stack of it
+// what tops it up
+func (x *ECSContainer) GroundRoomFor(t utils.Vec2i, kind data.ItemEnum) int {
+	return x.groundRoom(t, kind, false)
 }
 
 // How many of the kind fit in the entity's inventory

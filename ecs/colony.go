@@ -81,3 +81,17 @@ func (x Colony) toDto() (ComponentDto, error) {
 func (x colonyDto) toComponent() (Component, error) {
 	return &Colony{}, nil
 }
+
+// Storage goes on tiles inside a colony's bounds that can be walked on, without a site, so that what's put away there
+// can be got to
+func (x *ECSContainer) CanPlaceStorage(t utils.Vec2i) bool {
+	if _, site := x.terrain.Site(t); site || x.terrain.WalkSpeedPercent(t) <= 0 {
+		return false
+	}
+	for _, colony := range x.Colonies.GetEntities() {
+		if x.InColony(colony, t) {
+			return true
+		}
+	}
+	return false
+}

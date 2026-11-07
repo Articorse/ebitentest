@@ -7,5 +7,8 @@ const (
 	Area_None AreaEnum = iota
 	Area_Home
 	Area_Harvest
+	// Where what's put away lies, marked out in build mode rather than the area menu, since it's part of what the colony
+	// is made of
+	Area_Storage
 	AreaCount
 )

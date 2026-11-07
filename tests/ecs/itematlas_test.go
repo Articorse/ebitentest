@@ -175,11 +175,7 @@ func TestOnlyItemsOfTheSameKindStack(t *testing.T) {
 		t.Fatalf("giving a wood: %v", err)
 	}
 
-	stone, err := x.SpawnItem(2, utils.Vec2f{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if x.HasRoomFor(owner, stone) {
+	if x.RoomFor(owner, 2) != 0 {
 		t.Fatal("a stone can be stacked onto wood")
 	}
 }

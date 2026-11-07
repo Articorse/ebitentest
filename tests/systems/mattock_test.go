@@ -61,6 +61,9 @@ func (openGround) GroundStacksIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i {
 func (openGround) SetGroundStack(utils.Vec2i, ecs.GroundStack) bool {
 	return false
 }
+func (openGround) AreaTiles(data.AreaEnum, utils.Vec2i, utils.Vec2i) []utils.Vec2i {
+	return nil
+}
 func (openGround) RemoveSite(utils.Vec2i) bool                           { return false }
 func (openGround) DeliverToSite(utils.Vec2i, data.ItemEnum, int) int     { return 0 }
 func (openGround) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }

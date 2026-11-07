@@ -205,8 +205,9 @@ func (cc *ChunkContainer) DamageFeature(t utils.Vec2i, damage int) (bool, *ecs.D
 }
 
 // Whether there's room for a new feature: passable ground without a feature on it
+// Not on storage, which is kept clear for what's put away there
 func (cc *ChunkContainer) CanPlaceFeature(t utils.Vec2i) bool {
-	return cc.CanPlaceTile(t)
+	return cc.CanPlaceTile(t) && !cc.InArea(data.Area_Storage, t)
 }
 
 // Returns false where a feature can't be placed, or the feature isn't in the atlas

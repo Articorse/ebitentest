@@ -1,8 +1,10 @@
 package tilesystem
 
 import (
+	"cmp"
 	"ebittest/data"
 	"ebittest/utils"
+	mbits "math/bits"
 	"slices"
 )
 
@@ -14,6 +16,37 @@ func (cc *ChunkContainer) InArea(area data.AreaEnum, t utils.Vec2i) bool {
 	}
 	i := c.tileIndex(t)
 	return c.areas[area][i/64]&(1<<(i%64)) != 0
+}
+
+// The tiles from first to last in the area, row by row
+func (cc *ChunkContainer) AreaTiles(area data.AreaEnum, first, last utils.Vec2i) []utils.Vec2i {
+	tiles := []utils.Vec2i{}
+	if area >= data.AreaCount {
+		return tiles
+	}
+	for cy := floorDiv(first.Y, data.ChunkSize); cy <= floorDiv(last.Y, data.ChunkSize); cy++ {
+		for cx := floorDiv(first.X, data.ChunkSize); cx <= floorDiv(last.X, data.ChunkSize); cx++ {
+			c, ok := cc.chunks[utils.Vec2i{X: cx, Y: cy}]
+			if !ok || c.areas[area] == nil {
+				continue
+			}
+			// Word by word, since most of an area's words are empty
+			for w, bits := range c.areas[area] {
+				for ; bits != 0; bits &= bits - 1 {
+					i := w*64 + mbits.TrailingZeros64(bits)
+					t := utils.Vec2i{X: cx*data.ChunkSize + i%data.ChunkSize, Y: cy*data.ChunkSize + i/data.ChunkSize}
+					if t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y {
+						tiles = append(tiles, t)
+					}
+				}
+			}
+		}
+	}
+	// Chunk by chunk isn't row by row across chunks
+	slices.SortFunc(tiles, func(a, b utils.Vec2i) int {
+		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
+	})
+	return tiles
 }
 
 // Puts the tiles from first to last that are in the simulation in the area, or takes them out of it

@@ -64,6 +64,8 @@ type Terrain interface {
 	SetGroundStack(t utils.Vec2i, s GroundStack) bool
 	// Where colonists look for work and what work, which the player marks out, and finished building spreads home
 	InArea(area data.AreaEnum, t utils.Vec2i) bool
+	// The tiles from first to last in the area, in tile order, row by row
+	AreaTiles(area data.AreaEnum, first, last utils.Vec2i) []utils.Vec2i
 	// Puts the tiles from first to last in the area, or takes them out of it
 	SetArea(area data.AreaEnum, first, last utils.Vec2i, in bool)
 }
@@ -163,6 +165,9 @@ func (noTerrain) GroundStacksIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i {
 }
 func (noTerrain) SetGroundStack(utils.Vec2i, GroundStack) bool {
 	return false
+}
+func (noTerrain) AreaTiles(data.AreaEnum, utils.Vec2i, utils.Vec2i) []utils.Vec2i {
+	return nil
 }
 func (noTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }
 
