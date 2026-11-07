@@ -29,6 +29,7 @@ func TestTheItemAtlasRefusesBrokenItems(t *testing.T) {
 		{"no name", `[{"id": 1, "imageAsset": "wood", "maxStack": 1}]`},
 		{"no image", `[{"id": 1, "name": "Wood", "maxStack": 1}]`},
 		{"a stack of nothing", `[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStack": 0}]`},
+		{"a negative weight", `[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStack": 1, "weight": -1}]`},
 		{"no light", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "maxStack": 1, "light": {"level": 0, "rangeTiles": 10}}]`},
 		{"light reaching nowhere", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "maxStack": 1, "light": {"level": 150, "rangeTiles": 0}}]`},
 		{"a frame that doesn't last", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "maxStack": 1, "animation": [{"frame": 0, "durationMs": 0}]}]`},
@@ -48,8 +49,8 @@ func TestTheGamesItemAtlasHasWood(t *testing.T) {
 	}
 
 	def, ok := atlas.Def(data.Item_Wood)
-	if !ok || def.Name() != "Wood" || def.ImageAsset() != common.AssetImageWood || def.MaxStack() != 100 {
-		t.Fatalf("wood is %+v (%v), want Wood, drawn as wood, up to 100 a stack", def, ok)
+	if !ok || def.Name() != "Wood" || def.ImageAsset() != common.AssetImageWood || def.MaxStack() != 100 || def.Weight() != 2 {
+		t.Fatalf("wood is %+v (%v), want Wood, drawn as wood, up to 100 a stack, weighing 2", def, ok)
 	}
 }
 
@@ -122,7 +123,7 @@ func TestStacksAreLimitedByTheAtlas(t *testing.T) {
 	if err := x.SetItemAtlas(atlas); err != nil {
 		t.Fatal(err)
 	}
-	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(2, 2))
+	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(2, 2, 1000))
 
 	for range 3 {
 		wood, err := x.SpawnItem(data.Item_Wood, utils.Vec2f{})
@@ -165,7 +166,7 @@ func TestOnlyItemsOfTheSameKindStack(t *testing.T) {
 	if err := x.SetItemAtlas(atlas); err != nil {
 		t.Fatal(err)
 	}
-	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(1, 1))
+	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(1, 1, 1000))
 
 	wood, err := x.SpawnItem(data.Item_Wood, utils.Vec2f{})
 	if err != nil {

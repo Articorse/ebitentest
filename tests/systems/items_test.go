@@ -41,7 +41,7 @@ func TestGivenItemsGoIntoTheLowestFreeSlotAndOnlyIntoHandWhenItsSelected(t *test
 	x, player, _, _, gun := newArmedPlayer(t)
 	inv, _ := x.Inventories.Get(player)
 	free := inv.FirstFreeSlot()
-	given := testutil.AddMovable(t, x, utils.Vec2f{X: 500}, false, ecs.NewNamedItemComponent("Thing"))
+	given := testutil.AddMovable(t, x, utils.Vec2f{X: 500}, false, ecs.NewNamedItemComponent("Thing", 1))
 
 	if err := x.GiveItem(player, given); err != nil {
 		t.Fatal(err)

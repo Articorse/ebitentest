@@ -21,6 +21,19 @@ func looseWood(t *testing.T, s *testutil.Session, tile utils.Vec2i, count int) {
 	}
 }
 
+// So that what it carries doesn't keep it from picking up much
+func withoutWood(t *testing.T, s *testutil.Session, colonist common.EntityId) {
+	t.Helper()
+	for woodCarried(s, colonist) > 0 {
+		inv, _ := s.ECS.Inventories.Get(colonist)
+		wood, _ := inv.Slot(0)
+		if err := s.ECS.ConsumeItem(wood); err != nil {
+			t.Fatal(err)
+		}
+	}
+	testutil.RemoveScheduled(t, s.ECS)
+}
+
 func TestAColonistGathersWoodLyingOnTheHarvestAreaButNotElsewhere(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	a := groundAway(t, s, colonist, 5)
@@ -30,6 +43,7 @@ func TestAColonistGathersWoodLyingOnTheHarvestAreaButNotElsewhere(t *testing.T) 
 	looseWood(t, s, a, 4)
 	looseWood(t, s, b, 2)
 	looseWood(t, s, off, 5)
+	withoutWood(t, s, colonist)
 
 	before := woodCarried(s, colonist)
 	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == before+6 }) {

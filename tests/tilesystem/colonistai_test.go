@@ -156,8 +156,8 @@ func TestAColonistDeliversToAndBuildsTheClosestBlueprintFirst(t *testing.T) {
 	if !live(t, s, 30*data.TPS, isBuilt(s, far)) {
 		t.Fatal("the colonist didn't go on to build the further blueprint")
 	}
-	if woodCarried(s, colonist) != 20-2*planksCost(t) {
-		t.Fatalf("the colonist has %d wood left, want what both blueprints cost taken from its 20", woodCarried(s, colonist))
+	if woodCarried(s, colonist) != data.ColonistStartingWood-2*planksCost(t) {
+		t.Fatalf("the colonist has %d wood left, want what both blueprints cost taken from its %d", woodCarried(s, colonist), data.ColonistStartingWood)
 	}
 	live(t, s, 2*data.TPS, func() bool { return false })
 	if colonistState(s, colonist) != inputsources.Colonist_Idle {
@@ -313,7 +313,7 @@ func TestAColonistThatNoLongerHasEnoughGivesUp(t *testing.T) {
 
 	inv, _ := s.ECS.Inventories.Get(colonist)
 	wood, _ := inv.Slot(0)
-	for range 20 - planksCost(t) + 1 {
+	for range data.ColonistStartingWood - planksCost(t) + 1 {
 		if err := s.ECS.ConsumeItem(wood); err != nil {
 			t.Fatal(err)
 		}

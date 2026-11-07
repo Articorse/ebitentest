@@ -3,13 +3,15 @@
     "id": 1,
     "name": "Wood",
     "imageAsset": "wood",
-    "maxStack": 100
+    "maxStack": 100,
+    "weight": 2
   },
   {
     "id": 2,
     "name": "Torch",
     "imageAsset": "torch_placed",
     "maxStack": 100,
+    "weight": 1,
     "animation": [
       { "frame": 0, "durationMs": 150 },
       { "frame": 1, "durationMs": 150 },

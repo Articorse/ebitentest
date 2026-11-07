@@ -112,15 +112,15 @@ func TestAColonistKeepsWhatSitesNeedWhenPuttingAway(t *testing.T) {
 func TestPickingUpSomeLeavesTheRest(t *testing.T) {
 	s, colonist, row := colonistHoldingWood(t)
 	near := utils.Vec2i{X: row.X + 1, Y: row.Y}
-	s.ECS.LayDownKind(data.Item_Wood, 10, near)
+	s.ECS.LayDownKind(data.Item_Wood, 3, near)
 	before := woodCarried(s, colonist)
 
-	handleInput(t, s, colonist, ecs.InputState{PickUp: ecs.ItemPickUp{PickUp: true, Tile: near, Count: 4}})
-	if _, n := onGround(s, near); n != 6 || woodCarried(s, colonist) != before+4 {
-		t.Fatalf("picking up 4 of 10 left %d and gave %d", n, woodCarried(s, colonist)-before)
+	handleInput(t, s, colonist, ecs.InputState{PickUp: ecs.ItemPickUp{PickUp: true, Tile: near, Count: 1}})
+	if _, n := onGround(s, near); n != 2 || woodCarried(s, colonist) != before+1 {
+		t.Fatalf("picking up 1 of 3 left %d and gave %d", n, woodCarried(s, colonist)-before)
 	}
 	handleInput(t, s, colonist, ecs.InputState{PickUp: ecs.ItemPickUp{PickUp: true, Tile: near}})
-	if _, ok := s.Chunks.GroundStack(near); ok || woodCarried(s, colonist) != before+10 {
+	if _, ok := s.Chunks.GroundStack(near); ok || woodCarried(s, colonist) != before+3 {
 		t.Fatal("picking up with no count didn't take the rest")
 	}
 }

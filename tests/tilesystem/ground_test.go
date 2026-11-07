@@ -169,7 +169,7 @@ func TestAUniqueItemIsKeptWholeOnItsOwnTileAndComesBackTheSame(t *testing.T) {
 func TestPickingUpTakesWhatThereIsRoomForAndLeavesTheRest(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 1)
-	holder, err := s.ECS.AddNewEntity(ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.TilePosToWorldPos(row), 1, 0), ecs.NewInventoryComponent(1, 1))
+	holder, err := s.ECS.AddNewEntity(ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.TilePosToWorldPos(row), 1, 0), ecs.NewInventoryComponent(1, 1, 1000))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,8 +191,12 @@ func TestPickingUpTakesWhatThereIsRoomForAndLeavesTheRest(t *testing.T) {
 		t.Fatal("a full inventory picked something up")
 	}
 
-	if n, _ := s.ECS.PickUpFromGround(colonist, row); n != 20 {
-		t.Fatalf("the colonist picked up %d of the 20 wood", n)
+	other, err := s.ECS.AddNewEntity(ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.TilePosToWorldPos(row), 1, 0), ecs.NewInventoryComponent(1, 1, 1000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := s.ECS.PickUpFromGround(other, row); n != 20 {
+		t.Fatalf("another picked up %d of the 20 wood", n)
 	}
 	if _, ok := s.Chunks.GroundStack(row); ok {
 		t.Fatal("picking up all of a stack left it on the ground")

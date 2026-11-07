@@ -52,8 +52,14 @@ func TestAColonistStartsAtTheColonyWithThePlayersBodyAndAStackOfWood(t *testing.
 		t.Fatal("the colonist doesn't have 9 slots, all on the hotbar, that only pick up what they're told to")
 	}
 	wood, _ := inv.Slot(0)
-	if item, ok := s.ECS.Items.Get(wood); !ok || item.Kind() != data.Item_Wood || item.Count() != 20 {
-		t.Fatal("the colonist doesn't start with 20 wood")
+	if item, ok := s.ECS.Items.Get(wood); !ok || item.Kind() != data.Item_Wood || item.Count() != data.ColonistStartingWood {
+		t.Fatalf("the colonist doesn't start with %d wood", data.ColonistStartingWood)
+	}
+	if inv.MaxWeight() != data.ColonistMaxCarryWeight || s.ECS.CarriedWeight(colonist) > inv.MaxWeight() {
+		t.Fatalf("the colonist can carry %d and starts out carrying %d, want a limit of %d it's under", inv.MaxWeight(), s.ECS.CarriedWeight(colonist), data.ColonistMaxCarryWeight)
+	}
+	if vel, ok := s.ECS.Velocities.Get(colonist); !ok || vel.Acceleration() != data.ColonistAcceleration {
+		t.Fatal("the colonist doesn't walk at a colonist's pace")
 	}
 	if _, inHand := inv.HotbarItem(inv.Selected()); inHand || inv.HotbarSlotOf(wood) != -1 {
 		t.Fatal("the colonist's wood is on its hotbar, which it only uses for what it's using")

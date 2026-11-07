@@ -21,4 +21,6 @@ const (
 	TooltipOffsetPx = 8
 	// How far each area button's colour is inset from its slot's edges
 	AreaButtonInsetPx = 8
+	// The row under the inventory's slots showing what it carries against what it can
+	InventoryWeightRowPx = 10
 )

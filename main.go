@@ -323,12 +323,14 @@ func (g *game) tick() {
 				log.Fatal("error spawning starting equipment: ", err)
 			}
 			for _, colony := range g.ecs.Colonies.GetEntities() {
-				colonist, err := templates.SpawnColonist(g.ecs, colony)
-				if err != nil {
-					log.Fatal(err)
-				}
-				if err := g.moveToNewWorldSpawn(colonist); err != nil {
-					log.Fatal("error moving the colonist to where it can stand: ", err)
+				for range data.ColonistsPerColony {
+					colonist, err := templates.SpawnColonist(g.ecs, colony)
+					if err != nil {
+						log.Fatal(err)
+					}
+					if err := g.moveToNewWorldSpawn(colonist); err != nil {
+						log.Fatal("error moving the colonist to where it can stand: ", err)
+					}
 				}
 			}
 		}

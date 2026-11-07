@@ -10,7 +10,7 @@ import (
 
 func newOwner(t *testing.T, x *ecs.ECSContainer) common.EntityId {
 	t.Helper()
-	return testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(3, 3))
+	return testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(3, 3, 1000))
 }
 
 func newItem(t *testing.T, x *ecs.ECSContainer) common.EntityId {

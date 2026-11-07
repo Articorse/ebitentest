@@ -39,6 +39,8 @@ type inventoryLayout struct {
 	panel     image.Rectangle
 	gridStart utils.Vec2f
 	screenH   float64
+	// The bottom right of the weight readout
+	weightAt utils.Vec2f
 }
 
 func newInventoryLayout(screenSize utils.Vec2f, assets *assetmanager.AssetManager) (inventoryLayout, error) {
@@ -50,9 +52,10 @@ func newInventoryLayout(screenSize utils.Vec2f, assets *assetmanager.AssetManage
 	gridW := data.InventoryColumns*s.X + (data.InventoryColumns-1)*data.HotbarSlotGapPx
 	gridH := data.InventoryRows*s.Y + (data.InventoryRows-1)*data.HotbarSlotGapPx
 	pad := float64(data.InventoryPanelPaddingPx)
-	start := utils.Vec2f{X: (screenSize.X - gridW) / 2, Y: screenSize.Y - data.InventoryMarginPx - pad - gridH}
-	panel := image.Rect(int(start.X-pad), int(start.Y-pad), int(start.X+gridW+pad), int(start.Y+gridH+pad))
-	return inventoryLayout{slotSize: s, panel: panel, gridStart: start, screenH: screenSize.Y}, nil
+	start := utils.Vec2f{X: (screenSize.X - gridW) / 2, Y: screenSize.Y - data.InventoryMarginPx - pad - data.InventoryWeightRowPx - gridH}
+	panel := image.Rect(int(start.X-pad), int(start.Y-pad), int(start.X+gridW+pad), int(start.Y+gridH+data.InventoryWeightRowPx+pad))
+	weightAt := utils.Vec2f{X: start.X + gridW, Y: start.Y + gridH + data.InventoryWeightRowPx}
+	return inventoryLayout{slotSize: s, panel: panel, gridStart: start, screenH: screenSize.Y, weightAt: weightAt}, nil
 }
 
 func (l inventoryLayout) slotPos(i int) utils.Vec2f {
@@ -223,9 +226,28 @@ func (m *InventoryMenu) Draw(
 		}
 	}
 
+	if err := drawCarriedWeight(screen, scale, ecsContainer.CarriedWeight(owner), inv.MaxWeight(), l.weightAt); err != nil {
+		return err
+	}
+
 	if item, ok := m.heldItem(inv); ok {
 		return drawSlotItem(screen, scale, item, cursor.X, cursor.Y, l.slotSize, ecsContainer, assets)
 	}
+	return nil
+}
+
+// Right-aligned, with its bottom right at the point in UI pixels
+func drawCarriedWeight(screen *ebiten.Image, scale float64, carried, maxWeight int, at utils.Vec2f) error {
+	face, err := floatingTextFace(data.HotbarStackCountSizePx * scale)
+	if err != nil {
+		return fmt.Errorf("error getting the font for the carried weight: %w", err)
+	}
+	label := fmt.Sprintf("%d / %d", carried, maxWeight)
+	w, h := text.Measure(label, face, 0)
+	op := &text.DrawOptions{}
+	op.GeoM.Translate(at.X*scale-w, at.Y*scale-h)
+	op.ColorScale.ScaleWithColor(color.White)
+	text.Draw(screen, label, face, op)
 	return nil
 }
 

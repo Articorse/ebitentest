@@ -5,6 +5,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 )
 
@@ -23,13 +24,13 @@ func SpawnColonist(ecsContainer *ecs.ECSContainer, colony common.EntityId) (comm
 	if err != nil {
 		return -1, err
 	}
-	inv := ecs.NewInventoryComponent(data.ColonistInventorySlots, data.ColonistInventorySlots)
+	inv := ecs.NewInventoryComponent(data.ColonistInventorySlots, data.ColonistInventorySlots, data.ColonistMaxCarryWeight)
 	inv.SetPickupsOffHotbar(true)
 
 	colonist, err := ecsContainer.AddNewEntity(
 		ecs.NewHierarchyComponent(),
 		ecs.NewTransformComponent(pos, 1, 0),
-		ecs.NewDefaultVelocityComponent(),
+		ecs.NewVelocityComponentWithParams(utils.Vec2f{}, data.ColonistAcceleration, data.DefaultDrag),
 		spr,
 		anim,
 		physics,

@@ -20,7 +20,7 @@ func newTorchHolder(t *testing.T, terrain ecs.Terrain, torches int) (*ecs.ECSCon
 	x.SetTerrain(terrain)
 
 	holder := testutil.AddMovable(t, x, utils.Vec2f{}, false,
-		ecs.NewInventoryComponent(2, 2),
+		ecs.NewInventoryComponent(2, 2, 1000),
 		ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{}))
 	stack, err := x.SpawnItemStack(data.Item_Torch, torches, utils.Vec2f{})
 	if err != nil {

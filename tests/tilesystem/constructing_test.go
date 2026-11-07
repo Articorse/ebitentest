@@ -36,7 +36,7 @@ func newBuilder(t *testing.T, wood int) (s *testutil.Session, site utils.Vec2i, 
 		t.Fatal(err)
 	}
 	for _, c := range []ecs.Component{
-		ecs.NewInventoryComponent(2, 2),
+		ecs.NewInventoryComponent(2, 2, 1000),
 		ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{}),
 		ecs.NewConstructorComponent(3, 1, 250),
 	} {

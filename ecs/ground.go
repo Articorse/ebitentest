@@ -18,9 +18,10 @@ type GroundStack struct {
 type UniqueItem struct {
 	Root    common.EntityId
 	Members map[common.EntityId][]ComponentDto
-	// So that it can be drawn and named without being brought back
-	Name  string
-	Image common.ImageAssetTag
+	// So that it can be drawn, named and weighed without being brought back
+	Name   string
+	Image  common.ImageAssetTag
+	Weight int
 }
 
 func (x *ECSContainer) GroundStackName(s GroundStack) string {
@@ -144,7 +145,7 @@ func (x *ECSContainer) LayDown(item common.EntityId, near utils.Vec2i) (bool, er
 	if err != nil {
 		return false, fmt.Errorf("error keeping the components of item %d: %w", item, err)
 	}
-	unique := &UniqueItem{Root: item, Members: members, Name: itemComp.name}
+	unique := &UniqueItem{Root: item, Members: members, Name: itemComp.name, Weight: itemComp.weight}
 	if spr, ok := x.Sprites.Get(item); ok {
 		unique.Image = spr.ImageAsset()
 	}
@@ -196,7 +197,7 @@ func (x *ECSContainer) PickUpSomeFromGround(collector common.EntityId, t utils.V
 	}
 
 	if stack.Unique != nil {
-		if inv.FirstFreeSlot() == -1 {
+		if inv.FirstFreeSlot() == -1 || stack.Unique.Weight > x.weightRoom(inv) {
 			return 0, nil
 		}
 		for e, dtos := range stack.Unique.Members {
@@ -220,7 +221,7 @@ func (x *ECSContainer) PickUpSomeFromGround(collector common.EntityId, t utils.V
 	if !ok {
 		return 0, fmt.Errorf("the stack on %v is of item %v, which isn't in the item atlas", t, stack.Kind)
 	}
-	taking := min(count, stack.Count, x.roomFor(inv, stack.Kind, def.maxStack))
+	taking := min(count, stack.Count, x.roomFor(inv, stack.Kind, def))
 	for left := taking; left > 0; {
 		n := min(left, def.maxStack)
 		item, err := x.SpawnItemStack(stack.Kind, n, pos)
@@ -306,20 +307,23 @@ func (x *ECSContainer) RoomFor(e common.EntityId, kind data.ItemEnum) int {
 	if !ok || !defOk {
 		return 0
 	}
-	return x.roomFor(inv, kind, def.maxStack)
+	return x.roomFor(inv, kind, def)
 }
 
-// What tops up its stacks, and a full stack in each free slot
-func (x *ECSContainer) roomFor(inv *Inventory, kind data.ItemEnum, maxStack int) int {
+// What tops up its stacks, and a full stack in each free slot, as far as what it can still carry goes
+func (x *ECSContainer) roomFor(inv *Inventory, kind data.ItemEnum, def ItemDef) int {
 	room := 0
 	for i := range inv.Capacity() {
 		held, ok := x.heldItem(inv, i)
 		switch {
 		case !ok && inv.slots[i] == -1:
-			room += maxStack
-		case ok && held.kind == kind && maxStack > 1:
-			room += maxStack - held.count
+			room += def.maxStack
+		case ok && held.kind == kind && def.maxStack > 1:
+			room += def.maxStack - held.count
 		}
+	}
+	if def.weight > 0 {
+		room = min(room, x.weightRoom(inv)/def.weight)
 	}
 	return room
 }

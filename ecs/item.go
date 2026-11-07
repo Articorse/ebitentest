@@ -16,6 +16,8 @@ type Item struct {
 	count int
 	// A unique item's, since it has no kind to look it up by
 	name string
+	// A unique item's, for the same reason
+	weight int
 }
 
 func NewItemComponent() *Item {
@@ -23,8 +25,8 @@ func NewItemComponent() *Item {
 }
 
 // A unique item with a name to show
-func NewNamedItemComponent(name string) *Item {
-	return &Item{count: 1, name: name}
+func NewNamedItemComponent(name string, weight int) *Item {
+	return &Item{count: 1, name: name, weight: weight}
 }
 
 func (x *Item) Kind() data.ItemEnum {
@@ -41,6 +43,15 @@ func (x *ECSContainer) stackLimit(item *Item) int {
 		return def.maxStack
 	}
 	return 1
+}
+
+// Of one of it: a generic item's from the atlas, and 0 for a kind that isn't in it
+func (x *ECSContainer) unitWeight(item *Item) int {
+	if item.kind == data.Item_None {
+		return item.weight
+	}
+	def, _ := x.itemAtlas.Def(item.kind)
+	return def.weight
 }
 
 func (x *ECSContainer) stacks(a, b *Item) bool {
@@ -197,24 +208,27 @@ func (x *ECSContainer) isGenericItem(e common.EntityId) bool {
 }
 
 type itemDto struct {
-	Kind  data.ItemEnum
-	Count int
-	Name  string
+	Kind   data.ItemEnum
+	Count  int
+	Name   string
+	Weight int
 }
 
 func (x Item) toDto() (ComponentDto, error) {
 	return &itemDto{
-		Kind:  x.kind,
-		Count: x.count,
-		Name:  x.name,
+		Kind:   x.kind,
+		Count:  x.count,
+		Name:   x.name,
+		Weight: x.weight,
 	}, nil
 }
 
 func (x itemDto) toComponent() (Component, error) {
 	return &Item{
-		kind:  x.Kind,
-		count: x.Count,
-		name:  x.Name,
+		kind:   x.Kind,
+		count:  x.Count,
+		name:   x.Name,
+		weight: x.Weight,
 	}, nil
 }
 

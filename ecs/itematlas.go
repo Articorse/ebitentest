@@ -16,6 +16,7 @@ type ItemDef struct {
 	name       string
 	imageAsset common.ImageAssetTag
 	maxStack   int
+	weight     int
 	// Nil for items that do nothing in hand
 	use *itemUse
 	// Nil for a still image
@@ -48,6 +49,10 @@ func (x ItemDef) MaxStack() int {
 	return x.maxStack
 }
 
+func (x ItemDef) Weight() int {
+	return x.weight
+}
+
 type ItemAtlas struct {
 	defs map[data.ItemEnum]ItemDef
 }
@@ -57,6 +62,7 @@ type itemDefDTO struct {
 	Name       string         `json:"name"`
 	ImageAsset string         `json:"imageAsset"`
 	MaxStack   int            `json:"maxStack"`
+	Weight     int            `json:"weight"`
 	Use        *itemUseDTO    `json:"use"`
 	Animation  []itemFrameDTO `json:"animation"`
 	Light      *itemLightDTO  `json:"light"`
@@ -104,12 +110,14 @@ func LoadItemAtlasFromJson(path string) (*ItemAtlas, error) {
 			return nil, fmt.Errorf("item %d needs a name and an image asset", dto.Id)
 		case dto.MaxStack < 1:
 			return nil, fmt.Errorf("item %d stacks up to %d, want at least 1", dto.Id, dto.MaxStack)
+		case dto.Weight < 0:
+			return nil, fmt.Errorf("item %d weighs %d, which is negative", dto.Id, dto.Weight)
 		}
 		if _, ok := atlas.defs[kind]; ok {
 			return nil, fmt.Errorf("item id %d is defined twice", dto.Id)
 		}
 
-		def := ItemDef{name: dto.Name, imageAsset: common.ImageAssetTag(dto.ImageAsset), maxStack: dto.MaxStack}
+		def := ItemDef{name: dto.Name, imageAsset: common.ImageAssetTag(dto.ImageAsset), maxStack: dto.MaxStack, weight: dto.Weight}
 		if u := dto.Use; u != nil {
 			if u.CooldownMs < 0 {
 				return nil, fmt.Errorf("item %d has a negative cooldown", dto.Id)

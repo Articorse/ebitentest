@@ -31,7 +31,9 @@ const (
 	HomeSpreadTiles = 15
 
 	ColonistInventorySlots = 9
-	ColonistStartingWood   = 20
+	// Under its carry weight along with its axe, so that it can pick things up from the start
+	ColonistStartingWood   = 15
+	ColonistMaxCarryWeight = 40
 	// How often a colonist looks for work while it has none, and for building while it's delivering, since looking can
 	// mean searching the whole colony
 	ColonistPlanEveryTicks = TPS
@@ -40,6 +42,10 @@ const (
 	// Chopping is done from next to a tree, not diagonally, where an axe swung from the far side of the tile can fall
 	// short of it
 	ColonistChopRangeTiles = 1
+	// Spawned at each colony in a new world
+	ColonistsPerColony = 5
+	// Half the player's, so that what they're doing can be followed
+	ColonistAcceleration = DefaultAcceleration / 2.0
 )
 
 // What colonists gather where it lies loose on the harvest area

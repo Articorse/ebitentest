@@ -17,10 +17,11 @@ type Inventory struct {
 	selected int
 	// Leaves what it picks up off its hotbar, which a colonist only uses for what it's using at the moment
 	pickupsOffHotbar bool
+	maxWeight        int
 }
 
-func NewInventoryComponent(capacity, hotbarSize int) *Inventory {
-	return &Inventory{slots: emptySlots(capacity), hotbar: emptySlots(hotbarSize)}
+func NewInventoryComponent(capacity, hotbarSize, maxWeight int) *Inventory {
+	return &Inventory{slots: emptySlots(capacity), hotbar: emptySlots(hotbarSize), maxWeight: maxWeight}
 }
 
 func emptySlots(n int) []common.EntityId {
@@ -237,6 +238,35 @@ func (x *ECSContainer) takeOutOfInventory(owner, item common.EntityId) {
 	}
 }
 
+func (x *Inventory) MaxWeight() int {
+	return x.maxWeight
+}
+
+// Of everything in the entity's inventory
+func (x *ECSContainer) CarriedWeight(e common.EntityId) int {
+	inv, ok := x.Inventories.Get(e)
+	if !ok {
+		return 0
+	}
+	return x.carriedWeight(inv)
+}
+
+func (x *ECSContainer) carriedWeight(inv *Inventory) int {
+	w := 0
+	for i := range inv.Capacity() {
+		if held, ok := x.heldItem(inv, i); ok {
+			w += held.count * x.unitWeight(held)
+		}
+	}
+	return w
+}
+
+// Never below 0, even for an inventory that was filled past its limit, which can only be done by putting things in it
+// directly
+func (x *ECSContainer) weightRoom(inv *Inventory) int {
+	return max(inv.maxWeight-x.carriedWeight(inv), 0)
+}
+
 func (x *Inventory) PickupsOffHotbar() bool {
 	return x.pickupsOffHotbar
 }
@@ -246,7 +276,7 @@ func (x *Inventory) SetPickupsOffHotbar(off bool) {
 }
 
 func (x Inventory) Copy() Inventory {
-	return Inventory{slots: slices.Clone(x.slots), hotbar: slices.Clone(x.hotbar), selected: x.selected, pickupsOffHotbar: x.pickupsOffHotbar}
+	return Inventory{slots: slices.Clone(x.slots), hotbar: slices.Clone(x.hotbar), selected: x.selected, pickupsOffHotbar: x.pickupsOffHotbar, maxWeight: x.maxWeight}
 }
 
 func (x Inventory) addTo(ecsContainer *ECSContainer, e common.EntityId) {
@@ -258,12 +288,13 @@ type inventoryDto struct {
 	Hotbar           []common.EntityId
 	Selected         int
 	PickupsOffHotbar bool
+	MaxWeight        int
 }
 
 func (x Inventory) toDto() (ComponentDto, error) {
-	return &inventoryDto{Slots: slices.Clone(x.slots), Hotbar: slices.Clone(x.hotbar), Selected: x.selected, PickupsOffHotbar: x.pickupsOffHotbar}, nil
+	return &inventoryDto{Slots: slices.Clone(x.slots), Hotbar: slices.Clone(x.hotbar), Selected: x.selected, PickupsOffHotbar: x.pickupsOffHotbar, MaxWeight: x.maxWeight}, nil
 }
 
 func (x inventoryDto) toComponent() (Component, error) {
-	return &Inventory{slots: slices.Clone(x.Slots), hotbar: slices.Clone(x.Hotbar), selected: x.Selected, pickupsOffHotbar: x.PickupsOffHotbar}, nil
+	return &Inventory{slots: slices.Clone(x.Slots), hotbar: slices.Clone(x.Hotbar), selected: x.Selected, pickupsOffHotbar: x.PickupsOffHotbar, maxWeight: x.MaxWeight}, nil
 }
