@@ -28,8 +28,8 @@ func (p *walk) follow(from utils.Vec2i, path []utils.Vec2i) {
 }
 
 // Straight at the destination while nothing's in the way, and along a path to it otherwise. The path is found again
-// when the destination moves to another tile, or something pushes the walker off it. False, and standing still, when no
-// path reaches it.
+// when the destination moves to another tile, something pushes the walker off it, or something's built on it. False,
+// and standing still, when no path reaches it.
 func (p *walk) moveTo(selfPos, dest utils.Vec2f, terrain ecs.Terrain) (ecs.InputState, bool) {
 	if clearWalk(selfPos, dest, terrain) {
 		p.path = nil
@@ -38,7 +38,8 @@ func (p *walk) moveTo(selfPos, dest utils.Vec2f, terrain ecs.Terrain) (ecs.Input
 
 	from, goal := utils.WorldPosToTilePos(selfPos), utils.WorldPosToTilePos(dest)
 	on := slices.Index(p.path, from)
-	if on == -1 || p.goal != goal {
+	blocked := on != -1 && slices.ContainsFunc(p.path[on:], func(t utils.Vec2i) bool { return terrain.WalkSpeedPercent(t) <= 0 })
+	if on == -1 || p.goal != goal || blocked {
 		path, ok := pathfinding.Find(from, goal, data.PathMaxExpandedTiles, terrain.WalkSpeedPercent)
 		if !ok {
 			p.path = nil

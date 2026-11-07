@@ -13,6 +13,7 @@ import (
 	"ebittest/utils"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -340,7 +341,8 @@ func TestWhatAColonistIsDoingIsSaved(t *testing.T) {
 		t.Fatal("the colonist's input wasn't saved")
 	}
 	p, ok := in.Params().(*inputsources.InputColonistParams)
-	if !ok || p.Colony != colony || p.State != inputsources.Colonist_Deliver || p.Target != site {
+	want := []inputsources.JobStop{{Action: inputsources.Stop_Deliver, Tile: site, Kind: data.Item_Wood, Count: planksCost(t)}}
+	if !ok || p.Colony != colony || p.State != inputsources.Colonist_Deliver || !slices.Equal(p.Stops, want) {
 		t.Fatalf("after loading, the colonist is %+v, want delivering to %v for colony %d", p, site, colony)
 	}
 }

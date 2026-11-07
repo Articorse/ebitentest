@@ -656,7 +656,8 @@ func (g *game) releaseBuildDrag() {
 	}
 }
 
-// For what lies on the tile under the cursor, or the site there, unless the cursor is on a menu or building
+// For the colonist under the cursor while debug info is shown, otherwise what lies on the tile under the cursor, or the
+// site there, unless the cursor is on a menu or building
 func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	inv, ok := g.ecs.Inventories.Get(g.playerEntity)
 	if !ok || g.placer.IsActive() {
@@ -666,6 +667,11 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	if g.inventoryMenu.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), inv, g.assetmanager) ||
 		g.areaPainter.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), g.assetmanager) {
 		return nil
+	}
+	if g.showFPS {
+		if lines, ok := g.colonistUnderCursor(); ok {
+			return drawsystem.DrawTooltip(screen, g.uiScale, cursor, lines, g.assetmanager)
+		}
 	}
 	tile := g.cursorTile()
 	if stack, ok := g.chunkContainer.GroundStack(tile); ok {
@@ -733,8 +739,31 @@ func (g *game) updatePickUp() {
 }
 
 func (g *game) cursorTile() utils.Vec2i {
+	return utils.WorldPosToTilePos(g.cursorWorldPos())
+}
+
+func (g *game) cursorWorldPos() utils.Vec2f {
 	x, y := ebiten.CursorPosition()
-	return utils.WorldPosToTilePos(utils.Vec2f{X: float64(x), Y: float64(y)}.Multiply(1 / g.ecs.Zoom).Add(g.ecs.Camera))
+	return utils.Vec2f{X: float64(x), Y: float64(y)}.Multiply(1 / g.ecs.Zoom).Add(g.ecs.Camera)
+}
+
+// The debug lines of the colonist closest to the cursor, within half a tile of it
+func (g *game) colonistUnderCursor() ([]string, bool) {
+	cursor := g.cursorWorldPos()
+	best, bestDist := common.EntityId(-1), float64(data.TileSize/2)
+	for e, in := range ecs.Query1(&g.ecs.Inputs, ecs.Without(&g.ecs.Disabled)) {
+		pos, err := g.ecs.WorldPos(e)
+		if err != nil || in.Type() != inputsources.InputType_Colonist {
+			continue
+		}
+		if pos.Subtract(cursor).Length() <= bestDist {
+			best, bestDist = e, pos.Subtract(cursor).Length()
+		}
+	}
+	if best == -1 {
+		return nil, false
+	}
+	return inputsources.ColonistDebugLines(best, g.ecs)
 }
 
 // Adds the inventory menu's and the placer's pending actions, keeps clicks on the menu or while placing from also using

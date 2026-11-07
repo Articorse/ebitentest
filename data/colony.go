@@ -34,8 +34,7 @@ const (
 	// Under its carry weight along with its axe, so that it can pick things up from the start
 	ColonistStartingWood   = 15
 	ColonistMaxCarryWeight = 40
-	// How often a colonist looks for work while it has none, and for building while it's delivering, since looking can
-	// mean searching the whole colony
+	// How often a colonist looks for work while it has none, since looking can mean searching the whole colony
 	ColonistPlanEveryTicks = TPS
 	// How many of the sites closest as the crow flies it finds paths to, choosing the one cheapest to walk to
 	ColonistJobCandidates = 3
@@ -46,6 +45,8 @@ const (
 	ColonistsPerColony = 5
 	// Half the player's, so that what they're doing can be followed
 	ColonistAcceleration = DefaultAcceleration / 2.0
+	// How far an idle colonist standing on a site looks for somewhere off it
+	ColonistStepOffRangeTiles = 3
 )
 
 // What colonists gather where it lies loose on the harvest area

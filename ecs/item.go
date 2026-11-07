@@ -54,6 +54,17 @@ func (x *ECSContainer) unitWeight(item *Item) int {
 	return def.weight
 }
 
+// A unique item's own name, and a generic one's kind's
+func (x *ECSContainer) ItemName(item *Item) string {
+	if item.kind == data.Item_None {
+		return item.name
+	}
+	if def, ok := x.itemAtlas.Def(item.kind); ok {
+		return def.name
+	}
+	return "?"
+}
+
 func (x *ECSContainer) stacks(a, b *Item) bool {
 	return a.kind == b.kind && x.stackLimit(a) > 1
 }
