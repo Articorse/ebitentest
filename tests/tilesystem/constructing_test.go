@@ -62,8 +62,8 @@ func newBuilder(t *testing.T, wood int) (s *testutil.Session, site utils.Vec2i, 
 		if stack, err = s.ECS.SpawnItemStack(data.Item_Wood, wood, from); err != nil {
 			t.Fatal(err)
 		}
-		if ok, err := s.ECS.PickUpItem(s.Player, stack); err != nil || !ok {
-			t.Fatalf("picking up wood: %v, %v", ok, err)
+		if err := s.ECS.GiveItem(s.Player, stack); err != nil {
+			t.Fatalf("giving wood: %v", err)
 		}
 	}
 	return s, site, stack
@@ -259,14 +259,8 @@ func countOf(s *testutil.Session, item common.EntityId) int {
 	return itemComp.Count()
 }
 
-func woodLyingAround(s *testutil.Session) int {
-	n := 0
-	for _, e := range s.ECS.Items.GetEntities() {
-		if item, _ := s.ECS.Items.Get(e); item.Kind() == data.Item_Wood && s.ECS.Parent(e) == -1 {
-			n += item.Count()
-		}
-	}
-	return n
+func woodLyingAround(s *testutil.Session, near utils.Vec2i) int {
+	return lyingAround(s, data.Item_Wood, near)
 }
 
 func TestASiteCollectingMaterialsIsAMarker(t *testing.T) {
@@ -302,13 +296,13 @@ func TestABlueprintIsHitThroughButASiteWithMaterialsIsHitAndDropsThem(t *testing
 	if health, ok := s.Chunks.TileHealth(site); !ok || health != 1 {
 		t.Fatalf("a site with materials has %d health (%v), want its own 1", health, ok)
 	}
-	before := woodLyingAround(s)
+	before := woodLyingAround(s, site)
 	if !s.ECS.DamageTile(site, 1) {
 		t.Fatal("a site with materials couldn't be hit")
 	}
 	testutil.RemoveScheduled(t, s.ECS)
-	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s)-before != 1 {
-		t.Fatalf("the destroyed site dropped %d wood, want the 1 delivered to it", woodLyingAround(s)-before)
+	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s, site)-before != 1 {
+		t.Fatalf("the destroyed site dropped %d wood, want the 1 delivered to it", woodLyingAround(s, site)-before)
 	}
 	if currentTile(s, site) != ground {
 		t.Fatal("the hit that destroyed the site also hit the ground under it")
@@ -331,11 +325,11 @@ func TestASiteUnderConstructionLosesProgressToHitsAndDropsAllItsMaterials(t *tes
 		t.Fatalf("the hit site is drawn as stage %d, want back at the first", frame)
 	}
 
-	before := woodLyingAround(s)
+	before := woodLyingAround(s, site)
 	s.ECS.DamageTile(site, 50)
 	testutil.RemoveScheduled(t, s.ECS)
-	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s)-before != 3 {
-		t.Fatalf("the destroyed site dropped %d wood, want all 3", woodLyingAround(s)-before)
+	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s, site)-before != 3 {
+		t.Fatalf("the destroyed site dropped %d wood, want all 3", woodLyingAround(s, site)-before)
 	}
 }
 

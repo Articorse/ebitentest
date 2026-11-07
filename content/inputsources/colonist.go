@@ -37,10 +37,8 @@ type InputColonistParams struct {
 	// Whose sites it works on, only inside its bounds
 	Colony common.EntityId
 	State  ColonistState
-	// The site it's working on or delivering to, the tree it's felling, or where what it's gathering was
+	// The site it's working on or delivering to, the tree it's felling, or where what it's gathering lies
 	Target utils.Vec2i
-	// What it's gathering
-	Item common.EntityId
 	// Where it's putting what it carries, or taking what a site needs from
 	Storage common.EntityId
 	// The site it's fetching for
@@ -123,9 +121,6 @@ func ColonistInputSource(
 		return p.emptyHand(entityId, ecsContainer), nil
 	}
 
-	if p.State == Colonist_Gather {
-		return p.gather(entityId, selfPos, tick, ecsContainer), nil
-	}
 	if p.State == Colonist_Store || p.State == Colonist_Fetch {
 		return p.useStorage(entityId, selfPos, tick, ecsContainer), nil
 	}
@@ -140,27 +135,6 @@ func ColonistInputSource(
 		p.State, p.NextPlanTick = Colonist_Idle, tick
 	}
 	return input, nil
-}
-
-// Up to the item and picking it up, after which it looks for more straight away, so that it gathers what's lying
-// around before moving on
-func (p *InputColonistParams) gather(e common.EntityId, selfPos utils.Vec2f, tick uint64, ecsContainer *ecs.ECSContainer) ecs.InputState {
-	itemPos, err := ecsContainer.WorldPos(p.Item)
-	if err != nil {
-		p.State, p.NextPlanTick = Colonist_Idle, tick
-		return p.emptyHand(e, ecsContainer)
-	}
-	if d := itemPos.Subtract(selfPos); d.X*d.X+d.Y*d.Y <= data.ItemPickUpOnPurposeReachPx*data.ItemPickUpOnPurposeReachPx {
-		p.path = nil
-		input := p.emptyHand(e, ecsContainer)
-		input.PickUp = ecs.ItemPickUp{PickUp: true, Item: p.Item}
-		return input
-	}
-	input, ok := p.moveTo(selfPos, itemPos, ecsContainer.Terrain())
-	if !ok {
-		p.State, p.NextPlanTick = Colonist_Idle, tick
-	}
-	return input
 }
 
 // From within reach of the storage area, standing anywhere, even in it, it puts away a slot at a time, or takes out
@@ -297,12 +271,15 @@ func (p *InputColonistParams) rangeTiles(constructor *ecs.Constructor) int {
 	if p.State == Colonist_Chop {
 		return data.ColonistChopRangeTiles
 	}
+	if p.State == Colonist_Gather {
+		return data.ItemReachTiles
+	}
 	return constructor.RangeTiles()
 }
 
 func (p *InputColonistParams) stillWorthIt(e common.EntityId, ecsContainer *ecs.ECSContainer) bool {
 	if p.State == Colonist_Gather {
-		return gatherable(e, p.Item, ecsContainer)
+		return gatherable(e, p.Target, ecsContainer)
 	}
 	if p.State == Colonist_Store {
 		_, _, ok := p.storableSlot(e, p.Storage, ecsContainer)
@@ -331,38 +308,17 @@ func (p *InputColonistParams) stillWorthIt(e common.EntityId, ecsContainer *ecs.
 	}
 }
 
-// Lying loose and still on the harvest area, with room for it
-func gatherable(e, item common.EntityId, ecsContainer *ecs.ECSContainer) bool {
-	comp, ok := ecsContainer.Items.Get(item)
-	if !ok || !slices.Contains(data.HarvestItems, comp.Kind()) || !ecsContainer.CanPickUp(e, item) {
-		return false
-	}
-	pos, err := ecsContainer.WorldPos(item)
-	return err == nil && ecsContainer.Terrain().InArea(data.Area_Harvest, utils.WorldPosToTilePos(pos))
+// Lying on the harvest area, of a kind that's harvested, with room for some of it
+func gatherable(e common.EntityId, t utils.Vec2i, ecsContainer *ecs.ECSContainer) bool {
+	stack, ok := ecsContainer.Terrain().GroundStack(t)
+	return ok && stack.Unique == nil && slices.Contains(data.HarvestItems, stack.Kind) &&
+		ecsContainer.RoomFor(e, stack.Kind) > 0 && ecsContainer.Terrain().InArea(data.Area_Harvest, t)
 }
 
-// Each tile with something to gather on it, and on each the first of what's there, in entity order
-func gatherables(e common.EntityId, first, last utils.Vec2i, ecsContainer *ecs.ECSContainer) ([]utils.Vec2i, map[utils.Vec2i]common.EntityId) {
-	items := map[utils.Vec2i]common.EntityId{}
-	for item := range ecs.Query1(&ecsContainer.Items, ecs.With(&ecsContainer.Transforms), ecs.Without(&ecsContainer.Disabled)) {
-		if !gatherable(e, item, ecsContainer) {
-			continue
-		}
-		pos, _ := ecsContainer.WorldPos(item)
-		t := utils.WorldPosToTilePos(pos)
-		if t.X < first.X || t.X > last.X || t.Y < first.Y || t.Y > last.Y {
-			continue
-		}
-		if other, ok := items[t]; !ok || item < other {
-			items[t] = item
-		}
-	}
-	tiles := slices.Collect(maps.Keys(items))
-	// Map order differs from run to run, and what colonists choose mustn't
-	slices.SortFunc(tiles, func(a, b utils.Vec2i) int {
-		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
+func gatherables(e common.EntityId, first, last utils.Vec2i, ecsContainer *ecs.ECSContainer) []utils.Vec2i {
+	return slices.DeleteFunc(ecsContainer.Terrain().GroundStacksIn(first, last), func(t utils.Vec2i) bool {
+		return !gatherable(e, t, ecsContainer)
 	})
-	return tiles, items
 }
 
 func isTree(t utils.Vec2i, ecsContainer *ecs.ECSContainer) bool {
@@ -453,7 +409,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 		}
 	}
 
-	gather, items := gatherables(e, first, last, ecsContainer)
+	gather := gatherables(e, first, last, ecsContainer)
 	allStorage := func(common.EntityId) bool { return true }
 	_, colonyStorage := storageTargets(self, first, last, allStorage, ecsContainer)
 	fetchFor, fetching := fetchSite(e, self, home, slices.Sorted(maps.Values(colonyStorage)), ecsContainer)
@@ -480,7 +436,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 		{Colonist_Construct, construct, rangeTiles},
 		{Colonist_Deliver, deliver, rangeTiles},
 		{Colonist_Fetch, fetch, data.StoreRangeTiles},
-		{Colonist_Gather, gather, 0},
+		{Colonist_Gather, gather, data.ItemReachTiles},
 		{Colonist_Chop, chop, data.ColonistChopRangeTiles},
 		{Colonist_Store, store, data.StoreRangeTiles},
 	} {
@@ -492,10 +448,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, rangeTil
 			continue
 		}
 		if target, stand, path, ok := nearestSite(self, job.targets, job.rangeTiles, first, last, ecsContainer); ok {
-			p.State, p.Target, p.Stand, p.Item, p.Storage = job.state, target, stand, -1, -1
-			if job.state == Colonist_Gather {
-				p.Item = items[target]
-			}
+			p.State, p.Target, p.Stand, p.Storage = job.state, target, stand, -1
 			if job.state == Colonist_Store {
 				p.Storage = storeIn[target]
 			}
@@ -559,16 +512,9 @@ func nearestSite(
 	return site, stand, path, true
 }
 
-// The walkable tiles within reach that see the site, other than the site itself, or with no reach, the site itself,
-// where what's gathered lies
+// The walkable tiles within reach that see the site, other than the site itself
 func standSpots(site utils.Vec2i, rangeTiles int, inColony func(utils.Vec2i) bool, ecsContainer *ecs.ECSContainer) map[utils.Vec2i]bool {
 	spots := map[utils.Vec2i]bool{}
-	if rangeTiles == 0 {
-		if inColony(site) && ecsContainer.Terrain().WalkSpeedPercent(site) > 0 {
-			spots[site] = true
-		}
-		return spots
-	}
 	for dy := -rangeTiles; dy <= rangeTiles; dy++ {
 		for dx := -rangeTiles; dx <= rangeTiles; dx++ {
 			t := utils.Vec2i{X: site.X + dx, Y: site.Y + dy}
@@ -587,6 +533,11 @@ func standSpots(site utils.Vec2i, rangeTiles int, inColony func(utils.Vec2i) boo
 // slot is emptied
 func (p *InputColonistParams) use(e common.EntityId, target utils.Vec2f, ecsContainer *ecs.ECSContainer) ecs.InputState {
 	input := p.emptyHand(e, ecsContainer)
+	// Picking up takes no hand
+	if p.State == Colonist_Gather {
+		input.PickUp = ecs.ItemPickUp{PickUp: true, Tile: p.Target}
+		return input
+	}
 	if slot, ok := axeSlot(e, ecsContainer); ok && p.State == Colonist_Chop {
 		input.Inventory = ecs.InventoryAction{Kind: ecs.InventoryAction_Bind, From: slot, To: 0}
 	}

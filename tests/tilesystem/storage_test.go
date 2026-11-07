@@ -79,8 +79,8 @@ func TestStorageHasASlotForEachOfItsTilesRowByRow(t *testing.T) {
 
 	inv, _ := s.ECS.Inventories.Get(storage)
 	area, _ := s.ECS.StorageAreas.Get(storage)
-	if inv.Capacity() != 6 || !inv.ManualPickup() {
-		t.Fatalf("a 3×2 storage area has %d slots, want 6 that don't pick up what's dropped on them", inv.Capacity())
+	if inv.Capacity() != 6 {
+		t.Fatalf("a 3×2 storage area has %d slots, want 6", inv.Capacity())
 	}
 	if area.SlotTile(0) != first || area.SlotTile(2) != (utils.Vec2i{X: first.X + 2, Y: first.Y}) || area.SlotTile(5) != last {
 		t.Fatal("the slots aren't the tiles row by row")
@@ -184,12 +184,6 @@ func TestErasingStorageTakesAwayAllItTouchesAndLeavesWhatWasInItOnItsTiles(t *te
 	erased := placeStorage(t, s, a, utils.Vec2i{X: a.X + 2, Y: a.Y})
 	kept := placeStorage(t, s, b, b)
 	storeWood(t, s, erased, 100, 7)
-	inv, _ := s.ECS.Inventories.Get(erased)
-	spilled := []common.EntityId{}
-	for i := range 2 {
-		item, _ := inv.Slot(i)
-		spilled = append(spilled, item)
-	}
 
 	inputs := map[common.EntityId]ecs.InputState{s.Player: {Storage: ecs.StorageMarking{Mark: true, Erase: true, First: utils.Vec2i{X: a.X + 2, Y: a.Y}, Last: utils.Vec2i{X: a.X + 5, Y: a.Y}}}}
 	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
@@ -199,10 +193,9 @@ func TestErasingStorageTakesAwayAllItTouchesAndLeavesWhatWasInItOnItsTiles(t *te
 	if s.ECS.HasEntity(erased) || !s.ECS.HasEntity(kept) {
 		t.Fatal("erasing the end of one storage area didn't take away all of it, and just it")
 	}
-	for i, item := range spilled {
-		want := utils.TilePosToWorldPos(utils.Vec2i{X: a.X + i, Y: a.Y})
-		if s.ECS.Parent(item) != -1 || s.ECS.IsDisabled(item) || testutil.WorldPos(t, s.ECS, item) != want {
-			t.Fatalf("the wood in slot %d isn't lying loose on its tile", i+1)
+	for i, want := range []int{100, 7} {
+		if kind, n := onGround(s, utils.Vec2i{X: a.X + i, Y: a.Y}); kind != data.Item_Wood || n != want {
+			t.Fatalf("the tile of slot %d holds %d of %v, want the %d wood that was in it", i+1, n, kind, want)
 		}
 	}
 	if err := s.ECS.CheckConsistency(); err != nil {

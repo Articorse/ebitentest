@@ -16,11 +16,16 @@ type spawnWorld struct {
 	ecs.Terrain
 	sky   bool
 	walls bool
+	items bool
 }
 
 func (w spawnWorld) IsOpenToSky(utils.Vec2i) bool  { return w.sky }
 func (w spawnWorld) IsOpaqueTile(utils.Vec2i) bool { return w.walls }
 func (w spawnWorld) IsBlockedAt(utils.Vec2f) bool  { return w.walls }
+
+func (w spawnWorld) GroundStack(utils.Vec2i) (ecs.GroundStack, bool) {
+	return ecs.GroundStack{Kind: data.Item_Wood, Count: 1}, w.items
+}
 
 func spawningPlayer(t *testing.T, world spawnWorld, tick uint64) (*ecs.ECSContainer, common.EntityId) {
 	t.Helper()
@@ -107,16 +112,7 @@ func TestEnemiesDontSpawnWhereThePlayerSeesOrSomethingStands(t *testing.T) {
 		t.Fatalf("%d enemies spawned where the player sees", n)
 	}
 
-	y, other := spawningPlayer(t, spawnWorld{}, 0)
-	for dy := -128; dy <= 128; dy++ {
-		for dx := -128; dx <= 128; dx++ {
-			if d := dx*dx + dy*dy; d >= 64*64 && d <= 128*128 {
-				if _, err := y.SpawnItem(data.Item_Wood, utils.TilePosToWorldPos(utils.Vec2i{X: dx, Y: dy})); err != nil {
-					t.Fatal(err)
-				}
-			}
-		}
-	}
+	y, other := spawningPlayer(t, spawnWorld{items: true}, 0)
 	spawn(t, y, other)
 	if n := len(spawned(y)); n != 0 {
 		t.Fatalf("%d enemies spawned where items lie", n)

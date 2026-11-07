@@ -3,9 +3,7 @@ package ecs_test
 import (
 	"ebittest/data"
 	"ebittest/ecs"
-	"ebittest/ecs/systems/itemsystem"
 	"ebittest/tests/testutil"
-	"ebittest/utils"
 	"math"
 	"testing"
 )
@@ -33,14 +31,13 @@ func TestDropTablesRefuseOutcomesThatDontAddUp(t *testing.T) {
 	}
 }
 
-// Kills an entity with the table at the origin and returns how many wood it dropped
-func killAndCountDrops(t *testing.T, x *ecs.ECSContainer, table *ecs.DropTable) int {
-	t.Helper()
-	before := len(x.Items.GetEntities())
-	e := testutil.AddMovable(t, x, utils.Vec2f{}, false, table)
-	x.ScheduleKillEntity(e)
-	testutil.RemoveScheduled(t, x)
-	return len(x.Items.GetEntities()) - before
+// How many wood a roll of the table gives
+func rollWood(x *ecs.ECSContainer, table *ecs.DropTable) int {
+	n := 0
+	for _, d := range table.Roll(x.Rng) {
+		n += d.Count
+	}
+	return n
 }
 
 func TestDropTablesRollEachOutcomeAsOftenAsItsChance(t *testing.T) {
@@ -53,7 +50,7 @@ func TestDropTablesRollEachOutcomeAsOftenAsItsChance(t *testing.T) {
 	const rolls = 4000
 	counts := map[int]int{}
 	for range rolls {
-		counts[killAndCountDrops(t, x, table)]++
+		counts[rollWood(x, table)]++
 	}
 
 	for dropped, want := range map[int]float64{2: 0.3, 1: 0.5, 0: 0.2} {
@@ -63,73 +60,5 @@ func TestDropTablesRollEachOutcomeAsOftenAsItsChance(t *testing.T) {
 	}
 	if len(counts) != 3 {
 		t.Errorf("drop counts %v, want only 0, 1 and 2", counts)
-	}
-}
-
-func TestOnlyKilledEntitiesDropTheirLoot(t *testing.T) {
-	x := testutil.NewECS(t)
-	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: wood(1)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	pos := utils.Vec2f{X: 30, Y: -20}
-
-	removed := testutil.AddMovable(t, x, pos, false, table)
-	x.ScheduleRemoveEntity(removed)
-	testutil.RemoveScheduled(t, x)
-	if n := len(x.Items.GetEntities()); n != 0 {
-		t.Fatalf("an entity removed without being killed dropped %d items", n)
-	}
-
-	killed := testutil.AddMovable(t, x, pos, false, table)
-	x.ScheduleKillEntity(killed)
-	testutil.RemoveScheduled(t, x)
-	dropped := x.Items.GetEntities()
-	if len(dropped) != 1 || testutil.WorldPos(t, x, dropped[0]) != pos || !x.Tosses.HasComponent(dropped[0]) {
-		t.Fatalf("a killed entity dropped %v, want one wood tossed from where it died, %v", dropped, pos)
-	}
-}
-
-func TestDropTablesAreSaved(t *testing.T) {
-	x := testutil.NewECS(t)
-	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: wood(3)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	e := testutil.AddMovable(t, x, utils.Vec2f{}, false, table)
-
-	members, err := x.GetCompositionComponents(e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	y := testutil.Restore(t, members)
-	y.ScheduleKillEntity(e)
-	testutil.RemoveScheduled(t, y)
-	if n := len(y.Items.GetEntities()); n != 3 {
-		t.Fatalf("after loading, the entity dropped %d wood, want 3", n)
-	}
-}
-
-func TestEachDropIsTossedItsOwnWay(t *testing.T) {
-	x := testutil.NewECS(t)
-	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: wood(3)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	e := testutil.AddMovable(t, x, utils.Vec2f{}, false, table)
-	x.ScheduleKillEntity(e)
-	testutil.RemoveScheduled(t, x)
-
-	for range data.ItemTossDurationMs/data.TickMs + 1 {
-		itemsystem.Tick(x)
-	}
-
-	angles := []float64{}
-	for _, item := range x.Items.GetEntities() {
-		pos := testutil.WorldPos(t, x, item)
-		angles = append(angles, math.Atan2(pos.Y, pos.X))
-	}
-	if len(angles) != 3 || angles[0] == angles[1] || angles[1] == angles[2] || angles[0] == angles[2] {
-		t.Fatalf("the drops landed in directions %v, want three different ones", angles)
 	}
 }

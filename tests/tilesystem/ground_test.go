@@ -12,6 +12,18 @@ import (
 	"testing"
 )
 
+// How many of the kind lie on the ground as far around the tile as things spill
+func lyingAround(s *testutil.Session, kind data.ItemEnum, near utils.Vec2i) int {
+	r := data.GroundSpillRangeTiles
+	n := 0
+	for _, t := range s.Chunks.GroundStacksIn(utils.Vec2i{X: near.X - r, Y: near.Y - r}, utils.Vec2i{X: near.X + r, Y: near.Y + r}) {
+		if stack, _ := s.Chunks.GroundStack(t); stack.Unique == nil && stack.Kind == kind {
+			n += stack.Count
+		}
+	}
+	return n
+}
+
 func onGround(s *testutil.Session, t utils.Vec2i) (data.ItemEnum, int) {
 	stack, ok := s.Chunks.GroundStack(t)
 	if !ok {
@@ -59,16 +71,18 @@ func TestWhatsDroppedJoinsTheStackThereThenSpillsOntoTheClosestEmptyGround(t *te
 	}
 }
 
-func TestDroppingTopsUpStacksAroundBeforeStartingNewOnes(t *testing.T) {
+func TestWhatsDroppedStaysAsCloseAsItCanRatherThanJoiningStacksFurtherAway(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 3)
-	next := utils.Vec2i{X: row.X + 1, Y: row.Y}
-	s.ECS.LayDownKind(data.Item_Wood, 100, row)
-	s.ECS.LayDownKind(data.Item_Wood, 50, next)
+	far := utils.Vec2i{X: row.X + 2, Y: row.Y}
+	s.ECS.LayDownKind(data.Item_Wood, 50, far)
 
 	s.ECS.LayDownKind(data.Item_Wood, 10, row)
-	if _, n := onGround(s, next); n != 60 {
-		t.Fatalf("the stack next door holds %d, want the 10 dropped by it added to its 50", n)
+	if _, n := onGround(s, row); n != 10 {
+		t.Fatalf("the tile wood was dropped on holds %d, want the 10 dropped", n)
+	}
+	if _, n := onGround(s, far); n != 50 {
+		t.Fatalf("the stack two tiles away holds %d, want its 50 left alone", n)
 	}
 }
 

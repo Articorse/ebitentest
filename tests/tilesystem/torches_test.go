@@ -55,7 +55,6 @@ func TestPlacedTorchesAreWalkedThroughAndAnyHitBreaksThemIntoATorch(t *testing.T
 		t.Fatalf("a mob standing on the torch was pushed to %v", got)
 	}
 
-	items := len(r.ECS.Items.GetEntities())
 	bullet := addCircle(t, r.ECS, center, 1, func(shape shapes.Shape) ecs.Component {
 		return ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Terrain|ecs.Layer_Feature, shape)
 	}, func(shapes.Shape) ecs.Component { return ecs.NewContactDamageComponent(-1, 0, 1).WithDieOnContact() })
@@ -67,12 +66,8 @@ func TestPlacedTorchesAreWalkedThroughAndAnyHitBreaksThemIntoATorch(t *testing.T
 	if _, ok := r.Chunks.FeatureAt(tile); ok {
 		t.Fatal("a hit of 1 didn't break the torch")
 	}
-	dropped := r.ECS.Items.GetEntities()[items:]
-	if len(dropped) != 1 {
-		t.Fatalf("the broken torch dropped %d items, want 1", len(dropped))
-	}
-	if item, _ := r.ECS.Items.Get(dropped[0]); item.Kind() != data.Item_Torch || item.Count() != 1 {
-		t.Fatalf("the broken torch dropped %v × %d, want a torch", item.Kind(), item.Count())
+	if kind, n := onGround(r, tile); kind != data.Item_Torch || n != 1 {
+		t.Fatalf("the broken torch left %d of %v on its tile, want a torch", n, kind)
 	}
 	if !r.Chunks.CanPlaceFeature(tile) {
 		t.Fatal("a torch can't be placed where one was broken")

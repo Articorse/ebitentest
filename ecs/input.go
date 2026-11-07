@@ -188,7 +188,7 @@ type InputState struct {
 	RemoveBlueprint BlueprintRemoval
 	// The rectangle of tiles put in an area, or taken out of it
 	Area AreaMarking
-	// A loose item picked up on purpose, which is how what doesn't pick up whatever it walks over gets anything
+	// What lies on a tile within reach picked up, as much as there's room for
 	PickUp ItemPickUp
 	// A storage area marked out, or every one the rectangle touches taken away
 	Storage StorageMarking
@@ -219,7 +219,7 @@ type ItemTaking struct {
 
 type ItemPickUp struct {
 	PickUp bool
-	Item   common.EntityId
+	Tile   utils.Vec2i
 }
 
 // No area is no marking

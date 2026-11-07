@@ -190,19 +190,8 @@ func (x *ECSContainer) IsTileOccupied(t utils.Vec2i) bool {
 		}
 	}
 
-	if _, onGround := x.terrain.GroundStack(t); onGround {
-		return true
-	}
-	for e := range Query1(&x.Items, With(&x.Transforms), Without(&x.Disabled)) {
-		if x.Parent(e) != -1 {
-			continue
-		}
-		if pos, err := x.WorldPos(e); err == nil && utils.WorldPosToTilePos(pos) == t {
-			return true
-		}
-	}
-
-	return false
+	_, onGround := x.terrain.GroundStack(t)
+	return onGround
 }
 
 // How fast e walks on the tile under it, in percent. A tile that can't be walked through doesn't slow it, since

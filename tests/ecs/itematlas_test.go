@@ -129,8 +129,8 @@ func TestStacksAreLimitedByTheAtlas(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if ok, err := x.PickUpItem(owner, wood); err != nil || !ok {
-			t.Fatalf("picking up a wood: %v, %v", ok, err)
+		if err := x.GiveItem(owner, wood); err != nil {
+			t.Fatalf("giving a wood: %v", err)
 		}
 		testutil.RemoveScheduled(t, x)
 	}
@@ -171,15 +171,15 @@ func TestOnlyItemsOfTheSameKindStack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ok, err := x.PickUpItem(owner, wood); err != nil || !ok {
-		t.Fatalf("picking up a wood: %v, %v", ok, err)
+	if err := x.GiveItem(owner, wood); err != nil {
+		t.Fatalf("giving a wood: %v", err)
 	}
 
 	stone, err := x.SpawnItem(2, utils.Vec2f{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if x.CanPickUp(owner, stone) {
+	if x.HasRoomFor(owner, stone) {
 		t.Fatal("a stone can be stacked onto wood")
 	}
 }

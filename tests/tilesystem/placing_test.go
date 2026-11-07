@@ -37,8 +37,7 @@ func TestPlacedPlanksAreAWallThatBreaksIntoDirtAndWood(t *testing.T) {
 		t.Fatalf("after restarting, the planks have %d health (damageable %v), want 100", health, ok)
 	}
 
-	items := len(r.ECS.Items.GetEntities())
-	if !r.ECS.DamageTile(tile, 99) || len(r.ECS.Items.GetEntities()) != items {
+	if !r.ECS.DamageTile(tile, 99) || lyingAround(r, data.Item_Wood, tile) != 0 {
 		t.Fatal("the planks dropped something before they were destroyed")
 	}
 	if !r.ECS.DamageTile(tile, 1) {
@@ -48,14 +47,8 @@ func TestPlacedPlanksAreAWallThatBreaksIntoDirtAndWood(t *testing.T) {
 		t.Fatal("destroyed planks didn't turn into dirt")
 	}
 
-	dropped := len(r.ECS.Items.GetEntities()) - items
-	if dropped != 2 {
-		t.Fatalf("destroyed planks dropped %d items, want 2 wood", dropped)
-	}
-	for _, e := range r.ECS.Items.GetEntities() {
-		if item, _ := r.ECS.Items.Get(e); item.Kind() == data.Item_Wood && item.Count() != 1 {
-			t.Fatalf("destroyed planks dropped a stack of %d, want 1", item.Count())
-		}
+	if kind, n := onGround(r, tile); kind != data.Item_Wood || n != 2 || lyingAround(r, data.Item_Wood, tile) != 2 {
+		t.Fatalf("destroyed planks left %d of %v on their tile, want the 2 wood they drop there", n, kind)
 	}
 }
 

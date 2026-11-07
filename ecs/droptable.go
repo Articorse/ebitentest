@@ -6,7 +6,6 @@ import (
 	"ebittest/utils"
 	"fmt"
 	"log"
-	"math"
 	"math/rand/v2"
 	"slices"
 )
@@ -47,7 +46,7 @@ func NewDropTable(outcomes ...DropOutcome) (*DropTable, error) {
 	return (&DropTable{outcomes: outcomes}).Copy(), nil
 }
 
-func (x *DropTable) roll(rng *rand.Rand) []ItemDrop {
+func (x *DropTable) Roll(rng *rand.Rand) []ItemDrop {
 	r := rng.Float64() * 100
 	for _, o := range x.outcomes {
 		if r < o.ChancePercent {
@@ -58,18 +57,13 @@ func (x *DropTable) roll(rng *rand.Rand) []ItemDrop {
 	return nil
 }
 
-// Rolls the table and tosses each item it gives, one by one, in a random direction from pos
-func (x *ECSContainer) SpawnDrops(table *DropTable, pos utils.Vec2f) error {
-	for _, drop := range table.roll(x.Rng) {
-		for range drop.Count {
-			item, err := x.SpawnItem(drop.Kind, pos)
-			if err != nil {
-				return fmt.Errorf("error dropping item kind %v at %v: %w", drop.Kind, pos, err)
-			}
-			x.tossItem(item, x.Rng.Float64()*2*math.Pi)
+// Rolls the table and lays down what it gives at the tile, or as close to it as there's room
+func (x *ECSContainer) LayDownDrops(table *DropTable, t utils.Vec2i) {
+	for _, drop := range table.Roll(x.Rng) {
+		if laid := x.LayDownKind(drop.Kind, drop.Count, t); laid < drop.Count {
+			log.Printf("no room around %v for %d of the %d of item %v dropped there", t, drop.Count-laid, drop.Count, drop.Kind)
 		}
 	}
-	return nil
 }
 
 // Damages the tile, and drops what it leaves behind if that destroyed it
@@ -90,9 +84,7 @@ func (x *ECSContainer) dropFrom(t utils.Vec2i, drops *DropTable) {
 	if drops == nil {
 		return
 	}
-	if err := x.SpawnDrops(drops, utils.TilePosToWorldPos(t)); err != nil {
-		log.Printf("error dropping what was destroyed at %v: %v", t, err)
-	}
+	x.LayDownDrops(drops, t)
 }
 
 func (x *DropTable) Copy() *DropTable {

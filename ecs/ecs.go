@@ -76,7 +76,6 @@ type ECSContainer struct {
 	Items             Storage[Item]
 	Inventories       Storage[Inventory]
 	Swings            Storage[Swing]
-	Tosses            Storage[Toss]
 	DropTables        Storage[DropTable]
 	LightEmitters     Storage[LightEmitter]
 	SpawnedEnemies    Storage[SpawnedEnemy]
@@ -115,7 +114,6 @@ func NewECSContainer() *ECSContainer {
 	gob.Register(&tetherDto{})
 	gob.Register(&visionDto{})
 	gob.Register(&swingDto{})
-	gob.Register(&tossDto{})
 	gob.Register(&dropTableDto{})
 	gob.Register(&itemDto{})
 	gob.Register(&inventoryDto{})
@@ -183,7 +181,6 @@ func NewECSContainer() *ECSContainer {
 		Items:             newStorage[Item](),
 		Inventories:       newStorage[Inventory](),
 		Swings:            newStorage[Swing](),
-		Tosses:            newStorage[Toss](),
 		DropTables:        newStorage[DropTable](),
 		LightEmitters:     newStorage[LightEmitter](),
 		SpawnedEnemies:    newStorage[SpawnedEnemy](),
@@ -225,7 +222,6 @@ func NewECSContainer() *ECSContainer {
 		&x.Items,
 		&x.Inventories,
 		&x.Swings,
-		&x.Tosses,
 		&x.DropTables,
 		&x.LightEmitters,
 		&x.SpawnedEnemies,
@@ -375,8 +371,8 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 		if table, ok := x.DropTables.Get(e); ok {
 			if pos, err := x.WorldPos(e); err != nil {
 				log.Printf("Error getting world position of entity %d to drop its loot: %v\n", e, err)
-			} else if err := x.SpawnDrops(table, pos); err != nil {
-				log.Printf("Error dropping the loot of entity %d: %v\n", e, err)
+			} else {
+				x.LayDownDrops(table, utils.WorldPosToTilePos(pos))
 			}
 		}
 	}
@@ -398,9 +394,13 @@ func (x *ECSContainer) RemoveScheduledEntities() error {
 func (x *ECSContainer) removeEntity(e common.EntityId, dropHeld bool) {
 	// Children are resolved before this entity is deleted, since dropping what they hold needs their ancestors' world
 	// transforms
-	for _, c := range x.Children(e) {
+	for _, c := range slices.Clone(x.Children(e)) {
 		linkKind := x.LinkKind(c)
 
+		if linkKind == Link_Held && dropHeld && x.Items.HasComponent(c) {
+			x.layDownHeld(e, c)
+			continue
+		}
 		if linkKind == Link_Attached || (linkKind == Link_Held && dropHeld) {
 			if err := x.Detach(c); err != nil {
 				log.Printf("error detaching entity %d from removed entity %d: %v", c, e, err)
@@ -542,4 +542,20 @@ func DtoToComponent(dto ComponentDto) (Component, error) {
 
 func ComponentToDto(comp Component) (ComponentDto, error) {
 	return comp.toDto()
+}
+
+// Where the one killed was, or as close as there's room. What there's no room for is lost with it.
+func (x *ECSContainer) layDownHeld(holder, item common.EntityId) {
+	pos, err := x.WorldPos(holder)
+	if err == nil {
+		var laid bool
+		laid, err = x.LayDown(item, utils.WorldPosToTilePos(pos))
+		if laid && !x.HasEntity(item) {
+			return
+		}
+	}
+	if err != nil {
+		log.Printf("error dropping item %d of killed entity %d: %v", item, holder, err)
+	}
+	x.removeEntity(item, false)
 }

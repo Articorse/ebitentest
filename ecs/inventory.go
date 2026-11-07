@@ -15,8 +15,8 @@ type Inventory struct {
 	hotbar []common.EntityId
 	// The hotbar slot whose item is in hand
 	selected int
-	// Only picks up what it's told to, rather than whatever it comes across, so that colonists take what they need
-	manualPickup bool
+	// Leaves what it picks up off its hotbar, which a colonist only uses for what it's using at the moment
+	pickupsOffHotbar bool
 }
 
 func NewInventoryComponent(capacity, hotbarSize int) *Inventory {
@@ -237,16 +237,16 @@ func (x *ECSContainer) takeOutOfInventory(owner, item common.EntityId) {
 	}
 }
 
-func (x *Inventory) ManualPickup() bool {
-	return x.manualPickup
+func (x *Inventory) PickupsOffHotbar() bool {
+	return x.pickupsOffHotbar
 }
 
-func (x *Inventory) SetManualPickup(manual bool) {
-	x.manualPickup = manual
+func (x *Inventory) SetPickupsOffHotbar(off bool) {
+	x.pickupsOffHotbar = off
 }
 
 func (x Inventory) Copy() Inventory {
-	return Inventory{slots: slices.Clone(x.slots), hotbar: slices.Clone(x.hotbar), selected: x.selected, manualPickup: x.manualPickup}
+	return Inventory{slots: slices.Clone(x.slots), hotbar: slices.Clone(x.hotbar), selected: x.selected, pickupsOffHotbar: x.pickupsOffHotbar}
 }
 
 func (x Inventory) addTo(ecsContainer *ECSContainer, e common.EntityId) {
@@ -254,16 +254,16 @@ func (x Inventory) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 }
 
 type inventoryDto struct {
-	Slots        []common.EntityId
-	Hotbar       []common.EntityId
-	Selected     int
-	ManualPickup bool
+	Slots            []common.EntityId
+	Hotbar           []common.EntityId
+	Selected         int
+	PickupsOffHotbar bool
 }
 
 func (x Inventory) toDto() (ComponentDto, error) {
-	return &inventoryDto{Slots: slices.Clone(x.slots), Hotbar: slices.Clone(x.hotbar), Selected: x.selected, ManualPickup: x.manualPickup}, nil
+	return &inventoryDto{Slots: slices.Clone(x.slots), Hotbar: slices.Clone(x.hotbar), Selected: x.selected, PickupsOffHotbar: x.pickupsOffHotbar}, nil
 }
 
 func (x inventoryDto) toComponent() (Component, error) {
-	return &Inventory{slots: slices.Clone(x.Slots), hotbar: slices.Clone(x.Hotbar), selected: x.Selected, manualPickup: x.ManualPickup}, nil
+	return &Inventory{slots: slices.Clone(x.Slots), hotbar: slices.Clone(x.Hotbar), selected: x.Selected, pickupsOffHotbar: x.PickupsOffHotbar}, nil
 }

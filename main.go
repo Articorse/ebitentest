@@ -16,7 +16,6 @@ import (
 	"ebittest/ecs/systems/damagesystem"
 	"ebittest/ecs/systems/drawsystem"
 	"ebittest/ecs/systems/inputsystem"
-	"ebittest/ecs/systems/itemsystem"
 	"ebittest/ecs/systems/movementsystem"
 	"ebittest/ecs/systems/platformsystem"
 	"ebittest/ecs/systems/timersystem"
@@ -77,6 +76,7 @@ type game struct {
 	pendingRemoval   ecs.BlueprintRemoval
 	pendingArea      ecs.AreaMarking
 	pendingStorage   ecs.StorageMarking
+	pendingPickUp    ecs.ItemPickUp
 	uiTakesHand      bool
 	menuOverSlot     bool
 
@@ -252,6 +252,7 @@ func (g *game) Update() error {
 	g.updateBlueprintPlacer()
 	g.updateInventoryMenu()
 	g.updateBlueprintRemoval()
+	g.updatePickUp()
 	if in, ok := g.ecs.Inputs.Get(g.playerEntity); ok {
 		_, wheelUp := ebiten.Wheel()
 		in.AddWheel(-wheelUp)
@@ -438,8 +439,6 @@ func (g *game) tick() {
 	if err != nil {
 		log.Println("error during tile collision resolution: ", err)
 	}
-
-	itemsystem.Tick(g.ecs)
 
 	err = abilitysystem.Tick(g.ecs)
 	if err != nil {
@@ -727,6 +726,24 @@ func (g *game) updateBlueprintRemoval() {
 	g.pendingRemoval = ecs.BlueprintRemoval{Remove: true, Tile: tile}
 }
 
+// Holding the right button down picks up what's on each tile the cursor passes over, as the next tick's input, unless
+// the press was a menu's, the cursor is on the inventory menu, or building or marking out areas, where right clicks
+// leave
+func (g *game) updatePickUp() {
+	if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) || g.uiHasMouse || g.placer.IsActive() || g.areaPainter.IsActive() {
+		return
+	}
+	cursor, screen := g.uiCursor(), g.screenSize.Multiply(1/g.uiScale)
+	if inv, ok := g.ecs.Inventories.Get(g.playerEntity); ok && g.inventoryMenu.Covers(cursor, screen, inv, g.assetmanager) {
+		return
+	}
+	if tile := g.cursorTile(); !g.pendingPickUp.PickUp {
+		if _, onGround := g.chunkContainer.GroundStack(tile); onGround {
+			g.pendingPickUp = ecs.ItemPickUp{PickUp: true, Tile: tile}
+		}
+	}
+}
+
 func (g *game) cursorTile() utils.Vec2i {
 	x, y := ebiten.CursorPosition()
 	return utils.WorldPosToTilePos(utils.Vec2f{X: float64(x), Y: float64(y)}.Multiply(1 / g.ecs.Zoom).Add(g.ecs.Camera))
@@ -740,6 +757,7 @@ func (g *game) withInventoryMenu(in ecs.InputState) ecs.InputState {
 	in.RemoveBlueprint, g.pendingRemoval = g.pendingRemoval, ecs.BlueprintRemoval{}
 	in.Area, g.pendingArea = g.pendingArea, ecs.AreaMarking{}
 	in.Storage, g.pendingStorage = g.pendingStorage, ecs.StorageMarking{}
+	in.PickUp, g.pendingPickUp = g.pendingPickUp, ecs.ItemPickUp{}
 	if g.menuOverSlot {
 		in.SelectSlot = 0
 	}

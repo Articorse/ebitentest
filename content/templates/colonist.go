@@ -24,7 +24,7 @@ func SpawnColonist(ecsContainer *ecs.ECSContainer, colony common.EntityId) (comm
 		return -1, err
 	}
 	inv := ecs.NewInventoryComponent(data.ColonistInventorySlots, data.ColonistInventorySlots)
-	inv.SetManualPickup(true)
+	inv.SetPickupsOffHotbar(true)
 
 	colonist, err := ecsContainer.AddNewEntity(
 		ecs.NewHierarchyComponent(),

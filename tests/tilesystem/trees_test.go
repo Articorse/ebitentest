@@ -298,25 +298,27 @@ func TestFelledTreesDropWood(t *testing.T) {
 		t.Fatalf("only %d trees in the active chunks, too few to see what they drop", len(trees))
 	}
 
+	woodAround := func(tree utils.Vec2i) int {
+		n := 0
+		for _, tile := range s.Chunks.GroundStacksIn(utils.Vec2i{X: tree.X - 3, Y: tree.Y - 3}, utils.Vec2i{X: tree.X + 3, Y: tree.Y + 3}) {
+			kind, count := onGround(s, tile)
+			if kind != data.Item_Wood {
+				t.Fatalf("a tree dropped %v", kind)
+			}
+			n += count
+		}
+		return n
+	}
 	dropCounts := map[int]int{}
 	for _, tree := range trees {
-		before := len(s.ECS.Items.GetEntities())
+		before := woodAround(tree)
 		if !s.ECS.DamageFeature(tree, 100) {
 			t.Fatalf("couldn't fell the tree at %v", tree)
 		}
-
-		dropped := s.ECS.Items.GetEntities()[before:]
-		dropCounts[len(dropped)]++
-		for _, e := range dropped {
-			item, _ := s.ECS.Items.Get(e)
-			if item.Kind() != data.Item_Wood || item.Count() != 1 || !s.ECS.Tosses.HasComponent(e) {
-				t.Fatalf("the tree at %v dropped a %v of kind %v, tossed %v; want single pieces of wood, each tossed",
-					tree, item.Count(), item.Kind(), s.ECS.Tosses.HasComponent(e))
-			}
-			if pos := testutil.WorldPos(t, s.ECS, e); pos != utils.TilePosToWorldPos(tree) {
-				t.Fatalf("wood was dropped at %v, want from the tree at %v", pos, utils.TilePosToWorldPos(tree))
-			}
-		}
+		dropCounts[woodAround(tree)-before]++
+	}
+	if len(s.ECS.Items.GetEntities()) > 0 {
+		t.Fatal("felling trees left wood lying around as entities")
 	}
 
 	for n := range dropCounts {

@@ -26,8 +26,8 @@ func newTorchHolder(t *testing.T, terrain ecs.Terrain, torches int) (*ecs.ECSCon
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ok, err := x.PickUpItem(holder, stack); err != nil || !ok {
-		t.Fatalf("picking up torches: %v, %v", ok, err)
+	if err := x.GiveItem(holder, stack); err != nil {
+		t.Fatalf("giving torches: %v", err)
 	}
 	return x, holder, stack
 }
@@ -156,8 +156,8 @@ func TestAPickedUpTorchDoesntGoIntoAUsedUpStack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ok, err := x.PickUpItem(holder, torch); err != nil || !ok {
-		t.Fatalf("picking up a torch: %v, %v", ok, err)
+	if err := x.GiveItem(holder, torch); err != nil {
+		t.Fatalf("giving a torch: %v", err)
 	}
 	testutil.RemoveScheduled(t, x)
 

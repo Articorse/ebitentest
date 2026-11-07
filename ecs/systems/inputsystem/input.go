@@ -97,8 +97,8 @@ func HandleInputs(
 		}
 
 		if p := input.PickUp; p.PickUp {
-			if err := pickUpOnPurpose(e, p.Item, ecsContainer); err != nil {
-				log.Printf("error picking up item %d for entity %d: %v\n", p.Item, e, err)
+			if err := pickUpInReach(e, p.Tile, ecsContainer); err != nil {
+				log.Printf("error picking up what's on %v for entity %d: %v\n", p.Tile, e, err)
 			}
 		}
 
@@ -106,9 +106,8 @@ func HandleInputs(
 			log.Printf("error applying inventory action %+v of entity %d: %v\n", input.Inventory, e, err)
 		}
 
-		// After taking aim, since a dropped item is tossed towards it
 		if input.DropItem && ecsContainer.Inventories.HasComponent(e) {
-			if _, _, err := ecsContainer.DropSelectedItem(e); err != nil {
+			if err := dropOnAim(e, input, ecsContainer); err != nil {
 				log.Printf("error dropping the selected item of entity %d: %v\n", e, err)
 			}
 		}
@@ -199,23 +198,30 @@ func applyInventoryAction(e common.EntityId, action ecs.InventoryAction, ecsCont
 	return nil
 }
 
-// From further than walking over it picks an item up, since it's headed for rather than walked over
-func pickUpOnPurpose(e, item common.EntityId, ecsContainer *ecs.ECSContainer) error {
-	if !ecsContainer.HasEntity(item) {
-		return nil
-	}
+// From within reach and in sight, as building is
+func pickUpInReach(e common.EntityId, t utils.Vec2i, ecsContainer *ecs.ECSContainer) error {
 	pos, err := ecsContainer.WorldPos(e)
 	if err != nil {
 		return err
 	}
-	itemPos, err := ecsContainer.WorldPos(item)
+	if _, inReach := ecsContainer.AimedTileInReach(pos, utils.TilePosToWorldPos(t), data.ItemReachTiles); !inReach {
+		return nil
+	}
+	_, err = ecsContainer.PickUpFromGround(e, t)
+	return err
+}
+
+// On the aimed tile while it's within reach and in sight, and otherwise where the entity stands
+func dropOnAim(e common.EntityId, input ecs.InputState, ecsContainer *ecs.ECSContainer) error {
+	pos, err := ecsContainer.WorldPos(e)
 	if err != nil {
 		return err
 	}
-	if d := itemPos.Subtract(pos); d.X*d.X+d.Y*d.Y > data.ItemPickUpOnPurposeReachPx*data.ItemPickUpOnPurposeReachPx {
-		return nil
+	t := utils.WorldPosToTilePos(pos)
+	if aimed, inReach := ecsContainer.AimedTileInReach(pos, input.AimPos, data.ItemReachTiles); input.HasAim && inReach {
+		t = aimed
 	}
-	_, err = ecsContainer.PickUpItem(e, item)
+	_, err = ecsContainer.DropSelected(e, t)
 	return err
 }
 

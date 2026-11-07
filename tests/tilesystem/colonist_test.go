@@ -5,7 +5,6 @@ import (
 	"ebittest/content/templates"
 	"ebittest/data"
 	"ebittest/ecs/common"
-	"ebittest/ecs/systems/itemsystem"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"testing"
@@ -49,7 +48,7 @@ func TestAColonistStartsAtTheColonyWithThePlayersBodyAndAStackOfWood(t *testing.
 	}
 
 	inv, ok := s.ECS.Inventories.Get(colonist)
-	if !ok || inv.Capacity() != 9 || inv.HotbarSize() != 9 || !inv.ManualPickup() {
+	if !ok || inv.Capacity() != 9 || inv.HotbarSize() != 9 || !inv.PickupsOffHotbar() {
 		t.Fatal("the colonist doesn't have 9 slots, all on the hotbar, that only pick up what they're told to")
 	}
 	wood, _ := inv.Slot(0)
@@ -62,32 +61,6 @@ func TestAColonistStartsAtTheColonyWithThePlayersBodyAndAStackOfWood(t *testing.
 	axe, _ := inv.Slot(inv.Capacity() - 1)
 	if eq, ok := s.ECS.Equipments.Get(axe); !ok || !eq.HasAbility(abilities.Ability_Slash) || inv.HotbarSlotOf(axe) != -1 {
 		t.Fatal("the colonist doesn't start with an axe in its last slot, off its hotbar")
-	}
-}
-
-func TestAColonistOnlyPicksUpWhatItsToldTo(t *testing.T) {
-	testutil.TempWorld(t)
-	s := testutil.StartSession(t)
-	_, colonist := spawnColonist(t, s)
-	wood, err := s.ECS.SpawnItem(data.Item_Wood, testutil.WorldPos(t, s.ECS, colonist))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for range 10 {
-		itemsystem.Tick(s.ECS)
-	}
-	if s.ECS.Parent(wood) != -1 {
-		t.Fatal("the colonist picked up wood lying under it")
-	}
-	if ok, err := s.ECS.PickUpItem(colonist, wood); err != nil || !ok {
-		t.Fatal("the colonist couldn't be made to pick up the wood")
-	}
-	testutil.RemoveScheduled(t, s.ECS)
-	inv, _ := s.ECS.Inventories.Get(colonist)
-	stack, _ := inv.Slot(0)
-	if item, _ := s.ECS.Items.Get(stack); item.Count() != 21 {
-		t.Fatalf("the colonist's stack has %d wood, want the 21 with the one picked up", item.Count())
 	}
 }
 
@@ -111,7 +84,7 @@ func TestAColonistIsSavedWithTheColony(t *testing.T) {
 
 	r := testutil.StartSession(t)
 	inv, ok := r.ECS.Inventories.Get(colonist)
-	if !ok || !inv.ManualPickup() {
+	if !ok || !inv.PickupsOffHotbar() {
 		t.Fatal("after restarting, the colonist is gone or picks up whatever it comes across")
 	}
 	if wood, _ := inv.Slot(0); !r.ECS.Items.HasComponent(wood) {

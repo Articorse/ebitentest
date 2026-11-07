@@ -1,12 +1,10 @@
 package ecs_test
 
 import (
-	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
-	"math"
 	"testing"
 )
 
@@ -99,22 +97,6 @@ func TestItemLeavingItsOwnerLeavesTheInventory(t *testing.T) {
 	checkConsistency(t, x)
 }
 
-func TestKilledOwnerDropsItsItems(t *testing.T) {
-	x := testutil.NewECS(t)
-	owner, item := newOwner(t, x), newItem(t, x)
-	if err := x.PutInInventory(owner, 1, item); err != nil {
-		t.Fatal(err)
-	}
-
-	x.ScheduleKillEntity(owner)
-	testutil.RemoveScheduled(t, x)
-
-	if !x.HasEntity(item) || x.Parent(item) != -1 {
-		t.Fatal("the item wasn't dropped when its owner died")
-	}
-	checkConsistency(t, x)
-}
-
 func TestInventorySurvivesSaving(t *testing.T) {
 	x := testutil.NewECS(t)
 	owner, item := newOwner(t, x), newItem(t, x)
@@ -145,38 +127,4 @@ func TestInventorySurvivesSaving(t *testing.T) {
 		t.Fatal("the restored hotbar doesn't point at the item")
 	}
 	checkConsistency(t, y)
-}
-
-func TestTheItemsPickupDelayAndPullAreSaved(t *testing.T) {
-	x := testutil.NewECS(t)
-	owner := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewInventoryComponent(1, 1))
-	item := testutil.AddMovable(t, x, utils.Vec2f{}, false, ecs.NewItemComponent())
-	if err := x.PutInInventory(owner, 0, item); err != nil {
-		t.Fatal(err)
-	}
-	if err := x.BindHotbar(owner, 0, item); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := x.DropSelectedItem(owner); err != nil {
-		t.Fatal(err)
-	}
-	x.PullItem(item, utils.Vec2f{X: 100})
-	x.PullItem(item, utils.Vec2f{X: 100})
-
-	members, err := x.GetCompositionComponents(item)
-	if err != nil {
-		t.Fatal(err)
-	}
-	y := testutil.Restore(t, members)
-	restored, _ := y.Items.Get(item)
-	if restored == nil || restored.CanBePickedUp() {
-		t.Fatal("a just dropped item can be picked up after being saved and loaded")
-	}
-
-	// Two ticks of pulling built up speed, which carries on after loading rather than starting over
-	before := testutil.WorldPos(t, y, item)
-	y.PullItem(item, utils.Vec2f{X: 100})
-	if moved := testutil.WorldPos(t, y, item).X - before.X; math.Abs(moved-(data.ItemPullStartSpeedPx+2*data.ItemPullAccelerationPx)) > 1e-9 {
-		t.Fatalf("after loading, a pulled item moved %v in a tick, want the speed it had built up", moved)
-	}
 }

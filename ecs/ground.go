@@ -77,31 +77,25 @@ func spillOrder(near utils.Vec2i) []utils.Vec2i {
 	return tiles
 }
 
-// As many of the kind as fit on the tile and around it, topping up stacks like it before starting new ones on the
-// closest empty tiles. How many were laid down; the rest have nowhere to go.
+// As many of the kind as fit on the tile and around it, closest first, each tile taking what fits on it, so that
+// what's dropped stays as close as it can to where it was dropped. How many were laid down; the rest have nowhere to
+// go.
 func (x *ECSContainer) LayDownKind(kind data.ItemEnum, count int, near utils.Vec2i) int {
 	if _, ok := x.itemAtlas.Def(kind); !ok || count <= 0 {
 		return 0
 	}
 	laid := 0
-	// Topping up first, so that what's dropped joins what's already there rather than spreading out
-	for _, fill := range []bool{true, false} {
-		for _, t := range spillOrder(near) {
-			if laid == count {
-				return laid
-			}
-			on, taken := x.terrain.GroundStack(t)
-			if taken != fill {
-				continue
-			}
-			room := x.groundRoom(t, kind, false)
-			if room <= 0 {
-				continue
-			}
-			n := min(room, count-laid)
-			if !x.terrain.SetGroundStack(t, GroundStack{Kind: kind, Count: on.Count + n}) {
-				continue
-			}
+	for _, t := range spillOrder(near) {
+		if laid == count {
+			break
+		}
+		room := x.groundRoom(t, kind, false)
+		if room <= 0 {
+			continue
+		}
+		on, _ := x.terrain.GroundStack(t)
+		n := min(room, count-laid)
+		if x.terrain.SetGroundStack(t, GroundStack{Kind: kind, Count: on.Count + n}) {
 			laid += n
 		}
 	}
@@ -213,7 +207,7 @@ func (x *ECSContainer) PickUpFromGround(collector common.EntityId, t utils.Vec2i
 			}
 		}
 		x.terrain.SetGroundStack(t, GroundStack{})
-		return 1, x.giveItem(collector, stack.Unique.Root)
+		return 1, x.GiveItem(collector, stack.Unique.Root)
 	}
 
 	def, ok := x.itemAtlas.Def(stack.Kind)
@@ -227,7 +221,7 @@ func (x *ECSContainer) PickUpFromGround(collector common.EntityId, t utils.Vec2i
 		if err != nil {
 			return taking - left, err
 		}
-		if err := x.giveItem(collector, item); err != nil {
+		if err := x.GiveItem(collector, item); err != nil {
 			return taking - left, err
 		}
 		left -= n
@@ -236,7 +230,17 @@ func (x *ECSContainer) PickUpFromGround(collector common.EntityId, t utils.Vec2i
 	return taking, nil
 }
 
-// How many of the kind fit: what tops up its stacks, and a full stack in each free slot
+// How many of the kind fit in the entity's inventory
+func (x *ECSContainer) RoomFor(e common.EntityId, kind data.ItemEnum) int {
+	inv, ok := x.Inventories.Get(e)
+	def, defOk := x.itemAtlas.Def(kind)
+	if !ok || !defOk {
+		return 0
+	}
+	return x.roomFor(inv, kind, def.maxStack)
+}
+
+// What tops up its stacks, and a full stack in each free slot
 func (x *ECSContainer) roomFor(inv *Inventory, kind data.ItemEnum, maxStack int) int {
 	room := 0
 	for i := range inv.Capacity() {

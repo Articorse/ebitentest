@@ -115,7 +115,6 @@ func (x *ECSContainer) PlaceStorage(first, last utils.Vec2i) (common.EntityId, b
 	area := NewStorageAreaComponent(first, last)
 	center := utils.TilePosToWorldPos(first).Add(utils.TilePosToWorldPos(last)).Multiply(0.5)
 	inv := NewInventoryComponent(area.Tiles(), 0)
-	inv.SetManualPickup(true)
 	e, err := x.AddNewEntity(
 		NewHierarchyComponent(),
 		NewTransformComponent(center, 1, 0),
@@ -144,14 +143,9 @@ func (x *ECSContainer) RemoveStorages(first, last utils.Vec2i) error {
 			if !ok {
 				continue
 			}
-			if err := x.Detach(item); err != nil {
-				return fmt.Errorf("error taking item %d out of storage area %d: %w", item, e, err)
+			if _, err := x.LayDown(item, s.SlotTile(i)); err != nil {
+				return fmt.Errorf("error laying down item %d of storage area %d: %w", item, e, err)
 			}
-			if t, ok := x.Transforms.Get(item); ok {
-				t.SetLocalPos(utils.TilePosToWorldPos(s.SlotTile(i)))
-				t.SetLocalRotation(0)
-			}
-			x.SetDisabled(item, false)
 		}
 		x.ScheduleRemoveEntity(e)
 	}
