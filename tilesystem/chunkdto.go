@@ -14,7 +14,7 @@ import (
 type chunkDto struct {
 	X               int
 	Y               int
-	Tiles           [data.ChunkSize * data.ChunkSize]data.TileEnum
+	Tiles           [data.TileLayerCount][data.ChunkSize * data.ChunkSize]data.TileEnum
 	Roofs           [data.ChunkSize * data.ChunkSize]data.RoofEnum
 	PromotedTiles   []promotedTileDto
 	Entities        map[common.EntityId][]ecs.ComponentDto

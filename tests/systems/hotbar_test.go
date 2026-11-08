@@ -145,7 +145,7 @@ func TestProjectilesHitTreesAndWalls(t *testing.T) {
 		}
 		for _, e := range spawned {
 			hurtbox, ok := x.HurtboxColliders.Get(e)
-			if want := ecs.Layer_Terrain | ecs.Layer_Feature; !ok || hurtbox.Mask()&want != want {
+			if want := ecs.Layer_Wall | ecs.Layer_Feature; !ok || hurtbox.Mask()&want != want {
 				t.Fatalf("what slot %d fires doesn't collide with both walls and trees", slot)
 			}
 		}

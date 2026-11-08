@@ -86,8 +86,7 @@ func (cc *ChunkContainer) CanPlaceSite(t utils.Vec2i) bool {
 	if _, hasSite := c.sites[t]; hasSite || cc.InArea(data.Area_Storage, t) {
 		return false
 	}
-	def, ok := cc.atlas[c.getTileDefId(t)]
-	return ok && def.buildable
+	return c.propsAt(t).buildable
 }
 
 // Where a site can be placed, or a door in place of a wall blueprint, which is a wall with a door put in it, as long as
@@ -188,7 +187,7 @@ func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int, canFinish bool) (wo
 
 	delete(c.sites, t)
 	if def.Feature() == data.Feature_None {
-		cc.setTile(c, t, def.Tile())
+		cc.setTile(c, t, cc.atlas[def.Tile()].layer, def.Tile())
 		return true, true
 	}
 	feature := def.Feature()

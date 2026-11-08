@@ -17,6 +17,7 @@ import (
 type ioRequest struct {
 	load   *utils.Vec2i
 	commit *commitRequest
+	stop   bool
 }
 
 // Exactly one of the fields is set
@@ -78,6 +79,8 @@ func (cc *ChunkContainer) StartIOThread() {
 			req := cc.ioRequests.pop()
 
 			switch {
+			case req.stop:
+				return
 			case req.load != nil:
 				res := cc.load(*req.load)
 				cc.ioResults <- ioResult{load: &res}
@@ -87,6 +90,12 @@ func (cc *ChunkContainer) StartIOThread() {
 			}
 		}
 	}()
+}
+
+// Once what's already queued is done, so that a container that's no longer used, such as a test's, can be freed.
+// Nothing can be queued after it.
+func (cc *ChunkContainer) StopIOThread() {
+	cc.ioRequests.push(ioRequest{stop: true})
 }
 
 func (cc *ChunkContainer) load(pos utils.Vec2i) loadResult {
@@ -210,11 +219,27 @@ func loadChunkGob(cellKey utils.Vec2i) (cDto chunkDto, exists bool, err error) {
 	return data, true, nil
 }
 
-func postLoadChunk(c *chunk, atlas map[data.TileEnum]tileDef) error {
-	for _, tEnum := range c.tiles {
-		if _, ok := atlas[tEnum]; !ok {
-			return fmt.Errorf("tile enum %d not found in atlas", tEnum)
+// Every tile is on its own layer, over ground
+func (cc *ChunkContainer) postLoadChunk(c *chunk) error {
+	for l, layer := range c.tiles {
+		for i, tile := range layer {
+			if tile == data.Tile_None {
+				if data.TileLayerEnum(l) == data.TileLayer_Ground {
+					return fmt.Errorf("tile %d has no ground", i)
+				}
+				continue
+			}
+			if def, ok := cc.atlas[tile]; !ok || def.layer != data.TileLayerEnum(l) {
+				return fmt.Errorf("tile enum %d on layer %d isn't in the atlas on that layer", tile, l)
+			}
 		}
+	}
+	for i := range c.props {
+		var tiles data.TileLayers
+		for l := range tiles {
+			tiles[l] = c.tiles[l][i]
+		}
+		c.props[i] = cc.combine(tiles)
 	}
 
 	return nil

@@ -48,7 +48,7 @@ func (p *TileStrikeParams) TargetTile(from, aim utils.Vec2f, ecsContainer *ecs.E
 
 	target, found := utils.Vec2i{}, false
 	for _, t := range utils.TilesAlongSegment(from, aim) {
-		if layer, _ := struckLayer(t, terrain); layer&(ecs.Layer_Terrain|ecs.Layer_Feature) != 0 && p.canAffect(origin, t, inSight, terrain) {
+		if layer, _ := struckLayer(t, terrain); layer&(ecs.Layer_Wall|ecs.Layer_Feature) != 0 && p.canAffect(origin, t, inSight, terrain) {
 			target, found = t, true
 		}
 	}
@@ -74,7 +74,7 @@ func struckLayer(tile utils.Vec2i, terrain ecs.Terrain) (ecs.LayerMask, bool) {
 	if terrain.CanDamageFeature(tile) {
 		return ecs.Layer_Feature, true
 	}
-	return terrain.TileLayer(tile)
+	return terrain.TileCollisionLayer(tile)
 }
 
 func strikeTile(tile utils.Vec2i, damage int, ecsContainer *ecs.ECSContainer) bool {

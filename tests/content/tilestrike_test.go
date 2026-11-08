@@ -52,14 +52,14 @@ func (f *fakeTerrain) IsOpaqueTile(t utils.Vec2i) bool {
 	return !f.loaded(t) || f.rock[t]
 }
 
-func (f *fakeTerrain) TileLayer(t utils.Vec2i) (ecs.LayerMask, bool) {
+func (f *fakeTerrain) TileCollisionLayer(t utils.Vec2i) (ecs.LayerMask, bool) {
 	if !f.loaded(t) {
 		return 0, false
 	}
 	if f.rock[t] {
-		return ecs.Layer_Terrain, true
+		return ecs.Layer_Wall, true
 	}
-	return ecs.Layer_Ground, true
+	return ecs.Layer_Floor, true
 }
 
 func (f *fakeTerrain) IsBlockedAt(pos utils.Vec2f) bool {
@@ -187,7 +187,7 @@ func strike(t *testing.T, x *ecs.ECSContainer, holder common.EntityId, tile util
 }
 
 func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
-	all := ecs.Layer_Terrain | ecs.Layer_Ground | ecs.Layer_Feature
+	all := ecs.Layer_Wall | ecs.Layer_Floor | ecs.Layer_Feature
 	none := utils.Vec2i{X: 99}
 	cases := []struct {
 		name   string
@@ -208,15 +208,15 @@ func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 		{"far behind rock", all, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 1}, nil},
 		{"ground that can't be damaged", all, nil, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, none, nil},
 		{"rock that can't be damaged", all, []utils.Vec2i{{X: 1}, {X: 2}}, []utils.Vec2i{{X: 2}}, utils.Vec2i{X: 2}, utils.Vec2i{X: 1}, nil},
-		{"rock past the aim", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 1}, none, nil},
-		{"rock on the way", ecs.Layer_Terrain, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}, nil},
-		{"ground behind rock it can't affect", ecs.Layer_Ground, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 3}, none, nil},
+		{"rock past the aim", ecs.Layer_Wall, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 1}, none, nil},
+		{"rock on the way", ecs.Layer_Wall, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 4}, utils.Vec2i{X: 2}, nil},
+		{"ground behind rock it can't affect", ecs.Layer_Floor, []utils.Vec2i{{X: 1}}, nil, utils.Vec2i{X: 3}, none, nil},
 		{"a tree", all, nil, nil, utils.Vec2i{X: 1}, utils.Vec2i{X: 1}, []utils.Vec2i{{X: 1}}},
 		{"rock behind a tree", all, []utils.Vec2i{{X: 2}}, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 1}}},
 		{"ground behind a tree", all, nil, nil, utils.Vec2i{X: 2}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 1}}},
 		{"a tree past the range", all, nil, nil, utils.Vec2i{X: 5}, utils.Vec2i{X: 2}, []utils.Vec2i{{X: 2}}},
-		{"a tree with a ground-only mask", ecs.Layer_Ground, nil, nil, utils.Vec2i{X: 1}, none, []utils.Vec2i{{X: 1}}},
-		{"a tree with a mask without features", ecs.Layer_Terrain | ecs.Layer_Ground, nil, nil, utils.Vec2i{X: 1}, none, []utils.Vec2i{{X: 1}}},
+		{"a tree with a ground-only mask", ecs.Layer_Floor, nil, nil, utils.Vec2i{X: 1}, none, []utils.Vec2i{{X: 1}}},
+		{"a tree with a mask without features", ecs.Layer_Wall | ecs.Layer_Floor, nil, nil, utils.Vec2i{X: 1}, none, []utils.Vec2i{{X: 1}}},
 		{"a tree on ground that can't be damaged", all, nil, []utils.Vec2i{{X: 1}}, utils.Vec2i{X: 1}, utils.Vec2i{X: 1}, []utils.Vec2i{{X: 1}}},
 	}
 
@@ -257,7 +257,7 @@ func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 
 func TestTileStrikeWithoutAnAimDoesNothing(t *testing.T) {
 	terrain := newFakeTerrain()
-	x, holder := newMattockHolder(t, terrain, ecs.Layer_Ground)
+	x, holder := newMattockHolder(t, terrain, ecs.Layer_Floor)
 
 	if used, err := x.ActivateEquipmentAbility(holder, ecs.Equip_MainHand, ecs.AbilityTarget{}, 0); err != nil || used || len(terrain.damaged) != 0 {
 		t.Fatalf("used %v, error %v, damaged %v; want nothing, though its own tile is at the origin", used, err, terrain.damaged)
@@ -266,7 +266,7 @@ func TestTileStrikeWithoutAnAimDoesNothing(t *testing.T) {
 
 func TestTileStrikeThatHitsNothingDoesntCoolDown(t *testing.T) {
 	terrain := newFakeTerrain()
-	x, holder := newMattockHolder(t, terrain, ecs.Layer_Terrain)
+	x, holder := newMattockHolder(t, terrain, ecs.Layer_Wall)
 
 	if strike(t, x, holder, utils.Vec2i{X: 2}) {
 		t.Fatal("a strike with nothing to hit was used")
@@ -279,7 +279,7 @@ func TestTileStrikeThatHitsNothingDoesntCoolDown(t *testing.T) {
 
 func TestTileStrikeCoolsDownAfterBeingUsed(t *testing.T) {
 	terrain := newFakeTerrain()
-	x, holder := newMattockHolder(t, terrain, ecs.Layer_Ground)
+	x, holder := newMattockHolder(t, terrain, ecs.Layer_Floor)
 
 	if !strike(t, x, holder, utils.Vec2i{}) || strike(t, x, holder, utils.Vec2i{}) {
 		t.Fatal("want the first strike used and the second refused by the cooldown")
@@ -291,7 +291,7 @@ func TestTileStrikeCoolsDownAfterBeingUsed(t *testing.T) {
 
 func TestTileStrikeReachesFromWhoeverHoldsTheTool(t *testing.T) {
 	terrain := newFakeTerrain()
-	x, holder := newMattockHolder(t, terrain, ecs.Layer_Ground)
+	x, holder := newMattockHolder(t, terrain, ecs.Layer_Floor)
 	equipper, _ := x.Equippers.Get(holder)
 	tool, _ := equipper.InSlot(ecs.Equip_MainHand)
 	testutil.SetPos(t, x, holder, utils.TilePosToWorldPos(utils.Vec2i{X: -1}))
@@ -305,7 +305,7 @@ func TestTileStrikeReachesFromWhoeverHoldsTheTool(t *testing.T) {
 
 func TestTileStrikeDoesntHurtEntitiesOnTheTile(t *testing.T) {
 	terrain := newFakeTerrain()
-	x, holder := newMattockHolder(t, terrain, ecs.Layer_Terrain|ecs.Layer_Ground|ecs.Layer_Enemy)
+	x, holder := newMattockHolder(t, terrain, ecs.Layer_Wall|ecs.Layer_Floor|ecs.Layer_Enemy)
 	target := utils.Vec2i{X: 1}
 	bystander := testutil.AddMovable(t, x, utils.TilePosToWorldPos(target), false, testutil.DummyBody(t, x, 10))
 
@@ -319,7 +319,7 @@ func TestTileStrikeDoesntHurtEntitiesOnTheTile(t *testing.T) {
 
 func TestTileStrikeShowsItsDamageOnlyWhenItLands(t *testing.T) {
 	terrain := newFakeTerrain()
-	x, holder := newMattockHolder(t, terrain, ecs.Layer_Terrain)
+	x, holder := newMattockHolder(t, terrain, ecs.Layer_Wall)
 
 	strike(t, x, holder, utils.Vec2i{X: 2})
 	if n := len(x.FloatingTexts.GetEntities()); n != 0 {

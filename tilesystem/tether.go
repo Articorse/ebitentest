@@ -110,8 +110,7 @@ func (cc *ChunkContainer) isTilePassable(t utils.Vec2i) bool {
 		return false
 	}
 
-	def, ok := cc.atlas[c.getTileDefId(t)]
-	return ok && def.passable
+	return c.propsAt(t).passable
 }
 
 func floorDiv(a, b int) int {

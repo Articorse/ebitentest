@@ -31,7 +31,7 @@ func findTile(t *testing.T, s *testutil.Session, want func(utils.Vec2i) bool) ut
 }
 
 func isRock(tile utils.Vec2i) bool {
-	return worldgen.Tile(testutil.WorldSeed, tile) == data.Tile_Rock
+	return worldgen.Tile(testutil.WorldSeed, tile).Top() == data.Tile_Rock
 }
 
 func addProjectile(t *testing.T, x *ecs.ECSContainer, pos utils.Vec2f, mask ecs.LayerMask) common.EntityId {
@@ -73,10 +73,10 @@ func TestProjectileDiesOnImpassableTiles(t *testing.T) {
 		return true
 	})
 
-	hits := addProjectile(t, s.ECS, utils.TilePosToWorldPos(rock), ecs.Layer_Enemy|ecs.Layer_Terrain)
-	disabled := addProjectile(t, s.ECS, utils.TilePosToWorldPos(rock), ecs.Layer_Enemy|ecs.Layer_Terrain)
+	hits := addProjectile(t, s.ECS, utils.TilePosToWorldPos(rock), ecs.Layer_Enemy|ecs.Layer_Wall)
+	disabled := addProjectile(t, s.ECS, utils.TilePosToWorldPos(rock), ecs.Layer_Enemy|ecs.Layer_Wall)
 	s.ECS.SetDisabled(disabled, true)
-	misses := addProjectile(t, s.ECS, utils.TilePosToWorldPos(open), ecs.Layer_Enemy|ecs.Layer_Terrain)
+	misses := addProjectile(t, s.ECS, utils.TilePosToWorldPos(open), ecs.Layer_Enemy|ecs.Layer_Wall)
 	ignoresTerrain := addProjectile(t, s.ECS, utils.TilePosToWorldPos(rock), ecs.Layer_Enemy)
 
 	cols := touchTerrain(t, s)
@@ -127,7 +127,7 @@ func TestProjectileAtTheEdgeOfTheActiveChunksDoesNotHitIt(t *testing.T) {
 	}
 
 	// Still in the edge tile, but reaching into the unloaded one next to it
-	e := addProjectile(t, s.ECS, utils.TilePosToWorldPos(edge).Add(utils.Vec2f{X: 6}), ecs.Layer_Enemy|ecs.Layer_Terrain)
+	e := addProjectile(t, s.ECS, utils.TilePosToWorldPos(edge).Add(utils.Vec2f{X: 6}), ecs.Layer_Enemy|ecs.Layer_Wall)
 	if cols := touchTerrain(t, s); len(cols) != 0 {
 		t.Fatalf("got terrain collisions %+v at the edge of the active chunks", cols)
 	}
@@ -150,7 +150,7 @@ func TestMobsAreStillPushedOutOfRock(t *testing.T) {
 	}
 	start := utils.TilePosToWorldPos(rock).Subtract(utils.Vec2f{X: 10})
 	mob := testutil.AddMovable(t, s.ECS, start, false,
-		ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Terrain, ecs.Collider_Mob, shape))
+		ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Wall, ecs.Collider_Mob, shape))
 
 	physics := ecs.Colliders(&s.ECS.PhysicsColliders)
 	potential, err := s.Chunks.GetTilesWithPotentialPhysicsCollisions(s.ECS)

@@ -236,6 +236,8 @@ func StartSession(t testing.TB) *Session {
 
 	x := NewECS(t)
 	cc := tilesystem.NewChunkContainer()
+	// Every session's chunks would otherwise be kept by its IO thread until the tests end
+	t.Cleanup(cc.StopIOThread)
 	if err := cc.GenerateTileAtlasFromJson(TileAtlasPath, x.ItemAtlas(), Assets(t)); err != nil {
 		t.Fatal(err)
 	}

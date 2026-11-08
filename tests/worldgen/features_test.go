@@ -19,8 +19,8 @@ func TestTreesGrowOnGrassAndNeverNextToEachOther(t *testing.T) {
 			}
 			trees++
 
-			if worldgen.Tile(seed, tile) != data.Tile_Grass {
-				t.Fatalf("tree at %v grows on %v", tile, worldgen.Tile(seed, tile))
+			if worldgen.Tile(seed, tile).Top() != data.Tile_Grass {
+				t.Fatalf("tree at %v grows on %v", tile, worldgen.Tile(seed, tile).Top())
 			}
 			for dy := -1; dy <= 1; dy++ {
 				for dx := -1; dx <= 1; dx++ {
@@ -47,7 +47,7 @@ func TestTreesFormForestsAndClearings(t *testing.T) {
 			for y := range window {
 				for x := range window {
 					tile := utils.Vec2i{X: wx*window + x, Y: wy*window + y}
-					if worldgen.Tile(seed, tile) != data.Tile_Grass {
+					if worldgen.Tile(seed, tile).Top() != data.Tile_Grass {
 						continue
 					}
 					grass++

@@ -120,7 +120,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 	rocketHurtboxComp := ecs.NewHurtboxColliderComponent(
 		ecs.Layer_FriendlyProjectile,
 		ecs.Layer_Enemy|
-			ecs.Layer_Terrain|
+			ecs.Layer_Wall|
 			ecs.Layer_Feature,
 		rocketHurtboxShape,
 	)
@@ -256,7 +256,7 @@ func spawnMattock(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Entit
 		Params: &abilities.TileStrikeParams{
 			RangeTiles: 3,
 			Damage:     50,
-			Mask:       ecs.Layer_Terrain | ecs.Layer_Ground | ecs.Layer_Feature,
+			Mask:       ecs.Layer_Wall | ecs.Layer_Floor | ecs.Layer_Feature,
 		},
 	}
 
@@ -352,7 +352,7 @@ func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.
 	bulletHurtboxComp := ecs.NewHurtboxColliderComponent(
 		ecs.Layer_FriendlyProjectile,
 		ecs.Layer_Enemy|
-			ecs.Layer_Terrain|
+			ecs.Layer_Wall|
 			ecs.Layer_Feature,
 		bulletHurtboxShape,
 	)
@@ -420,7 +420,7 @@ func colonySlimeParts(sheet common.ImageAssetTag) (*ecs.Animation, *ecs.PhysicsC
 		ecs.Layer_Player,
 		ecs.Layer_Enemy|
 			ecs.Layer_EnemyProjectile|
-			ecs.Layer_Terrain|
+			ecs.Layer_Wall|
 			ecs.Layer_Water|
 			ecs.Layer_Feature|
 			ecs.Layer_Platform,
@@ -435,7 +435,7 @@ func colonySlimeParts(sheet common.ImageAssetTag) (*ecs.Animation, *ecs.PhysicsC
 		ecs.Layer_Player,
 		ecs.Layer_Enemy|
 			ecs.Layer_EnemyProjectile|
-			ecs.Layer_Terrain|
+			ecs.Layer_Wall|
 			ecs.Layer_Platform,
 		hitboxShape,
 	)

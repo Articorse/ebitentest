@@ -18,15 +18,15 @@ func TestNewWorldSpawnIsTheClosestFreeTileCenter(t *testing.T) {
 	cc.SetSeed(testutil.WorldSeed)
 
 	free := func(t utils.Vec2i) bool {
-		tile := worldgen.Tile(testutil.WorldSeed, t)
-		return tile != data.Tile_Rock && !worldgen.IsWater(tile) && worldgen.Feature(testutil.WorldSeed, t) == data.Feature_None
+		tiles := worldgen.Tile(testutil.WorldSeed, t)
+		return tiles.Top() != data.Tile_Rock && !worldgen.IsWater(tiles) && worldgen.Feature(testutil.WorldSeed, t) == data.Feature_None
 	}
 
 	onRock, onTree, onGround := 0, 0, 0
 	for i := range 400 {
 		start := utils.Vec2i{X: i%20*7 - 70, Y: i/20*7 - 70}
 		switch {
-		case worldgen.Tile(testutil.WorldSeed, start) == data.Tile_Rock:
+		case worldgen.Tile(testutil.WorldSeed, start).Top() == data.Tile_Rock:
 			onRock++
 		case !free(start):
 			onTree++

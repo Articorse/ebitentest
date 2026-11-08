@@ -195,7 +195,7 @@ func TestExplosionDamagesTheGroundItGoesOffOn(t *testing.T) {
 		t.Fatalf("got %d hurtboxes after the rocket died, want its explosion", len(explosions))
 	}
 	hurtbox, _ := x.HurtboxColliders.Get(explosions[0])
-	if hurtbox.Mask()&ecs.Layer_Ground == 0 {
+	if hurtbox.Mask()&ecs.Layer_Floor == 0 {
 		t.Fatal("the explosion doesn't damage the ground")
 	}
 	if hurtbox.Mask()&ecs.Layer_Enemy == 0 {

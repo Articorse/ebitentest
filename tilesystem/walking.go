@@ -20,9 +20,9 @@ func (cc *ChunkContainer) WalkSpeedPercent(t utils.Vec2i) int {
 // would walk through it
 func (cc *ChunkContainer) chunkWalkSpeeds(c *chunk) *[data.ChunkSize * data.ChunkSize]uint8 {
 	speeds := &[data.ChunkSize * data.ChunkSize]uint8{}
-	for i, tile := range c.tiles {
-		if def, ok := cc.atlas[tile]; ok && def.passable {
-			speeds[i] = uint8(100 - def.slowdownPercent)
+	for i, p := range c.props {
+		if p.passable {
+			speeds[i] = 100 - p.slowdownPercent
 		}
 	}
 	for t := range c.features {

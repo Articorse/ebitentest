@@ -96,7 +96,7 @@ func (cc *ChunkContainer) StartCommit(header world.Header, ecsCont *ecs.ECSConta
 		req.memory[pos] = memoryRegionDto{
 			X:        pos.X,
 			Y:        pos.Y,
-			Tiles:    append([]data.TileEnum(nil), r.tiles[:]...),
+			Tiles:    append([]data.TileLayers(nil), r.tiles[:]...),
 			Features: append([]data.FeatureEnum(nil), r.features[:]...),
 			Roofs:    append([]data.RoofEnum(nil), r.roofs[:]...),
 		}

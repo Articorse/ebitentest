@@ -30,9 +30,8 @@ func (cc *ChunkContainer) NewWorldSpawnPos(near utils.Vec2f) (utils.Vec2f, bool)
 				}
 
 				t := utils.Vec2i{X: start.X + dx, Y: start.Y + dy}
-				tile := worldgen.Tile(cc.seed, t)
-				def, ok := cc.atlas[tile]
-				if ok && def.passable && !worldgen.IsWater(tile) && worldgen.Feature(cc.seed, t) == data.Feature_None {
+				tiles := worldgen.Tile(cc.seed, t)
+				if cc.combine(tiles).passable && !worldgen.IsWater(tiles) && worldgen.Feature(cc.seed, t) == data.Feature_None {
 					best, bestDistSq = t, d
 				}
 			}

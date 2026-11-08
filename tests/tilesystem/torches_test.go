@@ -48,7 +48,7 @@ func TestPlacedTorchesAreWalkedThroughAndAnyHitBreaksThemIntoATorch(t *testing.T
 		t.Fatal("the torch blocks")
 	}
 	mob := addCircle(t, r.ECS, center, 3, func(shape shapes.Shape) ecs.Component {
-		return ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Terrain|ecs.Layer_Feature, ecs.Collider_Mob, shape)
+		return ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Wall|ecs.Layer_Feature, ecs.Collider_Mob, shape)
 	})
 	resolveTerrain(t, r)
 	if got := testutil.WorldPos(t, r.ECS, mob); got != center {
@@ -56,7 +56,7 @@ func TestPlacedTorchesAreWalkedThroughAndAnyHitBreaksThemIntoATorch(t *testing.T
 	}
 
 	bullet := addCircle(t, r.ECS, center, 1, func(shape shapes.Shape) ecs.Component {
-		return ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Terrain|ecs.Layer_Feature, shape)
+		return ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Wall|ecs.Layer_Feature, shape)
 	}, func(shapes.Shape) ecs.Component { return ecs.NewContactDamageComponent(-1, 0, 1).WithDieOnContact() })
 	touchTerrain(t, r)
 

@@ -39,8 +39,10 @@ func TestChunkTilesMatchTheirWorldPositions(t *testing.T) {
 		for y := range data.ChunkSize {
 			for x := range data.ChunkSize {
 				pos := utils.Vec2i{X: chunkPos.X*data.ChunkSize + x, Y: chunkPos.Y*data.ChunkSize + y}
-				if got, want := tiles[y*data.ChunkSize+x], worldgen.Tile(seed, pos); got != want {
-					t.Fatalf("chunk %v has %v at tile %v, want %v", chunkPos, got, pos, want)
+				for l, want := range worldgen.Tile(seed, pos) {
+					if got := tiles[l][y*data.ChunkSize+x]; got != want {
+						t.Fatalf("chunk %v has %v on layer %d at tile %v, want %v", chunkPos, got, l, pos, want)
+					}
 				}
 			}
 		}
@@ -53,11 +55,11 @@ func TestTerrainFormsPatches(t *testing.T) {
 	same, pairs := 0, 0
 	for y := range size {
 		for x := range size {
-			tile := worldgen.Tile(1, utils.Vec2i{X: x, Y: y})
+			tile := worldgen.Tile(1, utils.Vec2i{X: x, Y: y}).Top()
 			kinds[tile] = true
 			if x > 0 {
 				pairs++
-				if tile == worldgen.Tile(1, utils.Vec2i{X: x - 1, Y: y}) {
+				if tile == worldgen.Tile(1, utils.Vec2i{X: x - 1, Y: y}).Top() {
 					same++
 				}
 			}
@@ -108,7 +110,7 @@ func TestSeedChangesTheTerrain(t *testing.T) {
 	differing := 0
 	for x := range 400 {
 		pos := utils.Vec2i{X: x * 7, Y: x * 3}
-		if worldgen.Tile(1, pos) != worldgen.Tile(2, pos) {
+		if worldgen.Tile(1, pos).Top() != worldgen.Tile(2, pos).Top() {
 			differing++
 		}
 	}

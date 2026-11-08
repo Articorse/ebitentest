@@ -26,8 +26,8 @@ type memory struct {
 }
 
 type memoryRegion struct {
-	// Tile_None where nothing is remembered
-	tiles [data.MemoryRegionSize * data.MemoryRegionSize]data.TileEnum
+	// With no ground where nothing is remembered
+	tiles [data.MemoryRegionSize * data.MemoryRegionSize]data.TileLayers
 	// Feature_None where the tile had none, or isn't remembered
 	features [data.MemoryRegionSize * data.MemoryRegionSize]data.FeatureEnum
 	roofs    [data.MemoryRegionSize * data.MemoryRegionSize]data.RoofEnum
@@ -41,7 +41,7 @@ type memoryRegion struct {
 
 type memoryRegionDto struct {
 	X, Y     int
-	Tiles    []data.TileEnum
+	Tiles    []data.TileLayers
 	Features []data.FeatureEnum
 	Roofs    []data.RoofEnum
 }
@@ -50,7 +50,7 @@ func newMemory() memory {
 	return memory{regions: make(map[utils.Vec2i]*memoryRegion)}
 }
 
-func (m *memory) remember(t utils.Vec2i, tile data.TileEnum, feature data.FeatureEnum, roof data.RoofEnum) {
+func (m *memory) remember(t utils.Vec2i, tile data.TileLayers, feature data.FeatureEnum, roof data.RoofEnum) {
 	pos, idx := memoryIndex(t)
 	r, ok := m.regions[pos]
 	if !ok {
@@ -107,11 +107,11 @@ func memoryRegionBounds(pos utils.Vec2i) [2]utils.Vec2f {
 	return [2]utils.Vec2f{topLeft, topLeft.Add(utils.Vec2f{X: side, Y: side})}
 }
 
-func (m *memory) recall(t utils.Vec2i) (data.TileEnum, bool) {
+func (m *memory) recall(t utils.Vec2i) (data.TileLayers, bool) {
 	pos, idx := memoryIndex(t)
 	r, ok := m.regions[pos]
-	if !ok || r.tiles[idx] == data.Tile_None {
-		return data.Tile_None, false
+	if !ok || r.tiles[idx][data.TileLayer_Ground] == data.Tile_None {
+		return data.TileLayers{}, false
 	}
 	return r.tiles[idx], true
 }
@@ -146,7 +146,7 @@ func (cc *ChunkContainer) RecallRoof(t utils.Vec2i) data.RoofEnum {
 	return cc.memory.recallRoof(t)
 }
 
-func (cc *ChunkContainer) RecallTile(t utils.Vec2i) (data.TileEnum, bool) {
+func (cc *ChunkContainer) RecallTile(t utils.Vec2i) (data.TileLayers, bool) {
 	return cc.memory.recall(t)
 }
 
@@ -188,7 +188,7 @@ func (cc *ChunkContainer) RememberSeenTiles(vision *ecs.Vision) {
 			if !ok {
 				continue
 			}
-			cc.memory.remember(t, c.getTileDefId(t), c.features[t], c.roofs[c.tileIndex(t)])
+			cc.memory.remember(t, c.tilesAt(t), c.features[t], c.roofs[c.tileIndex(t)])
 		}
 	}
 }

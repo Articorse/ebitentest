@@ -137,7 +137,7 @@ func (cc *ChunkContainer) activateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContain
 	}
 	delete(cc.resident, pos)
 
-	if err := postLoadChunk(c, cc.atlas); err != nil {
+	if err := cc.postLoadChunk(c); err != nil {
 		return fmt.Errorf("failed post-load of chunk: %w", err)
 	}
 

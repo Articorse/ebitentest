@@ -24,7 +24,7 @@ func (cc *ChunkContainer) TileFlags(from utils.Vec2i, w, h int, opaque, openToSk
 						continue
 					}
 					local := c.tileIndex(utils.Vec2i{X: x, Y: y})
-					setFlag(opaque, i, cc.isOpaqueTileDef(c.tiles[local]) || cc.opaqueFeaturesOf(c)[utils.Vec2i{X: x, Y: y}])
+					setFlag(opaque, i, c.props[local].opaque || cc.opaqueFeaturesOf(c)[utils.Vec2i{X: x, Y: y}])
 					setFlag(openToSky, i, c.roofs[local] == data.Roof_None)
 				}
 			}
@@ -36,11 +36,6 @@ func setFlag(flags []bool, i int, v bool) {
 	if flags != nil {
 		flags[i] = v
 	}
-}
-
-// Tiles that aren't in the atlas count as opaque, like those outside the active chunks
-func (cc *ChunkContainer) isOpaqueTileDef(tile data.TileEnum) bool {
-	return int(tile) >= len(cc.opaqueTiles) || cc.opaqueTiles[tile]
 }
 
 // Goes up whenever a tile or feature changes, or a chunk comes into or leaves the simulation, which is everything that

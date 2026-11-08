@@ -16,11 +16,11 @@ func TestTilesAreWalkedAsFastAsTheirAtlasAndFeaturesSay(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	shallow := bareGrass(t, s)
-	if !s.Chunks.PlaceTile(shallow, data.Tile_WaterShallow) {
+	if dug, _ := s.Chunks.DamageTile(shallow, 1000); !dug || !s.Chunks.PlaceTile(shallow, data.Tile_WaterShallow) {
 		t.Fatal("shallow water wasn't placed")
 	}
 	deep := bareGrass(t, s)
-	if !s.Chunks.PlaceTile(deep, data.Tile_WaterDeep) {
+	if dug, _ := s.Chunks.DamageTile(deep, 1000); !dug || !s.Chunks.PlaceTile(deep, data.Tile_WaterDeep) {
 		t.Fatal("deep water wasn't placed")
 	}
 	torch := placeTorch(t, s)
@@ -62,21 +62,21 @@ func TestDeepWaterStopsWalkersButNotProjectiles(t *testing.T) {
 	if !s.Chunks.PlaceTile(deep, data.Tile_WaterDeep) {
 		t.Fatal("deep water wasn't placed")
 	}
-	if layer, _ := s.Chunks.TileLayer(deep); layer != ecs.Layer_Water || !s.Chunks.IsBlockedAt(utils.TilePosToWorldPos(deep)) {
+	if layer, _ := s.Chunks.TileCollisionLayer(deep); layer != ecs.Layer_Water || !s.Chunks.IsBlockedAt(utils.TilePosToWorldPos(deep)) {
 		t.Fatalf("deep water is on layer %b and blocked %v, want the water layer and blocked", layer, s.Chunks.IsBlockedAt(utils.TilePosToWorldPos(deep)))
 	}
 
 	center := utils.TilePosToWorldPos(deep)
 	edge := center.Add(utils.Vec2f{X: -data.TileSize/2 - 2})
 	walker := addCircle(t, s.ECS, edge, 3, func(shape shapes.Shape) ecs.Component {
-		return ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Terrain|ecs.Layer_Water, ecs.Collider_Mob, shape)
+		return ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Wall|ecs.Layer_Water, ecs.Collider_Mob, shape)
 	})
 	resolveTerrain(t, s)
 	if got := testutil.WorldPos(t, s.ECS, walker); got.X >= edge.X {
 		t.Fatalf("a walker reaching into deep water from the left moved from %v to %v, want it pushed out", edge, got)
 	}
 
-	bullet := addProjectile(t, s.ECS, center, ecs.Layer_Terrain|ecs.Layer_Feature)
+	bullet := addProjectile(t, s.ECS, center, ecs.Layer_Wall|ecs.Layer_Feature)
 	touchTerrain(t, s)
 	if !s.ECS.HasEntity(bullet) {
 		t.Fatal("a projectile over deep water died on it")

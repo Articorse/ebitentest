@@ -58,7 +58,7 @@ func SpawnEvilSlime(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Ent
 			ecs.Layer_Enemy,
 			ecs.Layer_Player|
 				ecs.Layer_Enemy|
-				ecs.Layer_Terrain|
+				ecs.Layer_Wall|
 				ecs.Layer_Water|
 				ecs.Layer_Feature|
 				ecs.Layer_Platform,

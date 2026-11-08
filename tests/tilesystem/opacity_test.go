@@ -17,7 +17,7 @@ func TestOpacityFollowsTheAtlasAndUnloadedChunksAreOpaque(t *testing.T) {
 	for dy := -4; dy <= 4; dy++ {
 		for dx := -4; dx <= 4; dx++ {
 			tile := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
-			rock := worldgen.Tile(testutil.WorldSeed, tile) == data.Tile_Rock
+			rock := worldgen.Tile(testutil.WorldSeed, tile).Top() == data.Tile_Rock
 			if got := s.Chunks.IsOpaqueTile(tile); got != rock {
 				t.Fatalf("tile %v opaque %v, want %v", tile, got, rock)
 			}

@@ -336,6 +336,5 @@ func TestColonistsGoThroughTheirDoors(t *testing.T) {
 }
 
 func isWallAt(s *testutil.Session, tile utils.Vec2i) bool {
-	got, _ := s.Chunks.TileAt(tile)
-	return got == data.Tile_WoodWall
+	return currentTile(s, tile) == data.Tile_WoodWall
 }

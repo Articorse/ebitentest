@@ -21,11 +21,15 @@ const (
 
 // Every tile depends only on the seed and its own position, so chunks can be generated in any order and regenerated
 // at any time
-func ChunkTiles(seed uint64, chunkPos utils.Vec2i) [data.ChunkSize * data.ChunkSize]data.TileEnum {
-	var tiles [data.ChunkSize * data.ChunkSize]data.TileEnum
+// Layer by layer, as chunks keep them
+func ChunkTiles(seed uint64, chunkPos utils.Vec2i) [data.TileLayerCount][data.ChunkSize * data.ChunkSize]data.TileEnum {
+	var tiles [data.TileLayerCount][data.ChunkSize * data.ChunkSize]data.TileEnum
 	for y := range data.ChunkSize {
 		for x := range data.ChunkSize {
-			tiles[y*data.ChunkSize+x] = Tile(seed, utils.Vec2i{X: chunkPos.X*data.ChunkSize + x, Y: chunkPos.Y*data.ChunkSize + y})
+			layers := Tile(seed, utils.Vec2i{X: chunkPos.X*data.ChunkSize + x, Y: chunkPos.Y*data.ChunkSize + y})
+			for l, tile := range layers {
+				tiles[l][y*data.ChunkSize+x] = tile
+			}
 		}
 	}
 	return tiles
@@ -49,23 +53,29 @@ func Roof(seed uint64, tilePos utils.Vec2i) data.RoofEnum {
 	return data.Roof_None
 }
 
-func Tile(seed uint64, tilePos utils.Vec2i) data.TileEnum {
+// Mountains are rock floor walled with rock where there's no cave, and grass grows on dirt
+func Tile(seed uint64, tilePos utils.Vec2i) data.TileLayers {
+	var tiles data.TileLayers
 	if isRock(seed, tilePos) {
-		if isCave(seed, tilePos) {
-			return data.Tile_RockFloor
+		tiles[data.TileLayer_Ground] = data.Tile_RockFloor
+		if !isCave(seed, tilePos) {
+			tiles[data.TileLayer_Wall] = data.Tile_Rock
 		}
-		return data.Tile_Rock
+		return tiles
 	}
 	switch water(seed, tilePos) {
 	case deep:
-		return data.Tile_WaterDeep
+		tiles[data.TileLayer_Ground] = data.Tile_WaterDeep
+		return tiles
 	case shallow:
-		return data.Tile_WaterShallow
+		tiles[data.TileLayer_Ground] = data.Tile_WaterShallow
+		return tiles
 	}
+	tiles[data.TileLayer_Ground] = data.Tile_Dirt
 	if ground(seed, tilePos) > data.WorldgenGrassThreshold {
-		return data.Tile_Grass
+		tiles[data.TileLayer_Cover] = data.Tile_Grass
 	}
-	return data.Tile_Dirt
+	return tiles
 }
 
 func ground(seed uint64, tilePos utils.Vec2i) float64 {

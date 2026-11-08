@@ -96,7 +96,7 @@ func TestTurnedHurtboxesHitTheTilesTheyCover(t *testing.T) {
 
 	// Pointing up from two tiles below the rock, so that only turned does it reach it
 	e := testutil.AddMovable(t, s.ECS, utils.TilePosToWorldPos(utils.Vec2i{X: rock.X, Y: rock.Y + 2}), false,
-		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Terrain, bar),
+		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Wall, bar),
 		ecs.NewContactDamageComponent(-1, 0, 10))
 	tr, _ := s.ECS.Transforms.Get(e)
 	tr.SetLocalRotation(-math.Pi / 2)

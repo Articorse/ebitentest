@@ -598,7 +598,7 @@ func (g *game) updateBlueprintCopy() {
 	if !seen {
 		return
 	}
-	kind, ok := g.ecs.BlueprintAtlas().ForTile(remembered)
+	kind, ok := g.ecs.BlueprintAtlas().ForTile(remembered.Top())
 	if site, onSite := g.chunkContainer.Site(tile); onSite {
 		kind, ok = site.Blueprint, true
 	}

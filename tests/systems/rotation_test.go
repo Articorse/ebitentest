@@ -119,7 +119,7 @@ func TestATurnedColliderOccupiesTheTileItsTurnedOnto(t *testing.T) {
 		t.Fatal(err)
 	}
 	testutil.Add(t, x, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.Vec2f{}, 1, math.Pi/2),
-		ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Terrain, ecs.Collider_Mob, box))
+		ecs.NewPhysicsColliderComponent(ecs.Layer_Player, ecs.Layer_Wall, ecs.Collider_Mob, box))
 
 	if !x.IsTileOccupied(utils.Vec2i{Y: 1}) || x.IsTileOccupied(utils.Vec2i{X: 1}) {
 		t.Fatal("a collider turned from the tile to the right onto the one below doesn't occupy that one instead")

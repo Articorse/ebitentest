@@ -79,7 +79,7 @@ func (p *treePlacer) isCandidate(t utils.Vec2i) bool {
 
 // Grass where a forest is dense enough that the tile drew a tree. Neighbouring candidates are thinned out afterwards.
 func isTreeCandidate(seed uint64, t utils.Vec2i) bool {
-	if Tile(seed, t) != data.Tile_Grass {
+	if Tile(seed, t)[data.TileLayer_Cover] != data.Tile_Grass {
 		return false
 	}
 

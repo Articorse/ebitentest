@@ -47,13 +47,13 @@ func (cc *ChunkContainer) joinsDoor(t utils.Vec2i) bool {
 	if _, _, def, ok := cc.siteOn(t); ok {
 		return cc.buildsDoor(def) || cc.buildsWall(def)
 	}
-	tile, ok := cc.TileAt(t)
-	return ok && cc.isWall(tile)
+	tiles, ok := cc.TileAt(t)
+	return ok && cc.isWall(tiles[data.TileLayer_Wall])
 }
 
 func (cc *ChunkContainer) isWall(tile data.TileEnum) bool {
 	def, ok := cc.atlas[tile]
-	return ok && !def.passable && !def.water
+	return ok && def.layer == data.TileLayer_Wall
 }
 
 func (cc *ChunkContainer) buildsWall(def ecs.BlueprintDef) bool {

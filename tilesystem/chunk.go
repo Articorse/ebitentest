@@ -10,7 +10,9 @@ import (
 )
 
 type chunk struct {
-	tiles         [data.ChunkSize * data.ChunkSize]data.TileEnum
+	tiles [data.TileLayerCount][data.ChunkSize * data.ChunkSize]data.TileEnum
+	// Worked out from tiles whenever one changes, and once the chunk is loaded
+	props         [data.ChunkSize * data.ChunkSize]tileProps
 	roofs         [data.ChunkSize * data.ChunkSize]data.RoofEnum
 	promotedTiles map[utils.Vec2i]promotedTile
 	features      map[utils.Vec2i]data.FeatureEnum
@@ -52,8 +54,17 @@ func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
 	return &c, nil
 }
 
-func (x *chunk) getTileDefId(cellKey utils.Vec2i) data.TileEnum {
-	return x.tiles[x.tileIndex(cellKey)]
+func (x *chunk) tilesAt(t utils.Vec2i) data.TileLayers {
+	var tiles data.TileLayers
+	idx := x.tileIndex(t)
+	for l := range tiles {
+		tiles[l] = x.tiles[l][idx]
+	}
+	return tiles
+}
+
+func (x *chunk) propsAt(t utils.Vec2i) tileProps {
+	return x.props[x.tileIndex(t)]
 }
 
 func (x *chunk) tileIndex(cellKey utils.Vec2i) int {
@@ -66,8 +77,8 @@ func (x *chunk) getPromotedTiles() map[utils.Vec2i]promotedTile {
 	return x.promotedTiles
 }
 
-// Returns false for tiles that can't be damaged, or that aren't in an active chunk. Returns what the tile drops, if
-// this destroyed it.
+// Only the highest layer is hit, and destroying it uncovers the one under it. Returns false for tiles that can't be
+// damaged, or that aren't in an active chunk. Returns what the tile drops, if this destroyed it.
 func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) (bool, *ecs.DropTable) {
 	if drops, ok := cc.damageSite(t, damage); ok {
 		return true, drops
@@ -78,8 +89,8 @@ func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) (bool, *ecs.Drop
 		return false, nil
 	}
 
-	idx := c.tileIndex(t)
-	def, ok := cc.atlas[c.tiles[idx]]
+	layer := c.tilesAt(t).TopLayer()
+	def, ok := cc.atlas[c.tiles[layer][c.tileIndex(t)]]
 	if !ok || def.maxHealth <= 0 {
 		return false, nil
 	}
@@ -95,7 +106,7 @@ func (cc *ChunkContainer) DamageTile(t utils.Vec2i, damage int) (bool, *ecs.Drop
 		return true, nil
 	}
 
-	cc.setTile(c, t, def.destroyedInto)
+	cc.setTile(c, t, layer, data.Tile_None)
 	return true, def.drops
 }
 
@@ -111,30 +122,40 @@ func (cc *ChunkContainer) CanPlaceTile(t utils.Vec2i) bool {
 	if _, hasSite := c.sites[t]; hasSite {
 		return false
 	}
-	def, ok := cc.atlas[c.getTileDefId(t)]
-	return ok && def.passable
+	return c.propsAt(t).passable
 }
 
-// Returns false where a tile can't be placed, or the tile isn't in the atlas
+// On the tile's own layer, in place of what was there. Returns false where a tile can't be placed, or the tile isn't in
+// the atlas.
 func (cc *ChunkContainer) PlaceTile(t utils.Vec2i, tile data.TileEnum) bool {
-	if _, ok := cc.atlas[tile]; !ok || !cc.CanPlaceTile(t) {
+	def, ok := cc.atlas[tile]
+	if !ok || !cc.CanPlaceTile(t) {
 		return false
 	}
 
 	c := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
-	cc.setTile(c, t, tile)
+	cc.setTile(c, t, def.layer, tile)
 	return true
 }
 
-// A new tile starts out undamaged. Only its own part of the chunk's image is drawn again, since baking a whole chunk's
-// image is enough work to stall a frame.
-func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, tile data.TileEnum) {
+// Puts the tile on the layer, or takes what's there off it with Tile_None. A wall clears the cover under it, rather than
+// leaving it to come back once the wall's gone. The tile's top starts out undamaged. Only its own part of the chunk's
+// image is drawn again, since baking a whole chunk's image is enough work to stall a frame.
+func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, layer data.TileLayerEnum, tile data.TileEnum) {
 	idx := c.tileIndex(t)
-	if cc.atlas[c.tiles[idx]].harvestable {
-		cc.noteHarvested(t)
+	replaced := []data.TileLayerEnum{layer}
+	if layer == data.TileLayer_Wall && tile != data.Tile_None {
+		replaced = append(replaced, data.TileLayer_Cover)
 	}
+	for _, l := range replaced {
+		if old := c.tiles[l][idx]; old != data.Tile_None && cc.atlas[old].harvestable {
+			cc.noteHarvested(t)
+		}
+		c.tiles[l][idx] = data.Tile_None
+	}
+	c.tiles[layer][idx] = tile
+	c.props[idx] = cc.combine(c.tilesAt(t))
 	delete(c.promotedTiles, t)
-	c.tiles[idx] = tile
 	c.terrainModified = true
 	cc.sightVersion++
 	c.walkSpeeds = nil
@@ -158,12 +179,12 @@ func (cc *ChunkContainer) RoofAt(t utils.Vec2i) (data.RoofEnum, bool) {
 }
 
 // False where no chunk is active
-func (cc *ChunkContainer) TileAt(t utils.Vec2i) (data.TileEnum, bool) {
+func (cc *ChunkContainer) TileAt(t utils.Vec2i) (data.TileLayers, bool) {
 	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	if !ok {
-		return data.Tile_None, false
+		return data.TileLayers{}, false
 	}
-	return c.getTileDefId(t), true
+	return c.tilesAt(t), true
 }
 
 func (cc *ChunkContainer) CanDamageTile(t utils.Vec2i) bool {
@@ -182,7 +203,7 @@ func (cc *ChunkContainer) TileHealth(t utils.Vec2i) (health int, ok bool) {
 		return 0, false
 	}
 
-	def, ok := cc.atlas[c.getTileDefId(t)]
+	def, ok := cc.atlas[c.tilesAt(t).Top()]
 	if !ok || def.maxHealth <= 0 {
 		return 0, false
 	}

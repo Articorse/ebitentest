@@ -11,9 +11,9 @@ type Terrain interface {
 	IsOpaqueTile(t utils.Vec2i) bool
 	// Loaded and without a roof
 	IsOpenToSky(t utils.Vec2i) bool
-	// Layer_Terrain for impassable tiles, Layer_Water for impassable water and Layer_Ground for passable tiles, whatever
+	// Layer_Wall for impassable tiles, Layer_Water for impassable water and Layer_Floor for passable tiles, whatever
 	// stands on them; false if the tile isn't loaded
-	TileLayer(t utils.Vec2i) (LayerMask, bool)
+	TileCollisionLayer(t utils.Vec2i) (LayerMask, bool)
 	// Inside an impassable tile, the collider of a feature that isn't walked through, or where nothing is loaded
 	IsBlockedAt(pos utils.Vec2f) bool
 	CanDamageTile(t utils.Vec2i) bool
@@ -151,11 +151,11 @@ func (x ConstructionSite) Needs(item data.ItemEnum, def BlueprintDef) int {
 
 type noTerrain struct{}
 
-func (noTerrain) IsOpaqueTile(utils.Vec2i) bool           { return false }
-func (noTerrain) IsOpenToSky(utils.Vec2i) bool            { return false }
-func (noTerrain) TileLayer(utils.Vec2i) (LayerMask, bool) { return 0, false }
-func (noTerrain) IsBlockedAt(utils.Vec2f) bool            { return false }
-func (noTerrain) CanDamageTile(utils.Vec2i) bool          { return false }
+func (noTerrain) IsOpaqueTile(utils.Vec2i) bool                    { return false }
+func (noTerrain) IsOpenToSky(utils.Vec2i) bool                     { return false }
+func (noTerrain) TileCollisionLayer(utils.Vec2i) (LayerMask, bool) { return 0, false }
+func (noTerrain) IsBlockedAt(utils.Vec2f) bool                     { return false }
+func (noTerrain) CanDamageTile(utils.Vec2i) bool                   { return false }
 func (noTerrain) DamageTile(utils.Vec2i, int) (bool, *DropTable) {
 	return false, nil
 }

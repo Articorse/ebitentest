@@ -13,7 +13,7 @@ func caveArea(seed uint64) []data.TileEnum {
 	tiles := make([]data.TileEnum, caveAreaSize*caveAreaSize)
 	for y := range caveAreaSize {
 		for x := range caveAreaSize {
-			tiles[y*caveAreaSize+x] = worldgen.Tile(seed, utils.Vec2i{X: x, Y: y})
+			tiles[y*caveAreaSize+x] = worldgen.Tile(seed, utils.Vec2i{X: x, Y: y}).Top()
 		}
 	}
 	return tiles
@@ -129,11 +129,11 @@ func TestMountainsAreRoofedWholeAndNothingElseIs(t *testing.T) {
 			for x := range 300 {
 				pos := utils.Vec2i{X: x, Y: y}
 				want := data.Roof_None
-				if isMountain(worldgen.Tile(seed, pos)) {
+				if isMountain(worldgen.Tile(seed, pos).Top()) {
 					want = data.Roof_Rock
 				}
 				if got := worldgen.Roof(seed, pos); got != want {
-					t.Fatalf("seed %d: %v under %v is roofed with %v, want %v", seed, pos, worldgen.Tile(seed, pos), got, want)
+					t.Fatalf("seed %d: %v under %v is roofed with %v, want %v", seed, pos, worldgen.Tile(seed, pos).Top(), got, want)
 				}
 				if want != data.Roof_None {
 					roofed++

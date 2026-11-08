@@ -23,8 +23,9 @@ const (
 	deep
 )
 
-func IsWater(tile data.TileEnum) bool {
-	return tile == data.Tile_WaterShallow || tile == data.Tile_WaterDeep
+func IsWater(tiles data.TileLayers) bool {
+	ground := tiles[data.TileLayer_Ground]
+	return ground == data.Tile_WaterShallow || ground == data.Tile_WaterDeep
 }
 
 // Deep water is only kept where every tile around it is water too, so that it's always surrounded by shallow water,

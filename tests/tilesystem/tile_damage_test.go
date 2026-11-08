@@ -18,10 +18,10 @@ func tileOf(t *testing.T, s *testutil.Session, kind data.TileEnum) utils.Vec2i {
 	return findTile(t, s, func(tile utils.Vec2i) bool { return currentTile(s, tile) == kind })
 }
 
-// What's there now, which can differ from what was generated
+// What's there now on top, which can differ from what was generated
 func currentTile(s *testutil.Session, tile utils.Vec2i) data.TileEnum {
 	t, _ := s.Chunks.TileAt(tile)
-	return t
+	return t.Top()
 }
 
 func TestDamagedTilesKeepTheirHealthAndBecomeWhatTheyreDestroyedInto(t *testing.T) {
@@ -87,7 +87,7 @@ func TestExplosionDamagesEachTileOnceByItsRing(t *testing.T) {
 		next = utils.Vec2i{X: center.X + 1, Y: center.Y}
 	}
 
-	addExplosion(t, s.ECS, utils.TilePosToWorldPos(center), ecs.Layer_Terrain|ecs.Layer_Ground, []float64{4, 12}, 7, 3)
+	addExplosion(t, s.ECS, utils.TilePosToWorldPos(center), ecs.Layer_Wall|ecs.Layer_Floor, []float64{4, 12}, 7, 3)
 	touchTerrain(t, s)
 	touchTerrain(t, s)
 
@@ -103,7 +103,7 @@ func TestExplosionDoesntHurtTilesAfterItsFirstTick(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	grass := tileOf(t, s, data.Tile_Grass)
-	e := addExplosion(t, s.ECS, testutil.PlayerStart, ecs.Layer_Ground|ecs.Layer_Terrain, []float64{5}, 1)
+	e := addExplosion(t, s.ECS, testutil.PlayerStart, ecs.Layer_Floor|ecs.Layer_Wall, []float64{5}, 1)
 
 	touchTerrain(t, s)
 	testutil.SetPos(t, s.ECS, e, utils.TilePosToWorldPos(grass))
@@ -121,7 +121,7 @@ func groundSource(t *testing.T, s *testutil.Session, tile utils.Vec2i, cd *ecs.C
 		t.Fatal(err)
 	}
 	testutil.Add(t, s.ECS, ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.TilePosToWorldPos(tile), 1, 0),
-		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Ground, shape), cd)
+		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, ecs.Layer_Floor, shape), cd)
 }
 
 func TestTilesAreHitOnceByDefaultAndAgainOnlyWithARehitInterval(t *testing.T) {
@@ -153,7 +153,7 @@ func TestProjectileWithoutGroundInItsMaskLeavesTheGroundAlone(t *testing.T) {
 	s := testutil.StartSession(t)
 	grass := tileOf(t, s, data.Tile_Grass)
 
-	e := addProjectile(t, s.ECS, utils.TilePosToWorldPos(grass), ecs.Layer_Enemy|ecs.Layer_Terrain)
+	e := addProjectile(t, s.ECS, utils.TilePosToWorldPos(grass), ecs.Layer_Enemy|ecs.Layer_Wall)
 	touchTerrain(t, s)
 
 	if health, _ := s.Chunks.TileHealth(grass); health != 50 {

@@ -10,8 +10,8 @@ func (cc *ChunkContainer) IsHarvestable(t utils.Vec2i) bool {
 	if _, def, ok := cc.featureOn(t); ok && def.harvestable {
 		return true
 	}
-	tile, ok := cc.TileAt(t)
-	return ok && cc.atlas[tile].harvestable
+	c, ok := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
+	return ok && c.propsAt(t).harvestable
 }
 
 // Whether something harvestable drops the kind, which is what's gathered on the harvest area

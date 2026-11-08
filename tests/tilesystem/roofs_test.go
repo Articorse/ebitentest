@@ -103,7 +103,7 @@ func TestTheFaceOfAMountainIsSeenByDay(t *testing.T) {
 		for dx := -data.PlayerVisionRangeTiles; dx <= data.PlayerVisionRangeTiles; dx++ {
 			tile := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
 			if currentTile(s, tile) == data.Tile_Rock && v.CanSee(tile) {
-				if got, ok := s.Chunks.RecallTile(tile); !ok || got != data.Tile_Rock {
+				if got, ok := s.Chunks.RecallTile(tile); !ok || got.Top() != data.Tile_Rock {
 					t.Fatalf("rock at %v is seen but remembered as %v (%v)", tile, got, ok)
 				}
 				return

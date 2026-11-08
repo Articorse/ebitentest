@@ -16,11 +16,16 @@ var waterRegion = sync.OnceValue(func() []data.TileEnum {
 	tiles := make([]data.TileEnum, waterSide*waterSide)
 	for y := range waterSide {
 		for x := range waterSide {
-			tiles[y*waterSide+x] = worldgen.Tile(waterSeed, regionTile(y*waterSide+x))
+			tiles[y*waterSide+x] = worldgen.Tile(waterSeed, regionTile(y*waterSide+x)).Top()
 		}
 	}
 	return tiles
 })
+
+// The region keeps what's seen from above, which for water is its ground
+func isWater(tile data.TileEnum) bool {
+	return worldgen.IsWater(data.TileLayers{data.TileLayer_Ground: tile})
+}
 
 func regionTile(i int) utils.Vec2i {
 	return utils.Vec2i{X: i%waterSide - waterSide/2, Y: i/waterSide - waterSide/2}
@@ -72,7 +77,7 @@ func TestDeepWaterIsAlwaysSurroundedByShallowWater(t *testing.T) {
 		}
 		for dy := -1; dy <= 1; dy++ {
 			for dx := -1; dx <= 1; dx++ {
-				if n := tiles[(y+dy)*waterSide+x+dx]; !worldgen.IsWater(n) {
+				if n := tiles[(y+dy)*waterSide+x+dx]; !isWater(n) {
 					t.Fatalf("deep water at %v is next to %v", regionTile(i), n)
 				}
 			}
@@ -108,7 +113,7 @@ func TestWaterCoversAboutATenthOfTheLand(t *testing.T) {
 			continue
 		}
 		land++
-		if worldgen.IsWater(tile) {
+		if isWater(tile) {
 			water++
 		}
 	}
@@ -119,7 +124,7 @@ func TestWaterCoversAboutATenthOfTheLand(t *testing.T) {
 
 func TestMountainsStayDryAndWaterGrowsNoTrees(t *testing.T) {
 	for i, tile := range waterRegion() {
-		if !worldgen.IsWater(tile) {
+		if !isWater(tile) {
 			continue
 		}
 		at := regionTile(i)
