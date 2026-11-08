@@ -9,6 +9,7 @@ import (
 	"ebittest/pathfinding"
 	"ebittest/utils"
 	"fmt"
+	"math"
 	"slices"
 )
 
@@ -70,11 +71,19 @@ type InputColonistParams struct {
 	Stand utils.Vec2i
 	// When it next looks for work, while it has none
 	NextPlanTick uint64
+	// The tree, site, stack or storage its job is about
+	Subject utils.Vec2i
+	// What its last job was and what it was about, which what it does next follows on from
+	Last        ColonistState
+	LastSubject utils.Vec2i
+	// What its job won out with, to show how jobs are weighed up
+	Score int
 
 	walk
-	// What it last found no way to get to for each job, which isn't looked for again until something changes, since a
-	// path that's never found is searched for until the search gives up. Not saved, so a loaded colonist looks once.
-	fruitless [7]*planKey
+	// What it last found no work it could get to among, which isn't looked through again until something changes,
+	// since a path that's never found is searched for until the search gives up. Not saved, so a loaded colonist looks
+	// once.
+	fruitless *planKey
 }
 
 // Where it is isn't part of it, since walking can't take it anywhere it couldn't reach before
@@ -105,7 +114,7 @@ func (p *InputColonistParams) Copy() ecs.InputParams {
 	c := *p
 	c.Stops = slices.Clone(p.Stops)
 	c.path = slices.Clone(p.path)
-	c.fruitless = [7]*planKey{}
+	c.fruitless = nil
 	return &c
 }
 
@@ -214,6 +223,9 @@ func stopRange(stop JobStop, constructor *ecs.Constructor) int {
 }
 
 func (p *InputColonistParams) drop() {
+	if p.State != Colonist_Idle {
+		p.Last, p.LastSubject = p.State, p.Subject
+	}
 	p.State, p.Stops, p.Acted, p.path = Colonist_Idle, nil, false, nil
 }
 
@@ -273,7 +285,7 @@ func (p *InputColonistParams) headFor(e common.EntityId, self utils.Vec2i, const
 	}
 	stop := p.Stops[0]
 	avoid := othersClaims(e, p.Colony, ecsContainer).stands
-	_, stand, path, ok := nearestSite(self, []utils.Vec2i{stop.Tile}, stopRange(stop, constructor), avoid, first, last, ecsContainer)
+	stand, path, _, ok := walkTo(self, stop.Tile, stopRange(stop, constructor), avoid, first, last, ecsContainer)
 	if ok {
 		p.Stand = stand
 		p.follow(self, path)
@@ -558,14 +570,15 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 		state      ColonistState
 		targets    []utils.Vec2i
 		rangeTiles int
+		weight     int
 	}{
-		{Colonist_Haul, haul, data.ItemReachTiles},
-		{Colonist_Construct, construct, constructor.RangeTiles()},
-		{Colonist_Deliver, deliver, constructor.RangeTiles()},
-		{Colonist_Fetch, fetch, data.ItemReachTiles},
-		{Colonist_Gather, gather, data.ItemReachTiles},
-		{Colonist_Chop, chop, data.ColonistChopRangeTiles},
-		{Colonist_Store, store, data.ItemReachTiles},
+		{Colonist_Haul, haul, data.ItemReachTiles, data.ColonistHaulWeight},
+		{Colonist_Construct, construct, constructor.RangeTiles(), data.ColonistBuildWeight},
+		{Colonist_Deliver, deliver, constructor.RangeTiles(), data.ColonistDeliverWeight},
+		{Colonist_Fetch, fetch, data.ItemReachTiles, data.ColonistFetchWeight},
+		{Colonist_Gather, gather, data.ItemReachTiles, data.ColonistGatherWeight},
+		{Colonist_Chop, chop, data.ColonistChopRangeTiles, data.ColonistChopWeight},
+		{Colonist_Store, store, data.ItemReachTiles, data.ColonistStoreWeight},
 	}
 	sightTerrain, versioned := terrain.(ecs.SightTerrain)
 	key := planKey{}
@@ -574,25 +587,97 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 	}
 	if versioned {
 		key.sightVersion = sightTerrain.SightVersion()
-	}
-
-	for i, job := range jobs {
-		if versioned && p.fruitless[i].equal(key) {
-			continue
-		}
-		if target, stand, path, ok := nearestSite(self, job.targets, job.rangeTiles, c.stands, first, last, ecsContainer); ok {
-			stops := p.stopsFor(e, job.state, target, fetchFor, storage, c, ecsContainer)
-			if len(stops) == 0 {
-				continue
-			}
-			p.State, p.Stops, p.Acted, p.Stand = job.state, stops, false, stand
-			p.fruitless = [7]*planKey{}
-			p.follow(self, path)
+		if p.fruitless.equal(key) {
+			p.drop()
 			return
 		}
-		p.fruitless[i] = &key
 	}
-	p.drop()
+
+	// Each as good as it could be, walking to it in a straight line, so that once the best found is better than the
+	// next of these, none of the rest can beat it
+	type candidate struct {
+		job, best int
+		target    utils.Vec2i
+	}
+	candidates := []candidate{}
+	for i, job := range jobs {
+		for _, t := range job.targets {
+			best := job.weight + p.bonus(job.state, t) - walkCost(leastWalk(self, t, job.rangeTiles))
+			candidates = append(candidates, candidate{job: i, best: best, target: t})
+		}
+	}
+	slices.SortStableFunc(candidates, func(a, b candidate) int { return cmp.Compare(b.best, a.best) })
+
+	chosen, found := struct {
+		state   ColonistState
+		stops   []JobStop
+		subject utils.Vec2i
+		stand   utils.Vec2i
+		path    []utils.Vec2i
+		score   int
+	}{}, false
+	searched := 0
+	for _, cand := range candidates {
+		if (found && cand.best <= chosen.score) || searched == data.ColonistPathSearches {
+			break
+		}
+		job := jobs[cand.job]
+		stops := p.stopsFor(e, job.state, cand.target, fetchFor, storage, first, last, c, ecsContainer)
+		if len(stops) == 0 {
+			continue
+		}
+		searched++
+		stand, path, cost, ok := walkTo(self, cand.target, job.rangeTiles, c.stands, first, last, ecsContainer)
+		score := job.weight + p.bonus(job.state, cand.target) - walkCost(cost)
+		if !ok || (found && score <= chosen.score) {
+			continue
+		}
+		subject := cand.target
+		if job.state == Colonist_Fetch {
+			subject = fetchFor
+		}
+		chosen.state, chosen.stops, chosen.subject, chosen.stand, chosen.path, chosen.score = job.state, stops, subject, stand, path, score
+		found = true
+	}
+	if !found {
+		p.fruitless = &key
+		p.drop()
+		return
+	}
+	p.State, p.Stops, p.Acted, p.Stand = chosen.state, chosen.stops, false, chosen.stand
+	p.Subject, p.Score = chosen.subject, chosen.score
+	p.fruitless = nil
+	p.follow(self, chosen.path)
+}
+
+// For carrying on with the same work, and more for what naturally follows the last job: gathering what a tree felled
+// nearby dropped, gathering more nearby and then putting it away, and building a site it just supplied or cleared
+func (p *InputColonistParams) bonus(state ColonistState, target utils.Vec2i) int {
+	bonus := 0
+	if state == p.Last {
+		bonus += data.ColonistSameWorkBonus
+	}
+	r := data.ColonistFollowUpRangeTiles
+	near := utils.Dist2(target, p.LastSubject) <= r*r
+	switch {
+	case state == Colonist_Gather && (p.Last == Colonist_Chop || p.Last == Colonist_Gather) && near,
+		state == Colonist_Store && p.Last == Colonist_Gather,
+		state == Colonist_Construct && target == p.LastSubject && (p.Last == Colonist_Deliver || p.Last == Colonist_Fetch || p.Last == Colonist_Haul):
+		bonus += data.ColonistFollowUpBonus
+	}
+	return bonus
+}
+
+// What walking a path costing that much takes off a job's score
+func walkCost(pathCost int) int {
+	return pathCost * data.ColonistWalkCostPercent / 100
+}
+
+// What a path to somewhere in reach of the target costs at least, walking a straight line over ground walked at full
+// speed
+func leastWalk(self, target utils.Vec2i, rangeTiles int) int {
+	d := math.Sqrt(float64(utils.Dist2(self, target))) - float64(rangeTiles)*math.Sqrt2
+	return int(max(d, 0) * pathfinding.StraightStepCost)
 }
 
 // What the job on the target takes, and how much of what it picks up, delivers or puts down
@@ -601,6 +686,7 @@ func (p *InputColonistParams) stopsFor(
 	state ColonistState,
 	target, fetchFor utils.Vec2i,
 	storage []utils.Vec2i,
+	first, last utils.Vec2i,
 	c claims,
 	ecsContainer *ecs.ECSContainer,
 ) []JobStop {
@@ -615,9 +701,7 @@ func (p *InputColonistParams) stopsFor(
 	case Colonist_Fetch:
 		return c.fetchStops(e, fetchFor, target, storage, ecsContainer)
 	case Colonist_Gather:
-		stack, _ := ecsContainer.Terrain().GroundStack(target)
-		n := min(c.unclaimedStack(target, ecsContainer), ecsContainer.RoomFor(e, stack.Kind))
-		return []JobStop{{Action: Stop_PickUp, Tile: target, Kind: stack.Kind, Count: n}}
+		return c.gatherStops(e, target, first, last, ecsContainer)
 	case Colonist_Chop:
 		return []JobStop{{Action: Stop_Chop, Tile: target}}
 	case Colonist_Store:
@@ -643,6 +727,29 @@ func (c claims) haulStops(e common.EntityId, site utils.Vec2i, storage []utils.V
 		}
 	}
 	return []JobStop{{Action: Stop_MoveOff, Tile: site}}
+}
+
+// The stack on the target and then the others of its kind closest to it, as many as it can carry
+func (c claims) gatherStops(e common.EntityId, target, first, last utils.Vec2i, ecsContainer *ecs.ECSContainer) []JobStop {
+	stack, _ := ecsContainer.Terrain().GroundStack(target)
+	r := data.ColonistGatherRangeTiles
+	from := utils.Vec2i{X: max(target.X-r, first.X), Y: max(target.Y-r, first.Y)}
+	to := utils.Vec2i{X: min(target.X+r, last.X), Y: min(target.Y+r, last.Y)}
+	tiles := slices.DeleteFunc(gatherables(e, from, to, ecsContainer), func(t utils.Vec2i) bool {
+		on, _ := ecsContainer.Terrain().GroundStack(t)
+		return on.Kind != stack.Kind || utils.Dist2(t, target) > r*r
+	})
+	slices.SortStableFunc(tiles, func(a, b utils.Vec2i) int { return cmp.Compare(utils.Dist2(a, target), utils.Dist2(b, target)) })
+
+	stops := []JobStop{}
+	room := ecsContainer.RoomFor(e, stack.Kind)
+	for _, t := range tiles {
+		if n := min(c.unclaimedStack(t, ecsContainer), room); n > 0 {
+			stops = append(stops, JobStop{Action: Stop_PickUp, Tile: t, Kind: stack.Kind, Count: n})
+			room -= n
+		}
+	}
+	return stops
 }
 
 // How many of each kind it lacks for what's still needed at the site that no one else is bringing
@@ -844,18 +951,15 @@ func carried(e common.EntityId, kind data.ItemEnum, ecsContainer *ecs.ECSContain
 	return n
 }
 
-// Of the few sites, or trees, closest as the crow flies, the one cheapest to walk to somewhere it can be worked on
-// from, which keeps the searching to a few paths heading for them, while one that's close but hard to get to still
-// loses out to one a little further that isn't. A path is given up on after data.PathMaxExpandedTiles, so a site far enough
-// round a maze can be missed.
-func nearestSite(
-	self utils.Vec2i,
-	sites []utils.Vec2i,
+// Somewhere the target can be worked on from, the path there and what it costs. A path is given up on after
+// data.PathMaxExpandedTiles, so a target far enough round a maze can be missed.
+func walkTo(
+	self, target utils.Vec2i,
 	rangeTiles int,
 	avoid map[utils.Vec2i]bool,
 	first, last utils.Vec2i,
 	ecsContainer *ecs.ECSContainer,
-) (site, stand utils.Vec2i, path []utils.Vec2i, ok bool) {
+) (stand utils.Vec2i, path []utils.Vec2i, cost int, ok bool) {
 	terrain := ecsContainer.Terrain()
 	inColony := func(t utils.Vec2i) bool {
 		return t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y
@@ -866,31 +970,16 @@ func nearestSite(
 		}
 		return terrain.WalkSpeedPercent(t)
 	}
-
-	closest := slices.Clone(sites)
-	slices.SortStableFunc(closest, func(a, b utils.Vec2i) int {
-		return cmp.Compare(utils.Dist2(a, self), utils.Dist2(b, self))
-	})
-	// The next few are only tried when none of these can be got to
-	bestCost := -1
-	for from := 0; from < len(closest) && bestCost == -1; from += data.ColonistJobCandidates {
-		for _, s := range closest[from:min(len(closest), from+data.ColonistJobCandidates)] {
-			spots := standSpots(s, rangeTiles, inColony, avoid, ecsContainer)
-			isSpot := func(t utils.Vec2i) bool { return spots[t] }
-			p, cost, found := pathfinding.FindTowards(self, s, rangeTiles, isSpot, data.PathMaxExpandedTiles, speed)
-			if found && (bestCost == -1 || cost < bestCost) {
-				site, path, bestCost = s, p, cost
-			}
-		}
-	}
-	if bestCost == -1 {
-		return utils.Vec2i{}, utils.Vec2i{}, nil, false
+	spots := standSpots(target, rangeTiles, inColony, avoid, ecsContainer)
+	path, cost, ok = pathfinding.FindTowards(self, target, rangeTiles, func(t utils.Vec2i) bool { return spots[t] }, data.PathMaxExpandedTiles, speed)
+	if !ok {
+		return utils.Vec2i{}, nil, 0, false
 	}
 	stand = self
 	if len(path) > 0 {
 		stand = path[len(path)-1]
 	}
-	return site, stand, path, true
+	return stand, path, cost, true
 }
 
 // The walkable tiles within reach that see the site, other than the site itself. Other sites, where standing would

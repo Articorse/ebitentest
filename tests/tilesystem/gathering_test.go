@@ -67,31 +67,25 @@ func TestAColonistGathersWoodLyingOnTheHarvestAreaButNotElsewhere(t *testing.T) 
 	}
 }
 
-func TestGatheringComesAfterDeliveringAndBeforeFelling(t *testing.T) {
+func TestGatheringComesAfterDeliveringAndBeforeFellingAsFarAway(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
-	tree := treeAway(t, s, colonist, 3)
-	lying := groundAway(t, s, colonist, 9, tree)
+	tree := treeAway(t, s, colonist, 8)
+	lying := groundAway(t, s, colonist, 8, tree)
 	harvest(s, tree, lying)
 	looseWood(t, s, lying, 4)
-	site := groundAway(t, s, colonist, 14, tree, lying)
+	site := groundAway(t, s, colonist, 8, tree, lying)
 	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
-	before := woodCarried(s, colonist)
 
-	if !live(t, s, 20*data.TPS, func() bool {
-		got, _ := s.Chunks.Site(site)
-		def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
-		return got.Supplied(def)
-	}) {
-		t.Fatalf("the colonist didn't deliver to the blueprint, it's %v", colonistState(s, colonist))
+	live(t, s, 1, func() bool { return false })
+	if state := colonistState(s, colonist); state != inputsources.Colonist_Deliver {
+		t.Fatalf("the colonist is %v first, want delivering", state)
 	}
-	if woodCarried(s, colonist) != before-planksCost(t) {
-		t.Fatal("the colonist gathered before delivering")
-	}
-	if !live(t, s, 30*data.TPS, func() bool { return woodCarried(s, colonist) == before-planksCost(t)+4 }) {
+	gathered := func() bool { _, ok := s.Chunks.GroundStack(lying); return !ok }
+	if !live(t, s, 30*data.TPS, gathered) {
 		t.Fatalf("the colonist didn't gather the wood, it's %v", colonistState(s, colonist))
 	}
 	if !isTree(s, tree) {
-		t.Fatal("the colonist felled the closer tree before gathering the wood")
+		t.Fatal("the colonist felled the tree before gathering the wood")
 	}
 }
 

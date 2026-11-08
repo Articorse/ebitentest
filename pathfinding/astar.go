@@ -8,7 +8,7 @@ import (
 
 const (
 	// What a step onto a tile walked at full speed costs; slower tiles cost more in proportion
-	straightStepCost = 100
+	StraightStepCost = 100
 	// √2 times a straight step
 	diagonalStepCost = 141
 )
@@ -104,7 +104,7 @@ func search(
 			if s <= 0 {
 				continue
 			}
-			step := straightStepCost
+			step := StraightStepCost
 			if i >= 4 {
 				if speed(utils.Vec2i{X: next.X, Y: current.tile.Y}) <= 0 || speed(utils.Vec2i{X: current.tile.X, Y: next.Y}) <= 0 {
 					continue
@@ -128,7 +128,7 @@ func search(
 // The cost of the shortest path over open ground, which no path can beat
 func heuristic(a, b utils.Vec2i) int {
 	dx, dy := utils.AbsInt(a.X-b.X), utils.AbsInt(a.Y-b.Y)
-	return straightStepCost*max(dx, dy) + (diagonalStepCost-straightStepCost)*min(dx, dy)
+	return StraightStepCost*max(dx, dy) + (diagonalStepCost-StraightStepCost)*min(dx, dy)
 }
 
 type entry struct {

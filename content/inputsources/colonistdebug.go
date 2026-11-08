@@ -57,9 +57,13 @@ func ColonistDebugLines(e common.EntityId, ecsContainer *ecs.ECSContainer) ([]st
 		lines = append(lines, line)
 	}
 	if p.State != Colonist_Idle {
+		lines = append(lines, fmt.Sprintf("Scored %d, about %d,%d", p.Score, p.Subject.X, p.Subject.Y))
 		lines = append(lines, fmt.Sprintf("Standing at %d,%d, %d tiles of path", p.Stand.X, p.Stand.Y, max(len(p.path)-1, 0)))
 	} else {
 		lines = append(lines, fmt.Sprintf("Next looks for work on tick %d", p.NextPlanTick))
+	}
+	if p.Last != Colonist_Idle {
+		lines = append(lines, fmt.Sprintf("Last: %s about %d,%d", colonistStateNames[p.Last], p.LastSubject.X, p.LastSubject.Y))
 	}
 
 	inv, ok := ecsContainer.Inventories.Get(e)

@@ -166,19 +166,35 @@ func TestAColonistDeliversToAndBuildsTheClosestBlueprintFirst(t *testing.T) {
 	}
 }
 
-func TestBuildingComesBeforeDelivering(t *testing.T) {
-	s, _, colonist := colonistAtWork(t)
-	near := groundAway(t, s, colonist, 6)
-	far := groundAway(t, s, colonist, 16, near)
-	s.Chunks.PlaceSite(near, data.Blueprint_Planks)
-	s.Chunks.PlaceSite(far, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(far, data.Item_Wood, planksCost(t))
+func TestBuildingOutweighsDeliveringButNotMuchFurtherAway(t *testing.T) {
+	for _, c := range []struct {
+		name               string
+		toDeliver, toBuild int
+		buildsFirst        bool
+	}{
+		{"as far away", 8, 8, true},
+		{"much further away", 4, 16, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			s, _, colonist := colonistAtWork(t)
+			blueprint := groundAway(t, s, colonist, c.toDeliver)
+			supplied := groundAway(t, s, colonist, c.toBuild, blueprint)
+			s.Chunks.PlaceSite(blueprint, data.Blueprint_Planks)
+			s.Chunks.PlaceSite(supplied, data.Blueprint_Planks)
+			s.Chunks.DeliverToSite(supplied, data.Item_Wood, planksCost(t))
 
-	if !live(t, s, 30*data.TPS, isBuilt(s, far)) {
-		t.Fatal("the colonist didn't build the supplied site")
-	}
-	if site, ok := s.Chunks.Site(near); !ok || !site.IsBlueprint() {
-		t.Fatal("the colonist delivered to the closer blueprint before building the supplied site")
+			live(t, s, 1, func() bool { return false })
+			want := inputsources.Colonist_Deliver
+			if c.buildsFirst {
+				want = inputsources.Colonist_Construct
+			}
+			if state := colonistState(s, colonist); state != want {
+				t.Fatalf("the colonist is %v first, want %v", state, want)
+			}
+			if !live(t, s, 60*data.TPS, func() bool { return isBuilt(s, blueprint)() && isBuilt(s, supplied)() }) {
+				t.Fatal("the colonist didn't build both sites")
+			}
+		})
 	}
 }
 

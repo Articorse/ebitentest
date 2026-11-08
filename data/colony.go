@@ -36,8 +36,8 @@ const (
 	ColonistMaxCarryWeight = 40
 	// How often a colonist looks for work while it has none, since looking can mean searching the whole colony
 	ColonistPlanEveryTicks = TPS
-	// How many of the sites closest as the crow flies it finds paths to, choosing the one cheapest to walk to
-	ColonistJobCandidates = 3
+	// How many paths it looks for when choosing a job, best first, before settling for the best it's found
+	ColonistPathSearches = 8
 	// Chopping is done from next to a tree, not diagonally, where an axe swung from the far side of the tile can fall
 	// short of it
 	ColonistChopRangeTiles = 1
@@ -47,6 +47,27 @@ const (
 	ColonistAcceleration = DefaultAcceleration / 2.0
 	// How far an idle colonist standing on a site looks for somewhere off it
 	ColonistStepOffRangeTiles = 3
+	// How far around the first stack a colonist gathers others of its kind in the same go
+	ColonistGatherRangeTiles = 5
+)
+
+// A job's score is its weight and bonuses less what walking to it costs, in the units paths are costed in, where a tile
+// walked at full speed is 100
+const (
+	ColonistHaulWeight    = 3000
+	ColonistBuildWeight   = 2500
+	ColonistDeliverWeight = 2200
+	ColonistFetchWeight   = 2000
+	ColonistGatherWeight  = 1500
+	ColonistChopWeight    = 1000
+	ColonistStoreWeight   = 500
+	// For the same kind of work as the last job
+	ColonistSameWorkBonus = 300
+	// For what naturally follows the last job, within ColonistFollowUpRangeTiles of what it was about
+	ColonistFollowUpBonus      = 2000
+	ColonistFollowUpRangeTiles = 5
+	// How much of a path's cost comes off the score
+	ColonistWalkCostPercent = 100
 )
 
 // What colonists gather where it lies loose on the harvest area

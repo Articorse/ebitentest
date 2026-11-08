@@ -657,7 +657,8 @@ func (g *game) releaseBuildDrag() {
 }
 
 // For the colonist under the cursor while debug info is shown, otherwise what lies on the tile under the cursor, or the
-// site there, unless the cursor is on a menu or building
+// site there, unless the cursor is on a menu or building. While debug info is shown, it starts with the tile's
+// coordinates, and shows them on their own over anything else.
 func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	inv, ok := g.ecs.Inventories.Get(g.playerEntity)
 	if !ok || g.placer.IsActive() {
@@ -668,26 +669,39 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 		g.areaPainter.Covers(cursor, g.screenSize.Multiply(1/g.uiScale), g.assetmanager) {
 		return nil
 	}
+	tile := g.cursorTile()
+	lines := g.tileTooltip(tile)
+	if g.showFPS {
+		lines = append([]string{fmt.Sprintf("Tile %d,%d", tile.X, tile.Y)}, lines...)
+	}
+	if len(lines) == 0 {
+		return nil
+	}
+	return drawsystem.DrawTooltip(screen, g.uiScale, cursor, lines, g.assetmanager)
+}
+
+func (g *game) tileTooltip(tile utils.Vec2i) []string {
 	if g.showFPS {
 		if lines, ok := g.colonistUnderCursor(); ok {
-			return drawsystem.DrawTooltip(screen, g.uiScale, cursor, lines, g.assetmanager)
+			return lines
 		}
 	}
-	tile := g.cursorTile()
+	_, seen := g.chunkContainer.RecallTile(tile)
+	if !seen {
+		return nil
+	}
 	if stack, ok := g.chunkContainer.GroundStack(tile); ok {
-		if _, seen := g.chunkContainer.RecallTile(tile); seen {
-			return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.GroundStackTooltip(stack, g.ecs), g.assetmanager)
-		}
+		return drawsystem.GroundStackTooltip(stack, g.ecs)
 	}
 	site, ok := g.chunkContainer.Site(tile)
-	if _, seen := g.chunkContainer.RecallTile(tile); !ok || !seen {
+	if !ok {
 		return nil
 	}
 	def, ok := g.ecs.BlueprintAtlas().Def(site.Blueprint)
 	if !ok {
 		return nil
 	}
-	return drawsystem.DrawTooltip(screen, g.uiScale, cursor, drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas(), g.chunkContainer.InArea(data.Area_Home, tile)), g.assetmanager)
+	return drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas(), g.chunkContainer.InArea(data.Area_Home, tile))
 }
 
 // Only on what's been seen, in sight now or remembered, so that placing can't find out what's in unexplored ground
