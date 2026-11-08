@@ -8,4 +8,8 @@ const (
 	Feature_Tree
 	Feature_Stump
 	Feature_Torch
+	Feature_WoodDoor
+	Feature_WoodDoorOpen
+	Feature_WoodDoorVertical
+	Feature_WoodDoorVerticalOpen
 )

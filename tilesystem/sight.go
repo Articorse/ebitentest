@@ -24,7 +24,7 @@ func (cc *ChunkContainer) TileFlags(from utils.Vec2i, w, h int, opaque, openToSk
 						continue
 					}
 					local := c.tileIndex(utils.Vec2i{X: x, Y: y})
-					setFlag(opaque, i, cc.isOpaqueTileDef(c.tiles[local]))
+					setFlag(opaque, i, cc.isOpaqueTileDef(c.tiles[local]) || cc.opaqueFeaturesOf(c)[utils.Vec2i{X: x, Y: y}])
 					setFlag(openToSky, i, c.roofs[local] == data.Roof_None)
 				}
 			}

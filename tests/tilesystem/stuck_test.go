@@ -50,6 +50,7 @@ func liveColliding(t *testing.T, s *testutil.Session, ticks int, colonists []com
 		if err := movementsystem.Tick(s.ECS); err != nil {
 			t.Fatal(err)
 		}
+		s.Chunks.TickDoors(s.ECS)
 		colliders := ecs.Colliders(&s.ECS.PhysicsColliders)
 		grid, err := commonsystems.PopulateSpatialHashGrid(s.ECS, data.SpatialHashGridCellSize)
 		if err != nil {

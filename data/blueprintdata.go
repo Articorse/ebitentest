@@ -6,4 +6,5 @@ type BlueprintEnum uint16
 const (
 	Blueprint_None BlueprintEnum = iota
 	Blueprint_WoodWall
+	Blueprint_WoodDoor
 )

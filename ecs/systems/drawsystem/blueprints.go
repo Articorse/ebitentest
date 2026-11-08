@@ -126,14 +126,15 @@ func (p *BlueprintPlacer) DrawPanel(
 			return nil
 		}
 		def, _ := atlas.Def(kinds[i])
-		icon, err := assets.GetAsset(def.ImageAsset())
+		ghost, frame := def.Ghost()
+		icon, err := assets.GetAsset(ghost)
 		if err != nil {
 			return fmt.Errorf("error getting the image of blueprint %d: %w", kinds[i], err)
 		}
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(pos.X+(l.slotSize.X-icon.FrameSize.X)/2, pos.Y+(l.slotSize.Y-icon.FrameSize.Y)/2)
 		op.GeoM.Scale(scale, scale)
-		screen.DrawImage(icon.Frames[0], op)
+		screen.DrawImage(icon.Frames[frame], op)
 		return nil
 	})
 	if err != nil {
@@ -257,12 +258,13 @@ func (p *BlueprintPlacer) Draw(
 	if !ok {
 		return nil
 	}
-	asset, err := assets.GetAsset(def.ImageAsset())
+	ghost, frame := def.Ghost()
+	asset, err := assets.GetAsset(ghost)
 	if err != nil {
 		return fmt.Errorf("error getting the image of blueprint %d: %w", p.kind, err)
 	}
 
-	img := asset.Frames[0]
+	img := asset.Frames[frame]
 	for _, t := range p.BlueprintTiles(tile) {
 		pos := utils.TilePosToWorldPos(t)
 		op := &colorm.DrawImageOptions{}

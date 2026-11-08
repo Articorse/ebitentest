@@ -27,5 +27,6 @@
   { "tag": "tile_rock_floor", "path": "tiles/rock_floor_ss.png", "frameCount": 16, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "tile_planks", "path": "tiles/planks-ss.png", "frameCount": 4, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "tile_wood_wall", "path": "tiles/wood_wall_ss.png", "frameCount": 16, "frameSize": { "x": 16, "y": 16 } },
+  { "tag": "wood_door", "path": "features/wood_door_ss.png", "frameCount": 4, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "debug_16x16", "path": "debug/16x16.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } }
 ]

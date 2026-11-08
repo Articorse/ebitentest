@@ -38,6 +38,18 @@ type featureDef struct {
 	drops *ecs.DropTable
 	// Gives what's gathered on the harvest area, which keeps the area there for as long as it's left
 	harvestable bool
+	// Blocks sight and light, as an opaque tile does
+	opaque bool
+	// Nil for anything but a door
+	door *doorDef
+}
+
+// A door is one of four features of its kind, one for each way it can face, open and closed, which it's swapped
+// between
+type doorDef struct {
+	kind     string
+	vertical bool
+	open     bool
 }
 
 type featureDefDTO struct {
@@ -53,6 +65,14 @@ type featureDefDTO struct {
 	DestroyedInto *uint16          `json:"destroyedInto"`
 	Drops         []dropOutcomeDTO `json:"drops"`
 	Harvestable   bool             `json:"harvestable"`
+	Opaque        bool             `json:"opaque"`
+	Door          *featureDoorDTO  `json:"door"`
+}
+
+type featureDoorDTO struct {
+	Kind     string `json:"kind"`
+	Vertical bool   `json:"vertical"`
+	Open     bool   `json:"open"`
 }
 
 type featureFrame struct {
@@ -144,6 +164,10 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.
 		}
 		def.drops = drops
 		def.harvestable = dto.Harvestable
+		def.opaque = dto.Opaque
+		if d := dto.Door; d != nil {
+			def.door = &doorDef{kind: d.Kind, vertical: d.Vertical, open: d.Open}
+		}
 
 		defs[data.FeatureEnum(dto.Id)] = def
 	}
@@ -153,6 +177,16 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.
 		maxLightRange = max(maxLightRange, def.lightRangeTiles)
 		if _, ok := defs[def.destroyedInto]; def.maxHealth > 0 && def.destroyedInto != data.Feature_None && !ok {
 			return fmt.Errorf("feature %d is destroyed into feature %d, which isn't defined", id, def.destroyedInto)
+		}
+		if def.door != nil {
+			for _, vertical := range []bool{false, true} {
+				for _, open := range []bool{false, true} {
+					other, ok := doorVariant(defs, def.door.kind, vertical, open)
+					if !ok || defs[other].maxHealth != def.maxHealth {
+						return fmt.Errorf("door %d of kind %q has no %s door with its health, open %v", id, def.door.kind, map[bool]string{false: "horizontal", true: "vertical"}[vertical], open)
+					}
+				}
+			}
 		}
 	}
 
@@ -237,7 +271,22 @@ func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum
 	c.terrainModified = true
 	c.lightsIndexed = false
 	c.walkSpeeds = nil
+	c.opaqueFeatures = nil
 	cc.sightVersion++
+}
+
+// The tiles with a feature that blocks sight, found when they're first asked for after the features change, since
+// sight asks tile by tile over large squares
+func (cc *ChunkContainer) opaqueFeaturesOf(c *chunk) map[utils.Vec2i]bool {
+	if c.opaqueFeatures == nil {
+		c.opaqueFeatures = map[utils.Vec2i]bool{}
+		for t, f := range c.features {
+			if cc.featureAtlas[f].opaque {
+				c.opaqueFeatures[t] = true
+			}
+		}
+	}
+	return c.opaqueFeatures
 }
 
 func (cc *ChunkContainer) featureOn(t utils.Vec2i) (*chunk, featureDef, bool) {

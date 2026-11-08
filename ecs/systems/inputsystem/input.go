@@ -68,6 +68,9 @@ func HandleInputs(
 			for _, t := range p.Tiles {
 				if ecsContainer.Terrain().PlaceSite(t, p.Kind) {
 					ecsContainer.Terrain().SetSiteOrder(t, ecs.SiteOrder{Id: ecsContainer.LastOrder, Seq: seq})
+					if f, ok := ecsContainer.Factions.Get(e); ok {
+						ecsContainer.Terrain().SetSiteFaction(t, f.Faction())
+					}
 					seq++
 				}
 			}

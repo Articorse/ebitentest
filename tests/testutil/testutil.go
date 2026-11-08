@@ -239,10 +239,10 @@ func StartSession(t testing.TB) *Session {
 	if err := cc.GenerateTileAtlasFromJson(TileAtlasPath, x.ItemAtlas(), Assets(t)); err != nil {
 		t.Fatal(err)
 	}
-	if err := cc.SetBlueprintAtlas(x.BlueprintAtlas()); err != nil {
+	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath, x.ItemAtlas(), Assets(t)); err != nil {
 		t.Fatal(err)
 	}
-	if err := cc.GenerateFeatureAtlasFromJson(FeatureAtlasPath, x.ItemAtlas(), Assets(t)); err != nil {
+	if err := cc.SetBlueprintAtlas(x.BlueprintAtlas()); err != nil {
 		t.Fatal(err)
 	}
 	if err := x.ItemAtlas().CheckPlacedFeatures(cc.HasFeature); err != nil {

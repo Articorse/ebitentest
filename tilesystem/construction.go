@@ -18,6 +18,8 @@ type constructionSite struct {
 	delivered []int
 	health    int
 	order     ecs.SiteOrder
+	// Whose what's built is, for what tells
+	faction data.FactionEnum
 }
 
 // Only a plan, which isn't hit by anything, until something's been delivered to it
@@ -39,10 +41,21 @@ func (s *constructionSite) isSupplied(def ecs.BlueprintDef) bool {
 	return true
 }
 
-// The tile atlas has to be loaded first, since blueprints build its tiles, and their health is the tile's
+// The tile and feature atlases have to be loaded first, since blueprints build their tiles and features, and their
+// health is the tile's or feature's
 func (cc *ChunkContainer) SetBlueprintAtlas(atlas *ecs.BlueprintAtlas) error {
 	for _, kind := range atlas.Kinds() {
 		def, _ := atlas.Def(kind)
+		if def.Feature() != data.Feature_None {
+			feature, ok := cc.featureAtlas[def.Feature()]
+			if !ok {
+				return fmt.Errorf("blueprint %d builds feature %d, which isn't in the feature atlas", kind, def.Feature())
+			}
+			if feature.maxHealth <= 1 {
+				return fmt.Errorf("blueprint %d builds feature %d, whose health %d leaves no room for building it up from 1", kind, def.Feature(), feature.maxHealth)
+			}
+			continue
+		}
 		tile, ok := cc.atlas[def.Tile()]
 		if !ok {
 			return fmt.Errorf("blueprint %d builds tile %d, which isn't in the tile atlas", kind, def.Tile())
@@ -53,6 +66,13 @@ func (cc *ChunkContainer) SetBlueprintAtlas(atlas *ecs.BlueprintAtlas) error {
 	}
 	cc.blueprints = atlas
 	return nil
+}
+
+func (cc *ChunkContainer) siteMaxHealth(def ecs.BlueprintDef) int {
+	if def.Feature() != data.Feature_None {
+		return cc.featureAtlas[def.Feature()].maxHealth
+	}
+	return cc.atlas[def.Tile()].maxHealth
 }
 
 func (cc *ChunkContainer) CanPlaceSite(t utils.Vec2i) bool {
@@ -70,16 +90,39 @@ func (cc *ChunkContainer) CanPlaceSite(t utils.Vec2i) bool {
 	return ok && def.buildable
 }
 
+// Where a site can be placed, or a door in place of a wall blueprint, which is a wall with a door put in it, as long as
+// nothing's been delivered to the wall that would be lost
+func (cc *ChunkContainer) CanPlaceBlueprint(t utils.Vec2i, blueprint data.BlueprintEnum) bool {
+	def, ok := cc.blueprints.Def(blueprint)
+	if !ok {
+		return false
+	}
+	if cc.CanPlaceSite(t) {
+		return true
+	}
+	_, s, under, ok := cc.siteOn(t)
+	return ok && cc.buildsDoor(def) && cc.buildsWall(under) && s.isBlueprint()
+}
+
 func (cc *ChunkContainer) PlaceSite(t utils.Vec2i, blueprint data.BlueprintEnum) bool {
 	def, ok := cc.blueprints.Def(blueprint)
-	if !ok || !cc.CanPlaceSite(t) {
+	if !ok || !cc.CanPlaceBlueprint(t, blueprint) {
 		return false
 	}
 
 	c := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 	c.sites[t] = &constructionSite{blueprint: blueprint, delivered: make([]int, len(def.Costs())), health: 1}
 	c.terrainModified = true
+	cc.turnDoorsAround(t)
 	return true
+}
+
+func (cc *ChunkContainer) SetSiteFaction(t utils.Vec2i, faction data.FactionEnum) bool {
+	_, s, _, ok := cc.siteOn(t)
+	if ok {
+		s.faction = faction
+	}
+	return ok
 }
 
 func (cc *ChunkContainer) Site(t utils.Vec2i) (ecs.ConstructionSite, bool) {
@@ -88,7 +131,7 @@ func (cc *ChunkContainer) Site(t utils.Vec2i) (ecs.ConstructionSite, bool) {
 		return ecs.ConstructionSite{}, false
 	}
 
-	site := ecs.ConstructionSite{Blueprint: s.blueprint, Health: s.health, MaxHealth: cc.atlas[def.Tile()].maxHealth, Order: s.order}
+	site := ecs.ConstructionSite{Blueprint: s.blueprint, Health: s.health, MaxHealth: cc.siteMaxHealth(def), Order: s.order, Faction: s.faction}
 	for i, cost := range def.Costs() {
 		site.Delivered = append(site.Delivered, ecs.ItemCost{Kind: cost.Kind, Count: s.delivered[i]})
 	}
@@ -132,7 +175,7 @@ func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int, canFinish bool) (wo
 		return false, false
 	}
 
-	maxHealth := cc.atlas[def.Tile()].maxHealth
+	maxHealth := cc.siteMaxHealth(def)
 	health := s.health + max(1, maxHealth*work/def.Work())
 	if health >= maxHealth && !canFinish {
 		return false, false
@@ -144,7 +187,17 @@ func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int, canFinish bool) (wo
 	}
 
 	delete(c.sites, t)
-	cc.setTile(c, t, def.Tile())
+	if def.Feature() == data.Feature_None {
+		cc.setTile(c, t, def.Tile())
+		return true, true
+	}
+	feature := def.Feature()
+	if door := cc.featureAtlas[feature].door; door != nil {
+		feature, _ = doorVariant(cc.featureAtlas, door.kind, cc.doorFacesVertically(t), false)
+		c.doorFactions[t] = s.faction
+	}
+	cc.setFeature(c, t, feature)
+	cc.turnDoorsAround(t)
 	return true, true
 }
 
@@ -178,6 +231,7 @@ func (cc *ChunkContainer) RemoveSite(t utils.Vec2i) bool {
 	}
 	delete(c.sites, t)
 	c.terrainModified = true
+	cc.turnDoorsAround(t)
 	return true
 }
 
@@ -196,6 +250,7 @@ func (cc *ChunkContainer) damageSite(t utils.Vec2i, damage int) (drops *ecs.Drop
 	}
 
 	delete(c.sites, t)
+	cc.turnDoorsAround(t)
 	items := []ecs.ItemDrop{}
 	for i, cost := range def.Costs() {
 		if s.delivered[i] > 0 {
@@ -250,13 +305,19 @@ func (cc *ChunkContainer) siteSprite(t utils.Vec2i, s *constructionSite) (common
 	sprite := common.StaticSprite{ImageAsset: def.ImageAsset(), Pos: utils.TilePosToWorldPos(t), Layer: data.ConstructionSiteSpriteLayer}
 	switch {
 	case s.isBlueprint():
+		sprite.ImageAsset, sprite.Frame = def.Ghost()
+		if door := cc.featureAtlas[def.Feature()].door; door != nil {
+			closed, _ := doorVariant(cc.featureAtlas, door.kind, cc.doorFacesVertically(t), false)
+			feature, _ := cc.featureSprite(t, closed, 0)
+			sprite.ImageAsset, sprite.Frame, sprite.Pos = feature.ImageAsset, feature.Frame, feature.Pos
+		}
 		sprite.Ghost = true
 		return sprite, true
 	case !s.isSupplied(def):
 		sprite.ImageAsset = common.AssetImageTileMarker
 		return sprite, true
 	}
-	maxHealth := cc.atlas[def.Tile()].maxHealth
+	maxHealth := cc.siteMaxHealth(def)
 	sprite.Frame = 1 + min(def.Stages()-1, s.health*def.Stages()/maxHealth)
 	return sprite, true
 }
@@ -268,13 +329,14 @@ type siteDto struct {
 	Delivered []int
 	Health    int
 	Order     ecs.SiteOrder
+	Faction   data.FactionEnum
 }
 
 // In tile order, so that saving the same chunk twice writes the same file
 func siteDtos(c *chunk) []siteDto {
 	sites := make([]siteDto, 0, len(c.sites))
 	for t, s := range c.sites {
-		sites = append(sites, siteDto{X: t.X, Y: t.Y, Blueprint: s.blueprint, Delivered: slices.Clone(s.delivered), Health: s.health, Order: s.order})
+		sites = append(sites, siteDto{X: t.X, Y: t.Y, Blueprint: s.blueprint, Delivered: slices.Clone(s.delivered), Health: s.health, Order: s.order, Faction: s.faction})
 	}
 	slices.SortFunc(sites, func(a, b siteDto) int {
 		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
@@ -285,7 +347,7 @@ func siteDtos(c *chunk) []siteDto {
 func sitesFromDtos(dtos []siteDto) map[utils.Vec2i]*constructionSite {
 	sites := make(map[utils.Vec2i]*constructionSite, len(dtos))
 	for _, d := range dtos {
-		sites[utils.Vec2i{X: d.X, Y: d.Y}] = &constructionSite{blueprint: d.Blueprint, delivered: slices.Clone(d.Delivered), health: d.Health, order: d.Order}
+		sites[utils.Vec2i{X: d.X, Y: d.Y}] = &constructionSite{blueprint: d.Blueprint, delivered: slices.Clone(d.Delivered), health: d.Health, order: d.Order, faction: d.Faction}
 	}
 	return sites
 }

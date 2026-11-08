@@ -16,7 +16,8 @@ func (cc *ChunkContainer) WalkSpeedPercent(t utils.Vec2i) int {
 	return int(c.walkSpeeds[c.tileIndex(t)])
 }
 
-// A feature that's walked through, such as a torch, doesn't slow walking
+// A feature that's walked through, such as a torch, doesn't slow walking, and nor does a door, which opens for whoever
+// would walk through it
 func (cc *ChunkContainer) chunkWalkSpeeds(c *chunk) *[data.ChunkSize * data.ChunkSize]uint8 {
 	speeds := &[data.ChunkSize * data.ChunkSize]uint8{}
 	for i, tile := range c.tiles {
@@ -25,7 +26,7 @@ func (cc *ChunkContainer) chunkWalkSpeeds(c *chunk) *[data.ChunkSize * data.Chun
 		}
 	}
 	for t := range c.features {
-		if _, walkThrough, ok := cc.featureCollider(c, t); ok && !walkThrough {
+		if _, walkThrough, ok := cc.featureCollider(c, t); ok && !walkThrough && cc.featureAtlas[c.features[t]].door == nil {
 			speeds[c.tileIndex(t)] = 0
 		}
 	}

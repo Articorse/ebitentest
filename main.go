@@ -395,6 +395,8 @@ func (g *game) tick() {
 			g.ecs.ScheduleRemoveEntity(invalidComponentsErr.Entity)
 		}
 	}
+	// Where things have moved to, before they run into the doors
+	g.chunkContainer.TickDoors(g.ecs)
 
 	g.ecs.TickState.CollisionGrid, err = commonsystems.PopulateSpatialHashGrid(g.ecs, data.SpatialHashGridCellSize)
 	if err != nil {
@@ -713,7 +715,8 @@ func (g *game) tileTooltip(tile utils.Vec2i) []string {
 // Only on what's been seen, in sight now or remembered, so that placing can't find out what's in unexplored ground
 func (g *game) canPlaceBlueprint(tile utils.Vec2i) bool {
 	_, seen := g.chunkContainer.RecallTile(tile)
-	return seen && g.chunkContainer.CanPlaceSite(tile)
+	kind, _ := g.placer.Kind()
+	return seen && g.chunkContainer.CanPlaceBlueprint(tile, kind)
 }
 
 // Only on what's been seen, like a blueprint
@@ -1207,13 +1210,13 @@ func main() {
 	if err != nil {
 		log.Fatal("error loading blueprint atlas from json: ", err)
 	}
-	if err := g.chunkContainer.SetBlueprintAtlas(blueprintAtlas); err != nil {
-		log.Fatal("error checking the blueprint atlas against the tile atlas: ", err)
-	}
-	g.ecs.SetBlueprintAtlas(blueprintAtlas)
 	if err := g.chunkContainer.GenerateFeatureAtlasFromJson("assets/features/features.json", itemAtlas, assets); err != nil {
 		log.Fatal("error generating feature atlas from json: ", err)
 	}
+	if err := g.chunkContainer.SetBlueprintAtlas(blueprintAtlas); err != nil {
+		log.Fatal("error checking the blueprint atlas against the tile and feature atlases: ", err)
+	}
+	g.ecs.SetBlueprintAtlas(blueprintAtlas)
 	if err := itemAtlas.CheckPlacedFeatures(g.chunkContainer.HasFeature); err != nil {
 		log.Fatal("error checking the item atlas against the feature atlas: ", err)
 	}

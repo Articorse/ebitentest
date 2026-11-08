@@ -27,6 +27,10 @@ type chunk struct {
 	// Every tile's walking speed, worked out when it's first asked for after a tile or feature changes, since paths ask
 	// for it many times over
 	walkSpeeds *[data.ChunkSize * data.ChunkSize]uint8
+	// Nil until it's asked for after the features change
+	opaqueFeatures map[utils.Vec2i]bool
+	// Whose each door is, who it opens for
+	doorFactions map[utils.Vec2i]data.FactionEnum
 
 	Image *ebiten.Image
 	// What lies on each tile
@@ -43,6 +47,7 @@ func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
 	c.featureHealth = make(map[utils.Vec2i]int)
 	c.sites = make(map[utils.Vec2i]*constructionSite)
 	c.ground = make(map[utils.Vec2i]ecs.GroundStack)
+	c.doorFactions = make(map[utils.Vec2i]data.FactionEnum)
 
 	return &c, nil
 }
@@ -135,6 +140,7 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, tile data.TileEnum) {
 	c.walkSpeeds = nil
 
 	cc.redrawAround(t)
+	cc.turnDoorsAround(t)
 }
 
 func (cc *ChunkContainer) IsOpenToSky(t utils.Vec2i) bool {

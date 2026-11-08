@@ -31,6 +31,8 @@ type featureDto struct {
 	Feature data.FeatureEnum
 	// 0 for an undamaged feature
 	Health int
+	// Whose door it is, and Faction_None for anything but a door
+	Faction data.FactionEnum
 }
 
 type promotedTileDto struct {
@@ -89,7 +91,7 @@ func (cc *ChunkContainer) chunkToDto(
 func featureDtos(c *chunk) []featureDto {
 	features := make([]featureDto, 0, len(c.features))
 	for t, f := range c.features {
-		features = append(features, featureDto{X: t.X, Y: t.Y, Feature: f, Health: c.featureHealth[t]})
+		features = append(features, featureDto{X: t.X, Y: t.Y, Feature: f, Health: c.featureHealth[t], Faction: c.doorFactions[t]})
 	}
 	slices.SortFunc(features, func(a, b featureDto) int {
 		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
@@ -107,11 +109,15 @@ func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 
 	features := make(map[utils.Vec2i]data.FeatureEnum, len(dto.Features))
 	featureHealth := make(map[utils.Vec2i]int)
+	doorFactions := make(map[utils.Vec2i]data.FactionEnum)
 	for _, f := range dto.Features {
 		t := utils.Vec2i{X: f.X, Y: f.Y}
 		features[t] = f.Feature
 		if f.Health > 0 {
 			featureHealth[t] = f.Health
+		}
+		if f.Faction != data.Faction_None {
+			doorFactions[t] = f.Faction
 		}
 	}
 
@@ -121,6 +127,7 @@ func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 		promotedTiles:   promotedTiles,
 		features:        features,
 		featureHealth:   featureHealth,
+		doorFactions:    doorFactions,
 		sites:           sitesFromDtos(dto.Sites),
 		areas:           areasFromDto(dto.Areas),
 		ground:          groundFromDtos(dto.Ground),

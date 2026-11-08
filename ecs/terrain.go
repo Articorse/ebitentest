@@ -44,6 +44,7 @@ type Terrain interface {
 	PlaceSite(t utils.Vec2i, blueprint data.BlueprintEnum) bool
 	// False without a site there
 	SetSiteOrder(t utils.Vec2i, order SiteOrder) bool
+	SetSiteFaction(t utils.Vec2i, faction data.FactionEnum) bool
 	Site(t utils.Vec2i) (ConstructionSite, bool)
 	// The tiles of the sites from first to last that are in the simulation, in tile order, row by row
 	SitesIn(first, last utils.Vec2i) []utils.Vec2i
@@ -98,6 +99,8 @@ type ConstructionSite struct {
 	Health    int
 	MaxHealth int
 	Order     SiteOrder
+	// Whose what's built will be
+	Faction data.FactionEnum
 }
 
 // The sites placed together in one go make up an order, which is worked through from the first site placed to the
@@ -168,6 +171,7 @@ func (noTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8,
 func (noTerrain) CanPlaceSite(utils.Vec2i) bool                         { return false }
 func (noTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool        { return false }
 func (noTerrain) SetSiteOrder(utils.Vec2i, SiteOrder) bool              { return false }
+func (noTerrain) SetSiteFaction(utils.Vec2i, data.FactionEnum) bool     { return false }
 func (noTerrain) Site(utils.Vec2i) (ConstructionSite, bool)             { return ConstructionSite{}, false }
 func (noTerrain) SitesIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i        { return nil }
 func (noTerrain) RemoveSite(utils.Vec2i) bool                           { return false }
@@ -205,14 +209,18 @@ func (x *ECSContainer) Terrain() Terrain {
 // Whether an entity is in the way of a tile being placed there: one whose physics collider reaches into it, or an
 // item lying on it, which couldn't be picked up from inside a wall
 func (x *ECSContainer) IsTileOccupied(t utils.Vec2i) bool {
+	_, onGround := x.terrain.GroundStack(t)
+	return onGround || x.IsEntityInTile(t)
+}
+
+// Whether something's physics collider reaches into the tile
+func (x *ECSContainer) IsEntityInTile(t utils.Vec2i) bool {
 	for e, col := range Query1(&x.PhysicsColliders, Without(&x.Disabled)) {
 		if x.colliderOverlapsTile(e, col, t) {
 			return true
 		}
 	}
-
-	_, onGround := x.terrain.GroundStack(t)
-	return onGround
+	return false
 }
 
 // Whether e's physics collider is in the way of the tile

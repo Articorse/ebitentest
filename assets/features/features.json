@@ -35,5 +35,49 @@
     "maxHealth": 1,
     "destroyedInto": 0,
     "drops": [{ "chance": 100, "items": [{ "kind": 2, "count": 1 }] }]
+  },
+  {
+    "id": 4,
+    "imageAsset": "wood_door",
+    "spriteLayer": 5,
+    "animation": [{ "frame": 0, "durationMs": 1000 }],
+    "collider": { "width": 16, "height": 4, "offset": { "x": 0, "y": 0 } },
+    "opaque": true,
+    "maxHealth": 50,
+    "destroyedInto": 0,
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 5 }] }],
+    "door": { "kind": "wood", "vertical": false, "open": false }
+  },
+  {
+    "id": 5,
+    "imageAsset": "wood_door",
+    "spriteLayer": 5,
+    "animation": [{ "frame": 1, "durationMs": 1000 }],
+    "maxHealth": 50,
+    "destroyedInto": 0,
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 5 }] }],
+    "door": { "kind": "wood", "vertical": false, "open": true }
+  },
+  {
+    "id": 6,
+    "imageAsset": "wood_door",
+    "spriteLayer": 5,
+    "animation": [{ "frame": 2, "durationMs": 1000 }],
+    "collider": { "width": 4, "height": 16, "offset": { "x": 0, "y": 0 } },
+    "opaque": true,
+    "maxHealth": 50,
+    "destroyedInto": 0,
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 5 }] }],
+    "door": { "kind": "wood", "vertical": true, "open": false }
+  },
+  {
+    "id": 7,
+    "imageAsset": "wood_door",
+    "spriteLayer": 5,
+    "animation": [{ "frame": 3, "durationMs": 1000 }],
+    "maxHealth": 50,
+    "destroyedInto": 0,
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 5 }] }],
+    "door": { "kind": "wood", "vertical": true, "open": true }
   }
 ]

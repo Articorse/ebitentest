@@ -104,6 +104,7 @@ func live(t *testing.T, s *testutil.Session, ticks int, done func() bool) bool {
 		if err := movementsystem.Tick(s.ECS); err != nil {
 			t.Fatal(err)
 		}
+		s.Chunks.TickDoors(s.ECS)
 		if err := timersystem.Tick(s.ECS); err != nil {
 			t.Fatal(err)
 		}

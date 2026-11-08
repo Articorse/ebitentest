@@ -246,9 +246,13 @@ func TestBlueprintsAreChosenFromTheirPanelInTheBottomRightCornerWhileBuilding(t 
 	}
 
 	placer.Start(data.Blueprint_WoodWall)
-	wall := blueprintSlotCenter().Subtract(utils.Vec2f{X: menuSlotPx + data.HotbarSlotGapPx})
+	slot := utils.Vec2f{X: menuSlotPx + data.HotbarSlotGapPx}
+	wall, door := blueprintSlotCenter().Subtract(slot.Multiply(2)), blueprintSlotCenter().Subtract(slot)
 	if kind, ok := placer.BlueprintAt(wall, menuScreen, blueprints, assets); !ok || kind != data.Blueprint_WoodWall {
 		t.Fatalf("the blueprint panel has %v (%v) in its first slot, want wooden walls", kind, ok)
+	}
+	if kind, ok := placer.BlueprintAt(door, menuScreen, blueprints, assets); !ok || kind != data.Blueprint_WoodDoor {
+		t.Fatalf("the blueprint panel has %v (%v) in its second slot, want wooden doors", kind, ok)
 	}
 	if !placer.StorageAt(blueprintSlotCenter(), menuScreen, blueprints, assets) || placer.StorageAt(wall, menuScreen, blueprints, assets) {
 		t.Fatal("storage isn't the panel's last slot, after the blueprints")

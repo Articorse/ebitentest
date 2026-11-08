@@ -44,6 +44,7 @@ func (openGround) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8
 func (openGround) CanPlaceSite(utils.Vec2i) bool                                        { return false }
 func (openGround) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool                       { return false }
 func (openGround) SetSiteOrder(utils.Vec2i, ecs.SiteOrder) bool                         { return false }
+func (openGround) SetSiteFaction(utils.Vec2i, data.FactionEnum) bool                    { return false }
 func (openGround) IsHarvestable(utils.Vec2i) bool                                       { return false }
 func (openGround) IsHarvestItem(data.ItemEnum) bool                                     { return false }
 func (openGround) TakeHarvested() []utils.Vec2i                                         { return nil }

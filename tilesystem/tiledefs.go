@@ -121,7 +121,7 @@ func (cc *ChunkContainer) IsOpaqueTile(t utils.Vec2i) bool {
 		return true
 	}
 
-	return cc.isOpaqueTileDef(c.getTileDefId(t))
+	return cc.isOpaqueTileDef(c.getTileDefId(t)) || cc.opaqueFeaturesOf(c)[t]
 }
 
 func (cc *ChunkContainer) TileLayer(t utils.Vec2i) (ecs.LayerMask, bool) {

@@ -33,8 +33,19 @@ func TestTheGamesBlueprintAtlasHasWoodenWalls(t *testing.T) {
 	if costs := def.Costs(); !slices.Equal(costs, []ecs.ItemCost{{Kind: data.Item_Wood, Count: 2}}) {
 		t.Fatalf("wooden walls cost %v, want 2 wood", costs)
 	}
-	if kinds := atlas.Kinds(); !slices.Equal(kinds, []data.BlueprintEnum{data.Blueprint_WoodWall}) {
-		t.Fatalf("the blueprints are %v, want only wooden walls", kinds)
+	if kinds := atlas.Kinds(); !slices.Equal(kinds, []data.BlueprintEnum{data.Blueprint_WoodWall, data.Blueprint_WoodDoor}) {
+		t.Fatalf("the blueprints are %v, want wooden walls and doors", kinds)
+	}
+
+	door, _ := atlas.Def(data.Blueprint_WoodDoor)
+	if ghost, frame := door.Ghost(); door.Feature() != data.Feature_WoodDoor || door.Tile() != data.Tile_None || ghost != "wood_door" || frame != 0 || door.Work() != 2*def.Work() {
+		t.Fatalf("the wooden door blueprint is %+v, want the closed door, looking like it, taking twice a wall's work", door)
+	}
+	if costs := door.Costs(); !slices.Equal(costs, []ecs.ItemCost{{Kind: data.Item_Wood, Count: 5}}) {
+		t.Fatalf("wooden doors cost %v, want 5 wood", costs)
+	}
+	if ghost, frame := def.Ghost(); ghost != def.ImageAsset() || frame != 0 {
+		t.Fatalf("the wooden wall looks like frame %d of %s before it's built, want the first frame of its own image", frame, ghost)
 	}
 }
 
@@ -50,6 +61,9 @@ func TestTheBlueprintAtlasRefusesBrokenBlueprints(t *testing.T) {
 		{"an item that doesn't exist", `[{"id": 1, "name": "A", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 99, "count": 1}], "work": 10}]`},
 		{"none of an item", `[{"id": 1, "name": "A", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 0}], "work": 10}]`},
 		{"an item twice", `[{"id": 1, "name": "A", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 1}, {"kind": 1, "count": 2}], "work": 10}]`},
+		{"both a tile and a feature", `[{"id": 1, "name": "A", "tile": 6, "feature": 4, "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 1}], "work": 10}]`},
+		{"neither a tile nor a feature", `[{"id": 1, "name": "A", "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 1}], "work": 10}]`},
+		{"a ghost frame its image doesn't have", `[{"id": 1, "name": "A", "feature": 4, "imageAsset": "tile_planks", "ghost": {"asset": "wood_door", "frame": 4}, "costs": [{"kind": 1, "count": 1}], "work": 10}]`},
 		{"an image that doesn't exist", `[{"id": 1, "name": "A", "tile": 6, "imageAsset": "nothing", "costs": [{"kind": 1, "count": 1}], "work": 10}]`},
 		{"an image without stages", `[{"id": 1, "name": "A", "tile": 6, "imageAsset": "wood", "costs": [{"kind": 1, "count": 1}], "work": 10}]`},
 		{"an id used twice", `[{"id": 1, "name": "A", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 1}], "work": 10},

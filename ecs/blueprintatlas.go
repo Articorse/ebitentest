@@ -12,17 +12,22 @@ import (
 	"slices"
 )
 
-// A tile that's built rather than placed: a blueprint is put down, the materials it costs are brought to it, and it's
-// worked on until it's the tile
+// A tile or feature that's built rather than placed: a blueprint is put down, the materials it costs are brought to it,
+// and it's worked on until it's the tile or feature
 type BlueprintDef struct {
 	name string
-	tile data.TileEnum
+	// Tile_None for a blueprint that builds a feature, and Feature_None for one that builds a tile
+	tile    data.TileEnum
+	feature data.FeatureEnum
 	// Its first frame is the finished tile, and the rest are the stages of building it, in order
 	imageAsset common.ImageAssetTag
 	stages     int
 	costs      []ItemCost
 	// How much building the tile takes, so that what builds faster gets it done in fewer strikes
 	work int
+	// What it looks like before it's built, in the menu and as a blueprint
+	ghostAsset common.ImageAssetTag
+	ghostFrame int
 }
 
 type ItemCost struct {
@@ -38,8 +43,16 @@ func (x BlueprintDef) Tile() data.TileEnum {
 	return x.tile
 }
 
+func (x BlueprintDef) Feature() data.FeatureEnum {
+	return x.feature
+}
+
 func (x BlueprintDef) ImageAsset() common.ImageAssetTag {
 	return x.imageAsset
+}
+
+func (x BlueprintDef) Ghost() (common.ImageAssetTag, int) {
+	return x.ghostAsset, x.ghostFrame
 }
 
 // The frames after the first
@@ -66,6 +79,14 @@ type blueprintDefDTO struct {
 	ImageAsset string        `json:"imageAsset"`
 	Costs      []itemCostDTO `json:"costs"`
 	Work       int           `json:"work"`
+	Feature    uint16        `json:"feature"`
+	// The first frame of imageAsset when it's not given
+	Ghost *ghostDTO `json:"ghost"`
+}
+
+type ghostDTO struct {
+	Asset string `json:"asset"`
+	Frame int    `json:"frame"`
 }
 
 type itemCostDTO struct {
@@ -102,6 +123,8 @@ func LoadBlueprintAtlasFromJson(path string, items *ItemAtlas, assets *assetmana
 			return nil, fmt.Errorf("blueprint %d takes %d work, which isn't positive", dto.Id, dto.Work)
 		case len(dto.Costs) == 0:
 			return nil, fmt.Errorf("blueprint %d costs nothing", dto.Id)
+		case (dto.Tile == 0) == (dto.Feature == 0):
+			return nil, fmt.Errorf("blueprint %d builds tile %d and feature %d, want one or the other", dto.Id, dto.Tile, dto.Feature)
 		}
 		if _, ok := atlas.defs[kind]; ok {
 			return nil, fmt.Errorf("blueprint id %d is defined twice", dto.Id)
@@ -118,9 +141,21 @@ func LoadBlueprintAtlasFromJson(path string, items *ItemAtlas, assets *assetmana
 		def := BlueprintDef{
 			name:       dto.Name,
 			tile:       data.TileEnum(dto.Tile),
+			feature:    data.FeatureEnum(dto.Feature),
 			imageAsset: common.ImageAssetTag(dto.ImageAsset),
 			stages:     len(asset.Frames) - 1,
 			work:       dto.Work,
+			ghostAsset: common.ImageAssetTag(dto.ImageAsset),
+		}
+		if g := dto.Ghost; g != nil {
+			ghost, err := assets.GetAsset(common.ImageAssetTag(g.Asset))
+			if err != nil {
+				return nil, fmt.Errorf("blueprint %d's ghost: %w", dto.Id, err)
+			}
+			if g.Frame < 0 || g.Frame >= len(ghost.Frames) {
+				return nil, fmt.Errorf("blueprint %d's ghost is frame %d of %d", dto.Id, g.Frame, len(ghost.Frames))
+			}
+			def.ghostAsset, def.ghostFrame = common.ImageAssetTag(g.Asset), g.Frame
 		}
 		for _, c := range dto.Costs {
 			cost := ItemCost{Kind: data.ItemEnum(c.Kind), Count: c.Count}
