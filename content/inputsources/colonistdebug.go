@@ -62,6 +62,13 @@ func ColonistDebugLines(e common.EntityId, ecsContainer *ecs.ECSContainer) ([]st
 	} else {
 		lines = append(lines, fmt.Sprintf("Next looks for work on tick %d", p.NextPlanTick))
 	}
+	if s := p.InPassing; p.InPassingTick != 0 {
+		name := "?"
+		if def, ok := ecsContainer.ItemAtlas().Def(s.Kind); ok {
+			name = def.Name()
+		}
+		lines = append(lines, fmt.Sprintf("In passing: %s %d %s at %d,%d on tick %d", stopActionNames[s.Action], s.Count, name, s.Tile.X, s.Tile.Y, p.InPassingTick))
+	}
 	if p.Last != Colonist_Idle {
 		lines = append(lines, fmt.Sprintf("Last: %s about %d,%d", colonistStateNames[p.Last], p.LastSubject.X, p.LastSubject.Y))
 	}

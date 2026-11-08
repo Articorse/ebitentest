@@ -82,6 +82,9 @@ type InputColonistParams struct {
 	// The order of the site its job is about, and of its last job's, which it carries on with
 	Order     uint64
 	LastOrder uint64
+	// What it last did on its way somewhere, and when, to show what it does in passing
+	InPassing     JobStop
+	InPassingTick uint64
 
 	walk
 	// What it last found no work it could get to among, which isn't looked through again until something changes,
@@ -181,8 +184,9 @@ func ColonistInputSource(
 	if !ok {
 		p.drop()
 		p.NextPlanTick = tick
+		return input, nil
 	}
-	return input, nil
+	return p.inPassing(entityId, selfPos, constructor, tick, input, ecsContainer), nil
 }
 
 // Standing still, unless it's on a site, which can't be finished with it there, so it goes to the closest tile that isn't
@@ -234,6 +238,123 @@ func keepOffSites(e common.EntityId, selfPos utils.Vec2f, input ecs.InputState, 
 		}
 	}
 	return input
+}
+
+// On its way, it picks up anything it passes on the harvest area, or on a site with room for it on storage, and
+// delivers what its job doesn't need to the sites it passes that need it, without stopping. What it picks up leaves
+// room for what its job is still to pick up, and what it delivers is only what its job doesn't need, unless the site
+// takes no more than that.
+func (p *InputColonistParams) inPassing(
+	e common.EntityId,
+	selfPos utils.Vec2f,
+	constructor *ecs.Constructor,
+	tick uint64,
+	input ecs.InputState,
+	ecsContainer *ecs.ECSContainer,
+) ecs.InputState {
+	first, last, err := ecsContainer.ColonyBounds(p.Colony)
+	if err != nil {
+		return input
+	}
+	c := othersClaims(e, p.Colony, ecsContainer)
+	if pickUp, ok := p.pickUpInPassing(e, selfPos, first, last, c, ecsContainer); ok {
+		input.PickUp = ecs.ItemPickUp{PickUp: true, Tile: pickUp.Tile, Count: pickUp.Count}
+		p.InPassing, p.InPassingTick = pickUp, tick
+	}
+	if deliver, ok := p.deliverInPassing(e, selfPos, constructor, first, last, c, ecsContainer); ok {
+		slot, _ := slotOf(e, deliver.Kind, ecsContainer)
+		input.Inventory = ecs.InventoryAction{Kind: ecs.InventoryAction_Bind, From: slot, To: 0}
+		input.AimPos, input.HasAim = utils.TilePosToWorldPos(deliver.Tile), true
+		input.MainHandEqAbility1 = 1
+		input.All = true
+		p.InPassing, p.InPassingTick = deliver, tick
+	}
+	return input
+}
+
+func (p *InputColonistParams) pickUpInPassing(e common.EntityId, selfPos utils.Vec2f, first, last utils.Vec2i, c claims, ecsContainer *ecs.ECSContainer) (JobStop, bool) {
+	terrain := ecsContainer.Terrain()
+	inv, ok := ecsContainer.Inventories.Get(e)
+	if !ok {
+		return JobStop{}, false
+	}
+	weight := func(kind data.ItemEnum) int {
+		def, _ := ecsContainer.ItemAtlas().Def(kind)
+		return def.Weight()
+	}
+	spare := inv.MaxWeight() - ecsContainer.CarriedWeight(e)
+	for _, s := range p.Stops {
+		if s.Action == Stop_PickUp {
+			spare -= s.Count * weight(s.Kind)
+		}
+	}
+
+	self := utils.WorldPosToTilePos(selfPos)
+	r := data.ItemReachTiles
+	from := utils.Vec2i{X: max(self.X-r, first.X), Y: max(self.Y-r, first.Y)}
+	to := utils.Vec2i{X: min(self.X+r, last.X), Y: min(self.Y+r, last.Y)}
+	tiles := terrain.GroundStacksIn(from, to)
+	slices.SortStableFunc(tiles, func(a, b utils.Vec2i) int { return cmp.Compare(utils.Dist2(a, self), utils.Dist2(b, self)) })
+	for _, t := range tiles {
+		stack, _ := terrain.GroundStack(t)
+		if stack.Unique != nil {
+			continue
+		}
+		_, onSite := terrain.Site(t)
+		harvesting := terrain.InArea(data.Area_Harvest, t) && !terrain.InArea(data.Area_Storage, t)
+		clearing := onSite && terrain.InArea(data.Area_Home, t) &&
+			len(c.storeSpots(stack.Kind, terrain.AreaTiles(data.Area_Storage, first, last), ecsContainer)) > 0
+		if !harvesting && !clearing {
+			continue
+		}
+		n := min(c.unclaimedStack(t, ecsContainer), ecsContainer.RoomFor(e, stack.Kind))
+		if w := weight(stack.Kind); w > 0 {
+			n = min(n, spare/w)
+		}
+		if _, sees := ecsContainer.AimedTileInReach(selfPos, utils.TilePosToWorldPos(t), r); n > 0 && sees {
+			return JobStop{Action: Stop_PickUp, Tile: t, Kind: stack.Kind, Count: n}, true
+		}
+	}
+	return JobStop{}, false
+}
+
+func (p *InputColonistParams) deliverInPassing(
+	e common.EntityId,
+	selfPos utils.Vec2f,
+	constructor *ecs.Constructor,
+	first, last utils.Vec2i,
+	c claims,
+	ecsContainer *ecs.ECSContainer,
+) (JobStop, bool) {
+	terrain := ecsContainer.Terrain()
+	has := carriedKinds(e, ecsContainer)
+	committed := map[data.ItemEnum]int{}
+	for _, s := range p.Stops {
+		if s.Action == Stop_Deliver || s.Action == Stop_PutDown {
+			committed[s.Kind] += s.Count
+		}
+	}
+
+	self := utils.WorldPosToTilePos(selfPos)
+	r := constructor.RangeTiles()
+	from := utils.Vec2i{X: max(self.X-r, first.X), Y: max(self.Y-r, first.Y)}
+	to := utils.Vec2i{X: min(self.X+r, last.X), Y: min(self.Y+r, last.Y)}
+	for _, t := range terrain.SitesIn(from, to) {
+		site, def, ok := siteAt(t, ecsContainer)
+		if !ok || !terrain.InArea(data.Area_Home, t) {
+			continue
+		}
+		if _, sees := ecsContainer.AimedTileInReach(selfPos, utils.TilePosToWorldPos(t), r); !sees {
+			continue
+		}
+		for _, cost := range def.Costs() {
+			need, spare := c.unclaimedNeed(t, cost.Kind, site, def), has[cost.Kind]-committed[cost.Kind]
+			if need > 0 && spare > 0 && (need <= spare || committed[cost.Kind] == 0) {
+				return JobStop{Action: Stop_Deliver, Tile: t, Kind: cost.Kind, Count: min(need, spare)}, true
+			}
+		}
+	}
+	return JobStop{}, false
 }
 
 func stopRange(stop JobStop, constructor *ecs.Constructor) int {

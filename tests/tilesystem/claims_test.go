@@ -103,11 +103,15 @@ func TestAColonistFinishesFellingBeforeTurningToABlueprint(t *testing.T) {
 
 	site := groundAway(t, s, colonist, 3, tree)
 	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
-	if !live(t, s, 20*data.TPS, func() bool { return !isTree(s, tree) }) {
+	turned := false
+	if !live(t, s, 20*data.TPS, func() bool {
+		turned = turned || (isTree(s, tree) && colonistState(s, colonist) != inputsources.Colonist_Chop)
+		return !isTree(s, tree)
+	}) {
 		t.Fatalf("the colonist didn't fell the tree, it's %v", colonistState(s, colonist))
 	}
-	if built, _ := s.Chunks.Site(site); !built.IsBlueprint() {
-		t.Fatal("the colonist delivered to the blueprint before felling the tree")
+	if turned {
+		t.Fatal("the colonist turned to the blueprint before felling the tree")
 	}
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
 		t.Fatal("the colonist didn't build the blueprint once it had felled the tree")

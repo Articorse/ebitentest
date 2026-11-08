@@ -38,6 +38,11 @@ func TestAfterFellingATreeAColonistGathersWhatLiesAroundItBeforeBuilding(t *test
 	if colonistState(s, colonist) != inputsources.Colonist_Chop {
 		t.Fatalf("the colonist didn't go for the tree, it's %v", colonistState(s, colonist))
 	}
+	// Once it's there, so that it doesn't pick the wood up on its way
+	stand := colonistJob(s, colonist).Stand
+	if !live(t, s, 20*data.TPS, func() bool { return colonistTile(t, s, colonist) == stand }) {
+		t.Fatal("the colonist didn't get to the tree")
+	}
 
 	lying := groundNear(t, s, tree, data.ColonistFollowUpRangeTiles)
 	harvest(s, lying)
