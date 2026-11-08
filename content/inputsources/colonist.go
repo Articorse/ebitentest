@@ -164,7 +164,7 @@ func ColonistInputSource(
 	target := utils.TilePosToWorldPos(stop.Tile)
 	if _, inReach := ecsContainer.AimedTileInReach(selfPos, target, stopRange(stop, constructor)); inReach && self != stop.Tile {
 		p.path = nil
-		return p.use(entityId, self, target, ecsContainer), nil
+		return keepOffSites(entityId, selfPos, p.use(entityId, self, target, ecsContainer), ecsContainer), nil
 	}
 	// What's built after it chose where to stand can hide the stop from there
 	if self == p.Stand && !p.headFor(entityId, self, constructor, ecsContainer) {
@@ -189,7 +189,7 @@ func (p *InputColonistParams) stepOffSite(e common.EntityId, selfPos utils.Vec2f
 	self := utils.WorldPosToTilePos(selfPos)
 	if _, onSite := terrain.Site(self); !onSite {
 		p.path = nil
-		return input
+		return keepOffSites(e, selfPos, input, ecsContainer)
 	}
 	best, found := utils.Vec2i{}, false
 	r := data.ColonistStepOffRangeTiles
@@ -209,6 +209,26 @@ func (p *InputColonistParams) stepOffSite(e common.EntityId, selfPos utils.Vec2f
 	}
 	move, _ := p.moveTo(selfPos, utils.TilePosToWorldPos(best), terrain)
 	input.Analog1X, input.Analog1Y = move.Analog1X, move.Analog1Y
+	return input
+}
+
+// Its body can reach over onto a site next to the tile it's standing on, which holds up building it, so it moves to the
+// middle of its own tile while it does whatever else it's doing
+func keepOffSites(e common.EntityId, selfPos utils.Vec2f, input ecs.InputState, ecsContainer *ecs.ECSContainer) ecs.InputState {
+	self := utils.WorldPosToTilePos(selfPos)
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			t := utils.Vec2i{X: self.X + dx, Y: self.Y + dy}
+			if _, onSite := ecsContainer.Terrain().Site(t); t != self && onSite && ecsContainer.OverlapsTile(e, t) {
+				toMiddle := utils.TilePosToWorldPos(self).Subtract(selfPos)
+				if toMiddle.Length() > 0 {
+					toMiddle = toMiddle.Multiply(1 / toMiddle.Length())
+				}
+				input.Analog1X, input.Analog1Y = toMiddle.X, toMiddle.Y
+				return input
+			}
+		}
+	}
 	return input
 }
 

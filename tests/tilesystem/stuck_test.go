@@ -234,3 +234,46 @@ func TestASiteWithOnlySitesAroundItIsStillBuiltFromOne(t *testing.T) {
 		t.Fatalf("the colonist didn't build the site in the middle, it's %v", colonistState(s, colonist))
 	}
 }
+
+// Standing on the tile next to it, but leaning over onto it, as far as being in the middle of the tiles allows
+func leanOnto(t *testing.T, s *testutil.Session, colonist common.EntityId, from, onto utils.Vec2i) {
+	t.Helper()
+	pos := utils.TilePosToWorldPos(from)
+	lean := utils.TilePosToWorldPos(onto).Subtract(pos).Multiply(0.45)
+	testutil.SetPos(t, s.ECS, colonist, pos.Add(lean))
+	if colonistTile(t, s, colonist) != from || !s.ECS.OverlapsTile(colonist, onto) {
+		t.Fatalf("the colonist isn't on %v leaning onto %v", from, onto)
+	}
+}
+
+func TestAColonistLeaningOntoTheSiteItsBuildingMovesOffItToFinish(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	row := openRow(t, s, colonist, 2)
+	site := utils.Vec2i{X: row.X + 1, Y: row.Y}
+	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.DeliverToSite(site, data.Item_Wood, planksCost(t))
+	leanOnto(t, s, colonist, row, site)
+
+	if !live(t, s, 20*data.TPS, isBuilt(s, site)) {
+		t.Fatalf("the colonist didn't finish the site it was leaning onto, it's %v", colonistState(s, colonist))
+	}
+}
+
+func TestAnIdleColonistLeaningOntoASiteMovesOffIt(t *testing.T) {
+	s, colony, builder := colonistAtWork(t)
+	row := openRow(t, s, builder, 2)
+	site := utils.Vec2i{X: row.X + 1, Y: row.Y}
+	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.DeliverToSite(site, data.Item_Wood, planksCost(t))
+	idle := anotherColonist(t, s, colony, builder)
+	withoutWood(t, s, idle)
+	leanOnto(t, s, idle, row, site)
+	live(t, s, 1, func() bool { return false })
+	if colonistState(s, builder) != inputsources.Colonist_Construct || colonistState(s, idle) != inputsources.Colonist_Idle {
+		t.Fatalf("the colonists are %v and %v, want the first building and the other idle", colonistState(s, builder), colonistState(s, idle))
+	}
+
+	if !live(t, s, 20*data.TPS, isBuilt(s, site)) {
+		t.Fatal("the site wasn't finished with the idle colonist leaning onto it")
+	}
+}

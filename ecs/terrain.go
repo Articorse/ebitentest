@@ -182,21 +182,30 @@ func (x *ECSContainer) Terrain() Terrain {
 // Whether an entity is in the way of a tile being placed there: one whose physics collider reaches into it, or an
 // item lying on it, which couldn't be picked up from inside a wall
 func (x *ECSContainer) IsTileOccupied(t utils.Vec2i) bool {
-	center := utils.TilePosToWorldPos(t)
-	half := utils.Vec2f{X: data.TileSize / 2, Y: data.TileSize / 2}
-	lo, hi := center.Subtract(half), center.Add(half)
-
-	// Strictly inside, since something pressed flat against the tile, such as a player walking along a wall, isn't in
-	// the way
 	for e, col := range Query1(&x.PhysicsColliders, Without(&x.Disabled)) {
-		aabb, err := x.ColliderWorldAABB(e, col)
-		if err == nil && aabb[0].X < hi.X && aabb[1].X > lo.X && aabb[0].Y < hi.Y && aabb[1].Y > lo.Y {
+		if x.colliderOverlapsTile(e, col, t) {
 			return true
 		}
 	}
 
 	_, onGround := x.terrain.GroundStack(t)
 	return onGround
+}
+
+// Whether e's physics collider is in the way of the tile
+func (x *ECSContainer) OverlapsTile(e common.EntityId, t utils.Vec2i) bool {
+	col, ok := x.PhysicsColliders.Get(e)
+	return ok && x.colliderOverlapsTile(e, col, t)
+}
+
+// Strictly inside, since something pressed flat against the tile, such as a player walking along a wall, isn't in the
+// way
+func (x *ECSContainer) colliderOverlapsTile(e common.EntityId, col *PhysicsCollider, t utils.Vec2i) bool {
+	center := utils.TilePosToWorldPos(t)
+	half := utils.Vec2f{X: data.TileSize / 2, Y: data.TileSize / 2}
+	lo, hi := center.Subtract(half), center.Add(half)
+	aabb, err := x.ColliderWorldAABB(e, col)
+	return err == nil && aabb[0].X < hi.X && aabb[1].X > lo.X && aabb[0].Y < hi.Y && aabb[1].Y > lo.Y
 }
 
 // How fast e walks on the tile under it, in percent. A tile that can't be walked through doesn't slow it, since
