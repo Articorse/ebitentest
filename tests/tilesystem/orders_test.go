@@ -342,3 +342,68 @@ func TestAColonistFetchesForAnEarlierOrderFirst(t *testing.T) {
 		t.Fatalf("the colonist is on %v, want fetching for the earlier order's site on %v though it's a little further", job.Stops, earlier)
 	}
 }
+
+// Which once had it give up the rest of the load after the first site, seeing the site it had just supplied as no
+// longer wanting anything
+func TestAColonistDeliversTheWholeLoadInOneJob(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	tile := storageSpot(t, s, colonist, 6, 1, 1)
+	markStorage(t, s, false, tile)
+	woodOntoStorage(t, s, colonist, tile)
+	sites := rowOf(storageSpot(t, s, colonist, 9, 3, 1, tile), 3)
+	placeOrder(t, s, sites...)
+	live(t, s, 1, func() bool { return false })
+	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Fetch || !slices.Equal(deliveriesOf(job.Stops), sites) {
+		t.Fatalf("the colonist is on %v, want fetching for all three sites", job.Stops)
+	}
+
+	supplied := func() bool {
+		def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
+		return !slices.ContainsFunc(sites, func(tile utils.Vec2i) bool {
+			site, _ := s.Chunks.Site(tile)
+			return site.Needs(data.Item_Wood, def) > 0
+		})
+	}
+	gaveUp := false
+	if !live(t, s, 40*data.TPS, func() bool {
+		gaveUp = gaveUp || (!supplied() && colonistState(s, colonist) != inputsources.Colonist_Fetch)
+		return supplied()
+	}) {
+		t.Fatal("the colonist didn't supply all three sites")
+	}
+	if gaveUp {
+		t.Fatal("the colonist stopped fetching before it had supplied all three sites")
+	}
+}
+
+func TestASiteInALoadSuppliedBySomeoneElseIsLeftOut(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	tile := storageSpot(t, s, colonist, 6, 1, 1)
+	markStorage(t, s, false, tile)
+	woodOntoStorage(t, s, colonist, tile)
+	sites := rowOf(storageSpot(t, s, colonist, 9, 3, 1, tile), 3)
+	placeOrder(t, s, sites...)
+	live(t, s, 1, func() bool { return false })
+
+	s.Chunks.DeliverToSite(sites[1], data.Item_Wood, planksCost(t))
+	live(t, s, 1, func() bool { return false })
+	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Fetch || !slices.Equal(deliveriesOf(job.Stops), []utils.Vec2i{sites[0], sites[2]}) {
+		t.Fatalf("the colonist is on %v, want still fetching for the other two sites", job.Stops)
+	}
+}
+
+func TestALoadTakesTheSitesEitherSideOfWhereItStartsInOrder(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	tile := storageSpot(t, s, colonist, 6, 1, 1)
+	markStorage(t, s, false, tile)
+	woodOntoStorage(t, s, colonist, tile)
+	roomForWood(t, s, colonist, 3*planksCost(t)+1)
+	sites := rowOf(storageSpot(t, s, colonist, 10, 7, 1, tile), 7)
+	placeOrder(t, s, sites...)
+	testutil.SetPos(t, s.ECS, colonist, utils.TilePosToWorldPos(sites[3]))
+
+	live(t, s, 1, func() bool { return false })
+	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Fetch || !slices.Equal(deliveriesOf(job.Stops), sites[2:5]) {
+		t.Fatalf("the colonist is on %v, want fetching for the site it's closest to and the one either side, in order", job.Stops)
+	}
+}

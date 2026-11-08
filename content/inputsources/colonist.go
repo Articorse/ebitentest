@@ -374,15 +374,31 @@ func (p *InputColonistParams) drop() {
 	p.State, p.Stops, p.Acted, p.path = Colonist_Idle, nil, false, nil
 }
 
+// Leaves out the deliveries still to come to sites that no longer want them, having been supplied by someone else or
+// gone, and whether there's still any point to the job, which there isn't once all it was delivering for is left out
+func (p *InputColonistParams) dropUnwanted(ecsContainer *ecs.ECSContainer) bool {
+	terrain := ecsContainer.Terrain()
+	delivering := slices.ContainsFunc(p.Stops, func(s JobStop) bool { return s.Action == Stop_Deliver })
+	p.Stops = append(p.Stops[:1], slices.DeleteFunc(slices.Clone(p.Stops[1:]), func(s JobStop) bool {
+		site, def, ok := siteAt(s.Tile, ecsContainer)
+		return s.Action == Stop_Deliver && (!ok || !terrain.InArea(data.Area_Home, s.Tile) || site.Needs(s.Kind, def) <= 0)
+	})...)
+	return !delivering || slices.ContainsFunc(p.Stops, func(s JobStop) bool { return s.Action == Stop_Deliver })
+}
+
 // Moves on past the stops that are done, and drops the job once what's left of it can't be done. Whether the job ended.
 func (p *InputColonistParams) advance(e common.EntityId, self utils.Vec2i, constructor *ecs.Constructor, ecsContainer *ecs.ECSContainer) bool {
 	for p.State != Colonist_Idle {
-		if len(p.Stops) == 0 || !p.valid(e, ecsContainer) {
+		if len(p.Stops) == 0 || !p.dropUnwanted(ecsContainer) {
 			p.drop()
 			return true
 		}
 		stop := p.Stops[0]
 		if !p.done(e, stop, ecsContainer) {
+			if !p.valid(e, ecsContainer) {
+				p.drop()
+				return true
+			}
 			return false
 		}
 		p.Stops, p.Acted = p.Stops[1:], false
@@ -445,15 +461,9 @@ func (p *InputColonistParams) headFor(e common.EntityId, self utils.Vec2i, const
 	return ok
 }
 
-// The current stop can still be done, and every site it's yet to deliver to still wants it, so that nothing's fetched
-// for a site that no longer needs it
+// The current stop can still be done
 func (p *InputColonistParams) valid(e common.EntityId, ecsContainer *ecs.ECSContainer) bool {
 	terrain := ecsContainer.Terrain()
-	for _, s := range p.Stops {
-		if site, def, ok := siteAt(s.Tile, ecsContainer); s.Action == Stop_Deliver && (!ok || !terrain.InArea(data.Area_Home, s.Tile) || site.Needs(s.Kind, def) <= 0) {
-			return false
-		}
-	}
 
 	stop := p.Stops[0]
 	_, onSite := terrain.Site(stop.Tile)
@@ -481,8 +491,8 @@ func (p *InputColonistParams) valid(e common.EntityId, ecsContainer *ecs.ECSCont
 			return onSite && terrain.InArea(data.Area_Home, stop.Tile)
 		}
 	case Stop_Deliver:
-		site, def, _ := siteAt(stop.Tile, ecsContainer)
-		return carried(e, stop.Kind, ecsContainer) >= min(stop.Count, site.Needs(stop.Kind, def))
+		site, def, ok := siteAt(stop.Tile, ecsContainer)
+		return ok && terrain.InArea(data.Area_Home, stop.Tile) && carried(e, stop.Kind, ecsContainer) >= min(stop.Count, site.Needs(stop.Kind, def))
 	case Stop_PutDown:
 		_, count := p.putDownFrom(e, stop, ecsContainer)
 		return p.Acted || (count > 0 && terrain.InArea(data.Area_Storage, stop.Tile) && ecsContainer.GroundRoomFor(stop.Tile, stop.Kind) > 0)
@@ -603,8 +613,9 @@ func (c claims) canDeliver(e common.EntityId, t utils.Vec2i, site ecs.Constructi
 	return any
 }
 
-// Delivering to the site, and then to the sites after it in its order while what's to hand still covers all they need,
-// so that one trip supplies a run of them. The first only gets part of what it needs when that's all there is.
+// Delivering to the site, and to the other sites of its order closest to it in the order, either side of it, while
+// what's to hand still covers all each needs, so that one trip supplies a run of them, which it delivers to in the
+// order's order. The site only gets part of what it needs when that's all there is.
 func (c claims) load(start utils.Vec2i, toHand map[data.ItemEnum]int, sites []utils.Vec2i, ecsContainer *ecs.ECSContainer) []JobStop {
 	first, def, ok := siteAt(start, ecsContainer)
 	if !ok {
@@ -621,18 +632,20 @@ func (c claims) load(start utils.Vec2i, toHand map[data.ItemEnum]int, sites []ut
 		return stops
 	}
 
-	next := []utils.Vec2i{}
+	seqOf := func(t utils.Vec2i) int {
+		site, _, _ := siteAt(t, ecsContainer)
+		return site.Order.Seq
+	}
+	others := []utils.Vec2i{}
 	for _, t := range sites {
-		if site, _, ok := siteAt(t, ecsContainer); ok && site.Order.Id == first.Order.Id && site.Order.Seq > first.Order.Seq {
-			next = append(next, t)
+		if site, _, ok := siteAt(t, ecsContainer); ok && t != start && site.Order.Id == first.Order.Id {
+			others = append(others, t)
 		}
 	}
-	slices.SortStableFunc(next, func(a, b utils.Vec2i) int {
-		sa, _, _ := siteAt(a, ecsContainer)
-		sb, _, _ := siteAt(b, ecsContainer)
-		return cmp.Compare(sa.Order.Seq, sb.Order.Seq)
+	slices.SortStableFunc(others, func(a, b utils.Vec2i) int {
+		return cmp.Or(cmp.Compare(abs(seqOf(a)-first.Order.Seq), abs(seqOf(b)-first.Order.Seq)), cmp.Compare(seqOf(a), seqOf(b)))
 	})
-	for _, t := range next {
+	for _, t := range others {
 		site, def, _ := siteAt(t, ecsContainer)
 		needs := []JobStop{}
 		for _, cost := range def.Costs() {
@@ -641,14 +654,19 @@ func (c claims) load(start utils.Vec2i, toHand map[data.ItemEnum]int, sites []ut
 			}
 		}
 		if slices.ContainsFunc(needs, func(s JobStop) bool { return s.Count > toHand[s.Kind] }) {
-			break
+			continue
 		}
 		for _, s := range needs {
 			toHand[s.Kind] -= s.Count
 		}
 		stops = append(stops, needs...)
 	}
+	slices.SortStableFunc(stops, func(a, b JobStop) int { return cmp.Compare(seqOf(a.Tile), seqOf(b.Tile)) })
 	return stops
+}
+
+func abs(n int) int {
+	return max(n, -n)
 }
 
 // How many of each generic kind it carries
