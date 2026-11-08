@@ -125,6 +125,9 @@ func (f *fakeTerrain) SetSiteFaction(utils.Vec2i, data.FactionEnum) bool        
 func (f *fakeTerrain) IsHarvestable(utils.Vec2i) bool                                       { return false }
 func (f *fakeTerrain) IsHarvestItem(data.ItemEnum) bool                                     { return false }
 func (f *fakeTerrain) TakeHarvested() []utils.Vec2i                                         { return nil }
+func (f *fakeTerrain) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
+	return false, data.Faction_None, false
+}
 func (f *fakeTerrain) Site(utils.Vec2i) (ecs.ConstructionSite, bool) {
 	return ecs.ConstructionSite{}, false
 }

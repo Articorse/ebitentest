@@ -170,3 +170,87 @@ func TestTheRusherGoesForTheClosestHostileItSees(t *testing.T) {
 		t.Fatalf("with the player untargetable, the slime goes for %d in state %v, want the colonist %d", target(), state, colonist)
 	}
 }
+
+var doorTile = utils.Vec2i{X: 3}
+
+// The pond world split by a wall down x = 3, with a door through it on doorTile
+type doorWorld struct {
+	pondWorld
+	open    bool
+	faction data.FactionEnum
+}
+
+func (w *doorWorld) wall(t utils.Vec2i) bool { return t.X == doorTile.X && t != doorTile }
+func (w *doorWorld) IsOpaqueTile(t utils.Vec2i) bool {
+	return w.pondWorld.IsOpaqueTile(t) || w.wall(t) || (t == doorTile && !w.open)
+}
+func (w *doorWorld) WalkSpeedPercent(t utils.Vec2i) int {
+	if w.wall(t) {
+		return 0
+	}
+	return w.pondWorld.WalkSpeedPercent(t)
+}
+func (w *doorWorld) ClosedDoor(t utils.Vec2i) (bool, data.FactionEnum, bool) {
+	if t != doorTile || w.open {
+		return false, data.Faction_None, false
+	}
+	return true, w.faction, true
+}
+
+func rusherByADoor(t *testing.T, slimePos utils.Vec2f, faction data.FactionEnum) (*ecs.ECSContainer, common.EntityId, common.EntityId, *doorWorld) {
+	t.Helper()
+	x, player, slime := playerAndSlime(t, slimePos)
+	world := &doorWorld{pondWorld: pondWorld{Terrain: x.Terrain()}, faction: faction}
+	x.SetTerrain(world)
+	return x, player, slime, world
+}
+
+func TestTheRusherOnlyGoesThroughClosedDoorsOfItsOwn(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		faction data.FactionEnum
+		through bool
+	}{
+		{"the colony's", data.Faction_Colony, false},
+		{"no one's", data.Faction_None, false},
+		{"its own", data.Faction_Monsters, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			x, _, slime, world := rusherByADoor(t, utils.TilePosToWorldPos(utils.Vec2i{X: 6}), c.faction)
+			world.open = true
+			if _, state := rush(t, x, slime); state != inputsources.Rusher_Follow {
+				t.Fatalf("through the open door, the slime is in state %v, want following the player", state)
+			}
+
+			world.open = false
+			input, state := rush(t, x, slime)
+			if through := state == inputsources.Rusher_Search && input.Analog1X < 0; through != c.through {
+				t.Fatalf("with the door closed, the slime is in state %v heading %v, %v; want it going through %v", state, input.Analog1X, input.Analog1Y, c.through)
+			}
+		})
+	}
+}
+
+func TestSomethingOnAClosedDoorsTileSeesAndIsSeenFromItsSideOfIt(t *testing.T) {
+	door := utils.TilePosToWorldPos(doorTile)
+	for _, c := range []struct {
+		name         string
+		slime, other utils.Vec2f
+		seen         bool
+	}{
+		{"seeing from behind it", door.Add(utils.Vec2f{X: 2}), utils.Vec2f{}, false},
+		{"seeing from in front of it", door.Add(utils.Vec2f{X: -2}), utils.Vec2f{}, true},
+		{"seen behind it", utils.TilePosToWorldPos(utils.Vec2i{X: 6}), door.Add(utils.Vec2f{X: -2}), false},
+		{"seen in front of it", utils.TilePosToWorldPos(utils.Vec2i{X: 6}), door.Add(utils.Vec2f{X: 2}), true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			x, player, slime, _ := rusherByADoor(t, c.slime, data.Faction_Colony)
+			if err := x.SetWorldPos(player, c.other); err != nil {
+				t.Fatal(err)
+			}
+			if _, state := rush(t, x, slime); (state == inputsources.Rusher_Follow) != c.seen {
+				t.Fatalf("the slime is in state %v, want it seeing the player %v", state, c.seen)
+			}
+		})
+	}
+}

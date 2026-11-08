@@ -18,7 +18,7 @@ func Tick(ecsContainer *ecs.ECSContainer) {
 			continue
 		}
 
-		origin := utils.WorldPosToTilePos(pos)
+		origin := ecsContainer.SightTile(pos)
 		rangeTiles := v.BaseRangeTiles() * ecsContainer.Capacity(e, data.Capacity_Sight) / data.FullEfficiency
 		light := v.Light()
 		terrain := ecsContainer.Terrain()

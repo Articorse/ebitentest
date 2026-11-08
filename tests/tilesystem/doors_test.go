@@ -172,6 +172,18 @@ func TestADoorOpensForItsOwnFactionWithinATile(t *testing.T) {
 	}
 }
 
+func TestADoorWithoutAFactionNeverOpens(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	middle := doorYard(t, s, colonist)
+	wall(t, s, at(middle, -1, 0), at(middle, 1, 0))
+	buildDoor(t, s, middle, data.Faction_None)
+	testutil.AddMovable(t, s.ECS, utils.TilePosToWorldPos(at(middle, 0, 1)), false, ecs.NewFactionComponent(data.Faction_None))
+	s.Chunks.TickDoors(s.ECS)
+	if door(t, s, middle).Open {
+		t.Fatal("the door without a faction opened for something without one")
+	}
+}
+
 func TestDoorsInARowOpenTogether(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	middle := doorYard(t, s, colonist)

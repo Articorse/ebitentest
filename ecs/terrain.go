@@ -78,6 +78,8 @@ type Terrain interface {
 	// The tiles that something harvestable has been felled, broken or picked up from since this was last asked, in the
 	// order it happened
 	TakeHarvested() []utils.Vec2i
+	// Which way the closed door on the tile runs and whose it is, false without one or while it's open
+	ClosedDoor(t utils.Vec2i) (vertical bool, faction data.FactionEnum, ok bool)
 }
 
 // Implemented by terrains that can answer for many tiles at once, and say when sight and light have to be worked out
@@ -197,6 +199,9 @@ func (noTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return
 func (noTerrain) IsHarvestable(utils.Vec2i) bool                        { return false }
 func (noTerrain) IsHarvestItem(data.ItemEnum) bool                      { return false }
 func (noTerrain) TakeHarvested() []utils.Vec2i                          { return nil }
+func (noTerrain) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
+	return false, data.Faction_None, false
+}
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {
 	x.terrain = terrain
@@ -204,6 +209,43 @@ func (x *ECSContainer) SetTerrain(terrain Terrain) {
 
 func (x *ECSContainer) Terrain() Terrain {
 	return x.terrain
+}
+
+// The tile what's at the position sees from and is seen on. A closed door runs through the middle of its tile, so on
+// one it's the tile next to it on the position's side of the door.
+func (x *ECSContainer) SightTile(pos utils.Vec2f) utils.Vec2i {
+	t := utils.WorldPosToTilePos(pos)
+	vertical, _, ok := x.terrain.ClosedDoor(t)
+	if !ok {
+		return t
+	}
+	center := utils.TilePosToWorldPos(t)
+	switch {
+	case vertical && pos.X < center.X:
+		t.X--
+	case vertical:
+		t.X++
+	case pos.Y < center.Y:
+		t.Y--
+	default:
+		t.Y++
+	}
+	return t
+}
+
+// As WalkSpeedPercent, but 0 on a closed door that won't open for the entity, which is any that isn't of its faction.
+// One without a faction is no one's.
+func (x *ECSContainer) WalkSpeedOf(e common.EntityId) func(utils.Vec2i) int {
+	faction := data.Faction_None
+	if f, ok := x.Factions.Get(e); ok {
+		faction = f.Faction()
+	}
+	return func(t utils.Vec2i) int {
+		if _, door, ok := x.terrain.ClosedDoor(t); ok && (door == data.Faction_None || door != faction) {
+			return 0
+		}
+		return x.terrain.WalkSpeedPercent(t)
+	}
 }
 
 // Whether an entity is in the way of a tile being placed there: one whose physics collider reaches into it, or an

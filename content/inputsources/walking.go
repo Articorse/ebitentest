@@ -30,17 +30,17 @@ func (p *walk) follow(from utils.Vec2i, path []utils.Vec2i) {
 // Straight at the destination while nothing's in the way, and along a path to it otherwise. The path is found again
 // when the destination moves to another tile, something pushes the walker off it, or something's built on it. False,
 // and standing still, when no path reaches it.
-func (p *walk) moveTo(selfPos, dest utils.Vec2f, terrain ecs.Terrain) (ecs.InputState, bool) {
-	if clearWalk(selfPos, dest, terrain) {
+func (p *walk) moveTo(selfPos, dest utils.Vec2f, walkSpeed func(utils.Vec2i) int) (ecs.InputState, bool) {
+	if clearWalk(selfPos, dest, walkSpeed) {
 		p.path = nil
 		return heading(selfPos, dest), true
 	}
 
 	from, goal := utils.WorldPosToTilePos(selfPos), utils.WorldPosToTilePos(dest)
 	on := slices.Index(p.path, from)
-	blocked := on != -1 && slices.ContainsFunc(p.path[on:], func(t utils.Vec2i) bool { return terrain.WalkSpeedPercent(t) <= 0 })
+	blocked := on != -1 && slices.ContainsFunc(p.path[on:], func(t utils.Vec2i) bool { return walkSpeed(t) <= 0 })
 	if on == -1 || p.goal != goal || blocked {
-		path, ok := pathfinding.Find(from, goal, data.PathMaxExpandedTiles, terrain.WalkSpeedPercent)
+		path, ok := pathfinding.Find(from, goal, data.PathMaxExpandedTiles, walkSpeed)
 		if !ok {
 			p.path = nil
 			return ecs.InputState{}, false
@@ -54,7 +54,7 @@ func (p *walk) moveTo(selfPos, dest utils.Vec2f, terrain ecs.Terrain) (ecs.Input
 	}
 	next := p.path[1]
 	for _, t := range p.path[2:min(len(p.path), data.PathLookaheadTiles+1)] {
-		if !clearWalk(selfPos, utils.TilePosToWorldPos(t), terrain) {
+		if !clearWalk(selfPos, utils.TilePosToWorldPos(t), walkSpeed) {
 			break
 		}
 		next = t
@@ -64,13 +64,13 @@ func (p *walk) moveTo(selfPos, dest utils.Vec2f, terrain ecs.Terrain) (ecs.Input
 
 // Every tile between the two, leaving out the ones they're on, can be walked at full speed, so that slower ground is
 // left to paths to weigh up
-func clearWalk(a, b utils.Vec2f, terrain ecs.Terrain) bool {
+func clearWalk(a, b utils.Vec2f, walkSpeed func(utils.Vec2i) int) bool {
 	tiles := utils.TilesAlongSegment(a, b)
 	if len(tiles) <= 2 {
 		return true
 	}
 	for _, t := range tiles[1 : len(tiles)-1] {
-		if terrain.WalkSpeedPercent(t) < 100 {
+		if walkSpeed(t) < 100 {
 			return false
 		}
 	}

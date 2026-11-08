@@ -3,7 +3,6 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
-	"ebittest/utils"
 	"slices"
 )
 
@@ -56,7 +55,7 @@ func (x *ECSContainer) NearestVisibleHostile(e common.EntityId) (common.EntityId
 			continue
 		}
 		otherPos, err := x.WorldPos(other)
-		if err != nil || !vision.CanSee(utils.WorldPosToTilePos(otherPos)) {
+		if err != nil || !vision.CanSee(x.SightTile(otherPos)) {
 			continue
 		}
 		d := otherPos.Subtract(pos)

@@ -48,6 +48,9 @@ func (openGround) SetSiteFaction(utils.Vec2i, data.FactionEnum) bool            
 func (openGround) IsHarvestable(utils.Vec2i) bool                                       { return false }
 func (openGround) IsHarvestItem(data.ItemEnum) bool                                     { return false }
 func (openGround) TakeHarvested() []utils.Vec2i                                         { return nil }
+func (openGround) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
+	return false, data.Faction_None, false
+}
 func (openGround) Site(utils.Vec2i) (ecs.ConstructionSite, bool) {
 	return ecs.ConstructionSite{}, false
 }

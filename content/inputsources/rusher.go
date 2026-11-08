@@ -78,10 +78,10 @@ func RusherInputSource(
 
 	switch p.State {
 	case Rusher_Follow:
-		input, _ := p.moveTo(selfPos, targetPos, ecsContainer.Terrain())
+		input, _ := p.moveTo(selfPos, targetPos, ecsContainer.WalkSpeedOf(entityId))
 		return input, nil
 	case Rusher_Search:
-		input, ok := p.moveTo(selfPos, utils.TilePosToWorldPos(p.LastSeen), ecsContainer.Terrain())
+		input, ok := p.moveTo(selfPos, utils.TilePosToWorldPos(p.LastSeen), ecsContainer.WalkSpeedOf(entityId))
 		if !ok {
 			p.State = Rusher_Idle
 		}

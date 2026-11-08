@@ -180,7 +180,7 @@ func ColonistInputSource(
 		return p.emptyHand(entityId, ecsContainer), nil
 	}
 
-	input, ok := p.moveTo(selfPos, utils.TilePosToWorldPos(p.Stand), ecsContainer.Terrain())
+	input, ok := p.moveTo(selfPos, utils.TilePosToWorldPos(p.Stand), ecsContainer.WalkSpeedOf(entityId))
 	if !ok {
 		p.drop()
 		p.NextPlanTick = tick
@@ -215,7 +215,7 @@ func (p *InputColonistParams) stepOffSite(e common.EntityId, selfPos utils.Vec2f
 	if !found {
 		return input
 	}
-	move, _ := p.moveTo(selfPos, utils.TilePosToWorldPos(best), terrain)
+	move, _ := p.moveTo(selfPos, utils.TilePosToWorldPos(best), ecsContainer.WalkSpeedOf(e))
 	input.Analog1X, input.Analog1Y = move.Analog1X, move.Analog1Y
 	return input
 }
@@ -453,7 +453,7 @@ func (p *InputColonistParams) headFor(e common.EntityId, self utils.Vec2i, const
 	}
 	stop := p.Stops[0]
 	avoid := othersClaims(e, p.Colony, ecsContainer).stands
-	stand, path, _, ok := walkTo(self, stop.Tile, stopRange(stop, constructor), avoid, first, last, ecsContainer)
+	stand, path, _, ok := walkTo(e, self, stop.Tile, stopRange(stop, constructor), avoid, first, last, ecsContainer)
 	if ok {
 		p.Stand = stand
 		p.follow(self, path)
@@ -867,7 +867,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 			continue
 		}
 		searched++
-		stand, path, cost, ok := walkTo(self, cand.target, job.rangeTiles, c.stands, first, last, ecsContainer)
+		stand, path, cost, ok := walkTo(e, self, cand.target, job.rangeTiles, c.stands, first, last, ecsContainer)
 		score := worth(job.state, job.weight, cand.target) - walkCost(cost)
 		if !ok || (found && score <= chosen.score) {
 			continue
@@ -1241,21 +1241,22 @@ func carried(e common.EntityId, kind data.ItemEnum, ecsContainer *ecs.ECSContain
 // Somewhere the target can be worked on from, the path there and what it costs. A path is given up on after
 // data.PathMaxExpandedTiles, so a target far enough round a maze can be missed.
 func walkTo(
+	e common.EntityId,
 	self, target utils.Vec2i,
 	rangeTiles int,
 	avoid map[utils.Vec2i]bool,
 	first, last utils.Vec2i,
 	ecsContainer *ecs.ECSContainer,
 ) (stand utils.Vec2i, path []utils.Vec2i, cost int, ok bool) {
-	terrain := ecsContainer.Terrain()
 	inColony := func(t utils.Vec2i) bool {
 		return t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y
 	}
+	walkSpeed := ecsContainer.WalkSpeedOf(e)
 	speed := func(t utils.Vec2i) int {
 		if !inColony(t) {
 			return 0
 		}
-		return terrain.WalkSpeedPercent(t)
+		return walkSpeed(t)
 	}
 	spots := standSpots(target, rangeTiles, inColony, avoid, ecsContainer)
 	path, cost, ok = pathfinding.FindTowards(self, target, rangeTiles, func(t utils.Vec2i) bool { return spots[t] }, data.PathMaxExpandedTiles, speed)
