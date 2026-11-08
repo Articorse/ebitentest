@@ -9,6 +9,7 @@ import (
 	"ebittest/pathfinding"
 	"ebittest/utils"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 )
@@ -78,6 +79,9 @@ type InputColonistParams struct {
 	LastSubject utils.Vec2i
 	// What its job won out with, to show how jobs are weighed up
 	Score int
+	// The order of the site its job is about, and of its last job's, which it carries on with
+	Order     uint64
+	LastOrder uint64
 
 	walk
 	// What it last found no work it could get to among, which isn't looked through again until something changes,
@@ -244,7 +248,7 @@ func stopRange(stop JobStop, constructor *ecs.Constructor) int {
 
 func (p *InputColonistParams) drop() {
 	if p.State != Colonist_Idle {
-		p.Last, p.LastSubject = p.State, p.Subject
+		p.Last, p.LastSubject, p.LastOrder = p.State, p.Subject, p.Order
 	}
 	p.State, p.Stops, p.Acted, p.path = Colonist_Idle, nil, false, nil
 }
@@ -283,18 +287,25 @@ func (p *InputColonistParams) done(e common.EntityId, stop JobStop, ecsContainer
 	return false
 }
 
-// Once it's picked up all it's going to of a kind, what it delivers or puts down of it is what it got, which is less
-// than it set out for when someone else took some first
+// Once it's picked up all it's going to of a kind, what it delivers or puts down of it is what it got, in turn, which
+// is less than it set out for when someone else took some first
 func (p *InputColonistParams) settle(e common.EntityId, kind data.ItemEnum, ecsContainer *ecs.ECSContainer) {
 	if slices.ContainsFunc(p.Stops, func(s JobStop) bool { return s.Action == Stop_PickUp && s.Kind == kind }) {
 		return
 	}
 	got := carried(e, kind, ecsContainer)
-	for i, s := range p.Stops {
+	kept := []JobStop{}
+	for _, s := range p.Stops {
 		if s.Kind == kind && (s.Action == Stop_Deliver || s.Action == Stop_PutDown) {
-			p.Stops[i].Count = min(s.Count, got)
+			s.Count = min(s.Count, got)
+			got -= s.Count
+			if s.Count == 0 {
+				continue
+			}
 		}
+		kept = append(kept, s)
 	}
+	p.Stops = kept
 }
 
 // Where it can reach the current stop from, and the path there
@@ -457,27 +468,83 @@ func (c claims) unclaimedRoom(t utils.Vec2i, kind data.ItemEnum, ecsContainer *e
 	return ecsContainer.GroundRoomFor(t, kind) - going.Count
 }
 
-// It has all of what's still needed that no one else is bringing, not just some
-func (c claims) canSupply(e common.EntityId, t utils.Vec2i, site ecs.ConstructionSite, def ecs.BlueprintDef, ecsContainer *ecs.ECSContainer) bool {
+// It has all of what's still needed that no one else is bringing, or as much as it can carry of what it can't carry
+// all of
+func (c claims) canDeliver(e common.EntityId, t utils.Vec2i, site ecs.ConstructionSite, def ecs.BlueprintDef, ecsContainer *ecs.ECSContainer) bool {
 	any := false
 	for _, cost := range def.Costs() {
-		need := c.unclaimedNeed(t, cost.Kind, site, def)
-		if need > carried(e, cost.Kind, ecsContainer) {
+		need, has := c.unclaimedNeed(t, cost.Kind, site, def), carried(e, cost.Kind, ecsContainer)
+		if need > has && ecsContainer.RoomFor(e, cost.Kind) > 0 {
 			return false
 		}
-		any = any || need > 0
+		any = any || (need > 0 && has > 0)
 	}
 	return any
 }
 
-func (c claims) deliveries(t utils.Vec2i, site ecs.ConstructionSite, def ecs.BlueprintDef) []JobStop {
+// Delivering to the site, and then to the sites after it in its order while what's to hand still covers all they need,
+// so that one trip supplies a run of them. The first only gets part of what it needs when that's all there is.
+func (c claims) load(start utils.Vec2i, toHand map[data.ItemEnum]int, sites []utils.Vec2i, ecsContainer *ecs.ECSContainer) []JobStop {
+	first, def, ok := siteAt(start, ecsContainer)
+	if !ok {
+		return nil
+	}
 	stops := []JobStop{}
 	for _, cost := range def.Costs() {
-		if need := c.unclaimedNeed(t, cost.Kind, site, def); need > 0 {
-			stops = append(stops, JobStop{Action: Stop_Deliver, Tile: t, Kind: cost.Kind, Count: need})
+		if n := min(c.unclaimedNeed(start, cost.Kind, first, def), toHand[cost.Kind]); n > 0 {
+			stops = append(stops, JobStop{Action: Stop_Deliver, Tile: start, Kind: cost.Kind, Count: n})
+			toHand[cost.Kind] -= n
 		}
 	}
+	if first.Order.Id == 0 || len(stops) == 0 {
+		return stops
+	}
+
+	next := []utils.Vec2i{}
+	for _, t := range sites {
+		if site, _, ok := siteAt(t, ecsContainer); ok && site.Order.Id == first.Order.Id && site.Order.Seq > first.Order.Seq {
+			next = append(next, t)
+		}
+	}
+	slices.SortStableFunc(next, func(a, b utils.Vec2i) int {
+		sa, _, _ := siteAt(a, ecsContainer)
+		sb, _, _ := siteAt(b, ecsContainer)
+		return cmp.Compare(sa.Order.Seq, sb.Order.Seq)
+	})
+	for _, t := range next {
+		site, def, _ := siteAt(t, ecsContainer)
+		needs := []JobStop{}
+		for _, cost := range def.Costs() {
+			if n := c.unclaimedNeed(t, cost.Kind, site, def); n > 0 {
+				needs = append(needs, JobStop{Action: Stop_Deliver, Tile: t, Kind: cost.Kind, Count: n})
+			}
+		}
+		if slices.ContainsFunc(needs, func(s JobStop) bool { return s.Count > toHand[s.Kind] }) {
+			break
+		}
+		for _, s := range needs {
+			toHand[s.Kind] -= s.Count
+		}
+		stops = append(stops, needs...)
+	}
 	return stops
+}
+
+// How many of each generic kind it carries
+func carriedKinds(e common.EntityId, ecsContainer *ecs.ECSContainer) map[data.ItemEnum]int {
+	kinds := map[data.ItemEnum]int{}
+	inv, ok := ecsContainer.Inventories.Get(e)
+	if !ok {
+		return kinds
+	}
+	for i := range inv.Capacity() {
+		if item, ok := inv.Slot(i); ok {
+			if comp, ok := ecsContainer.Items.Get(item); ok && comp.Kind() != data.Item_None {
+				kinds[comp.Kind()] += comp.Count()
+			}
+		}
+	}
+	return kinds
 }
 
 // The first slot holding something of a kind, which is anything it doesn't work with, of which it has more than the
@@ -553,10 +620,11 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 			if !c.taken[t] {
 				construct = append(construct, t)
 			}
-		case c.canSupply(e, t, site, def, ecsContainer):
+		case c.canDeliver(e, t, site, def, ecsContainer):
 			deliver = append(deliver, t)
 		}
 	}
+	orderCost := laterCosts(home, ecsContainer)
 
 	chop := []utils.Vec2i{}
 	if _, hasAxe := axeSlot(e, ecsContainer); hasAxe {
@@ -572,7 +640,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 	})
 	storage := terrain.AreaTiles(data.Area_Storage, first, last)
 	fetch := []utils.Vec2i{}
-	fetchFor, fetching := c.fetchSite(e, self, home, storage, ecsContainer)
+	fetchFor, fetching := c.fetchSite(e, self, home, storage, orderCost, ecsContainer)
 	if fetching {
 		lacking := c.lacking(e, fetchFor, ecsContainer)
 		for _, t := range storage {
@@ -619,10 +687,22 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 		job, best int
 		target    utils.Vec2i
 	}
+	// What a job is about, which for fetching is the site it fetches for, and the site's order
+	subjectOf := func(state ColonistState, t utils.Vec2i) (utils.Vec2i, uint64) {
+		if state == Colonist_Fetch {
+			t = fetchFor
+		}
+		site, _, _ := siteAt(t, ecsContainer)
+		return t, site.Order.Id
+	}
+	worth := func(state ColonistState, weight int, t utils.Vec2i) int {
+		subject, order := subjectOf(state, t)
+		return weight + p.bonus(state, subject, order) - orderCost[subject]
+	}
 	candidates := []candidate{}
 	for i, job := range jobs {
 		for _, t := range job.targets {
-			best := job.weight + p.bonus(job.state, t) - walkCost(leastWalk(self, t, job.rangeTiles))
+			best := worth(job.state, job.weight, t) - walkCost(leastWalk(self, t, job.rangeTiles))
 			candidates = append(candidates, candidate{job: i, best: best, target: t})
 		}
 	}
@@ -632,6 +712,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 		state   ColonistState
 		stops   []JobStop
 		subject utils.Vec2i
+		order   uint64
 		stand   utils.Vec2i
 		path    []utils.Vec2i
 		score   int
@@ -642,21 +723,18 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 			break
 		}
 		job := jobs[cand.job]
-		stops := p.stopsFor(e, job.state, cand.target, fetchFor, storage, first, last, c, ecsContainer)
+		stops := p.stopsFor(e, job.state, cand.target, fetchFor, storage, home, first, last, c, ecsContainer)
 		if len(stops) == 0 {
 			continue
 		}
 		searched++
 		stand, path, cost, ok := walkTo(self, cand.target, job.rangeTiles, c.stands, first, last, ecsContainer)
-		score := job.weight + p.bonus(job.state, cand.target) - walkCost(cost)
+		score := worth(job.state, job.weight, cand.target) - walkCost(cost)
 		if !ok || (found && score <= chosen.score) {
 			continue
 		}
-		subject := cand.target
-		if job.state == Colonist_Fetch {
-			subject = fetchFor
-		}
-		chosen.state, chosen.stops, chosen.subject, chosen.stand, chosen.path, chosen.score = job.state, stops, subject, stand, path, score
+		chosen.subject, chosen.order = subjectOf(job.state, cand.target)
+		chosen.state, chosen.stops, chosen.stand, chosen.path, chosen.score = job.state, stops, stand, path, score
 		found = true
 	}
 	if !found {
@@ -665,27 +743,57 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 		return
 	}
 	p.State, p.Stops, p.Acted, p.Stand = chosen.state, chosen.stops, false, chosen.stand
-	p.Subject, p.Score = chosen.subject, chosen.score
+	p.Subject, p.Order, p.Score = chosen.subject, chosen.order, chosen.score
 	p.fruitless = nil
 	p.follow(self, chosen.path)
 }
 
 // For carrying on with the same work, and more for what naturally follows the last job: gathering what a tree felled
-// nearby dropped, gathering more nearby and then putting it away, and building a site it just supplied or cleared
-func (p *InputColonistParams) bonus(state ColonistState, target utils.Vec2i) int {
+// nearby dropped, gathering more nearby and then putting it away, building a site it just supplied or cleared, and
+// carrying on supplying and building the order it's been working on
+func (p *InputColonistParams) bonus(state ColonistState, subject utils.Vec2i, order uint64) int {
 	bonus := 0
 	if state == p.Last {
 		bonus += data.ColonistSameWorkBonus
 	}
 	r := data.ColonistFollowUpRangeTiles
-	near := utils.Dist2(target, p.LastSubject) <= r*r
+	near := utils.Dist2(subject, p.LastSubject) <= r*r
+	sameOrder := order != 0 && order == p.LastOrder
+	onSites := p.Last == Colonist_Deliver || p.Last == Colonist_Fetch || p.Last == Colonist_Construct
 	switch {
 	case state == Colonist_Gather && (p.Last == Colonist_Chop || p.Last == Colonist_Gather) && near,
 		state == Colonist_Store && p.Last == Colonist_Gather,
-		state == Colonist_Construct && target == p.LastSubject && (p.Last == Colonist_Deliver || p.Last == Colonist_Fetch || p.Last == Colonist_Haul):
+		state == Colonist_Construct && subject == p.LastSubject && (onSites || p.Last == Colonist_Haul),
+		state == Colonist_Construct && sameOrder && onSites,
+		(state == Colonist_Deliver || state == Colonist_Fetch) && sameOrder && onSites:
 		bonus += data.ColonistFollowUpBonus
 	}
 	return bonus
+}
+
+// For each site, how much later than the others it comes: for each order still being worked on that was placed
+// before its own, and for each site placed before it in its own, up to a point, so that the earlier of two sites close
+// together comes first without an old order dragging colonists across the colony
+func laterCosts(sites []utils.Vec2i, ecsContainer *ecs.ECSContainer) map[utils.Vec2i]int {
+	orders := []uint64{}
+	for _, t := range sites {
+		if site, _, ok := siteAt(t, ecsContainer); ok && site.Order.Id != 0 {
+			orders = append(orders, site.Order.Id)
+		}
+	}
+	slices.Sort(orders)
+	orders = slices.Compact(orders)
+	costs := map[utils.Vec2i]int{}
+	for _, t := range sites {
+		site, _, ok := siteAt(t, ecsContainer)
+		if !ok || site.Order.Id == 0 {
+			continue
+		}
+		earlier, _ := slices.BinarySearch(orders, site.Order.Id)
+		costs[t] = min(earlier*data.ColonistLaterOrderCost, data.ColonistLaterOrderMaxCost) +
+			min(site.Order.Seq*data.ColonistLaterSiteCost, data.ColonistLaterSiteMaxCost)
+	}
+	return costs
 }
 
 // What walking a path costing that much takes off a job's score
@@ -705,7 +813,7 @@ func (p *InputColonistParams) stopsFor(
 	e common.EntityId,
 	state ColonistState,
 	target, fetchFor utils.Vec2i,
-	storage []utils.Vec2i,
+	storage, sites []utils.Vec2i,
 	first, last utils.Vec2i,
 	c claims,
 	ecsContainer *ecs.ECSContainer,
@@ -716,10 +824,9 @@ func (p *InputColonistParams) stopsFor(
 	case Colonist_Construct:
 		return []JobStop{{Action: Stop_Build, Tile: target}}
 	case Colonist_Deliver:
-		site, def, _ := siteAt(target, ecsContainer)
-		return c.deliveries(target, site, def)
+		return c.load(target, carriedKinds(e, ecsContainer), sites, ecsContainer)
 	case Colonist_Fetch:
-		return c.fetchStops(e, fetchFor, target, storage, ecsContainer)
+		return c.fetchStops(e, fetchFor, target, storage, sites, ecsContainer)
 	case Colonist_Gather:
 		return c.gatherStops(e, target, first, last, ecsContainer)
 	case Colonist_Chop:
@@ -787,33 +894,52 @@ func (c claims) lacking(e common.EntityId, t utils.Vec2i, ecsContainer *ecs.ECSC
 	return lacking
 }
 
-// The site on home closest as the crow flies that it lacks something for, which there's enough of on storage that no
-// one else is taking to make up for, and that it can carry
-func (c claims) fetchSite(e common.EntityId, self utils.Vec2i, sites, storage []utils.Vec2i, ecsContainer *ecs.ECSContainer) (utils.Vec2i, bool) {
+// The site on home that it lacks something for which is on storage that no one else is taking, and that it can carry
+// some of, closest as the crow flies, going by how late in the orders it comes too
+func (c claims) fetchSite(e common.EntityId, self utils.Vec2i, sites, storage []utils.Vec2i, orderCost map[utils.Vec2i]int, ecsContainer *ecs.ECSContainer) (utils.Vec2i, bool) {
+	stored := c.stored(storage, ecsContainer)
+	best, bestCost, found := utils.Vec2i{}, 0, false
+	for _, t := range sites {
+		can := false
+		for kind := range c.lacking(e, t, ecsContainer) {
+			can = can || (stored[kind] > 0 && ecsContainer.RoomFor(e, kind) > 0)
+		}
+		cost := int(math.Sqrt(float64(utils.Dist2(t, self)))*pathfinding.StraightStepCost) + orderCost[t]
+		if can && (!found || cost < bestCost) {
+			best, bestCost, found = t, cost, true
+		}
+	}
+	return best, found
+}
+
+// How much of each kind lies on storage that no one else is taking
+func (c claims) stored(storage []utils.Vec2i, ecsContainer *ecs.ECSContainer) map[data.ItemEnum]int {
 	stored := map[data.ItemEnum]int{}
 	for _, t := range storage {
 		if stack, ok := ecsContainer.Terrain().GroundStack(t); ok && stack.Unique == nil {
 			stored[stack.Kind] += c.unclaimedStack(t, ecsContainer)
 		}
 	}
-	best, found := utils.Vec2i{}, false
-	for _, t := range sites {
-		lacking := c.lacking(e, t, ecsContainer)
-		enough := len(lacking) > 0
-		for kind, n := range lacking {
-			enough = enough && n <= stored[kind] && n <= ecsContainer.RoomFor(e, kind)
-		}
-		if enough && (!found || utils.Dist2(t, self) < utils.Dist2(best, self)) {
-			best, found = t, true
-		}
-	}
-	return best, found
+	return stored
 }
 
-// Picking up what it lacks from the storage it's headed for first, then from what's closest to that, and delivering
-// all that the site still needs that no one else is bringing
-func (c claims) fetchStops(e common.EntityId, site, from utils.Vec2i, storage []utils.Vec2i, ecsContainer *ecs.ECSContainer) []JobStop {
-	lacking := c.lacking(e, site, ecsContainer)
+// A load for the site and those after it in its order, out of what it carries and what it can pick up off storage,
+// picked up from the storage it's headed for first, then from what's closest to that
+func (c claims) fetchStops(e common.EntityId, site, from utils.Vec2i, storage, sites []utils.Vec2i, ecsContainer *ecs.ECSContainer) []JobStop {
+	has := carriedKinds(e, ecsContainer)
+	toHand := maps.Clone(has)
+	for kind, n := range c.stored(storage, ecsContainer) {
+		toHand[kind] += min(n, ecsContainer.RoomFor(e, kind))
+	}
+	deliveries := c.load(site, toHand, sites, ecsContainer)
+	lacking := map[data.ItemEnum]int{}
+	for _, d := range deliveries {
+		lacking[d.Kind] += d.Count
+	}
+	for kind, n := range has {
+		lacking[kind] -= n
+	}
+
 	tiles := slices.Clone(storage)
 	slices.SortStableFunc(tiles, func(a, b utils.Vec2i) int { return cmp.Compare(utils.Dist2(a, from), utils.Dist2(b, from)) })
 	stops := []JobStop{}
@@ -827,8 +953,10 @@ func (c claims) fetchStops(e common.EntityId, site, from utils.Vec2i, storage []
 			lacking[stack.Kind] -= n
 		}
 	}
-	s, def, _ := siteAt(site, ecsContainer)
-	return append(stops, c.deliveries(site, s, def)...)
+	if len(stops) == 0 {
+		return nil
+	}
+	return append(stops, deliveries...)
 }
 
 // What lies on the ground is handled without a hand. What's delivered, or the axe, goes on the first hotbar slot, and

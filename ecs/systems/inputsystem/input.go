@@ -63,8 +63,13 @@ func HandleInputs(
 		}
 
 		if p := input.PlaceBlueprint; p.Kind != data.Blueprint_None {
+			ecsContainer.LastOrder++
+			seq := 0
 			for _, t := range p.Tiles {
-				ecsContainer.Terrain().PlaceSite(t, p.Kind)
+				if ecsContainer.Terrain().PlaceSite(t, p.Kind) {
+					ecsContainer.Terrain().SetSiteOrder(t, ecs.SiteOrder{Id: ecsContainer.LastOrder, Seq: seq})
+					seq++
+				}
 			}
 		}
 		if r := input.RemoveBlueprint; r.Remove {

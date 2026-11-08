@@ -68,6 +68,12 @@ const (
 	ColonistFollowUpRangeTiles = 5
 	// How much of a path's cost comes off the score
 	ColonistWalkCostPercent = 100
+	// Off a site's score for each order still being worked on that was placed before its own, and for each site placed
+	// before it in its own, each only up to a point
+	ColonistLaterOrderCost    = 300
+	ColonistLaterOrderMaxCost = 1500
+	ColonistLaterSiteCost     = 30
+	ColonistLaterSiteMaxCost  = 600
 )
 
 // What colonists gather where it lies loose on the harvest area

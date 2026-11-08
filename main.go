@@ -701,7 +701,11 @@ func (g *game) tileTooltip(tile utils.Vec2i) []string {
 	if !ok {
 		return nil
 	}
-	return drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas(), g.chunkContainer.InArea(data.Area_Home, tile))
+	lines := drawsystem.SiteTooltip(site, def, g.ecs.ItemAtlas(), g.chunkContainer.InArea(data.Area_Home, tile))
+	if g.showFPS && site.Order.Id != 0 {
+		lines = append(lines, fmt.Sprintf("Order %d, #%d", site.Order.Id, site.Order.Seq))
+	}
+	return lines
 }
 
 // Only on what's been seen, in sight now or remembered, so that placing can't find out what's in unexplored ground

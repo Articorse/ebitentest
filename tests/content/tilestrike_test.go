@@ -120,6 +120,7 @@ func (f *fakeTerrain) PlaceFeature(t utils.Vec2i, feature data.FeatureEnum) bool
 func (f *fakeTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {}
 func (f *fakeTerrain) CanPlaceSite(utils.Vec2i) bool                                        { return false }
 func (f *fakeTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool                       { return false }
+func (f *fakeTerrain) SetSiteOrder(utils.Vec2i, ecs.SiteOrder) bool                         { return false }
 func (f *fakeTerrain) Site(utils.Vec2i) (ecs.ConstructionSite, bool) {
 	return ecs.ConstructionSite{}, false
 }

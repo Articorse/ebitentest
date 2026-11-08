@@ -43,6 +43,7 @@ func (openGround) PlaceFeature(utils.Vec2i, data.FeatureEnum) bool { return fals
 func (openGround) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8, int)) {}
 func (openGround) CanPlaceSite(utils.Vec2i) bool                                        { return false }
 func (openGround) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool                       { return false }
+func (openGround) SetSiteOrder(utils.Vec2i, ecs.SiteOrder) bool                         { return false }
 func (openGround) Site(utils.Vec2i) (ecs.ConstructionSite, bool) {
 	return ecs.ConstructionSite{}, false
 }

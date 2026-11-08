@@ -42,6 +42,8 @@ type Terrain interface {
 	CanPlaceSite(t utils.Vec2i) bool
 	// False if a site can't be placed there, or the blueprint doesn't exist
 	PlaceSite(t utils.Vec2i, blueprint data.BlueprintEnum) bool
+	// False without a site there
+	SetSiteOrder(t utils.Vec2i, order SiteOrder) bool
 	Site(t utils.Vec2i) (ConstructionSite, bool)
 	// The tiles of the sites from first to last that are in the simulation, in tile order, row by row
 	SitesIn(first, last utils.Vec2i) []utils.Vec2i
@@ -88,6 +90,16 @@ type ConstructionSite struct {
 	Delivered []ItemCost
 	Health    int
 	MaxHealth int
+	Order     SiteOrder
+}
+
+// The sites placed together in one go make up an order, which is worked through from the first site placed to the
+// last, and orders from the first placed to the last
+type SiteOrder struct {
+	// 0 for a site that isn't part of one, which is an order of its own
+	Id uint64
+	// Where it comes in its order, from 0
+	Seq int
 }
 
 // Only a plan until something's been delivered to it
@@ -148,6 +160,7 @@ func (noTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, uint8,
 }
 func (noTerrain) CanPlaceSite(utils.Vec2i) bool                         { return false }
 func (noTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool        { return false }
+func (noTerrain) SetSiteOrder(utils.Vec2i, SiteOrder) bool              { return false }
 func (noTerrain) Site(utils.Vec2i) (ConstructionSite, bool)             { return ConstructionSite{}, false }
 func (noTerrain) SitesIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i        { return nil }
 func (noTerrain) RemoveSite(utils.Vec2i) bool                           { return false }

@@ -17,6 +17,7 @@ type constructionSite struct {
 	// In the order of the blueprint's costs
 	delivered []int
 	health    int
+	order     ecs.SiteOrder
 }
 
 // Only a plan, which isn't hit by anything, until something's been delivered to it
@@ -87,11 +88,19 @@ func (cc *ChunkContainer) Site(t utils.Vec2i) (ecs.ConstructionSite, bool) {
 		return ecs.ConstructionSite{}, false
 	}
 
-	site := ecs.ConstructionSite{Blueprint: s.blueprint, Health: s.health, MaxHealth: cc.atlas[def.Tile()].maxHealth}
+	site := ecs.ConstructionSite{Blueprint: s.blueprint, Health: s.health, MaxHealth: cc.atlas[def.Tile()].maxHealth, Order: s.order}
 	for i, cost := range def.Costs() {
 		site.Delivered = append(site.Delivered, ecs.ItemCost{Kind: cost.Kind, Count: s.delivered[i]})
 	}
 	return site, true
+}
+
+func (cc *ChunkContainer) SetSiteOrder(t utils.Vec2i, order ecs.SiteOrder) bool {
+	_, s, _, ok := cc.siteOn(t)
+	if ok {
+		s.order = order
+	}
+	return ok
 }
 
 func (cc *ChunkContainer) DeliverToSite(t utils.Vec2i, item data.ItemEnum, count int) int {
@@ -258,13 +267,14 @@ type siteDto struct {
 	Blueprint data.BlueprintEnum
 	Delivered []int
 	Health    int
+	Order     ecs.SiteOrder
 }
 
 // In tile order, so that saving the same chunk twice writes the same file
 func siteDtos(c *chunk) []siteDto {
 	sites := make([]siteDto, 0, len(c.sites))
 	for t, s := range c.sites {
-		sites = append(sites, siteDto{X: t.X, Y: t.Y, Blueprint: s.blueprint, Delivered: slices.Clone(s.delivered), Health: s.health})
+		sites = append(sites, siteDto{X: t.X, Y: t.Y, Blueprint: s.blueprint, Delivered: slices.Clone(s.delivered), Health: s.health, Order: s.order})
 	}
 	slices.SortFunc(sites, func(a, b siteDto) int {
 		return cmp.Or(cmp.Compare(a.Y, b.Y), cmp.Compare(a.X, b.X))
@@ -275,7 +285,7 @@ func siteDtos(c *chunk) []siteDto {
 func sitesFromDtos(dtos []siteDto) map[utils.Vec2i]*constructionSite {
 	sites := make(map[utils.Vec2i]*constructionSite, len(dtos))
 	for _, d := range dtos {
-		sites[utils.Vec2i{X: d.X, Y: d.Y}] = &constructionSite{blueprint: d.Blueprint, delivered: slices.Clone(d.Delivered), health: d.Health}
+		sites[utils.Vec2i{X: d.X, Y: d.Y}] = &constructionSite{blueprint: d.Blueprint, delivered: slices.Clone(d.Delivered), health: d.Health, order: d.Order}
 	}
 	return sites
 }

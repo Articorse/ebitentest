@@ -18,6 +18,7 @@ type Header struct {
 	Generation   uint64
 	NextEntity   common.EntityId
 	TickIdx      uint64
+	LastOrder    uint64
 	PlayerEntity common.EntityId
 	RngState     []byte
 	Entities     map[common.EntityId][]ecs.ComponentDto
@@ -35,6 +36,7 @@ func Snapshot(seed uint64, playerEntity common.EntityId, ecsCont *ecs.ECSContain
 		Seed:         seed,
 		NextEntity:   ecsCont.NextEntity(),
 		TickIdx:      ecsCont.TickIdx,
+		LastOrder:    ecsCont.LastOrder,
 		PlayerEntity: playerEntity,
 		RngState:     rngState,
 		Entities:     make(map[common.EntityId][]ecs.ComponentDto),
@@ -59,6 +61,7 @@ func Load(ecsCont *ecs.ECSContainer) (h Header, exists bool, err error) {
 
 	ecsCont.SetNextEntity(h.NextEntity)
 	ecsCont.TickIdx = h.TickIdx
+	ecsCont.LastOrder = h.LastOrder
 
 	if err := ecsCont.SetRngState(h.RngState); err != nil {
 		return h, true, fmt.Errorf("error restoring RNG state: %w", err)

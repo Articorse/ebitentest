@@ -43,7 +43,7 @@ func TestAColonistFetchesWhatASiteLacksFromStorageAndBuildsIt(t *testing.T) {
 	}
 }
 
-func TestAColonistOnlyFetchesWhenStorageMakesUpAllItLacks(t *testing.T) {
+func TestAColonistFetchesWhatThereIsWhenStorageDoesntMakeUpAllItLacks(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	tile := storageSpot(t, s, colonist, 8, 1, 1)
 	markStorage(t, s, false, tile)
@@ -52,17 +52,19 @@ func TestAColonistOnlyFetchesWhenStorageMakesUpAllItLacks(t *testing.T) {
 	site := groundAway(t, s, colonist, 6, tile)
 	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
 
-	live(t, s, 5*data.TPS, func() bool { return false })
-	if _, n := onGround(s, tile); n != planksCost(t)-1 || woodCarried(s, colonist) != 0 {
-		t.Fatal("the colonist fetched part of what the blueprint lacks")
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
+	delivered := func() bool { built, _ := s.Chunks.Site(site); return built.Needs(data.Item_Wood, def) == 1 }
+	if !live(t, s, 20*data.TPS, delivered) {
+		t.Fatalf("the colonist didn't deliver what there was in storage, it's %v", colonistState(s, colonist))
 	}
-	if state := colonistState(s, colonist); state != inputsources.Colonist_Idle {
-		t.Fatalf("the colonist is %v with not enough in storage", state)
+	live(t, s, 3*data.TPS, func() bool { return false })
+	if state := colonistState(s, colonist); state != inputsources.Colonist_Idle || woodCarried(s, colonist) != 0 {
+		t.Fatalf("the colonist is %v carrying %d with nothing left in storage", state, woodCarried(s, colonist))
 	}
 
 	s.ECS.LayDownKind(data.Item_Wood, 1, tile)
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
-		t.Fatalf("the colonist didn't build once there was enough in storage, it's %v", colonistState(s, colonist))
+		t.Fatalf("the colonist didn't build once the rest was in storage, it's %v", colonistState(s, colonist))
 	}
 }
 

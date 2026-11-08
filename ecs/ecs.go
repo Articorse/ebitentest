@@ -31,6 +31,8 @@ type ECSContainer struct {
 	rngSource *rand.PCG
 	TickIdx   uint64
 	TickState common.TickState
+	// The id the last order of sites was given
+	LastOrder uint64
 
 	isSimulatedPos func(worldPos utils.Vec2f) bool
 	terrain        Terrain
