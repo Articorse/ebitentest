@@ -14,10 +14,10 @@ import (
 	"testing"
 )
 
-// How much wood the game's planks blueprint costs, so that tests don't break when it's retuned
-func planksCost(t *testing.T) int {
+// How much wood the game's wooden wall blueprint costs, so that tests don't break when it's retuned
+func wallCost(t *testing.T) int {
 	t.Helper()
-	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_WoodWall)
 	return def.Costs()[0].Count
 }
 
@@ -46,16 +46,16 @@ func TestBlueprintsArePlacedOnlyOnBareGroundThatCanBeBuiltOn(t *testing.T) {
 	grass := bareGrass(t, s)
 	tree := findLoneTree(t, s)
 	rock := tileOf(t, s, data.Tile_Rock)
-	planks := findTile(t, s, func(tile utils.Vec2i) bool {
+	wall := findTile(t, s, func(tile utils.Vec2i) bool {
 		_, hasFeature := s.Chunks.FeatureAt(tile)
 		return tile != grass && currentTile(s, tile) == data.Tile_Grass && !hasFeature
 	})
-	if !s.Chunks.PlaceTile(planks, data.Tile_Planks) {
-		t.Fatal("planks couldn't be placed to build next to")
+	if !s.Chunks.PlaceTile(wall, data.Tile_WoodWall) {
+		t.Fatal("a wooden wall couldn't be placed to build next to")
 	}
 
-	for name, tile := range map[string]utils.Vec2i{"a tree": tree, "rock": rock, "planks": planks} {
-		if s.Chunks.CanPlaceSite(tile) || s.Chunks.PlaceSite(tile, data.Blueprint_Planks) {
+	for name, tile := range map[string]utils.Vec2i{"a tree": tree, "rock": rock, "a wooden wall": wall} {
+		if s.Chunks.CanPlaceSite(tile) || s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall) {
 			t.Errorf("a blueprint was placed on %s", name)
 		}
 	}
@@ -63,10 +63,10 @@ func TestBlueprintsArePlacedOnlyOnBareGroundThatCanBeBuiltOn(t *testing.T) {
 		t.Error("a blueprint that isn't in the atlas was placed")
 	}
 
-	if !s.Chunks.CanPlaceSite(grass) || !s.Chunks.PlaceSite(grass, data.Blueprint_Planks) {
+	if !s.Chunks.CanPlaceSite(grass) || !s.Chunks.PlaceSite(grass, data.Blueprint_WoodWall) {
 		t.Fatal("a blueprint wasn't placed on bare grass")
 	}
-	if s.Chunks.PlaceSite(grass, data.Blueprint_Planks) || s.Chunks.CanPlaceTile(grass) || s.Chunks.CanPlaceFeature(grass) {
+	if s.Chunks.PlaceSite(grass, data.Blueprint_WoodWall) || s.Chunks.CanPlaceTile(grass) || s.Chunks.CanPlaceFeature(grass) {
 		t.Fatal("something else can be placed on the blueprint")
 	}
 
@@ -74,8 +74,8 @@ func TestBlueprintsArePlacedOnlyOnBareGroundThatCanBeBuiltOn(t *testing.T) {
 	if s.Chunks.IsOpaqueTile(grass) || s.Chunks.IsBlockedAt(center) || s.Chunks.WalkSpeedPercent(grass) != 100 {
 		t.Fatal("the blueprint can't be seen through or walked over")
 	}
-	if site, ok := s.Chunks.Site(grass); !ok || site.Blueprint != data.Blueprint_Planks || site.Health != 1 || site.MaxHealth != 100 {
-		t.Fatalf("the placed site is %+v (%v), want the planks blueprint at 1 of 100 health", site, ok)
+	if site, ok := s.Chunks.Site(grass); !ok || site.Blueprint != data.Blueprint_WoodWall || site.Health != 1 || site.MaxHealth != 100 {
+		t.Fatalf("the placed site is %+v (%v), want the wooden wall blueprint at 1 of 100 health", site, ok)
 	}
 	if frame, ghost := siteSprite(t, s, grass); frame != 0 || !ghost {
 		t.Fatalf("a new site is drawn as frame %d, ghost %v; want a ghost of the finished tile", frame, ghost)
@@ -111,7 +111,7 @@ func TestASiteIsBuiltOnceSuppliedOverItsWorkAndBecomesTheTile(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	tile := bareGrass(t, s)
-	if !s.Chunks.PlaceSite(tile, data.Blueprint_Planks) {
+	if !s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall) {
 		t.Fatal("the blueprint wasn't placed")
 	}
 
@@ -121,20 +121,20 @@ func TestASiteIsBuiltOnceSuppliedOverItsWorkAndBecomesTheTile(t *testing.T) {
 	if taken := s.Chunks.DeliverToSite(tile, data.Item_Torch, 3); taken != 0 {
 		t.Fatalf("the site took %d torches, which it doesn't need", taken)
 	}
-	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5); taken != planksCost(t) {
-		t.Fatalf("the site took %d of 5 wood, want the %d it needs", taken, planksCost(t))
+	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5); taken != wallCost(t) {
+		t.Fatalf("the site took %d of 5 wood, want the %d it needs", taken, wallCost(t))
 	}
 	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5); taken != 0 {
 		t.Fatalf("the supplied site took %d more wood", taken)
 	}
-	if site, _ := s.Chunks.Site(tile); len(site.Delivered) != 1 || site.Delivered[0] != (ecs.ItemCost{Kind: data.Item_Wood, Count: planksCost(t)}) {
-		t.Fatalf("the site has %v delivered, want %d wood", site.Delivered, planksCost(t))
+	if site, _ := s.Chunks.Site(tile); len(site.Delivered) != 1 || site.Delivered[0] != (ecs.ItemCost{Kind: data.Item_Wood, Count: wallCost(t)}) {
+		t.Fatalf("the site has %v delivered, want %d wood", site.Delivered, wallCost(t))
 	}
 	if frame, ghost := siteSprite(t, s, tile); frame != 1 || ghost {
 		t.Fatalf("a site with all its wood is drawn as frame %d, ghost %v; want the first stage before any work", frame, ghost)
 	}
 
-	// 10 work for planks' 100 health takes 10 strikes of 1, each adding 10 to the 1 it starts with
+	// 10 work for a wooden wall's 100 health takes 10 strikes of 1, each adding 10 to the 1 it starts with
 	wantFrames := []int{1, 1, 1, 2, 2, 2, 3, 3, 3}
 	for i, want := range wantFrames {
 		worked, built := s.Chunks.BuildSite(tile, 1, true)
@@ -148,13 +148,13 @@ func TestASiteIsBuiltOnceSuppliedOverItsWorkAndBecomesTheTile(t *testing.T) {
 	}
 
 	if worked, built := s.Chunks.BuildSite(tile, 1, true); !worked || !built {
-		t.Fatal("the tenth strike didn't build the planks")
+		t.Fatal("the tenth strike didn't build the wall")
 	}
-	if _, ok := s.Chunks.Site(tile); ok || currentTile(s, tile) != data.Tile_Planks {
-		t.Fatal("the site wasn't replaced by planks")
+	if _, ok := s.Chunks.Site(tile); ok || currentTile(s, tile) != data.Tile_WoodWall {
+		t.Fatal("the site wasn't replaced by a wooden wall")
 	}
 	if health, _ := s.Chunks.TileHealth(tile); health != 100 || !s.Chunks.IsBlockedAt(utils.TilePosToWorldPos(tile)) {
-		t.Fatalf("the built planks have %d health, want a whole wall of 100", health)
+		t.Fatalf("the built wall has %d health, want a whole wall of 100", health)
 	}
 }
 
@@ -162,14 +162,14 @@ func TestMoreWorkBuildsInFewerStrikes(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	tile := bareGrass(t, s)
-	s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(tile, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(tile, data.Item_Wood, wallCost(t))
 
 	if _, built := s.Chunks.BuildSite(tile, 5, true); built {
-		t.Fatal("half the work built the planks")
+		t.Fatal("half the work built the wall")
 	}
 	if _, built := s.Chunks.BuildSite(tile, 5, true); !built {
-		t.Fatal("two strikes of half the work didn't build the planks")
+		t.Fatal("two strikes of half the work didn't build the wall")
 	}
 }
 
@@ -202,8 +202,8 @@ func TestSitesAreSavedWithTheirChunk(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
 	tile := bareGrass(t, s)
-	s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(tile, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(tile, data.Item_Wood, wallCost(t))
 	for range 4 {
 		s.Chunks.BuildSite(tile, 1, true)
 	}
@@ -211,8 +211,8 @@ func TestSitesAreSavedWithTheirChunk(t *testing.T) {
 	s.Commit()
 	r := testutil.StartSession(t)
 	site, ok := r.Chunks.Site(tile)
-	if !ok || site.Blueprint != data.Blueprint_Planks || site.Health != 41 || site.Delivered[0].Count != planksCost(t) {
-		t.Fatalf("after restarting, the site is %+v (%v), want planks with its wood and 41 health", site, ok)
+	if !ok || site.Blueprint != data.Blueprint_WoodWall || site.Health != 41 || site.Delivered[0].Count != wallCost(t) {
+		t.Fatalf("after restarting, the site is %+v (%v), want a wooden wall with its wood and 41 health", site, ok)
 	}
 	if frame, _ := siteSprite(t, r, tile); frame != 2 {
 		t.Fatalf("after restarting, the site is drawn as frame %d, want stage 2", frame)
@@ -247,15 +247,15 @@ func TestABlueprintPutDownAsInputGoesAnywhereItFits(t *testing.T) {
 	})
 	rock := tileOf(t, s, data.Tile_Rock)
 
-	inputs := map[common.EntityId]ecs.InputState{s.Player: {PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: []utils.Vec2i{far}}}}
+	inputs := map[common.EntityId]ecs.InputState{s.Player: {PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_WoodWall, Tiles: []utils.Vec2i{far}}}}
 	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
 		t.Fatal(err)
 	}
-	if site, ok := s.Chunks.Site(far); !ok || site.Blueprint != data.Blueprint_Planks {
+	if site, ok := s.Chunks.Site(far); !ok || site.Blueprint != data.Blueprint_WoodWall {
 		t.Fatal("a blueprint put down more than 20 tiles away wasn't placed")
 	}
 
-	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: []utils.Vec2i{rock}}}
+	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_WoodWall, Tiles: []utils.Vec2i{rock}}}
 	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func TestABlueprintPutDownAsInputGoesAnywhereItFits(t *testing.T) {
 	for x := far.X + 2; x < far.X+6; x++ {
 		row = append(row, utils.Vec2i{X: x, Y: far.Y})
 	}
-	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: append(row, rock)}}
+	inputs[s.Player] = ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_WoodWall, Tiles: append(row, rock)}}
 	if err := inputsystem.HandleInputs(utils.Vec2f{}, s.ECS, inputs); err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +292,7 @@ func TestBlueprintsAreDrawnApartFromFeaturesAndOtherSites(t *testing.T) {
 		return tile.Y > supplied.Y && s.Chunks.CanPlaceSite(tile)
 	})
 	for _, tile := range []utils.Vec2i{later, plan, supplied} {
-		if !s.Chunks.PlaceSite(tile, data.Blueprint_Planks) {
+		if !s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall) {
 			t.Fatalf("couldn't place a blueprint on %v", tile)
 		}
 	}

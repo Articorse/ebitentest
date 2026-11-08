@@ -16,7 +16,7 @@ func placeOrder(t *testing.T, s *testutil.Session, tiles ...utils.Vec2i) {
 	t.Helper()
 	s.ECS.LastOrder++
 	for i, tile := range tiles {
-		if !s.Chunks.PlaceSite(tile, data.Blueprint_Planks) || !s.Chunks.SetSiteOrder(tile, ecs.SiteOrder{Id: s.ECS.LastOrder, Seq: i}) {
+		if !s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall) || !s.Chunks.SetSiteOrder(tile, ecs.SiteOrder{Id: s.ECS.LastOrder, Seq: i}) {
 			t.Fatalf("couldn't place site %d of the order on %v", i, tile)
 		}
 	}
@@ -62,7 +62,7 @@ func TestPlacingBlueprintsInOneGoMakesThemOneOrderInTheOrderPlaced(t *testing.T)
 	s.Chunks.PlaceFeature(taken, data.Feature_Torch)
 	before := s.ECS.LastOrder
 
-	handleInput(t, s, s.Player, ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: tiles}})
+	handleInput(t, s, s.Player, ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_WoodWall, Tiles: tiles}})
 	seq := 0
 	for _, tile := range tiles {
 		site, ok := s.Chunks.Site(tile)
@@ -79,7 +79,7 @@ func TestPlacingBlueprintsInOneGoMakesThemOneOrderInTheOrderPlaced(t *testing.T)
 	}
 
 	other := groundAway(t, s, colonist, 3, tiles...)
-	handleInput(t, s, s.Player, ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: []utils.Vec2i{other}}})
+	handleInput(t, s, s.Player, ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_WoodWall, Tiles: []utils.Vec2i{other}}})
 	if site, _ := s.Chunks.Site(other); site.Order != (ecs.SiteOrder{Id: before + 2}) {
 		t.Fatalf("the next site placed is in order %+v, want the next order", site.Order)
 	}
@@ -96,7 +96,7 @@ func TestAColonistFetchesForTheSitesOfAnOrderInTurnAsFarAsItCanCarry(t *testing.
 	tile := storageSpot(t, s, colonist, 6, 1, 1)
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
-	roomForWood(t, s, colonist, 3*planksCost(t)+1)
+	roomForWood(t, s, colonist, 3*wallCost(t)+1)
 	sites := rowOf(storageSpot(t, s, colonist, 9, 5, 1, tile), 5)
 	placeOrder(t, s, sites...)
 
@@ -105,7 +105,7 @@ func TestAColonistFetchesForTheSitesOfAnOrderInTurnAsFarAsItCanCarry(t *testing.
 	if job.State != inputsources.Colonist_Fetch || !slices.Equal(deliveriesOf(job.Stops), sites[:3]) {
 		t.Fatalf("the colonist is on %v, want fetching for the first three sites of the order", job.Stops)
 	}
-	if job.Stops[0] != (inputsources.JobStop{Action: inputsources.Stop_PickUp, Tile: tile, Kind: data.Item_Wood, Count: 3 * planksCost(t)}) {
+	if job.Stops[0] != (inputsources.JobStop{Action: inputsources.Stop_PickUp, Tile: tile, Kind: data.Item_Wood, Count: 3 * wallCost(t)}) {
 		t.Fatalf("the colonist is picking up %v, want all three need at once", job.Stops[0])
 	}
 	if !live(t, s, 60*data.TPS, func() bool {
@@ -118,7 +118,7 @@ func TestAColonistFetchesForTheSitesOfAnOrderInTurnAsFarAsItCanCarry(t *testing.
 func TestAColonistCarryingWoodDeliversAlongAnOrder(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	withoutWood(t, s, colonist)
-	wood, _ := s.ECS.SpawnItemStack(data.Item_Wood, 2*planksCost(t)+1, utils.Vec2f{})
+	wood, _ := s.ECS.SpawnItemStack(data.Item_Wood, 2*wallCost(t)+1, utils.Vec2f{})
 	if err := s.ECS.PutInInventory(colonist, 0, wood); err != nil {
 		t.Fatal(err)
 	}
@@ -137,13 +137,13 @@ func TestAColonistDeliversPartOfWhatASiteNeedsWhenItCantCarryAll(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 6, 1, 1)
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
-	roomForWood(t, s, colonist, planksCost(t)-1)
+	roomForWood(t, s, colonist, wallCost(t)-1)
 	site := groundAway(t, s, colonist, 9, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
 	live(t, s, 1, func() bool { return false })
 	job := colonistJob(s, colonist)
-	if want := planksCost(t) - 1; job.State != inputsources.Colonist_Fetch || job.Stops[len(job.Stops)-1].Count != want {
+	if want := wallCost(t) - 1; job.State != inputsources.Colonist_Fetch || job.Stops[len(job.Stops)-1].Count != want {
 		t.Fatalf("the colonist is on %v, want fetching the %d it can carry", job.Stops, want)
 	}
 	if !live(t, s, 60*data.TPS, isBuilt(s, site)) {
@@ -155,7 +155,7 @@ func TestAColonistDeliversPartOfWhatASiteNeedsWhenItCantCarryAll(t *testing.T) {
 func twoSitesAsFar(t *testing.T, s *testutil.Session, colonist common.EntityId) (further, closer utils.Vec2i) {
 	t.Helper()
 	withoutWood(t, s, colonist)
-	wood, _ := s.ECS.SpawnItemStack(data.Item_Wood, planksCost(t), utils.Vec2f{})
+	wood, _ := s.ECS.SpawnItemStack(data.Item_Wood, wallCost(t), utils.Vec2f{})
 	if err := s.ECS.PutInInventory(colonist, 0, wood); err != nil {
 		t.Fatal(err)
 	}
@@ -170,8 +170,8 @@ func twoSitesAsFarFrom(t *testing.T, s *testutil.Session, colonist common.Entity
 	if self := colonistTile(t, s, colonist); utils.Dist2(further, self) < utils.Dist2(closer, self) {
 		further, closer = closer, further
 	}
-	s.Chunks.PlaceSite(further, data.Blueprint_Planks)
-	s.Chunks.PlaceSite(closer, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(further, data.Blueprint_WoodWall)
+	s.Chunks.PlaceSite(closer, data.Blueprint_WoodWall)
 	return further, closer
 }
 
@@ -204,7 +204,7 @@ func TestAColonistCarriesOnWithTheOrderItWasBuilding(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 6, 1, 1)
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
-	roomForWood(t, s, colonist, planksCost(t))
+	roomForWood(t, s, colonist, wallCost(t))
 	sites := rowOf(storageSpot(t, s, colonist, 10, 3, 1, tile), 3)
 	placeOrder(t, s, sites...)
 	live(t, s, 1, func() bool { return false })
@@ -214,8 +214,8 @@ func TestAColonistCarriesOnWithTheOrderItWasBuilding(t *testing.T) {
 
 	// Ready to build, and closer to storage than the rest of the order
 	ready := groundAway(t, s, colonist, 3, tile, sites[0], sites[1], sites[2])
-	s.Chunks.PlaceSite(ready, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(ready, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(ready, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(ready, data.Item_Wood, wallCost(t))
 	s.ECS.MarkArea(data.Area_Home, ready, ready, false)
 	if !live(t, s, 30*data.TPS, isBuilt(s, sites[0])) {
 		t.Fatal("the colonist didn't build the order's first site")
@@ -235,8 +235,8 @@ func TestTwoColonistsTakeSeparateLoadsOfOneOrder(t *testing.T) {
 	woodOntoStorage(t, s, a, tile)
 	withoutWood(t, s, b)
 	s.Chunks.SetGroundStack(tile, groundWood(50))
-	roomForWood(t, s, a, 3*planksCost(t))
-	roomForWood(t, s, b, 3*planksCost(t))
+	roomForWood(t, s, a, 3*wallCost(t))
+	roomForWood(t, s, b, 3*wallCost(t))
 	sites := rowOf(storageSpot(t, s, a, 10, 6, 1, tile), 6)
 	placeOrder(t, s, sites...)
 
@@ -255,17 +255,17 @@ func TestTwoColonistsTakeSeparateLoadsOfOneOrder(t *testing.T) {
 func TestAColonistThatCantCarryMoreDeliversWhatItHas(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	withoutWood(t, s, colonist)
-	wood, _ := s.ECS.SpawnItemStack(data.Item_Wood, planksCost(t)-1, utils.Vec2f{})
+	wood, _ := s.ECS.SpawnItemStack(data.Item_Wood, wallCost(t)-1, utils.Vec2f{})
 	if err := s.ECS.PutInInventory(colonist, 0, wood); err != nil {
 		t.Fatal(err)
 	}
 	roomForWood(t, s, colonist, 0)
 	site := groundAway(t, s, colonist, 6)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
 	live(t, s, 1, func() bool { return false })
-	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Deliver || job.Stops[0].Count != planksCost(t)-1 {
-		t.Fatalf("the colonist is on %v, want delivering the %d it has", job.Stops, planksCost(t)-1)
+	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Deliver || job.Stops[0].Count != wallCost(t)-1 {
+		t.Fatalf("the colonist is on %v, want delivering the %d it has", job.Stops, wallCost(t)-1)
 	}
 	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == 0 }) {
 		t.Fatal("the colonist didn't deliver what it had")
@@ -277,7 +277,7 @@ func TestWhatAColonistGotOfALoadGoesToTheOrdersSitesInTurn(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 6, 1, 1)
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
-	s.Chunks.SetGroundStack(tile, groundWood(3*planksCost(t)))
+	s.Chunks.SetGroundStack(tile, groundWood(3*wallCost(t)))
 	sites := rowOf(storageSpot(t, s, colonist, 10, 3, 1, tile), 3)
 	placeOrder(t, s, sites...)
 	live(t, s, 1, func() bool { return false })
@@ -285,14 +285,14 @@ func TestWhatAColonistGotOfALoadGoesToTheOrdersSitesInTurn(t *testing.T) {
 		t.Fatalf("the colonist is on %v, want fetching for all three sites", job.Stops)
 	}
 
-	got := planksCost(t) + 1
+	got := wallCost(t) + 1
 	s.Chunks.SetGroundStack(tile, groundWood(got))
 	if !live(t, s, 20*data.TPS, func() bool { return colonistJob(s, colonist).Stops[0].Action == inputsources.Stop_Deliver }) {
 		t.Fatal("the colonist didn't pick up what was left")
 	}
 	want := []inputsources.JobStop{
-		{Action: inputsources.Stop_Deliver, Tile: sites[0], Kind: data.Item_Wood, Count: planksCost(t)},
-		{Action: inputsources.Stop_Deliver, Tile: sites[1], Kind: data.Item_Wood, Count: got - planksCost(t)},
+		{Action: inputsources.Stop_Deliver, Tile: sites[0], Kind: data.Item_Wood, Count: wallCost(t)},
+		{Action: inputsources.Stop_Deliver, Tile: sites[1], Kind: data.Item_Wood, Count: got - wallCost(t)},
 	}
 	if job := colonistJob(s, colonist); !slices.Equal(job.Stops, want) {
 		t.Fatalf("with %d picked up the colonist is on %v, want %v", got, job.Stops, want)
@@ -305,7 +305,7 @@ func TestABuilderCarriesOnAlongItsOrder(t *testing.T) {
 	sites := rowOf(storageSpot(t, s, colonist, 8, 3, 1), 3)
 	placeOrder(t, s, sites...)
 	for _, site := range sites {
-		s.Chunks.DeliverToSite(site, data.Item_Wood, planksCost(t))
+		s.Chunks.DeliverToSite(site, data.Item_Wood, wallCost(t))
 	}
 	live(t, s, 1, func() bool { return false })
 	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Construct || job.Stops[0].Tile != sites[0] {
@@ -314,8 +314,8 @@ func TestABuilderCarriesOnAlongItsOrder(t *testing.T) {
 
 	// Ready to build too, closer to where the colonist builds from, but not part of the order
 	other := groundNear(t, s, colonistJob(s, colonist).Stand, 2)
-	s.Chunks.PlaceSite(other, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(other, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(other, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(other, data.Item_Wood, wallCost(t))
 	s.ECS.MarkArea(data.Area_Home, other, other, false)
 	if !live(t, s, 30*data.TPS, isBuilt(s, sites[0])) {
 		t.Fatal("the colonist didn't build the order's first site")
@@ -332,7 +332,7 @@ func TestAColonistFetchesForAnEarlierOrderFirst(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 4, 1, 1)
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
-	roomForWood(t, s, colonist, planksCost(t))
+	roomForWood(t, s, colonist, wallCost(t))
 	earlier, later := twoSitesAsFarFrom(t, s, colonist, tile)
 	s.Chunks.SetSiteOrder(earlier, ecs.SiteOrder{Id: 1})
 	s.Chunks.SetSiteOrder(later, ecs.SiteOrder{Id: 2})
@@ -358,7 +358,7 @@ func TestAColonistDeliversTheWholeLoadInOneJob(t *testing.T) {
 	}
 
 	supplied := func() bool {
-		def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
+		def, _ := testutil.Blueprints(t).Def(data.Blueprint_WoodWall)
 		return !slices.ContainsFunc(sites, func(tile utils.Vec2i) bool {
 			site, _ := s.Chunks.Site(tile)
 			return site.Needs(data.Item_Wood, def) > 0
@@ -385,7 +385,7 @@ func TestASiteInALoadSuppliedBySomeoneElseIsLeftOut(t *testing.T) {
 	placeOrder(t, s, sites...)
 	live(t, s, 1, func() bool { return false })
 
-	s.Chunks.DeliverToSite(sites[1], data.Item_Wood, planksCost(t))
+	s.Chunks.DeliverToSite(sites[1], data.Item_Wood, wallCost(t))
 	live(t, s, 1, func() bool { return false })
 	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Fetch || !slices.Equal(deliveriesOf(job.Stops), []utils.Vec2i{sites[0], sites[2]}) {
 		t.Fatalf("the colonist is on %v, want still fetching for the other two sites", job.Stops)
@@ -397,7 +397,7 @@ func TestALoadTakesTheSitesEitherSideOfWhereItStartsInOrder(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 6, 1, 1)
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
-	roomForWood(t, s, colonist, 3*planksCost(t)+1)
+	roomForWood(t, s, colonist, 3*wallCost(t)+1)
 	sites := rowOf(storageSpot(t, s, colonist, 10, 7, 1, tile), 7)
 	placeOrder(t, s, sites...)
 	testutil.SetPos(t, s.ECS, colonist, utils.TilePosToWorldPos(sites[3]))

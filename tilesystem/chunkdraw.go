@@ -3,7 +3,6 @@ package tilesystem
 import (
 	"ebittest/data"
 	"ebittest/utils"
-	"fmt"
 	"image"
 	"image/color"
 
@@ -15,7 +14,7 @@ func DrawChunks(
 	screen *ebiten.Image,
 	camera utils.Vec2f,
 	chunkCont *ChunkContainer,
-) error {
+) {
 	marginBakesLeft := data.MaxChunkImageBakesPerFrame
 	size := screen.Bounds().Size()
 	view := utils.Vec2f{X: float64(size.X), Y: float64(size.Y)}
@@ -36,9 +35,7 @@ func DrawChunks(
 				continue
 			}
 
-			if err := c.generateChunkImage(chunkCont.atlas); err != nil {
-				return fmt.Errorf("failed to generate image of chunk %v: %w", ck, err)
-			}
+			chunkCont.generateChunkImage(ck, c)
 
 			if !visible {
 				marginBakesLeft--
@@ -53,8 +50,6 @@ func DrawChunks(
 		opts.GeoM.Translate(cBounds[0].X-camera.X, cBounds[0].Y-camera.Y)
 		screen.DrawImage(c.Image, &opts)
 	}
-
-	return nil
 }
 
 func chunkDrawBounds(ck utils.Vec2i) [2]utils.Vec2f {
@@ -74,32 +69,12 @@ func cameraBounds(camera, view utils.Vec2f, margin float64) [2]utils.Vec2f {
 	}
 }
 
-func (x *chunk) generateChunkImage(atlas map[data.TileEnum]tileDef) error {
+func (cc *ChunkContainer) generateChunkImage(pos utils.Vec2i, x *chunk) {
 	// Unmanaged, since a big image on Ebitengine's shared atlas grows its page, up to the GPU's largest texture size,
 	// which the GPU can fail to allocate
 	side := data.ChunkSize * data.TileSize
-	img := ebiten.NewImageWithOptions(image.Rect(0, 0, side, side), &ebiten.NewImageOptions{Unmanaged: true})
-
-	for tCell, tEnum := range x.tiles {
-		tile, ok := atlas[tEnum]
-		if !ok {
-			img.Deallocate()
-			return fmt.Errorf("tile enum %d not found in atlas", tEnum)
-		}
-
-		drawTileInto(img, tCell, tile.image)
-	}
-
-	x.Image = img
-
-	return nil
-}
-
-// Replaces what's drawn on the tile, so that drawing a changed tile over the old one doesn't blend with it
-func drawTileInto(chunkImage *ebiten.Image, idx int, tile *ebiten.Image) {
-	opts := ebiten.DrawImageOptions{Blend: ebiten.BlendCopy}
-	opts.GeoM.Translate(float64(idx%data.ChunkSize*data.TileSize), float64(idx/data.ChunkSize*data.TileSize))
-	chunkImage.DrawImage(tile, &opts)
+	x.Image = ebiten.NewImageWithOptions(image.Rect(0, 0, side, side), &ebiten.NewImageOptions{Unmanaged: true})
+	cc.drawTiles(x.Image, utils.Vec2i{X: pos.X * data.ChunkSize, Y: pos.Y * data.ChunkSize}, data.ChunkSize, cc.TileAt)
 }
 
 func (x *chunk) freeImage() {

@@ -245,12 +245,12 @@ func TestBlueprintsAreChosenFromTheirPanelInTheBottomRightCornerWhileBuilding(t 
 		t.Fatal("a blueprint can be chosen outside build mode")
 	}
 
-	placer.Start(data.Blueprint_Planks)
-	planks := blueprintSlotCenter().Subtract(utils.Vec2f{X: menuSlotPx + data.HotbarSlotGapPx})
-	if kind, ok := placer.BlueprintAt(planks, menuScreen, blueprints, assets); !ok || kind != data.Blueprint_Planks {
-		t.Fatalf("the blueprint panel has %v (%v) in its first slot, want planks", kind, ok)
+	placer.Start(data.Blueprint_WoodWall)
+	wall := blueprintSlotCenter().Subtract(utils.Vec2f{X: menuSlotPx + data.HotbarSlotGapPx})
+	if kind, ok := placer.BlueprintAt(wall, menuScreen, blueprints, assets); !ok || kind != data.Blueprint_WoodWall {
+		t.Fatalf("the blueprint panel has %v (%v) in its first slot, want wooden walls", kind, ok)
 	}
-	if !placer.StorageAt(blueprintSlotCenter(), menuScreen, blueprints, assets) || placer.StorageAt(planks, menuScreen, blueprints, assets) {
+	if !placer.StorageAt(blueprintSlotCenter(), menuScreen, blueprints, assets) || placer.StorageAt(wall, menuScreen, blueprints, assets) {
 		t.Fatal("storage isn't the panel's last slot, after the blueprints")
 	}
 	if _, ok := placer.BlueprintAt(blueprintSlotCenter(), menuScreen, blueprints, assets); ok {
@@ -291,9 +291,9 @@ func TestBuildModeStartsWithTheFirstBlueprintAndTogglesOff(t *testing.T) {
 
 func TestATileIsCopiedAsTheBlueprintThatBuildsIt(t *testing.T) {
 	blueprints := testutil.Blueprints(t)
-	def, _ := blueprints.Def(data.Blueprint_Planks)
-	if kind, ok := blueprints.ForTile(def.Tile()); !ok || kind != data.Blueprint_Planks {
-		t.Fatalf("the planks tile copies as %v (%v), want planks", kind, ok)
+	def, _ := blueprints.Def(data.Blueprint_WoodWall)
+	if kind, ok := blueprints.ForTile(def.Tile()); !ok || kind != data.Blueprint_WoodWall {
+		t.Fatalf("the wooden wall tile copies as %v (%v), want wooden walls", kind, ok)
 	}
 	if kind, ok := blueprints.ForTile(data.Tile_Dirt); ok {
 		t.Fatalf("dirt, which nothing builds, copies as %v", kind)
@@ -301,9 +301,9 @@ func TestATileIsCopiedAsTheBlueprintThatBuildsIt(t *testing.T) {
 }
 
 func TestABlueprintsTooltipHasItsNameAndCosts(t *testing.T) {
-	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
-	if lines := drawsystem.BlueprintTooltip(def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Planks", "2 Wood"}) {
-		t.Fatalf("the planks' tooltip says %q, want Planks and 2 Wood", lines)
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_WoodWall)
+	if lines := drawsystem.BlueprintTooltip(def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Wooden wall", "2 Wood"}) {
+		t.Fatalf("the wooden wall's tooltip says %q, want Wooden wall and 2 Wood", lines)
 	}
 }
 
@@ -312,8 +312,8 @@ func TestThePlacerHoldsTheChosenBlueprintUntilStopped(t *testing.T) {
 	if _, ok := p.Kind(); ok {
 		t.Fatal("a new placer is placing")
 	}
-	p.Start(data.Blueprint_Planks)
-	if kind, ok := p.Kind(); !ok || kind != data.Blueprint_Planks {
+	p.Start(data.Blueprint_WoodWall)
+	if kind, ok := p.Kind(); !ok || kind != data.Blueprint_WoodWall {
 		t.Fatal("the placer isn't placing the chosen blueprint")
 	}
 	p.Stop()
@@ -323,20 +323,20 @@ func TestThePlacerHoldsTheChosenBlueprintUntilStopped(t *testing.T) {
 }
 
 func TestASitesTooltipHasWhatsDeliveredAndHowFarBuildingHasCome(t *testing.T) {
-	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
-	site := ecs.ConstructionSite{Blueprint: data.Blueprint_Planks, Delivered: []ecs.ItemCost{{Kind: data.Item_Wood}}, Health: 1, MaxHealth: 100}
-	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Planks", "Wood 0/2", "Construction 0%"}) {
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_WoodWall)
+	site := ecs.ConstructionSite{Blueprint: data.Blueprint_WoodWall, Delivered: []ecs.ItemCost{{Kind: data.Item_Wood}}, Health: 1, MaxHealth: 100}
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Wooden wall", "Wood 0/2", "Construction 0%"}) {
 		t.Fatalf("a new site's tooltip says %q", lines)
 	}
 	site.Delivered[0].Count, site.Health = 2, 34
-	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Planks", "Wood 2/2", "Construction 33%"}) {
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Wooden wall", "Wood 2/2", "Construction 33%"}) {
 		t.Fatalf("a supplied site a third built has a tooltip saying %q", lines)
 	}
 }
 
 func TestASiteOffHomeSaysColonistsLeaveIt(t *testing.T) {
-	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
-	site := ecs.ConstructionSite{Blueprint: data.Blueprint_Planks, Delivered: []ecs.ItemCost{{Kind: data.Item_Wood}}, Health: 1, MaxHealth: 100}
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_WoodWall)
+	site := ecs.ConstructionSite{Blueprint: data.Blueprint_WoodWall, Delivered: []ecs.ItemCost{{Kind: data.Item_Wood}}, Health: 1, MaxHealth: 100}
 	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), false); lines[len(lines)-1] != "Outside the home area" {
 		t.Fatalf("a site off home has a tooltip saying %q", lines)
 	}
@@ -397,7 +397,7 @@ func TestTheAreaMenuOpensOnHomeWithItsButtonsInTheBottomRightCorner(t *testing.T
 
 func TestStorageIsDraggedOutInBuildModeAndStaysChosen(t *testing.T) {
 	var placer drawsystem.BlueprintPlacer
-	placer.Start(data.Blueprint_Planks)
+	placer.Start(data.Blueprint_WoodWall)
 	placer.Press(utils.Vec2i{})
 	everywhere := func(utils.Vec2i) bool { return true }
 	if m := placer.Release(utils.Vec2i{X: 2}, false, everywhere); m.Mark {
@@ -447,7 +447,7 @@ func TestBlueprintsGoAlongTheOutlineOfWhatsDraggedOut(t *testing.T) {
 	if placer.IsDragging() {
 		t.Fatal("dragging started outside build mode")
 	}
-	placer.Start(data.Blueprint_Planks)
+	placer.Start(data.Blueprint_WoodWall)
 	if tiles := placer.BlueprintTiles(v(3, 4)); !slices.Equal(tiles, []utils.Vec2i{v(3, 4)}) {
 		t.Fatalf("without a drag, a blueprint would go on %v, want just the cursor's tile", tiles)
 	}
@@ -466,8 +466,8 @@ func TestBlueprintsGoAlongTheOutlineOfWhatsDraggedOut(t *testing.T) {
 		if tiles := placer.BlueprintTiles(c.to); !slices.Equal(tiles, c.want) {
 			t.Fatalf("%s would put blueprints on %v, want %v", c.what, tiles, c.want)
 		}
-		if p := placer.ReleaseBlueprints(c.to, everywhere); p.Kind != data.Blueprint_Planks || !slices.Equal(p.Tiles, c.want) {
-			t.Fatalf("%s put down %+v, want planks on %v", c.what, p, c.want)
+		if p := placer.ReleaseBlueprints(c.to, everywhere); p.Kind != data.Blueprint_WoodWall || !slices.Equal(p.Tiles, c.want) {
+			t.Fatalf("%s put down %+v, want wooden walls on %v", c.what, p, c.want)
 		}
 	}
 

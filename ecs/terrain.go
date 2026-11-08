@@ -70,6 +70,13 @@ type Terrain interface {
 	AreaTiles(area data.AreaEnum, first, last utils.Vec2i) []utils.Vec2i
 	// Puts the tiles from first to last in the area, or takes them out of it
 	SetArea(area data.AreaEnum, first, last utils.Vec2i, in bool)
+	// Whether the tile itself or its feature gives what's gathered on the harvest area
+	IsHarvestable(t utils.Vec2i) bool
+	// Whether something harvestable drops the kind
+	IsHarvestItem(kind data.ItemEnum) bool
+	// The tiles that something harvestable has been felled, broken or picked up from since this was last asked, in the
+	// order it happened
+	TakeHarvested() []utils.Vec2i
 }
 
 // Implemented by terrains that can answer for many tiles at once, and say when sight and light have to be worked out
@@ -183,6 +190,9 @@ func (noTerrain) AreaTiles(data.AreaEnum, utils.Vec2i, utils.Vec2i) []utils.Vec2
 	return nil
 }
 func (noTerrain) BuildSite(utils.Vec2i, int, bool) (worked, built bool) { return false, false }
+func (noTerrain) IsHarvestable(utils.Vec2i) bool                        { return false }
+func (noTerrain) IsHarvestItem(data.ItemEnum) bool                      { return false }
+func (noTerrain) TakeHarvested() []utils.Vec2i                          { return nil }
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {
 	x.terrain = terrain

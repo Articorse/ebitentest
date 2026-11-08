@@ -10,6 +10,6 @@ const (
 	Tile_Rock
 	Tile_WaterShallow
 	Tile_WaterDeep
-	Tile_Planks
+	Tile_WoodWall
 	Tile_RockFloor
 )

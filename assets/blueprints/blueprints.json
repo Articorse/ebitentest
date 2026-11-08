@@ -1,7 +1,7 @@
 [
   {
     "id": 1,
-    "name": "Planks",
+    "name": "Wooden wall",
     "tile": 6,
     "imageAsset": "tile_planks",
     "costs": [{ "kind": 1, "count": 2 }],

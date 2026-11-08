@@ -74,6 +74,16 @@ func (m *memory) remember(t utils.Vec2i, tile data.TileEnum, feature data.Featur
 	if featureChanged {
 		m.markFeatureStale(t)
 	}
+	// The corners on the edge of the region are drawn by the regions next to it too
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			if near, _ := memoryIndex(utils.Vec2i{X: t.X + dx, Y: t.Y + dy}); near != pos {
+				if r, ok := m.regions[near]; ok {
+					r.imageStale = true
+				}
+			}
+		}
+	}
 }
 
 // A feature's sprite reaches past its tile, so it's baked into every region it may reach into
@@ -250,20 +260,10 @@ func (cc *ChunkContainer) bakeMemoryRegion(
 	if r.image == nil {
 		// Unmanaged like chunk images, so that region images don't grow a page of the shared atlas
 		r.image = ebiten.NewImageWithOptions(image.Rect(0, 0, side, side), &ebiten.NewImageOptions{Unmanaged: true})
-	} else {
-		r.image.Clear()
 	}
 
-	for i, tile := range r.tiles {
-		def, ok := cc.atlas[tile]
-		if tile == data.Tile_None || !ok {
-			continue
-		}
-
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(i%data.MemoryRegionSize*data.TileSize), float64(i/data.MemoryRegionSize*data.TileSize))
-		r.image.DrawImage(def.image, op)
-	}
+	topLeft := utils.Vec2i{X: pos.X * data.MemoryRegionSize, Y: pos.Y * data.MemoryRegionSize}
+	cc.drawTiles(r.image, topLeft, data.MemoryRegionSize, cc.memory.recall)
 
 	// Including the features of the regions around it whose sprites reach into it, so that they're drawn in order with
 	// its own

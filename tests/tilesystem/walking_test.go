@@ -44,8 +44,8 @@ func TestTilesAreWalkedAsFastAsTheirAtlasAndFeaturesSay(t *testing.T) {
 		}
 	}
 
-	if !s.Chunks.PlaceTile(grass, data.Tile_Planks) || s.Chunks.WalkSpeedPercent(grass) != 0 {
-		t.Fatal("planks placed on grass that was walked on can be walked on")
+	if !s.Chunks.PlaceTile(grass, data.Tile_WoodWall) || s.Chunks.WalkSpeedPercent(grass) != 0 {
+		t.Fatal("a wooden wall placed on grass that was walked on can be walked on")
 	}
 	tree := findLoneTree(t, s)
 	s.Chunks.WalkSpeedPercent(tree)

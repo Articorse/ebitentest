@@ -20,21 +20,21 @@ func loadBlueprints(t *testing.T, json string) (*ecs.BlueprintAtlas, error) {
 	return ecs.LoadBlueprintAtlasFromJson(path, testutil.ItemAtlas(t), testutil.Assets(t))
 }
 
-func TestTheGamesBlueprintAtlasHasPlanks(t *testing.T) {
+func TestTheGamesBlueprintAtlasHasWoodenWalls(t *testing.T) {
 	atlas, err := ecs.LoadBlueprintAtlasFromJson(filepath.Join(testutil.RepoRoot(), testutil.BlueprintsPath), testutil.ItemAtlas(t), testutil.Assets(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	def, ok := atlas.Def(data.Blueprint_Planks)
-	if !ok || def.Name() != "Planks" || def.Tile() != data.Tile_Planks || def.ImageAsset() != common.ImageAssetTag("tile_planks") || def.Stages() != 3 || def.Work() != 10 {
-		t.Fatalf("the planks blueprint is %+v (%v), want the planks tile from its sheet's 3 stages, 10 work", def, ok)
+	def, ok := atlas.Def(data.Blueprint_WoodWall)
+	if !ok || def.Name() != "Wooden wall" || def.Tile() != data.Tile_WoodWall || def.ImageAsset() != common.ImageAssetTag("tile_planks") || def.Stages() != 3 || def.Work() != 10 {
+		t.Fatalf("the wooden wall blueprint is %+v (%v), want the wooden wall tile from the planks sheet's 3 stages, 10 work", def, ok)
 	}
 	if costs := def.Costs(); !slices.Equal(costs, []ecs.ItemCost{{Kind: data.Item_Wood, Count: 2}}) {
-		t.Fatalf("planks cost %v, want 2 wood", costs)
+		t.Fatalf("wooden walls cost %v, want 2 wood", costs)
 	}
-	if kinds := atlas.Kinds(); !slices.Equal(kinds, []data.BlueprintEnum{data.Blueprint_Planks}) {
-		t.Fatalf("the blueprints are %v, want only planks", kinds)
+	if kinds := atlas.Kinds(); !slices.Equal(kinds, []data.BlueprintEnum{data.Blueprint_WoodWall}) {
+		t.Fatalf("the blueprints are %v, want only wooden walls", kinds)
 	}
 }
 

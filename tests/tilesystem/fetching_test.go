@@ -30,7 +30,7 @@ func TestAColonistFetchesWhatASiteLacksFromStorageAndBuildsIt(t *testing.T) {
 	markStorage(t, s, false, tile)
 	before := woodOntoStorage(t, s, colonist, tile)
 	site := groundAway(t, s, colonist, 6, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
 	if !live(t, s, 2*data.TPS, func() bool { return colonistState(s, colonist) == inputsources.Colonist_Fetch }) {
 		t.Fatalf("the colonist didn't go to fetch, it's %v", colonistState(s, colonist))
@@ -38,7 +38,7 @@ func TestAColonistFetchesWhatASiteLacksFromStorageAndBuildsIt(t *testing.T) {
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
 		t.Fatalf("the colonist didn't build the blueprint, it's %v", colonistState(s, colonist))
 	}
-	if _, n := onGround(s, tile); n != before-planksCost(t) || woodCarried(s, colonist) != 0 {
+	if _, n := onGround(s, tile); n != before-wallCost(t) || woodCarried(s, colonist) != 0 {
 		t.Fatalf("storage holds %d and the colonist %d wood, want just what the blueprint cost taken off %d", n, woodCarried(s, colonist), before)
 	}
 }
@@ -48,11 +48,11 @@ func TestAColonistFetchesWhatThereIsWhenStorageDoesntMakeUpAllItLacks(t *testing
 	tile := storageSpot(t, s, colonist, 8, 1, 1)
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
-	s.Chunks.SetGroundStack(tile, ecs.GroundStack{Kind: data.Item_Wood, Count: planksCost(t) - 1})
+	s.Chunks.SetGroundStack(tile, ecs.GroundStack{Kind: data.Item_Wood, Count: wallCost(t) - 1})
 	site := groundAway(t, s, colonist, 6, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
-	def, _ := testutil.Blueprints(t).Def(data.Blueprint_Planks)
+	def, _ := testutil.Blueprints(t).Def(data.Blueprint_WoodWall)
 	delivered := func() bool { built, _ := s.Chunks.Site(site); return built.Needs(data.Item_Wood, def) == 1 }
 	if !live(t, s, 20*data.TPS, delivered) {
 		t.Fatalf("the colonist didn't deliver what there was in storage, it's %v", colonistState(s, colonist))
@@ -84,12 +84,12 @@ func TestAColonistKeepsWhatSitesNeedWhenPuttingAway(t *testing.T) {
 		return true
 	}
 	walled := groundAwayWhere(t, s, colonist, 12, canBeWalledIn, tile)
-	s.Chunks.PlaceSite(walled, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(walled, data.Blueprint_WoodWall)
 	for dy := -1; dy <= 1; dy++ {
 		for dx := -1; dx <= 1; dx++ {
 			if wall := (utils.Vec2i{X: walled.X + dx, Y: walled.Y + dy}); wall != walled {
 				s.Chunks.DamageTile(wall, 1000)
-				if !s.Chunks.PlaceTile(wall, data.Tile_Planks) && !s.Chunks.IsOpaqueTile(wall) {
+				if !s.Chunks.PlaceTile(wall, data.Tile_WoodWall) && !s.Chunks.IsOpaqueTile(wall) {
 					t.Fatalf("couldn't wall in the blueprint at %v", wall)
 				}
 			}
@@ -101,13 +101,13 @@ func TestAColonistKeepsWhatSitesNeedWhenPuttingAway(t *testing.T) {
 	if !live(t, s, 20*data.TPS, func() bool {
 		_, n := onGround(s, tile)
 		most = max(most, n)
-		return n == before-planksCost(t)
+		return n == before-wallCost(t)
 	}) {
 		t.Fatal("the colonist didn't put away all but what the walled-in blueprint needs")
 	}
 	live(t, s, 3*data.TPS, func() bool { _, n := onGround(s, tile); most = max(most, n); return false })
-	if most > before-planksCost(t) || woodCarried(s, colonist) != planksCost(t) {
-		t.Fatalf("storage held up to %d and the colonist keeps %d, want %d kept", most, woodCarried(s, colonist), planksCost(t))
+	if most > before-wallCost(t) || woodCarried(s, colonist) != wallCost(t) {
+		t.Fatalf("storage held up to %d and the colonist keeps %d, want %d kept", most, woodCarried(s, colonist), wallCost(t))
 	}
 }
 

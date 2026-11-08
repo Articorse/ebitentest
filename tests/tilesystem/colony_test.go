@@ -83,7 +83,7 @@ func TestSitesAreListedInTileOrderWithinTheirBounds(t *testing.T) {
 	placed := []utils.Vec2i{}
 	for range 6 {
 		tile := findTile(t, s, near)
-		s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
+		s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall)
 		placed = append(placed, tile)
 	}
 	slices.SortFunc(placed, func(a, b utils.Vec2i) int {

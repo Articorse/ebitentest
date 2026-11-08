@@ -121,6 +121,9 @@ func (f *fakeTerrain) LightSources(utils.Vec2i, utils.Vec2i, func(utils.Vec2i, u
 func (f *fakeTerrain) CanPlaceSite(utils.Vec2i) bool                                        { return false }
 func (f *fakeTerrain) PlaceSite(utils.Vec2i, data.BlueprintEnum) bool                       { return false }
 func (f *fakeTerrain) SetSiteOrder(utils.Vec2i, ecs.SiteOrder) bool                         { return false }
+func (f *fakeTerrain) IsHarvestable(utils.Vec2i) bool                                       { return false }
+func (f *fakeTerrain) IsHarvestItem(data.ItemEnum) bool                                     { return false }
+func (f *fakeTerrain) TakeHarvested() []utils.Vec2i                                         { return nil }
 func (f *fakeTerrain) Site(utils.Vec2i) (ecs.ConstructionSite, bool) {
 	return ecs.ConstructionSite{}, false
 }

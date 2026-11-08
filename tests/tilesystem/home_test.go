@@ -75,7 +75,7 @@ func TestBuildingOnHomeSpreadsItButBuildingElsewhereDoesnt(t *testing.T) {
 	s, _, colonist := colonistAtWorkWithoutHome(t)
 	onHome := groundAway(t, s, colonist, 6)
 	s.ECS.MarkArea(data.Area_Home, onHome, onHome, true)
-	s.Chunks.PlaceSite(onHome, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(onHome, data.Blueprint_WoodWall)
 	if !live(t, s, 30*data.TPS, isBuilt(s, onHome)) {
 		t.Fatal("the colonist didn't build the site on home")
 	}
@@ -114,13 +114,13 @@ func TestBuildingOnHomeSpreadsItButBuildingElsewhereDoesnt(t *testing.T) {
 		t.Fatal("there's nowhere to build from next to the ground off home")
 	}
 	testutil.SetPos(t, s.ECS, s.Player, utils.TilePosToWorldPos(builderAt))
-	s.Chunks.PlaceSite(elsewhere, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(elsewhere, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(elsewhere, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(elsewhere, data.Item_Wood, wallCost(t))
 	for range 10 {
 		waitOutTheCooldown(s)
 		construct(t, s, elsewhere, false)
 	}
-	if currentTile(s, elsewhere) != data.Tile_Planks || s.Chunks.InArea(data.Area_Home, utils.Vec2i{X: elsewhere.X + 2, Y: elsewhere.Y}) {
+	if currentTile(s, elsewhere) != data.Tile_WoodWall || s.Chunks.InArea(data.Area_Home, utils.Vec2i{X: elsewhere.X + 2, Y: elsewhere.Y}) {
 		t.Fatal("building off home spread home around it")
 	}
 }

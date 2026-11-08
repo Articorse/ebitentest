@@ -27,6 +27,12 @@ type tileDef struct {
 	slowdownPercent int
 	// Nil for tiles that drop nothing when destroyed
 	drops *ecs.DropTable
+	// Gives what's gathered on the harvest area, which keeps the area there for as long as it's left
+	harvestable bool
+	// Nil for a tile drawn whole, as image. Otherwise its 16 dual-grid cells, laid out as dualGridCells says, which are
+	// drawn over those of the tiles with a lower drawOrder where they meet.
+	dualGrid  []*ebiten.Image
+	drawOrder int
 }
 
 type promotedTile struct {
@@ -45,6 +51,9 @@ type tileDefDTO struct {
 	Buildable       bool             `json:"buildable"`
 	SlowdownPercent int              `json:"slowdownPercent"`
 	Drops           []dropOutcomeDTO `json:"drops"`
+	Harvestable     bool             `json:"harvestable"`
+	// Given for a tile drawn on the dual grid, from a sheet of 16 cells
+	DrawOrder *int `json:"drawOrder"`
 }
 
 func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas, assets *assetmanager.AssetManager) (map[data.TileEnum]tileDef, error) {
@@ -65,6 +74,13 @@ func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas, assets *assetmanager
 			buildable: dto.Buildable,
 
 			slowdownPercent: dto.SlowdownPercent,
+			harvestable:     dto.Harvestable,
+		}
+		if dto.DrawOrder != nil {
+			if len(asset.Frames) != len(dualGridCells) {
+				return nil, fmt.Errorf("tile %d is drawn on the dual grid, but its image has %d frames rather than %d", dto.Id, len(asset.Frames), len(dualGridCells))
+			}
+			def.dualGrid, def.drawOrder = asset.Frames, *dto.DrawOrder
 		}
 		if dto.SlowdownPercent < 0 || dto.SlowdownPercent >= 100 {
 			return nil, fmt.Errorf("tile %d slows walking by %d%%, want 0 to 99, or the tile impassable", dto.Id, dto.SlowdownPercent)

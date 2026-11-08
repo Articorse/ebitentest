@@ -75,6 +75,3 @@ const (
 	ColonistLaterSiteCost     = 30
 	ColonistLaterSiteMaxCost  = 600
 )
-
-// What colonists gather where it lies loose on the harvest area
-var HarvestItems = []ItemEnum{Item_Wood}

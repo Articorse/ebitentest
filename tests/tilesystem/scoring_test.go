@@ -48,8 +48,8 @@ func TestAfterFellingATreeAColonistGathersWhatLiesAroundItBeforeBuilding(t *test
 	harvest(s, lying)
 	looseWood(t, s, lying, 3)
 	site := groundAway(t, s, colonist, 3, tree, lying)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(site, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(site, data.Item_Wood, wallCost(t))
 
 	if !live(t, s, 20*data.TPS, func() bool { return !isTree(s, tree) }) {
 		t.Fatal("the colonist didn't fell the tree")
@@ -138,15 +138,15 @@ func TestAfterGatheringAColonistPutsItAwayBeforeFelling(t *testing.T) {
 func TestAColonistBuildsASiteItSuppliedBeforeOneCloserThatsReady(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 8)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	live(t, s, 1, func() bool { return false })
 	if colonistState(s, colonist) != inputsources.Colonist_Deliver {
 		t.Fatalf("the colonist didn't go to deliver, it's %v", colonistState(s, colonist))
 	}
 
 	ready := groundAway(t, s, colonist, 3, site)
-	s.Chunks.PlaceSite(ready, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(ready, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(ready, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(ready, data.Item_Wood, wallCost(t))
 	if !live(t, s, 20*data.TPS, func() bool { return colonistState(s, colonist) != inputsources.Colonist_Deliver }) {
 		t.Fatal("the colonist didn't finish delivering")
 	}
@@ -184,7 +184,7 @@ func TestAColonistKeepsToTheSameWorkOverSomethingWeightierALittleFurther(t *test
 func TestOnlyTheSiteJustSuppliedIsBuiltAsWhatFollows(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 8)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	live(t, s, 1, func() bool { return false })
 	if colonistState(s, colonist) != inputsources.Colonist_Deliver {
 		t.Fatalf("the colonist didn't go to deliver, it's %v", colonistState(s, colonist))
@@ -194,8 +194,8 @@ func TestOnlyTheSiteJustSuppliedIsBuiltAsWhatFollows(t *testing.T) {
 	harvest(s, lying)
 	looseWood(t, s, lying, 2)
 	ready := groundAway(t, s, colonist, 13, site, lying)
-	s.Chunks.PlaceSite(ready, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(ready, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(ready, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(ready, data.Item_Wood, wallCost(t))
 	s.ECS.MarkArea(data.Area_Home, site, site, false)
 	live(t, s, 1, func() bool { return false })
 	if job := colonistJob(s, colonist); job.Last != inputsources.Colonist_Deliver || job.State != inputsources.Colonist_Gather {
@@ -210,7 +210,7 @@ func TestAColonistBuildsWhatItFetchedForBeforeHaulingOffAnotherSite(t *testing.T
 	markStorage(t, s, false, tile, utils.Vec2i{X: tile.X + 1, Y: tile.Y})
 	woodOntoStorage(t, s, colonist, tile)
 	site := groundAway(t, s, colonist, 8, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	live(t, s, 1, func() bool { return false })
 	if colonistState(s, colonist) != inputsources.Colonist_Fetch {
 		t.Fatalf("the colonist didn't go to fetch, it's %v", colonistState(s, colonist))
@@ -220,7 +220,7 @@ func TestAColonistBuildsWhatItFetchedForBeforeHaulingOffAnotherSite(t *testing.T
 	if !live(t, s, 20*data.TPS, func() bool { return colonistJob(s, colonist).Stops[0].Action == inputsources.Stop_Deliver }) {
 		t.Fatal("the colonist didn't pick up what it fetched")
 	}
-	s.Chunks.PlaceSite(cluttered, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(cluttered, data.Blueprint_WoodWall)
 	s.Chunks.SetGroundStack(cluttered, groundTorches(2))
 	if !live(t, s, 20*data.TPS, func() bool { return colonistState(s, colonist) != inputsources.Colonist_Fetch }) {
 		t.Fatal("the colonist didn't deliver what it fetched")
@@ -250,8 +250,8 @@ func TestAColonistRemembersWhatItLastDidWhileIdle(t *testing.T) {
 	harvest(s, lying)
 	looseWood(t, s, lying, 2)
 	site := groundAway(t, s, colonist, 4, tree, lying)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(site, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(site, data.Item_Wood, wallCost(t))
 	live(t, s, data.ColonistPlanEveryTicks+1, func() bool { return colonistState(s, colonist) != inputsources.Colonist_Idle })
 	if state := colonistState(s, colonist); state != inputsources.Colonist_Gather {
 		t.Fatalf("the colonist is %v, want gathering what lies by the tree it felled", state)
@@ -268,11 +268,11 @@ func TestAColonistDoesntSwapTheBestJobItFoundForAWorseOne(t *testing.T) {
 	}
 	testutil.SetPos(t, s.ECS, colonist, utils.TilePosToWorldPos(self))
 	for y := self.Y - 8; y <= self.Y+8; y++ {
-		s.Chunks.PlaceTile(utils.Vec2i{X: self.X + 5, Y: y}, data.Tile_Planks)
+		s.Chunks.PlaceTile(utils.Vec2i{X: self.X + 5, Y: y}, data.Tile_WoodWall)
 	}
 	open, behind := utils.Vec2i{X: self.X - 6, Y: self.Y}, utils.Vec2i{X: self.X + 7, Y: self.Y}
-	s.Chunks.PlaceSite(open, data.Blueprint_Planks)
-	s.Chunks.PlaceSite(behind, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(open, data.Blueprint_WoodWall)
+	s.Chunks.PlaceSite(behind, data.Blueprint_WoodWall)
 
 	live(t, s, 1, func() bool { return false })
 	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Deliver || job.Stops[0].Tile != open {

@@ -13,7 +13,7 @@ const (
 	BlueprintAlpha                          = 0.5
 
 	PlayerBuildRangeTiles = 3
-	// Planks take 10 work, so 10 strikes
+	// A wooden wall takes 10 work, so 10 strikes
 	PlayerBuildWork       = 1
 	PlayerBuildCooldownMs = 250
 )

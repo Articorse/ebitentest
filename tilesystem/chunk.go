@@ -125,21 +125,16 @@ func (cc *ChunkContainer) PlaceTile(t utils.Vec2i, tile data.TileEnum) bool {
 // image is enough work to stall a frame.
 func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, tile data.TileEnum) {
 	idx := c.tileIndex(t)
+	if cc.atlas[c.tiles[idx]].harvestable {
+		cc.noteHarvested(t)
+	}
 	delete(c.promotedTiles, t)
 	c.tiles[idx] = tile
 	c.terrainModified = true
 	cc.sightVersion++
 	c.walkSpeeds = nil
 
-	if c.Image == nil {
-		return
-	}
-	def, ok := cc.atlas[tile]
-	if !ok {
-		c.freeImage()
-		return
-	}
-	drawTileInto(c.Image, idx, def.image)
+	cc.redrawAround(t)
 }
 
 func (cc *ChunkContainer) IsOpenToSky(t utils.Vec2i) bool {

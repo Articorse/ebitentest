@@ -64,7 +64,7 @@ func TestBuildingComesBeforeFelling(t *testing.T) {
 	tree := treeAway(t, s, colonist, 4)
 	harvest(s, tree)
 	site := groundAway(t, s, colonist, 10, tree)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
 		t.Fatalf("the colonist didn't build the blueprint, it's %v", colonistState(s, colonist))

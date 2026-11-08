@@ -43,6 +43,8 @@ type ChunkContainer struct {
 
 	seed   uint64
 	memory memory
+	// The tiles something harvestable's been taken from since they were last looked at for exhausting the harvest area
+	harvested []utils.Vec2i
 }
 
 func NewChunkContainer() *ChunkContainer {

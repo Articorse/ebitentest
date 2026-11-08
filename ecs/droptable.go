@@ -87,6 +87,13 @@ func (x *ECSContainer) dropFrom(t utils.Vec2i, drops *DropTable) {
 	x.LayDownDrops(drops, t)
 }
 
+// Whether any of its outcomes drops the kind
+func (x *DropTable) CanDrop(kind data.ItemEnum) bool {
+	return x != nil && slices.ContainsFunc(x.outcomes, func(o DropOutcome) bool {
+		return slices.ContainsFunc(o.Items, func(i ItemDrop) bool { return i.Kind == kind })
+	})
+}
+
 func (x *DropTable) Copy() *DropTable {
 	c := &DropTable{outcomes: slices.Clone(x.outcomes)}
 	for i, o := range c.outcomes {

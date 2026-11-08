@@ -156,6 +156,7 @@ func (cc *ChunkContainer) activateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContain
 
 	cc.chunks[pos] = c
 	cc.sightVersion++
+	cc.redrawEdges(pos)
 
 	return nil
 }

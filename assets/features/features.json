@@ -10,7 +10,8 @@
     "drops": [
       { "chance": 30, "items": [{ "kind": 1, "count": 2 }] },
       { "chance": 50, "items": [{ "kind": 1, "count": 1 }] }
-    ]
+    ],
+    "harvestable": true
   },
   {
     "id": 2,

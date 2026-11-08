@@ -5,8 +5,10 @@ import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/tests/testutil"
+	"image"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -14,7 +16,7 @@ import (
 func writeAssetList(t *testing.T, list string) string {
 	t.Helper()
 	dir := t.TempDir()
-	for _, sub := range []string{"sprites", "debug"} {
+	for _, sub := range []string{"sprites", "debug", "tiles"} {
 		if err := os.CopyFS(filepath.Join(dir, sub), os.DirFS(filepath.Join(testutil.RepoRoot(), "assets", sub))); err != nil {
 			t.Fatal(err)
 		}
@@ -58,6 +60,19 @@ func TestPathsAreRelativeToTheAssetList(t *testing.T) {
 	}
 }
 
+func TestASheetsFramesGoAlongEachRowInTurn(t *testing.T) {
+	for _, count := range []int{16, 13} {
+		assets, err := assetmanager.LoadAssetManagerFromJson(writeAssetList(t, `[`+debugEntry+`, {"tag": "wall", "path": "tiles/wood_wall_ss.png", "frameCount": `+strconv.Itoa(count)+`, "frameSize": {"x": 16, "y": 16}}]`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		wall, _ := assets.GetAsset("wall")
+		if len(wall.Frames) != count || wall.Frames[6].Bounds() != image.Rect(32, 16, 48, 32) || wall.Frames[count-1].Bounds().Min != image.Pt((count-1)%4*16, (count-1)/4*16) {
+			t.Fatalf("a 4×4 sheet of %d frames has frames 6 and %d at %v and %v", count, count-1, wall.Frames[6].Bounds(), wall.Frames[count-1].Bounds())
+		}
+	}
+}
+
 func TestAMissingImageIsDrawnAsTheDebugImage(t *testing.T) {
 	assets, err := assetmanager.LoadAssetManagerFromJson(writeAssetList(t,
 		`[`+debugEntry+`, {"tag": "gone", "path": "sprites/gone.png", "frameCount": 3, "frameSize": {"x": 32, "y": 32}}]`))
@@ -82,6 +97,8 @@ func TestTheAssetListRefusesBrokenAssets(t *testing.T) {
 		{"no frames", `[` + debugEntry + `, {"tag": "tree", "path": "sprites/tree.png", "frameCount": 0, "frameSize": {"x": 32, "y": 32}}]`},
 		{"more frames than the image has", `[` + debugEntry + `, {"tag": "tree", "path": "sprites/tree.png", "frameCount": 2, "frameSize": {"x": 32, "y": 32}}]`},
 		{"frames shorter than the image", `[` + debugEntry + `, {"tag": "tree", "path": "sprites/tree.png", "frameCount": 2, "frameSize": {"x": 16, "y": 16}}]`},
+		{"an empty row of frames", `[` + debugEntry + `, {"tag": "wall", "path": "tiles/wood_wall_ss.png", "frameCount": 12, "frameSize": {"x": 16, "y": 16}}]`},
+		{"frames that don't fit the image", `[` + debugEntry + `, {"tag": "wall", "path": "tiles/wood_wall_ss.png", "frameCount": 4, "frameSize": {"x": 24, "y": 16}}]`},
 	} {
 		if _, err := assetmanager.LoadAssetManagerFromJson(writeAssetList(t, c.list)); err == nil {
 			t.Errorf("an asset list with %s was accepted", c.name)

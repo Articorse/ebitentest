@@ -14,7 +14,7 @@ func TestWhatLiesOnASiteIsHauledToStorageAndTheSiteBuilt(t *testing.T) {
 	last := utils.Vec2i{X: first.X + 1, Y: first.Y}
 	markStorage(t, s, false, first, last)
 	site := groundAway(t, s, colonist, 5, first, last)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	s.Chunks.SetGroundStack(site, groundTorches(2))
 
 	if !live(t, s, 40*data.TPS, isBuilt(s, site)) {
@@ -29,7 +29,7 @@ func TestWhatLiesOnASiteIsHauledToStorageAndTheSiteBuilt(t *testing.T) {
 func TestWithoutStorageWhatLiesOnASiteIsMovedOffItNearby(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 5)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	s.Chunks.SetGroundStack(site, groundTorches(2))
 
 	if !live(t, s, 40*data.TPS, isBuilt(s, site)) {
@@ -50,7 +50,7 @@ func TestAUniqueItemOnASiteIsMovedOffEvenWithStorage(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 10, 1, 1)
 	markStorage(t, s, false, tile)
 	site := groundAway(t, s, colonist, 5, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	axe, _ := colonistAxe(s, colonist)
 	if ok, err := s.ECS.LayDown(axe, site); err != nil || !ok {
 		t.Fatalf("couldn't lay the axe down on the site: %v", err)
@@ -72,7 +72,7 @@ func TestAUniqueItemOnASiteIsMovedOffEvenWithStorage(t *testing.T) {
 func TestWhatLiesOnASiteOffHomeIsLeftAlone(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 5)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	s.Chunks.SetGroundStack(site, groundTorches(2))
 	s.ECS.MarkArea(data.Area_Home, site, site, false)
 
@@ -113,7 +113,7 @@ func TestMovingOnTheGroundOnlyMovesWhatFits(t *testing.T) {
 func TestAColonistStopsHaulingOffASiteTakenOffHome(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 10)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	s.Chunks.SetGroundStack(site, groundTorches(2))
 	if !live(t, s, 2*data.TPS, func() bool { return colonistState(s, colonist) == inputsources.Colonist_Haul }) {
 		t.Fatalf("the colonist didn't go to haul, it's %v", colonistState(s, colonist))

@@ -57,6 +57,46 @@ func (x *ECSContainer) MarkArea(area data.AreaEnum, first, last utils.Vec2i, in 
 	}
 }
 
+// A group of harvest area tiles sharing edges is exhausted once none of them has anything harvestable, or anything
+// harvestable dropped lying on it, and is taken off the harvest area then, so that the player doesn't have to go round
+// erasing it. Only groups something's just been taken from are looked at, so an area marked on empty ground stays.
+func (x *ECSContainer) ClearExhaustedHarvest() {
+	for _, t := range x.terrain.TakeHarvested() {
+		for _, colony := range x.Colonies.GetEntities() {
+			if first, last, err := x.ColonyBounds(colony); err == nil && x.InColony(colony, t) {
+				x.clearIfExhausted(t, first, last)
+			}
+		}
+	}
+}
+
+func (x *ECSContainer) clearIfExhausted(start, first, last utils.Vec2i) {
+	if !x.terrain.InArea(data.Area_Harvest, start) {
+		return
+	}
+	group := []utils.Vec2i{start}
+	seen := map[utils.Vec2i]bool{start: true}
+	for i := 0; i < len(group); i++ {
+		t := group[i]
+		if x.terrain.IsHarvestable(t) {
+			return
+		}
+		if stack, ok := x.terrain.GroundStack(t); ok && stack.Unique == nil && x.terrain.IsHarvestItem(stack.Kind) {
+			return
+		}
+		for _, d := range []utils.Vec2i{{X: 1}, {X: -1}, {Y: 1}, {Y: -1}} {
+			n := utils.Vec2i{X: t.X + d.X, Y: t.Y + d.Y}
+			if !seen[n] && n.X >= first.X && n.X <= last.X && n.Y >= first.Y && n.Y <= last.Y && x.terrain.InArea(data.Area_Harvest, n) {
+				seen[n] = true
+				group = append(group, n)
+			}
+		}
+	}
+	for _, t := range group {
+		x.terrain.SetArea(data.Area_Harvest, t, t, false)
+	}
+}
+
 // Building on home spreads it around what was built, so that a colony's home grows with it, while building elsewhere
 // leaves it as it was
 func (x *ECSContainer) spreadHome(built utils.Vec2i) {

@@ -74,7 +74,7 @@ func TestGatheringComesAfterDeliveringAndBeforeFellingAsFarAway(t *testing.T) {
 	harvest(s, tree, lying)
 	looseWood(t, s, lying, 4)
 	site := groundAway(t, s, colonist, 8, tree, lying)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
 	live(t, s, 1, func() bool { return false })
 	if state := colonistState(s, colonist); state != inputsources.Colonist_Deliver {

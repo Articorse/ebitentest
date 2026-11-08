@@ -68,7 +68,7 @@ func TestStorageOnlyGoesOnOpenGroundInTheColonyOffSites(t *testing.T) {
 	s, colony, colonist := colonistAtWork(t)
 	open := storageSpot(t, s, colonist, 6, 1, 1)
 	site := groundAway(t, s, colonist, 10, open)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	tree := treeAway(t, s, colonist, 12, open, site)
 	wall := tileOf(t, s, data.Tile_Rock)
 	cFirst, _, _ := s.ECS.ColonyBounds(colony)
@@ -115,7 +115,7 @@ func TestNothingIsBuiltOrPlacedOnStorage(t *testing.T) {
 	if s.Chunks.CanPlaceSite(tile) || s.Chunks.CanPlaceFeature(tile) || s.Chunks.PlaceFeature(tile, data.Feature_Torch) {
 		t.Fatal("a blueprint or a feature can go on storage")
 	}
-	handleInput(t, s, s.Player, ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_Planks, Tiles: []utils.Vec2i{tile}}})
+	handleInput(t, s, s.Player, ecs.InputState{PlaceBlueprint: ecs.BlueprintPlacement{Kind: data.Blueprint_WoodWall, Tiles: []utils.Vec2i{tile}}})
 	if _, ok := s.Chunks.Site(tile); ok {
 		t.Fatal("a blueprint went on storage")
 	}

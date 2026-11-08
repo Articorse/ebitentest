@@ -45,6 +45,9 @@ func (cc *ChunkContainer) SetGroundStack(t utils.Vec2i, s ecs.GroundStack) bool 
 	if !ok {
 		return false
 	}
+	if old, had := c.ground[t]; had && old.Unique == nil && cc.IsHarvestItem(old.Kind) && (s.Unique != nil || s.Kind != old.Kind || s.Count < old.Count) {
+		cc.noteHarvested(t)
+	}
 	if s.Unique == nil && s.Count <= 0 {
 		delete(c.ground, t)
 	} else {

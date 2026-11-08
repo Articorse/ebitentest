@@ -101,13 +101,15 @@ func loadImage(dir string, dto imageAssetDefDTO, fallback *ImageAsset) (*ImageAs
 
 	w, h := img.Bounds().Dx(), img.Bounds().Dy()
 	frameW, frameH := int(dto.FrameSize.X), int(dto.FrameSize.Y)
-	if w != dto.FrameCount*frameW || h != frameH {
-		return nil, fmt.Errorf("image %s is %d×%d, want %d frames of %d×%d side by side", path, w, h, dto.FrameCount, frameW, frameH)
+	cols, rows := w/frameW, h/frameH
+	if w%frameW != 0 || h%frameH != 0 || dto.FrameCount > cols*rows || dto.FrameCount <= (rows-1)*cols {
+		return nil, fmt.Errorf("image %s is %d×%d, want %d frames of %d×%d left to right and then top to bottom, without an empty row", path, w, h, dto.FrameCount, frameW, frameH)
 	}
 
 	frames := make([]*ebiten.Image, dto.FrameCount)
 	for i := range frames {
-		frames[i] = img.SubImage(image.Rect(i*frameW, 0, (i+1)*frameW, frameH)).(*ebiten.Image)
+		x, y := i%cols*frameW, i/cols*frameH
+		frames[i] = img.SubImage(image.Rect(x, y, x+frameW, y+frameH)).(*ebiten.Image)
 	}
 
 	return &ImageAsset{

@@ -149,7 +149,7 @@ func TestAnEmptyHandBuildsASuppliedSiteStrikeByStrike(t *testing.T) {
 	}
 
 	construct(t, s, site, false)
-	if _, ok := s.Chunks.Site(site); ok || currentTile(s, site) != data.Tile_Planks {
+	if _, ok := s.Chunks.Site(site); ok || currentTile(s, site) != data.Tile_WoodWall {
 		t.Fatal("the tenth strike didn't build the wall")
 	}
 }
@@ -178,7 +178,7 @@ func TestTheLastStrikeWaitsForTheTileToBeClear(t *testing.T) {
 	}
 	blocker := testutil.AddMovable(t, s.ECS, utils.TilePosToWorldPos(site), false, ecs.NewPhysicsColliderComponent(1, 1, ecs.Collider_Mob, shape))
 	waitOutTheCooldown(s)
-	if !construct(t, s, site, false) || currentTile(s, site) == data.Tile_Planks {
+	if !construct(t, s, site, false) || currentTile(s, site) == data.Tile_WoodWall {
 		t.Fatal("the wall was built on top of something standing in it")
 	}
 	if state, _ := s.Chunks.Site(site); state.Health != 91 {
@@ -187,7 +187,7 @@ func TestTheLastStrikeWaitsForTheTileToBeClear(t *testing.T) {
 
 	s.ECS.ScheduleRemoveEntity(blocker)
 	testutil.RemoveScheduled(t, s.ECS)
-	if !construct(t, s, site, false) || currentTile(s, site) != data.Tile_Planks {
+	if !construct(t, s, site, false) || currentTile(s, site) != data.Tile_WoodWall {
 		t.Fatal("the wall wasn't built once the tile was clear, right away since the blocked strike didn't start a cooldown")
 	}
 }

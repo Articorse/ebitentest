@@ -1182,7 +1182,7 @@ func haulTo(self, site utils.Vec2i, stack ecs.GroundStack, ecsContainer *ecs.ECS
 // Lying on the harvest area, and not already put away on storage, of a kind that's harvested, with room for some of it
 func gatherable(e common.EntityId, t utils.Vec2i, ecsContainer *ecs.ECSContainer) bool {
 	stack, ok := ecsContainer.Terrain().GroundStack(t)
-	return ok && stack.Unique == nil && slices.Contains(data.HarvestItems, stack.Kind) &&
+	return ok && stack.Unique == nil && ecsContainer.Terrain().IsHarvestItem(stack.Kind) &&
 		ecsContainer.RoomFor(e, stack.Kind) > 0 && ecsContainer.Terrain().InArea(data.Area_Harvest, t) &&
 		!ecsContainer.Terrain().InArea(data.Area_Storage, t)
 }

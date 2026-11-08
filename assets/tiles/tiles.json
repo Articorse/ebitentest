@@ -12,7 +12,8 @@
     "maxHealth": -1,
     "passable": true,
     "buildable": true,
-    "opaque": false
+    "opaque": false,
+    "drawOrder": 3
   },
   {
     "id": 2,
@@ -21,7 +22,8 @@
     "destroyedInto": 1,
     "passable": true,
     "buildable": true,
-    "opaque": false
+    "opaque": false,
+    "drawOrder": 4
   },
   {
     "id": 3,
@@ -29,7 +31,8 @@
     "maxHealth": 200,
     "destroyedInto": 7,
     "passable": false,
-    "opaque": true
+    "opaque": true,
+    "drawOrder": 5
   },
   {
     "id": 4,
@@ -37,7 +40,8 @@
     "maxHealth": -1,
     "passable": true,
     "opaque": false,
-    "slowdownPercent": 30
+    "slowdownPercent": 30,
+    "drawOrder": 1
   },
   {
     "id": 5,
@@ -45,16 +49,18 @@
     "maxHealth": -1,
     "passable": false,
     "water": true,
-    "opaque": false
+    "opaque": false,
+    "drawOrder": 0
   },
   {
     "id": 6,
-    "imageAsset": "tile_planks",
+    "imageAsset": "tile_wood_wall",
     "maxHealth": 100,
     "destroyedInto": 1,
     "passable": false,
     "opaque": true,
-    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 2 }] }]
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 2 }] }],
+    "drawOrder": 6
   },
   {
     "id": 7,
@@ -62,6 +68,7 @@
     "maxHealth": -1,
     "passable": true,
     "buildable": true,
-    "opaque": false
+    "opaque": false,
+    "drawOrder": 2
   }
 ]

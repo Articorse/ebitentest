@@ -36,6 +36,8 @@ type featureDef struct {
 	destroyedInto data.FeatureEnum
 	// Nil for features that drop nothing when destroyed
 	drops *ecs.DropTable
+	// Gives what's gathered on the harvest area, which keeps the area there for as long as it's left
+	harvestable bool
 }
 
 type featureDefDTO struct {
@@ -50,6 +52,7 @@ type featureDefDTO struct {
 	// Required for features that can be damaged, and 0 for those that leave nothing behind
 	DestroyedInto *uint16          `json:"destroyedInto"`
 	Drops         []dropOutcomeDTO `json:"drops"`
+	Harvestable   bool             `json:"harvestable"`
 }
 
 type featureFrame struct {
@@ -140,6 +143,7 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.
 			return fmt.Errorf("feature %d has an invalid drop table: %w", dto.Id, err)
 		}
 		def.drops = drops
+		def.harvestable = dto.Harvestable
 
 		defs[data.FeatureEnum(dto.Id)] = def
 	}
@@ -222,6 +226,9 @@ func (cc *ChunkContainer) PlaceFeature(t utils.Vec2i, f data.FeatureEnum) bool {
 }
 
 func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum) {
+	if cc.featureAtlas[c.features[t]].harvestable {
+		cc.noteHarvested(t)
+	}
 	if f == data.Feature_None {
 		delete(c.features, t)
 	} else {

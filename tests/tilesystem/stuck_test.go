@@ -83,6 +83,7 @@ func liveColliding(t *testing.T, s *testutil.Session, ticks int, colonists []com
 			t.Fatal(err)
 		}
 		touchTerrain(t, s)
+		s.ECS.ClearExhaustedHarvest()
 		s.Tick(1)
 	}
 	return turns
@@ -114,7 +115,7 @@ func TestColonistsWallingARoomInTogetherDontGetStuck(t *testing.T) {
 	for dy := -5; dy <= 5; dy++ {
 		for dx := -5; dx <= 5; dx++ {
 			tile := utils.Vec2i{X: center.X + dx, Y: center.Y + dy}
-			if max(abs(dx), abs(dy)) == 5 && s.Chunks.CanPlaceSite(tile) && s.Chunks.PlaceSite(tile, data.Blueprint_Planks) {
+			if max(abs(dx), abs(dy)) == 5 && s.Chunks.CanPlaceSite(tile) && s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall) {
 				walls = append(walls, tile)
 			}
 		}
@@ -136,8 +137,8 @@ func TestColonistsWallingARoomInTogetherDontGetStuck(t *testing.T) {
 func TestAColonistWhoseSiteIsHiddenFromWhereItStandsFindsSomewhereElse(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 8)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(site, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(site, data.Item_Wood, wallCost(t))
 	live(t, s, 1, func() bool { return false })
 	job := colonistJob(s, colonist)
 	stand := job.Stand
@@ -147,7 +148,7 @@ func TestAColonistWhoseSiteIsHiddenFromWhereItStandsFindsSomewhereElse(t *testin
 
 	between := utils.TilesAlongSegment(utils.TilePosToWorldPos(stand), utils.TilePosToWorldPos(site))
 	for _, tile := range between[1 : len(between)-1] {
-		s.Chunks.PlaceTile(tile, data.Tile_Planks)
+		s.Chunks.PlaceTile(tile, data.Tile_WoodWall)
 	}
 	if _, sees := s.ECS.AimedTileInReach(utils.TilePosToWorldPos(stand), utils.TilePosToWorldPos(site), data.PlayerBuildRangeTiles); sees {
 		t.Fatal("the walls didn't hide the site")
@@ -161,7 +162,7 @@ func TestAnIdleColonistStepsOffASite(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	tile := colonistTile(t, s, colonist)
 	s.ECS.MarkArea(data.Area_Home, tile, tile, false)
-	if !s.Chunks.PlaceSite(tile, data.Blueprint_Planks) {
+	if !s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall) {
 		t.Fatal("couldn't place a site under the colonist")
 	}
 
@@ -180,10 +181,10 @@ func TestAColonistDoesntStandOnASiteToWorkOnAnother(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 5)
 	for dx := range 5 {
-		s.Chunks.PlaceSite(utils.Vec2i{X: row.X + dx, Y: row.Y}, data.Blueprint_Planks)
+		s.Chunks.PlaceSite(utils.Vec2i{X: row.X + dx, Y: row.Y}, data.Blueprint_WoodWall)
 	}
 	target := utils.Vec2i{X: row.X + 3, Y: row.Y}
-	s.Chunks.DeliverToSite(target, data.Item_Wood, planksCost(t))
+	s.Chunks.DeliverToSite(target, data.Item_Wood, wallCost(t))
 	testutil.SetPos(t, s.ECS, colonist, utils.TilePosToWorldPos(row))
 
 	live(t, s, 1, func() bool { return false })
@@ -202,8 +203,8 @@ func TestTwoColonistsDontPickTheSameSpotToStandOn(t *testing.T) {
 	spot := row
 	for _, dx := range []int{1, 2} {
 		tile := utils.Vec2i{X: row.X + dx, Y: row.Y}
-		s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
-		s.Chunks.DeliverToSite(tile, data.Item_Wood, planksCost(t))
+		s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall)
+		s.Chunks.DeliverToSite(tile, data.Item_Wood, wallCost(t))
 	}
 	testutil.SetPos(t, s.ECS, a, utils.TilePosToWorldPos(spot))
 	b := anotherColonist(t, s, colony, a)
@@ -225,10 +226,10 @@ func TestASiteWithOnlySitesAroundItIsStillBuiltFromOne(t *testing.T) {
 	center := utils.Vec2i{X: corner.X + r, Y: corner.Y + r}
 	for dy := range 2*r + 1 {
 		for dx := range 2*r + 1 {
-			s.Chunks.PlaceSite(utils.Vec2i{X: corner.X + dx, Y: corner.Y + dy}, data.Blueprint_Planks)
+			s.Chunks.PlaceSite(utils.Vec2i{X: corner.X + dx, Y: corner.Y + dy}, data.Blueprint_WoodWall)
 		}
 	}
-	s.Chunks.DeliverToSite(center, data.Item_Wood, planksCost(t))
+	s.Chunks.DeliverToSite(center, data.Item_Wood, wallCost(t))
 
 	if !live(t, s, 30*data.TPS, isBuilt(s, center)) {
 		t.Fatalf("the colonist didn't build the site in the middle, it's %v", colonistState(s, colonist))
@@ -250,8 +251,8 @@ func TestAColonistLeaningOntoTheSiteItsBuildingMovesOffItToFinish(t *testing.T) 
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 2)
 	site := utils.Vec2i{X: row.X + 1, Y: row.Y}
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(site, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(site, data.Item_Wood, wallCost(t))
 	leanOnto(t, s, colonist, row, site)
 
 	if !live(t, s, 20*data.TPS, isBuilt(s, site)) {
@@ -263,8 +264,8 @@ func TestAnIdleColonistLeaningOntoASiteMovesOffIt(t *testing.T) {
 	s, colony, builder := colonistAtWork(t)
 	row := openRow(t, s, builder, 2)
 	site := utils.Vec2i{X: row.X + 1, Y: row.Y}
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(site, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(site, data.Item_Wood, wallCost(t))
 	idle := anotherColonist(t, s, colony, builder)
 	withoutWood(t, s, idle)
 	leanOnto(t, s, idle, row, site)

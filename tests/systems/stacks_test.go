@@ -32,7 +32,7 @@ func pickUpWood(t *testing.T, x *ecs.ECSContainer, player common.EntityId) bool 
 	return given
 }
 
-func TestPlanksStackUpToAHundredPerSlot(t *testing.T) {
+func TestWoodStacksUpToAHundredPerSlot(t *testing.T) {
 	x, player, _, _, _ := newArmedPlayer(t)
 	for range 101 {
 		if !pickUpWood(t, x, player) {

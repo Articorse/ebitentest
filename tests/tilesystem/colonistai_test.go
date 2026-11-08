@@ -111,6 +111,7 @@ func live(t *testing.T, s *testutil.Session, ticks int, done func() bool) bool {
 			t.Fatal(err)
 		}
 		touchTerrain(t, s)
+		s.ECS.ClearExhaustedHarvest()
 		s.Tick(1)
 		if done() {
 			return true
@@ -120,7 +121,7 @@ func live(t *testing.T, s *testutil.Session, ticks int, done func() bool) bool {
 }
 
 func isBuilt(s *testutil.Session, tile utils.Vec2i) func() bool {
-	return func() bool { return currentTile(s, tile) == data.Tile_Planks }
+	return func() bool { return currentTile(s, tile) == data.Tile_WoodWall }
 }
 
 func colonistState(s *testutil.Session, colonist common.EntityId) inputsources.ColonistState {
@@ -145,8 +146,8 @@ func TestAColonistDeliversToAndBuildsTheClosestBlueprintFirst(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	near := groundAway(t, s, colonist, 8)
 	far := groundAway(t, s, colonist, 16, near)
-	s.Chunks.PlaceSite(far, data.Blueprint_Planks)
-	s.Chunks.PlaceSite(near, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(far, data.Blueprint_WoodWall)
+	s.Chunks.PlaceSite(near, data.Blueprint_WoodWall)
 
 	if !live(t, s, 30*data.TPS, isBuilt(s, near)) {
 		t.Fatalf("the colonist didn't build the closer blueprint, it's %v", colonistState(s, colonist))
@@ -157,7 +158,7 @@ func TestAColonistDeliversToAndBuildsTheClosestBlueprintFirst(t *testing.T) {
 	if !live(t, s, 30*data.TPS, isBuilt(s, far)) {
 		t.Fatal("the colonist didn't go on to build the further blueprint")
 	}
-	if woodCarried(s, colonist) != data.ColonistStartingWood-2*planksCost(t) {
+	if woodCarried(s, colonist) != data.ColonistStartingWood-2*wallCost(t) {
 		t.Fatalf("the colonist has %d wood left, want what both blueprints cost taken from its %d", woodCarried(s, colonist), data.ColonistStartingWood)
 	}
 	live(t, s, 2*data.TPS, func() bool { return false })
@@ -179,9 +180,9 @@ func TestBuildingOutweighsDeliveringButNotMuchFurtherAway(t *testing.T) {
 			s, _, colonist := colonistAtWork(t)
 			blueprint := groundAway(t, s, colonist, c.toDeliver)
 			supplied := groundAway(t, s, colonist, c.toBuild, blueprint)
-			s.Chunks.PlaceSite(blueprint, data.Blueprint_Planks)
-			s.Chunks.PlaceSite(supplied, data.Blueprint_Planks)
-			s.Chunks.DeliverToSite(supplied, data.Item_Wood, planksCost(t))
+			s.Chunks.PlaceSite(blueprint, data.Blueprint_WoodWall)
+			s.Chunks.PlaceSite(supplied, data.Blueprint_WoodWall)
+			s.Chunks.DeliverToSite(supplied, data.Item_Wood, wallCost(t))
 
 			live(t, s, 1, func() bool { return false })
 			want := inputsources.Colonist_Deliver
@@ -239,7 +240,7 @@ func TestAColonistLeavesBlueprintsItCantFullySupplyOrReachAlone(t *testing.T) {
 		for dx := -1; dx <= 1; dx++ {
 			if wall := (utils.Vec2i{X: walled.X + dx, Y: walled.Y + dy}); wall != walled {
 				s.Chunks.DamageTile(wall, 1000)
-				if !s.Chunks.PlaceTile(wall, data.Tile_Planks) && !s.Chunks.IsOpaqueTile(wall) {
+				if !s.Chunks.PlaceTile(wall, data.Tile_WoodWall) && !s.Chunks.IsOpaqueTile(wall) {
 					t.Fatalf("couldn't wall in the blueprint at %v", wall)
 				}
 			}
@@ -282,7 +283,7 @@ func TestAColonistLeavesBlueprintsOutsideTheColonyAlone(t *testing.T) {
 	}) {
 		t.Fatal("there's no ground to build on just outside the colony")
 	}
-	s.Chunks.PlaceSite(outside, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(outside, data.Blueprint_WoodWall)
 
 	live(t, s, 5*data.TPS, func() bool { return false })
 	if site, ok := s.Chunks.Site(outside); !ok || !site.IsBlueprint() || colonistState(s, colonist) != inputsources.Colonist_Idle {
@@ -293,23 +294,23 @@ func TestAColonistLeavesBlueprintsOutsideTheColonyAlone(t *testing.T) {
 func TestAColonistDeliversAllThatsNeededAtOnce(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 8)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
 	if !live(t, s, 30*data.TPS, func() bool { state, _ := s.Chunks.Site(site); return !state.IsBlueprint() }) {
 		t.Fatal("the colonist never delivered to the blueprint")
 	}
-	if state, _ := s.Chunks.Site(site); state.Delivered[0].Count != planksCost(t) {
-		t.Fatalf("the colonist's first delivery was %d wood, want all %d at once", state.Delivered[0].Count, planksCost(t))
+	if state, _ := s.Chunks.Site(site); state.Delivered[0].Count != wallCost(t) {
+		t.Fatalf("the colonist's first delivery was %d wood, want all %d at once", state.Delivered[0].Count, wallCost(t))
 	}
 }
 
 func TestAColonistStandingOnASiteStepsOffToFinishIt(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := colonistTile(t, s, colonist)
-	if !s.Chunks.PlaceSite(site, data.Blueprint_Planks) {
+	if !s.Chunks.PlaceSite(site, data.Blueprint_WoodWall) {
 		t.Fatal("couldn't place a blueprint under the colonist")
 	}
-	s.Chunks.DeliverToSite(site, data.Item_Wood, planksCost(t))
+	s.Chunks.DeliverToSite(site, data.Item_Wood, wallCost(t))
 
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
 		t.Fatal("the colonist never built the site it was standing on")
@@ -322,7 +323,7 @@ func TestAColonistStandingOnASiteStepsOffToFinishIt(t *testing.T) {
 func TestAColonistThatNoLongerHasEnoughGivesUp(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 12)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	live(t, s, 2, func() bool { return false })
 	if colonistState(s, colonist) != inputsources.Colonist_Deliver {
 		t.Fatal("the colonist didn't set out to deliver")
@@ -330,7 +331,7 @@ func TestAColonistThatNoLongerHasEnoughGivesUp(t *testing.T) {
 
 	inv, _ := s.ECS.Inventories.Get(colonist)
 	wood, _ := inv.Slot(0)
-	for range data.ColonistStartingWood - planksCost(t) + 1 {
+	for range data.ColonistStartingWood - wallCost(t) + 1 {
 		if err := s.ECS.ConsumeItem(wood); err != nil {
 			t.Fatal(err)
 		}
@@ -344,7 +345,7 @@ func TestAColonistThatNoLongerHasEnoughGivesUp(t *testing.T) {
 func TestWhatAColonistIsDoingIsSaved(t *testing.T) {
 	s, colony, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 12)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	live(t, s, 2, func() bool { return false })
 
 	members, err := s.ECS.GetCompositionComponents(colonist)
@@ -357,7 +358,7 @@ func TestWhatAColonistIsDoingIsSaved(t *testing.T) {
 		t.Fatal("the colonist's input wasn't saved")
 	}
 	p, ok := in.Params().(*inputsources.InputColonistParams)
-	want := []inputsources.JobStop{{Action: inputsources.Stop_Deliver, Tile: site, Kind: data.Item_Wood, Count: planksCost(t)}}
+	want := []inputsources.JobStop{{Action: inputsources.Stop_Deliver, Tile: site, Kind: data.Item_Wood, Count: wallCost(t)}}
 	if !ok || p.Colony != colony || p.State != inputsources.Colonist_Deliver || !slices.Equal(p.Stops, want) {
 		t.Fatalf("after loading, the colonist is %+v, want delivering to %v for colony %d", p, site, colony)
 	}
@@ -367,14 +368,14 @@ func TestAColonistLeavesSitesOffHomeAlone(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	away := groundAway(t, s, colonist, 8)
 	s.ECS.MarkArea(data.Area_Home, away, away, false)
-	s.Chunks.PlaceSite(away, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(away, data.Blueprint_WoodWall)
 
 	live(t, s, 3*data.TPS, func() bool { return false })
 	if site, ok := s.Chunks.Site(away); !ok || !site.IsBlueprint() || colonistState(s, colonist) != inputsources.Colonist_Idle {
 		t.Fatal("the colonist went for a blueprint off home")
 	}
 	further := groundAway(t, s, colonist, 14, away)
-	s.Chunks.PlaceSite(further, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(further, data.Blueprint_WoodWall)
 	if !live(t, s, 30*data.TPS, isBuilt(s, further)) {
 		t.Fatal("the colonist didn't build a blueprint on home further than one off it")
 	}
@@ -387,7 +388,7 @@ func TestAColonistLeavesSitesOffHomeAlone(t *testing.T) {
 func TestAColonistStopsWhenItsSiteIsTakenOffHome(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	site := groundAway(t, s, colonist, 12)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	live(t, s, 2, func() bool { return false })
 	if colonistState(s, colonist) != inputsources.Colonist_Deliver {
 		t.Fatal("the colonist didn't set out to deliver")
@@ -420,16 +421,16 @@ func TestAColonistGoesPastTheClosestBlueprintsWhenItCantGetToThem(t *testing.T) 
 	for dy := -r; dy <= r; dy++ {
 		for dx := -r; dx <= r; dx++ {
 			if max(utils.AbsInt(dx), utils.AbsInt(dy)) == r {
-				s.Chunks.PlaceTile(utils.Vec2i{X: room.X + dx, Y: room.Y + dy}, data.Tile_Planks)
+				s.Chunks.PlaceTile(utils.Vec2i{X: room.X + dx, Y: room.Y + dy}, data.Tile_WoodWall)
 			}
 		}
 	}
 	sealed := []utils.Vec2i{room, {X: room.X - 1, Y: room.Y}, {X: room.X + 1, Y: room.Y}}
 	for _, tile := range sealed {
-		s.Chunks.PlaceSite(tile, data.Blueprint_Planks)
+		s.Chunks.PlaceSite(tile, data.Blueprint_WoodWall)
 	}
 	outside := groundAway(t, s, colonist, 16, room)
-	s.Chunks.PlaceSite(outside, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(outside, data.Blueprint_WoodWall)
 
 	if !live(t, s, 30*data.TPS, isBuilt(s, outside)) {
 		t.Fatal("the colonist didn't build the blueprint it could get to")
@@ -476,11 +477,11 @@ func TestAColonistChoosesTheBlueprintClosestToWalkToOfTheClosestFew(t *testing.T
 	}
 	testutil.SetPos(t, s.ECS, colonist, utils.TilePosToWorldPos(self))
 	for y := self.Y - half; y <= self.Y+half; y++ {
-		s.Chunks.PlaceTile(utils.Vec2i{X: self.X + 5, Y: y}, data.Tile_Planks)
+		s.Chunks.PlaceTile(utils.Vec2i{X: self.X + 5, Y: y}, data.Tile_WoodWall)
 	}
 	behind, open := utils.Vec2i{X: self.X + 6, Y: self.Y}, utils.Vec2i{X: self.X - 8, Y: self.Y}
-	s.Chunks.PlaceSite(behind, data.Blueprint_Planks)
-	s.Chunks.PlaceSite(open, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(behind, data.Blueprint_WoodWall)
+	s.Chunks.PlaceSite(open, data.Blueprint_WoodWall)
 
 	if !live(t, s, 30*data.TPS, isBuilt(s, open)) {
 		t.Fatal("the colonist didn't build the blueprint in the open")

@@ -481,6 +481,8 @@ func (g *game) tick() {
 	if err := g.ecs.RemoveScheduledEntities(); err != nil {
 		log.Println("error while removing scheduled entities: ", err)
 	}
+	// After what's removed lays down what it held, which can keep the harvest area there
+	g.ecs.ClearExhaustedHarvest()
 
 	if g.showColliders {
 		g.touching = touchingCollidersOf(physicsCollisions, tileCollisions, damageCollisions, terrainDamageCollisions)
@@ -920,9 +922,7 @@ func (g *game) worldImage(screen *ebiten.Image) *ebiten.Image {
 func (g *game) drawWorld(world *ebiten.Image) {
 	world.Fill(color.RGBA{0, 0, 0, 255})
 
-	if err := tilesystem.DrawChunks(world, g.ecs.Camera, g.chunkContainer); err != nil {
-		log.Println("error while drawing chunks: ", err)
-	}
+	tilesystem.DrawChunks(world, g.ecs.Camera, g.chunkContainer)
 
 	// On the ground, under what's on it and the light and fog, except while building or marking out areas, when it's
 	// drawn above the fog with them

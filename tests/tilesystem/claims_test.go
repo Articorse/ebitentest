@@ -73,7 +73,7 @@ func TestASiteBeingFetchedForIsLeftToTheColonistFetching(t *testing.T) {
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, fetcher, tile)
 	site := groundAway(t, s, fetcher, 5, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	live(t, s, 2, func() bool { return false })
 	if colonistState(s, fetcher) != inputsources.Colonist_Fetch {
 		t.Fatalf("the colonist didn't go to fetch, it's %v", colonistState(s, fetcher))
@@ -102,7 +102,7 @@ func TestAColonistFinishesFellingBeforeTurningToABlueprint(t *testing.T) {
 	}
 
 	site := groundAway(t, s, colonist, 3, tree)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	turned := false
 	if !live(t, s, 20*data.TPS, func() bool {
 		turned = turned || (isTree(s, tree) && colonistState(s, colonist) != inputsources.Colonist_Chop)
@@ -123,21 +123,21 @@ func TestAColonistDeliversWhatItGotWhenSomeoneTookPartOfWhatItWasFetching(t *tes
 	tile := storageSpot(t, s, colonist, 10, 1, 1)
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
-	s.Chunks.SetGroundStack(tile, groundWood(planksCost(t)))
+	s.Chunks.SetGroundStack(tile, groundWood(wallCost(t)))
 	site := groundAway(t, s, colonist, 5, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	live(t, s, 2, func() bool { return false })
 	if colonistState(s, colonist) != inputsources.Colonist_Fetch {
 		t.Fatalf("the colonist didn't go to fetch, it's %v", colonistState(s, colonist))
 	}
 
-	s.Chunks.SetGroundStack(tile, groundWood(planksCost(t)-1))
+	s.Chunks.SetGroundStack(tile, groundWood(wallCost(t)-1))
 	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) > 0 }) {
 		t.Fatal("the colonist didn't pick up what was left")
 	}
 	live(t, s, 1, func() bool { return false })
 	job := colonistJob(s, colonist)
-	if want := planksCost(t) - 1; job.State != inputsources.Colonist_Fetch || len(job.Stops) != 1 || job.Stops[0].Action != inputsources.Stop_Deliver || job.Stops[0].Count != want {
+	if want := wallCost(t) - 1; job.State != inputsources.Colonist_Fetch || len(job.Stops) != 1 || job.Stops[0].Action != inputsources.Stop_Deliver || job.Stops[0].Count != want {
 		t.Fatalf("the colonist is on %v, want delivering the %d it got", job.Stops, want)
 	}
 	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == 0 }) {
@@ -158,7 +158,7 @@ func TestWhatWasFetchedForASiteThatsGoneIsPutBack(t *testing.T) {
 	markStorage(t, s, false, tile)
 	all := woodOntoStorage(t, s, colonist, tile)
 	site := groundAway(t, s, colonist, 12, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) > 0 }) {
 		t.Fatalf("the colonist didn't fetch, it's %v", colonistState(s, colonist))
 	}
@@ -179,7 +179,7 @@ func TestAColonistHaulsOffASiteOntoStorageInOneGo(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 8, 1, 1)
 	markStorage(t, s, false, tile)
 	site := groundAway(t, s, colonist, 5, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	s.Chunks.SetGroundStack(site, groundTorches(3))
 
 	live(t, s, 2, func() bool { return false })
@@ -237,9 +237,9 @@ func TestAColonistFetchesFromSeveralStorageTilesInOneGo(t *testing.T) {
 	markStorage(t, s, false, a, b)
 	withoutWood(t, s, colonist)
 	s.Chunks.SetGroundStack(a, groundWood(1))
-	s.Chunks.SetGroundStack(b, groundWood(planksCost(t)-1))
+	s.Chunks.SetGroundStack(b, groundWood(wallCost(t)-1))
 	site := groundAway(t, s, colonist, 10, a, b)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
 	live(t, s, 1, func() bool { return false })
 	job := colonistJob(s, colonist)
@@ -249,8 +249,8 @@ func TestAColonistFetchesFromSeveralStorageTilesInOneGo(t *testing.T) {
 	if !live(t, s, 20*data.TPS, func() bool { return len(colonistJob(s, colonist).Stops) == 2 }) {
 		t.Fatal("the colonist didn't pick up from the first tile")
 	}
-	if last := colonistJob(s, colonist).Stops[1]; last.Count != planksCost(t) {
-		t.Fatalf("after the first tile the colonist is to deliver %d, want all %d", last.Count, planksCost(t))
+	if last := colonistJob(s, colonist).Stops[1]; last.Count != wallCost(t) {
+		t.Fatalf("after the first tile the colonist is to deliver %d, want all %d", last.Count, wallCost(t))
 	}
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
 		t.Fatalf("the colonist didn't build the site, it's %v", colonistState(s, colonist))
@@ -268,7 +268,7 @@ func TestAColonistDoesntFetchWhatItCantCarry(t *testing.T) {
 		t.Fatal(err)
 	}
 	site := groundAway(t, s, colonist, 8, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
 	live(t, s, 3*data.TPS, func() bool { return false })
 	if state := colonistState(s, colonist); state == inputsources.Colonist_Fetch || woodCarried(s, colonist) != 0 {
@@ -282,7 +282,7 @@ func TestAColonistOnlyHaulsOntoStorageWhatThereIsRoomFor(t *testing.T) {
 	markStorage(t, s, false, tile)
 	s.Chunks.SetGroundStack(tile, groundTorches(98))
 	site := groundAway(t, s, colonist, 5, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	s.Chunks.SetGroundStack(site, groundTorches(3))
 
 	live(t, s, 1, func() bool { return false })
@@ -322,11 +322,11 @@ func TestOnlyOneColonistBuildsOrClearsASite(t *testing.T) {
 	markStorage(t, s, false, tile)
 	cleared := groundAway(t, s, a, 5, tile)
 	supplied := groundAway(t, s, a, 5, tile, cleared)
-	s.Chunks.PlaceSite(cleared, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(cleared, data.Blueprint_WoodWall)
 	s.Chunks.SetGroundStack(cleared, groundTorches(3))
-	s.Chunks.PlaceSite(supplied, data.Blueprint_Planks)
-	s.Chunks.DeliverToSite(supplied, data.Item_Wood, planksCost(t))
-	s.Chunks.DeliverToSite(cleared, data.Item_Wood, planksCost(t))
+	s.Chunks.PlaceSite(supplied, data.Blueprint_WoodWall)
+	s.Chunks.DeliverToSite(supplied, data.Item_Wood, wallCost(t))
+	s.Chunks.DeliverToSite(cleared, data.Item_Wood, wallCost(t))
 	b := anotherColonist(t, s, colony, a)
 	c := anotherColonist(t, s, colony, a)
 
@@ -350,12 +350,12 @@ func TestAColonistOnlyPutsAwayWhatSitesPlacedOnItsWayDontNeed(t *testing.T) {
 	}
 
 	site := groundAway(t, s, colonist, 20, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	if !live(t, s, 20*data.TPS, func() bool { _, n := onGround(s, tile); return n > 0 }) {
 		t.Fatal("the colonist didn't put anything away")
 	}
-	if _, n := onGround(s, tile); n != data.ColonistStartingWood-planksCost(t) {
-		t.Fatalf("the colonist put away %d wood, want all but the %d the new site needs", n, planksCost(t))
+	if _, n := onGround(s, tile); n != data.ColonistStartingWood-wallCost(t) {
+		t.Fatalf("the colonist put away %d wood, want all but the %d the new site needs", n, wallCost(t))
 	}
 }
 
@@ -365,14 +365,14 @@ func TestAColonistsDebugLinesShowItsJobAndWhatItCarries(t *testing.T) {
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
 	site := groundAway(t, s, colonist, 5, tile)
-	s.Chunks.PlaceSite(site, data.Blueprint_Planks)
+	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	live(t, s, 1, func() bool { return false })
 
 	lines, ok := inputsources.ColonistDebugLines(colonist, s.ECS)
 	want := []string{
 		fmt.Sprintf("Colonist %d: Fetch", colonist),
-		fmt.Sprintf("> Pick up %d Wood at %d,%d", planksCost(t), tile.X, tile.Y),
-		fmt.Sprintf("  Deliver %d Wood at %d,%d", planksCost(t), site.X, site.Y),
+		fmt.Sprintf("> Pick up %d Wood at %d,%d", wallCost(t), tile.X, tile.Y),
+		fmt.Sprintf("  Deliver %d Wood at %d,%d", wallCost(t), site.X, site.Y),
 	}
 	if !ok || len(lines) < len(want)+2 || !slices.Equal(lines[:len(want)], want) {
 		t.Fatalf("the colonist's debug lines are %q, want them to start %q", lines, want)
