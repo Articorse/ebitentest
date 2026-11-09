@@ -91,6 +91,14 @@ type InputColonistParams struct {
 	// since a path that's never found is searched for until the search gives up. Not saved, so a loaded colonist looks
 	// once.
 	fruitless *planKey
+	// Where it's finishing its site from, as of what the terrain was like when it chose, so that whether it would be
+	// shut in isn't worked out again every tick it's ready to finish. Not saved, so a loaded colonist works it out once.
+	finishing *finishPlan
+}
+
+type finishPlan struct {
+	site, stand  utils.Vec2i
+	sightVersion uint64
 }
 
 // Where it is isn't part of it, since walking can't take it anywhere it couldn't reach before
@@ -133,8 +141,9 @@ func (p *InputColonistParams) Copy() ecs.InputParams {
 // on the closest storage. It sees to its job until it's done or can't be done any more, and only then looks for
 // another. What other colonists' jobs are going to pick up, deliver or put down, and the trees and sites they're
 // felling, building or clearing, are left to them. It acts from where it's in reach and sees the stop's tile, but never
-// from on it, since a tile can't be finished with someone standing in it. What it uses goes on the first hotbar slot
-// as it uses it, and comes off it to build with an empty hand.
+// from on it, since a tile can't be finished with someone standing in it. A site is finished from where finishing it
+// won't shut the colonist in, if it can get there, and not while it would shut another colonist in on the other side.
+// What it uses goes on the first hotbar slot as it uses it, and comes off it to build with an empty hand.
 func ColonistInputSource(
 	entityId common.EntityId,
 	tick uint64,
@@ -169,8 +178,16 @@ func ColonistInputSource(
 
 	stop := p.Stops[0]
 	target := utils.TilePosToWorldPos(stop.Tile)
-	if _, inReach := ecsContainer.AimedTileInReach(selfPos, target, stopRange(stop, constructor)); inReach && self != stop.Tile {
+	finishing := stop.Action == Stop_Build && ecsContainer.FinishesSite(entityId, stop.Tile)
+	if finishing {
+		p.chooseWhereToFinish(entityId, self, constructor, ecsContainer)
+	}
+	_, inReach := ecsContainer.AimedTileInReach(selfPos, target, stopRange(stop, constructor))
+	if inReach && self != stop.Tile && (!finishing || self == p.finishing.stand) {
 		p.path = nil
+		if finishing && p.trapsAnother(entityId, self, stop.Tile, ecsContainer) {
+			return keepOffSites(entityId, selfPos, p.emptyHand(entityId, ecsContainer), ecsContainer), nil
+		}
 		return keepOffSites(entityId, selfPos, p.use(entityId, self, target, ecsContainer), ecsContainer), nil
 	}
 	// What's built after it chose where to stand can hide the stop from there
@@ -187,6 +204,84 @@ func ColonistInputSource(
 		return input, nil
 	}
 	return p.inPassing(entityId, selfPos, constructor, tick, input, ecsContainer), nil
+}
+
+// Finishing the site would shut it in where it stands, so it finishes it from the other side, if it can get to a stand
+// there, and otherwise from where it is
+func (p *InputColonistParams) chooseWhereToFinish(e common.EntityId, self utils.Vec2i, constructor *ecs.Constructor, ecsContainer *ecs.ECSContainer) {
+	terrain := ecsContainer.Terrain()
+	site := p.Stops[0].Tile
+	version, versioned := uint64(0), false
+	if sightTerrain, ok := terrain.(ecs.SightTerrain); ok {
+		version, versioned = sightTerrain.SightVersion(), true
+	}
+	if f := p.finishing; versioned && f != nil && f.site == site && f.sightVersion == version {
+		return
+	}
+
+	p.finishing = &finishPlan{site: site, stand: self, sightVersion: version}
+	if _, enclosed := terrain.Enclosure(self, site, ecsContainer.FactionOf(e), data.ColonistEnclosedTiles); !enclosed {
+		return
+	}
+	first, last, err := ecsContainer.ColonyBounds(p.Colony)
+	if err != nil {
+		return
+	}
+	stop := p.Stops[0]
+	spots := standsFor(e, self, site, stopRange(stop, constructor), othersClaims(e, p.Colony, ecsContainer).stands, first, last, ecsContainer)
+	roomy := roomySpots(e, site, spots, ecsContainer)
+	if len(roomy) == 0 {
+		return
+	}
+	if stand, path, _, ok := walkTo(e, self, site, stopRange(stop, constructor), roomy, false, first, last, ecsContainer); ok {
+		p.Stand, p.finishing.stand = stand, stand
+		p.follow(self, path)
+	}
+}
+
+// Another colonist of the colony would be shut in by finishing the site, on a side of it the builder isn't on, which
+// it waits to leave
+func (p *InputColonistParams) trapsAnother(e common.EntityId, self, site utils.Vec2i, ecsContainer *ecs.ECSContainer) bool {
+	for other, in := range ecs.Query1(&ecsContainer.Inputs, ecs.Without(&ecsContainer.Disabled)) {
+		q, ok := in.Params().(*InputColonistParams)
+		if other == e || !ok || q == nil || q.Colony != p.Colony {
+			continue
+		}
+		pos, err := ecsContainer.WorldPos(other)
+		if err != nil {
+			continue
+		}
+		at := utils.WorldPosToTilePos(pos)
+		tiles, enclosed := ecsContainer.Terrain().Enclosure(at, site, ecsContainer.FactionOf(other), data.ColonistEnclosedTiles)
+		if enclosed && !slices.Contains(tiles, self) {
+			return true
+		}
+	}
+	return false
+}
+
+// The spots that finishing the site from wouldn't shut the colonist in. What's found to be on one side or the other is
+// remembered, so that the spots on the same side aren't looked from again.
+func roomySpots(e common.EntityId, site utils.Vec2i, spots map[utils.Vec2i]bool, ecsContainer *ecs.ECSContainer) map[utils.Vec2i]bool {
+	faction := ecsContainer.FactionOf(e)
+	side := map[utils.Vec2i]bool{}
+	roomy := map[utils.Vec2i]bool{}
+	for t := range spots {
+		if open, known := side[t]; known {
+			if open {
+				roomy[t] = true
+			}
+			continue
+		}
+		tiles, enclosed := ecsContainer.Terrain().Enclosure(t, site, faction, data.ColonistEnclosedTiles)
+		for _, s := range tiles {
+			side[s] = !enclosed
+		}
+		if !enclosed {
+			roomy[t] = true
+		}
+	}
+	return roomy
 }
 
 // Standing still, unless it's on a site, which can't be finished with it there, so it goes to the closest tile that isn't
@@ -452,8 +547,8 @@ func (p *InputColonistParams) headFor(e common.EntityId, self utils.Vec2i, const
 		return false
 	}
 	stop := p.Stops[0]
-	avoid := othersClaims(e, p.Colony, ecsContainer).stands
-	stand, path, _, ok := walkTo(e, self, stop.Tile, stopRange(stop, constructor), avoid, first, last, ecsContainer)
+	spots := standsFor(e, self, stop.Tile, stopRange(stop, constructor), othersClaims(e, p.Colony, ecsContainer).stands, first, last, ecsContainer)
+	stand, path, _, ok := walkTo(e, self, stop.Tile, stopRange(stop, constructor), spots, stop.Action == Stop_Build, first, last, ecsContainer)
 	if ok {
 		p.Stand = stand
 		p.follow(self, path)
@@ -866,8 +961,12 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 		if len(stops) == 0 {
 			continue
 		}
+		spots := standsFor(e, self, cand.target, job.rangeTiles, c.stands, first, last, ecsContainer)
+		if len(spots) == 0 {
+			continue
+		}
 		searched++
-		stand, path, cost, ok := walkTo(e, self, cand.target, job.rangeTiles, c.stands, first, last, ecsContainer)
+		stand, path, cost, ok := walkTo(e, self, cand.target, job.rangeTiles, spots, job.state == Colonist_Construct, first, last, ecsContainer)
 		score := worth(job.state, job.weight, cand.target) - walkCost(cost)
 		if !ok || (found && score <= chosen.score) {
 			continue
@@ -1238,16 +1337,47 @@ func carried(e common.EntityId, kind data.ItemEnum, ecsContainer *ecs.ECSContain
 	return n
 }
 
-// Somewhere the target can be worked on from, the path there and what it costs. A path is given up on after
-// data.PathMaxExpandedTiles, so a target far enough round a maze can be missed.
-func walkTo(
+// The stand spots for the target that the colonist can get to from where it is
+func standsFor(
 	e common.EntityId,
 	self, target utils.Vec2i,
 	rangeTiles int,
 	avoid map[utils.Vec2i]bool,
 	first, last utils.Vec2i,
 	ecsContainer *ecs.ECSContainer,
+) map[utils.Vec2i]bool {
+	inColony := func(t utils.Vec2i) bool {
+		return t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y
+	}
+	spots := standSpots(target, rangeTiles, inColony, avoid, ecsContainer)
+	faction := ecsContainer.FactionOf(e)
+	for t := range spots {
+		if !ecsContainer.Terrain().Reachable(self, t, faction) {
+			delete(spots, t)
+		}
+	}
+	return spots
+}
+
+// One of the spots the target can be worked on from, the path there and what it costs. A site that's finished from
+// there is finished from a spot that it wouldn't shut the colonist in, unless it can't get to one. A path is given up on
+// after data.PathMaxExpandedTiles, so a target far enough round a maze can be missed.
+func walkTo(
+	e common.EntityId,
+	self, target utils.Vec2i,
+	rangeTiles int,
+	spots map[utils.Vec2i]bool,
+	finishes bool,
+	first, last utils.Vec2i,
+	ecsContainer *ecs.ECSContainer,
 ) (stand utils.Vec2i, path []utils.Vec2i, cost int, ok bool) {
+	if finishes {
+		if roomy := roomySpots(e, target, spots, ecsContainer); len(roomy) > 0 && len(roomy) < len(spots) {
+			if stand, path, cost, ok := walkTo(e, self, target, rangeTiles, roomy, false, first, last, ecsContainer); ok {
+				return stand, path, cost, true
+			}
+		}
+	}
 	inColony := func(t utils.Vec2i) bool {
 		return t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y
 	}
@@ -1258,7 +1388,6 @@ func walkTo(
 		}
 		return walkSpeed(t)
 	}
-	spots := standSpots(target, rangeTiles, inColony, avoid, ecsContainer)
 	path, cost, ok = pathfinding.FindTowards(self, target, rangeTiles, func(t utils.Vec2i) bool { return spots[t] }, data.PathMaxExpandedTiles, speed)
 	if !ok {
 		return utils.Vec2i{}, nil, 0, false

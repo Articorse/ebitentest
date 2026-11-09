@@ -175,7 +175,7 @@ func (cc *ChunkContainer) BuildSite(t utils.Vec2i, work int, canFinish bool) (wo
 	}
 
 	maxHealth := cc.siteMaxHealth(def)
-	health := s.health + max(1, maxHealth*work/def.Work())
+	health := s.health + ecs.SiteWorkStep(def, maxHealth, work)
 	if health >= maxHealth && !canFinish {
 		return false, false
 	}

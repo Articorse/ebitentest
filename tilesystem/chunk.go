@@ -29,6 +29,10 @@ type chunk struct {
 	// Every tile's walking speed, worked out when it's first asked for after a tile or feature changes, since paths ask
 	// for it many times over
 	walkSpeeds *[data.ChunkSize * data.ChunkSize]uint8
+	// Which of the chunk's regions each tile is in, -1 where it isn't walked on. Nil until it's asked for after a tile or
+	// feature changes.
+	regionOf *[data.ChunkSize * data.ChunkSize]int32
+	regions  []chunkRegion
 	// Nil until it's asked for after the features change
 	opaqueFeatures map[utils.Vec2i]bool
 	// Whose each door is, who it opens for
@@ -159,6 +163,7 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, layer data.TileLayerE
 	c.terrainModified = true
 	cc.sightVersion++
 	c.walkSpeeds = nil
+	c.regionOf, cc.regionGraph = nil, nil
 
 	cc.redrawAround(t)
 	cc.turnDoorsAround(t)

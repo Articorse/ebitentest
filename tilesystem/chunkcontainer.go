@@ -18,6 +18,8 @@ type ChunkContainer struct {
 	featureAtlas map[data.FeatureEnum]featureDef
 	blueprints   *ecs.BlueprintAtlas
 	sightVersion uint64
+	// Nil until it's asked for after a chunk comes or goes, or a tile or feature changes
+	regionGraph *regionGraph
 	// How far the light of the furthest-reaching feature goes
 	maxLightRange int
 

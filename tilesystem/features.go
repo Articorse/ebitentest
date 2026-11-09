@@ -259,9 +259,13 @@ func (cc *ChunkContainer) PlaceFeature(t utils.Vec2i, f data.FeatureEnum) bool {
 	return true
 }
 
+// A door opening or closing leaves the regions as they were, since a door is its own region however it stands
 func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum) {
 	if cc.featureAtlas[c.features[t]].harvestable {
 		cc.noteHarvested(t)
+	}
+	if cc.featureAtlas[c.features[t]].door == nil || cc.featureAtlas[f].door == nil {
+		c.regionOf, cc.regionGraph = nil, nil
 	}
 	if f == data.Feature_None {
 		delete(c.features, t)

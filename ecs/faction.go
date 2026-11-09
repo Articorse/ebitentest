@@ -36,6 +36,14 @@ func (x *ECSContainer) IsUntargetable(e common.EntityId) bool {
 	return x.untargetable[e]
 }
 
+// Faction_None for an entity without one
+func (x *ECSContainer) FactionOf(e common.EntityId) data.FactionEnum {
+	if f, ok := x.Factions.Get(e); ok {
+		return f.faction
+	}
+	return data.Faction_None
+}
+
 // The closest entity with a body, of a faction hostile to e's, whose tile e's vision sees. Entities are looked at in
 // order, so ties go to the lowest one, and the choice is the same every run.
 func (x *ECSContainer) NearestVisibleHostile(e common.EntityId) (common.EntityId, bool) {

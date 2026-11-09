@@ -676,7 +676,7 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	tile := g.cursorTile()
 	lines := g.tileTooltip(tile)
 	if g.showFPS {
-		lines = append([]string{fmt.Sprintf("Tile %d,%d", tile.X, tile.Y)}, lines...)
+		lines = append(append([]string{fmt.Sprintf("Tile %d,%d", tile.X, tile.Y)}, g.chunkContainer.RegionDebugLines(tile)...), lines...)
 	}
 	if len(lines) == 0 {
 		return nil

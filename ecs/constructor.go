@@ -115,6 +115,20 @@ func (x *ECSContainer) Construct(e common.EntityId, aim utils.Vec2f, all bool) (
 	return true, nil
 }
 
+// Whether the entity's next go at building the site on the tile would finish it
+func (x *ECSContainer) FinishesSite(e common.EntityId, t utils.Vec2i) bool {
+	c, ok := x.Constructors.Get(e)
+	if !ok {
+		return false
+	}
+	site, ok := x.terrain.Site(t)
+	if !ok {
+		return false
+	}
+	def, ok := x.blueprintAtlas.Def(site.Blueprint)
+	return ok && site.Supplied(def) && site.Health+SiteWorkStep(def, site.MaxHealth, c.work) >= site.MaxHealth
+}
+
 // The item on the selected hotbar slot, whether or not it fits in a hand
 func (x *ECSContainer) heldBy(e common.EntityId) (common.EntityId, bool) {
 	inv, ok := x.Inventories.Get(e)

@@ -80,6 +80,12 @@ type Terrain interface {
 	TakeHarvested() []utils.Vec2i
 	// Which way the closed door on the tile runs and whose it is, false without one or while it's open
 	ClosedDoor(t utils.Vec2i) (vertical bool, faction data.FactionEnum, ok bool)
+	// Whether the faction can walk from one tile to the other, going through only its own doors. True where either
+	// isn't walked on, which is left to paths to find out.
+	Reachable(from, to utils.Vec2i, faction data.FactionEnum) bool
+	// The tiles the faction can walk to from the tile, as if the closed one couldn't be walked on, up to limit of them.
+	// Enclosed if they're all there are, and none is next to where the simulation ends, past which they may go on.
+	Enclosure(from, closed utils.Vec2i, faction data.FactionEnum, limit int) (tiles []utils.Vec2i, enclosed bool)
 }
 
 // Implemented by terrains that can answer for many tiles at once, and say when sight and light have to be worked out
@@ -132,6 +138,11 @@ func (x ConstructionSite) Supplied(def BlueprintDef) bool {
 		}
 	}
 	return true
+}
+
+// How far one go of the work builds a site up, which is never nothing
+func SiteWorkStep(def BlueprintDef, maxHealth, work int) int {
+	return max(1, maxHealth*work/def.Work())
 }
 
 func (x ConstructionSite) Needs(item data.ItemEnum, def BlueprintDef) int {
@@ -202,6 +213,10 @@ func (noTerrain) TakeHarvested() []utils.Vec2i                          { return
 func (noTerrain) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
 	return false, data.Faction_None, false
 }
+func (noTerrain) Reachable(utils.Vec2i, utils.Vec2i, data.FactionEnum) bool { return true }
+func (noTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, int) ([]utils.Vec2i, bool) {
+	return nil, false
+}
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {
 	x.terrain = terrain
@@ -236,10 +251,7 @@ func (x *ECSContainer) SightTile(pos utils.Vec2f) utils.Vec2i {
 // As WalkSpeedPercent, but 0 on a closed door that won't open for the entity, which is any that isn't of its faction.
 // One without a faction is no one's.
 func (x *ECSContainer) WalkSpeedOf(e common.EntityId) func(utils.Vec2i) int {
-	faction := data.Faction_None
-	if f, ok := x.Factions.Get(e); ok {
-		faction = f.Faction()
-	}
+	faction := x.FactionOf(e)
 	return func(t utils.Vec2i) int {
 		if _, door, ok := x.terrain.ClosedDoor(t); ok && (door == data.Faction_None || door != faction) {
 			return 0

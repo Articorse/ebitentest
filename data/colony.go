@@ -45,6 +45,10 @@ const (
 	ColonistsPerColony = 5
 	// Half the player's, so that what they're doing can be followed
 	ColonistAcceleration = DefaultAcceleration / 2.0
+	// Finishing a site that would shut a colonist into fewer tiles than this, with no other way out than through the
+	// site, is a trap, so the builder finishes it from the other side when it can get there, and waits while another
+	// colonist is on the side it isn't on
+	ColonistEnclosedTiles = 1000
 	// How far an idle colonist standing on a site looks for somewhere off it
 	ColonistStepOffRangeTiles = 3
 	// How far around the first stack a colonist gathers others of its kind in the same go
