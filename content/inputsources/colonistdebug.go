@@ -26,6 +26,10 @@ var stopActionNames = map[StopAction]string{
 	Stop_MoveOff: "Move off",
 }
 
+var emergencyNames = map[EmergencyKind]string{
+	Emergency_GetOut: "Getting out of the way of",
+}
+
 // Its job and what it's carrying, for the debug overlay. False for anything that isn't a colonist.
 func ColonistDebugLines(e common.EntityId, ecsContainer *ecs.ECSContainer) ([]string, bool) {
 	in, ok := ecsContainer.Inputs.Get(e)
@@ -68,6 +72,20 @@ func ColonistDebugLines(e common.EntityId, ecsContainer *ecs.ECSContainer) ([]st
 			name = def.Name()
 		}
 		lines = append(lines, fmt.Sprintf("In passing: %s %d %s at %d,%d on tick %d", stopActionNames[s.Action], s.Count, name, s.Tile.X, s.Tile.Y, p.InPassingTick))
+	}
+	if em := p.Emergency; em.Kind != Emergency_None {
+		line := fmt.Sprintf("Emergency: %s %d,%d", emergencyNames[em.Kind], em.Tile.X, em.Tile.Y)
+		if em.Until != 0 {
+			line += fmt.Sprintf(" until tick %d", em.Until)
+		}
+		lines = append(lines, line)
+	}
+	if j := p.Paused; j != nil {
+		line := fmt.Sprintf("Paused: %s about %d,%d", colonistStateNames[j.State], j.Subject.X, j.Subject.Y)
+		if j.Claimed {
+			line += fmt.Sprintf(", claimed until tick %d", j.ClaimUntil)
+		}
+		lines = append(lines, line)
 	}
 	if p.Last != Colonist_Idle {
 		lines = append(lines, fmt.Sprintf("Last: %s about %d,%d", colonistStateNames[p.Last], p.LastSubject.X, p.LastSubject.Y))

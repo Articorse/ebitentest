@@ -85,6 +85,9 @@ type InputColonistParams struct {
 	// What it last did on its way somewhere, and when, to show what it does in passing
 	InPassing     JobStop
 	InPassingTick uint64
+	// What it's dropped everything for, with the job it was on waiting until it's over
+	Emergency Emergency
+	Paused    *PausedJob
 
 	walk
 	// What it last found no work it could get to among, which isn't looked through again until something changes,
@@ -128,6 +131,11 @@ func (p *InputColonistParams) Copy() ecs.InputParams {
 	}
 	c := *p
 	c.Stops = slices.Clone(p.Stops)
+	if p.Paused != nil {
+		paused := *p.Paused
+		paused.Stops = slices.Clone(p.Paused.Stops)
+		c.Paused = &paused
+	}
 	c.path = slices.Clone(p.path)
 	c.fruitless = nil
 	return &c
@@ -143,7 +151,8 @@ func (p *InputColonistParams) Copy() ecs.InputParams {
 // felling, building or clearing, are left to them. It acts from where it's in reach and sees the stop's tile, but never
 // from on it, since a tile can't be finished with someone standing in it. A site is finished from where finishing it
 // won't shut the colonist in, if it can get there, and not while it would shut another colonist in on the other side.
-// What it uses goes on the first hotbar slot as it uses it, and comes off it to build with an empty hand.
+// What it uses goes on the first hotbar slot as it uses it, and comes off it to build with an empty hand. An emergency
+// comes before all of that, and its job waits until it's over, when it carries on with it if it still can.
 func ColonistInputSource(
 	entityId common.EntityId,
 	tick uint64,
@@ -164,6 +173,11 @@ func ColonistInputSource(
 	}
 	self := utils.WorldPosToTilePos(selfPos)
 
+	if p.Emergency.Kind != Emergency_None {
+		if input, ongoing := p.handleEmergency(entityId, selfPos, constructor, tick, ecsContainer); ongoing {
+			return input, nil
+		}
+	}
 	if p.advance(entityId, self, constructor, ecsContainer) {
 		p.NextPlanTick = tick
 	}
@@ -185,7 +199,7 @@ func ColonistInputSource(
 	_, inReach := ecsContainer.AimedTileInReach(selfPos, target, stopRange(stop, constructor))
 	if inReach && self != stop.Tile && (!finishing || self == p.finishing.stand) {
 		p.path = nil
-		if finishing && p.trapsAnother(entityId, self, stop.Tile, ecsContainer) {
+		if finishing && p.shutsInAnother(entityId, self, stop.Tile, tick, ecsContainer) {
 			return keepOffSites(entityId, selfPos, p.emptyHand(entityId, ecsContainer), ecsContainer), nil
 		}
 		return keepOffSites(entityId, selfPos, p.use(entityId, self, target, ecsContainer), ecsContainer), nil
@@ -240,8 +254,9 @@ func (p *InputColonistParams) chooseWhereToFinish(e common.EntityId, self utils.
 }
 
 // Another colonist of the colony would be shut in by finishing the site, on a side of it the builder isn't on, which
-// it waits to leave
-func (p *InputColonistParams) trapsAnother(e common.EntityId, self, site utils.Vec2i, ecsContainer *ecs.ECSContainer) bool {
+// it waits for them to leave, telling them to get out
+func (p *InputColonistParams) shutsInAnother(e common.EntityId, self, site utils.Vec2i, tick uint64, ecsContainer *ecs.ECSContainer) bool {
+	shuts := false
 	for other, in := range ecs.Query1(&ecsContainer.Inputs, ecs.Without(&ecsContainer.Disabled)) {
 		q, ok := in.Params().(*InputColonistParams)
 		if other == e || !ok || q == nil || q.Colony != p.Colony {
@@ -254,10 +269,11 @@ func (p *InputColonistParams) trapsAnother(e common.EntityId, self, site utils.V
 		at := utils.WorldPosToTilePos(pos)
 		tiles, enclosed := ecsContainer.Terrain().Enclosure(at, site, ecsContainer.FactionOf(other), data.ColonistEnclosedTiles)
 		if enclosed && !slices.Contains(tiles, self) {
-			return true
+			q.raise(Emergency_GetOut, site, tick)
+			shuts = true
 		}
 	}
-	return false
+	return shuts
 }
 
 // The spots that finishing the site from wouldn't shut the colonist in. What's found to be on one side or the other is
@@ -657,21 +673,28 @@ func othersClaims(e, colony common.EntityId, ecsContainer *ecs.ECSContainer) cla
 		if q.State != Colonist_Idle {
 			c.stands[q.Stand] = true
 		}
-		for i, s := range q.Stops {
-			switch s.Action {
-			case Stop_PickUp:
-				c.picking[s.Tile] += s.Count
-			case Stop_Deliver:
-				c.delivering[siteNeed{s.Tile, s.Kind}] += s.Count
-			case Stop_PutDown:
-				c.storing[s.Tile] = JobStop{Kind: s.Kind, Count: c.storing[s.Tile].Count + s.Count}
-			}
-			if i == 0 && (s.Action == Stop_Build || s.Action == Stop_Chop || s.Action == Stop_MoveOff || q.State == Colonist_Haul) {
-				c.taken[s.Tile] = true
-			}
+		c.add(q.State, q.Stops)
+		if q.Paused != nil && q.Paused.Claimed {
+			c.add(q.Paused.State, q.Paused.Stops)
 		}
 	}
 	return c
+}
+
+func (c claims) add(state ColonistState, stops []JobStop) {
+	for i, s := range stops {
+		switch s.Action {
+		case Stop_PickUp:
+			c.picking[s.Tile] += s.Count
+		case Stop_Deliver:
+			c.delivering[siteNeed{s.Tile, s.Kind}] += s.Count
+		case Stop_PutDown:
+			c.storing[s.Tile] = JobStop{Kind: s.Kind, Count: c.storing[s.Tile].Count + s.Count}
+		}
+		if i == 0 && (s.Action == Stop_Build || s.Action == Stop_Chop || s.Action == Stop_MoveOff || state == Colonist_Haul) {
+			c.taken[s.Tile] = true
+		}
+	}
 }
 
 func (c claims) unclaimedStack(t utils.Vec2i, ecsContainer *ecs.ECSContainer) int {

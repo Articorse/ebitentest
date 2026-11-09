@@ -49,6 +49,10 @@ const (
 	// site, is a trap, so the builder finishes it from the other side when it can get there, and waits while another
 	// colonist is on the side it isn't on
 	ColonistEnclosedTiles = 1000
+	// How long a colonist that would be shut in gets out of the way for at most, and leaves its job to no one else for,
+	// so that a builder that never finishes doesn't keep it away from its job
+	ColonistGetOutTicks      = 5 * TPS
+	ColonistGetOutClaimTicks = 5 * TPS
 	// How far an idle colonist standing on a site looks for somewhere off it
 	ColonistStepOffRangeTiles = 3
 	// How far around the first stack a colonist gathers others of its kind in the same go

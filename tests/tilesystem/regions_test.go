@@ -1,6 +1,7 @@
 package tilesystem_test
 
 import (
+	"ebittest/content/inputsources"
 	"ebittest/data"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
@@ -176,22 +177,47 @@ func TestABuilderShutInEitherWayFinishesWhereItIs(t *testing.T) {
 	}
 }
 
-func TestABuilderWaitsForAnotherColonistToLeaveWhatItWouldShutIn(t *testing.T) {
+func TestABuilderWaitsForAnotherColonistToGetOutOfWhatItWouldShutIn(t *testing.T) {
 	s, colony, colonist := colonistAtWork(t)
 	middle := doorYard(t, s, colonist)
 	gap := at(middle, 0, 3)
-	roomWithAWallToFinish(t, s, middle, gap)
-	outside := testutil.WorldPos(t, s.ECS, colonist)
+	inside := roomWithAWallToFinish(t, s, middle, gap)
 	live(t, s, 1, func() bool { return false })
 	other := anotherColonist(t, s, colony, colonist)
-	testutil.SetPos(t, s.ECS, other, utils.TilePosToWorldPos(middle))
 
-	if live(t, s, 30*data.TPS, isBuilt(s, gap)) {
-		t.Fatal("the colonist shut the other one in")
+	told := func() bool {
+		em := colonistJob(s, other).Emergency
+		return em.Kind == inputsources.Emergency_GetOut && em.Tile == gap
 	}
-	testutil.SetPos(t, s.ECS, other, outside)
+	if !live(t, s, 10*data.TPS, func() bool {
+		testutil.SetPos(t, s.ECS, other, utils.TilePosToWorldPos(middle))
+		if isBuilt(s, gap)() {
+			t.Fatal("the colonist shut the other one in")
+		}
+		return told()
+	}) {
+		t.Fatal("the other colonist wasn't told to get out of the way of the wall")
+	}
+	until := colonistJob(s, other).Emergency.Until
+	live(t, s, data.TPS, func() bool {
+		testutil.SetPos(t, s.ECS, other, utils.TilePosToWorldPos(middle))
+		if isBuilt(s, gap)() {
+			t.Fatal("the colonist shut the other one in")
+		}
+		return false
+	})
+	if em := colonistJob(s, other).Emergency; em.Until != until {
+		t.Fatalf("being told again put off the end of the emergency from tick %d to %d", until, em.Until)
+	}
 	if !live(t, s, 30*data.TPS, isBuilt(s, gap)) {
-		t.Fatal("the colonist didn't finish the wall once the other one was out")
+		t.Fatal("the colonist didn't finish the wall once the other one could get out")
+	}
+	if inside(colonistTile(t, s, other)) {
+		t.Fatal("the other colonist was shut in")
+	}
+	live(t, s, 1, func() bool { return false })
+	if em := colonistJob(s, other).Emergency; em.Kind != inputsources.Emergency_None {
+		t.Fatalf("the other colonist is still in an emergency, %+v, once the wall's built", em)
 	}
 }
 

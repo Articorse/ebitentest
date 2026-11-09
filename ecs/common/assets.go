@@ -26,6 +26,8 @@ const (
 	AssetImageInventoryPanel ImageAssetTag = "inventory_panel"
 	// A construction site that has some of its materials, but not all
 	AssetImageTileMarker ImageAssetTag = "tile_marker"
+	// Over a colonist dealing with an emergency
+	AssetImageExclamation ImageAssetTag = "exclamation"
 
 	AssetDebug16x16 ImageAssetTag = "debug_16x16"
 )
@@ -36,5 +38,5 @@ var CodeAssetTags = []ImageAssetTag{
 	AssetSheetSlime, AssetImageTree, AssetImageTreeStump, AssetSheetEvilSlime, AssetSheetBazooka, AssetSheetRocket,
 	AssetSheetExplosion, AssetSheetGun, AssetSheetBullet, AssetImageMattock, AssetImageWood, AssetSheetTorchPlaced,
 	AssetImageAxe, AssetImageSlash, AssetImagePlatform, AssetImageSlot, AssetImageSlotHighlight,
-	AssetImageInventoryPanel, AssetImageTileMarker, AssetSheetGoldSlime, AssetDebug16x16,
+	AssetImageInventoryPanel, AssetImageTileMarker, AssetSheetGoldSlime, AssetDebug16x16, AssetImageExclamation,
 }

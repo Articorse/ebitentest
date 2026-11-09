@@ -948,6 +948,10 @@ func (g *game) drawWorld(world *ebiten.Image) {
 			g.ecs.ScheduleRemoveEntity(missingExpectedComponentError.Entity)
 		}
 	}
+	inEmergency := func(e common.EntityId) bool { return inputsources.InEmergency(e, g.ecs) }
+	if err := drawsystem.DrawAlerts(world, g.ecs.Camera, inEmergency, g.ecs, g.assetmanager); err != nil {
+		log.Println("error while drawing emergencies: ", err)
+	}
 
 	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok && !g.fullBright {
 		g.lightOverlay.Draw(world, g.ecs.Camera, vision.Light())
