@@ -25,6 +25,8 @@ type Planet struct {
 	// At the origin's latitude; it's nothing far south and twice as much far north
 	SeasonSwing   float64
 	DayNightSwing float64
+	// Per tile, the same everywhere and always
+	Atmosphere Air
 }
 
 type planetDto struct {
@@ -37,9 +39,13 @@ type planetDto struct {
 	NoiseSwing    float64 `json:"noiseSwing"`
 	SeasonSwing   float64 `json:"seasonSwing"`
 	DayNightSwing float64 `json:"dayNightSwing"`
+	Atmosphere    []struct {
+		Gas   uint16 `json:"gas"`
+		Grams int64  `json:"grams"`
+	} `json:"atmosphere"`
 }
 
-func LoadPlanetsFromJson(path string) (map[data.PlanetEnum]Planet, error) {
+func LoadPlanetsFromJson(path string, gases map[data.GasEnum]Gas) (map[data.PlanetEnum]Planet, error) {
 	f, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading planets json file: %w", err)
@@ -59,11 +65,22 @@ func LoadPlanetsFromJson(path string) (map[data.PlanetEnum]Planet, error) {
 		case d.GradientTiles <= 0:
 			return nil, fmt.Errorf("planet %d has a gradient of %v tiles, want it positive", d.Id, d.GradientTiles)
 		}
-		planets[id] = Planet{
+		p := Planet{
 			Id: id, Name: d.Name,
 			SpawnCelsius: d.SpawnCelsius, NorthCelsius: d.NorthCelsius, SouthCelsius: d.SouthCelsius,
 			GradientTiles: d.GradientTiles, NoiseSwing: d.NoiseSwing, SeasonSwing: d.SeasonSwing, DayNightSwing: d.DayNightSwing,
 		}
+		for _, a := range d.Atmosphere {
+			gas := data.GasEnum(a.Gas)
+			switch _, known := gases[gas]; {
+			case !known:
+				return nil, fmt.Errorf("planet %d's atmosphere has gas %d, which isn't defined", d.Id, a.Gas)
+			case a.Grams < 0:
+				return nil, fmt.Errorf("planet %d's atmosphere has %d g of gas %d, want it positive", d.Id, a.Grams, a.Gas)
+			}
+			p.Atmosphere[gas] += a.Grams * data.MilligramsPerGram
+		}
+		planets[id] = p
 	}
 	if _, ok := planets[data.DefaultPlanet]; !ok {
 		return nil, fmt.Errorf("the default planet %d isn't defined", data.DefaultPlanet)

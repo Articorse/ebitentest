@@ -7,6 +7,7 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"image/color"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -194,4 +195,50 @@ func fillTiles(dst *ebiten.Image, camera utils.Vec2f, first, last utils.Vec2i, c
 	x, y := topLeft.X, topLeft.Y
 	w, h := float64((last.X-first.X+1)*data.TileSize), float64((last.Y-first.Y+1)*data.TileSize)
 	vector.DrawFilledRect(dst, float32(x), float32(y), float32(w), float32(h), c, false)
+}
+
+// Over every tile with air, from red with little oxygen per tile, through yellow, to green with plenty
+func DrawOxygen(dst *ebiten.Image, camera utils.Vec2f, oxygenAt func(utils.Vec2i) (int64, bool)) {
+	first, last := utils.WorldPosToTilePos(camera), utils.WorldPosToTilePos(camera.Add(ImageSize(dst)))
+	shade := func(t utils.Vec2i) (color.RGBA, bool) {
+		mg, ok := oxygenAt(t)
+		if !ok {
+			return color.RGBA{}, false
+		}
+		return OxygenColor(mg), true
+	}
+	for y := first.Y; y <= last.Y; y++ {
+		// Runs of a colour along the row are drawn as one rectangle, which is far fewer to draw
+		for x := first.X; x <= last.X; x++ {
+			c, ok := shade(utils.Vec2i{X: x, Y: y})
+			if !ok {
+				continue
+			}
+			end := x
+			for end+1 <= last.X {
+				next, ok := shade(utils.Vec2i{X: end + 1, Y: y})
+				if !ok || next != c {
+					break
+				}
+				end++
+			}
+			fillTiles(dst, camera, utils.Vec2i{X: x, Y: y}, utils.Vec2i{X: end, Y: y}, c)
+			x = end
+		}
+	}
+}
+
+// Premultiplied, in steps, so that tiles alike draw as one
+func OxygenColor(mg int64) color.RGBA {
+	const steps = 8
+	f := float64(mg-data.OverlayOxygenRedMg) / float64(data.OverlayOxygenGreenMg-data.OverlayOxygenRedMg)
+	f = math.Round(max(0, min(1, f))*steps) / steps
+	r, g := 1.0, 1.0
+	if f < 0.5 {
+		g = 2 * f
+	} else {
+		r = 2 * (1 - f)
+	}
+	a := float64(data.OverlayOxygenAlpha)
+	return color.RGBA{R: uint8(r * a), G: uint8(g * a), A: uint8(a)}
 }

@@ -2,6 +2,7 @@ package tilesystem
 
 import (
 	"cmp"
+	"ebittest/climate"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/utils"
@@ -48,11 +49,27 @@ const (
 
 type room struct {
 	tiles int
+	air   climate.Air
+	// Of the air, which keeps the last it had once there's none
+	temperature climate.Centicelsius
+	// Loaded from before rooms had air, so that it's taken to have the outdoors' when it next changes
+	unknownAir bool
+}
+
+func anchorTile(pos utils.Vec2i, anchor int32) utils.Vec2i {
+	return utils.Vec2i{X: pos.X*data.ChunkSize + int(anchor)%data.ChunkSize, Y: pos.Y*data.ChunkSize + int(anchor)/data.ChunkSize}
 }
 
 type roomsDto struct {
 	NextId uint64
 	Chunks []roomChunkDto
+	Rooms  []roomDto
+}
+
+type roomDto struct {
+	Id           uint64
+	Air          []int64
+	Centicelsius int32
 }
 
 type roomChunkDto struct {
@@ -147,6 +164,8 @@ func (cc *ChunkContainer) updateRooms() {
 	cc.roomsStale = false
 
 	type node struct {
+		// Its first, where the air it takes in from outdoors is as warm as
+		tile  utils.Vec2i
 		tiles int
 		// How many of its tiles were in each room before
 		was map[uint64]int
@@ -159,7 +178,7 @@ func (cc *ChunkContainer) updateRooms() {
 		p := cc.piecesOf(c)
 		first[pos] = len(nodes)
 		for _, piece := range p.pieces {
-			nodes = append(nodes, node{tiles: piece.tiles, was: map[uint64]int{}})
+			nodes = append(nodes, node{tile: anchorTile(pos, piece.anchor), tiles: piece.tiles, was: map[uint64]int{}})
 		}
 		switch {
 		case c.pieceRooms != nil:
@@ -194,7 +213,7 @@ func (cc *ChunkContainer) updateRooms() {
 		unloaded = append(unloaded, pos)
 		first[pos] = len(nodes)
 		for _, k := range cc.roomChunks[pos].pieces {
-			nodes = append(nodes, node{tiles: k.tiles, was: map[uint64]int{k.room: k.tiles}})
+			nodes = append(nodes, node{tile: anchorTile(pos, k.anchor), tiles: k.tiles, was: map[uint64]int{k.room: k.tiles}})
 		}
 	}
 
@@ -268,6 +287,7 @@ func (cc *ChunkContainer) updateRooms() {
 		room        uint64
 	}
 	claims := []claim{}
+	wasIn := map[int]map[uint64]int{}
 	for _, r := range roots {
 		if !isRoom(r) {
 			continue
@@ -278,6 +298,7 @@ func (cc *ChunkContainer) updateRooms() {
 				was[room] += count
 			}
 		}
+		wasIn[r] = was
 		for room, count := range was {
 			claims = append(claims, claim{root: r, tiles: count, room: room})
 		}
@@ -292,6 +313,7 @@ func (cc *ChunkContainer) updateRooms() {
 			roomOf[c.root], taken[c.room] = c.room, true
 		}
 	}
+	before := cc.rooms
 	cc.rooms = map[uint64]*room{}
 	for _, r := range roots {
 		if !isRoom(r) {
@@ -301,7 +323,7 @@ func (cc *ChunkContainer) updateRooms() {
 			cc.nextRoomId++
 			roomOf[r] = cc.nextRoomId
 		}
-		cc.rooms[roomOf[r]] = &room{tiles: tiles[r]}
+		cc.rooms[roomOf[r]] = cc.airFrom(before, wasIn[r], tiles[r], nodes[members[r][0]].tile)
 	}
 
 	for _, pos := range loaded {
@@ -405,6 +427,9 @@ type enclosedTile struct {
 // just been enclosed, and the walls and doors round them, other than where the no-roof area is
 func (cc *ChunkContainer) TickRooms(x *ecs.ECSContainer) {
 	cc.updateRooms()
+	if x.TickIdx%data.AirStepTicks == 0 {
+		cc.stepAir()
+	}
 	if len(cc.enclosed) == 0 {
 		return
 	}
@@ -517,6 +542,12 @@ func (cc *ChunkContainer) roomsToDto() roomsDto {
 		}
 		dto.Chunks = append(dto.Chunks, d)
 	}
+	for _, id := range slices.Sorted(maps.Keys(cc.rooms)) {
+		r := cc.rooms[id]
+		if !r.unknownAir {
+			dto.Rooms = append(dto.Rooms, roomDto{Id: id, Air: slices.Clone(r.air[:]), Centicelsius: int32(r.temperature)})
+		}
+	}
 	return dto
 }
 
@@ -550,6 +581,21 @@ func (cc *ChunkContainer) LoadRooms() error {
 			cc.rooms[p.Room].tiles += p.Tiles
 		}
 		cc.roomChunks[utils.Vec2i{X: d.X, Y: d.Y}] = k
+	}
+	for _, r := range cc.rooms {
+		r.unknownAir = true
+	}
+	for _, d := range dto.Rooms {
+		r, ok := cc.rooms[d.Id]
+		if !ok {
+			return fmt.Errorf("rooms file has air for room %d, which has no tiles", d.Id)
+		}
+		if len(d.Air) > len(r.air) {
+			return fmt.Errorf("rooms file has %d gases for room %d, want at most %d", len(d.Air), d.Id, len(r.air))
+		}
+		copy(r.air[:], d.Air)
+		r.temperature = climate.Centicelsius(d.Centicelsius)
+		r.unknownAir = false
 	}
 	cc.roomsStale = true
 	return nil

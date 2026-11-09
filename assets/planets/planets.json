@@ -8,7 +8,11 @@
     "gradientTiles": 2000,
     "noiseSwing": 8,
     "seasonSwing": 20,
-    "dayNightSwing": 8
+    "dayNightSwing": 8,
+    "atmosphere": [
+      { "gas": 1, "grams": 900 },
+      { "gas": 2, "grams": 100 }
+    ]
   },
   {
     "id": 2,
@@ -19,6 +23,7 @@
     "gradientTiles": 2000,
     "noiseSwing": 8,
     "seasonSwing": 10,
-    "dayNightSwing": 250
+    "dayNightSwing": 250,
+    "atmosphere": []
   }
 ]

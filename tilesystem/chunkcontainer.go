@@ -46,6 +46,9 @@ type ChunkContainer struct {
 
 	seed   uint64
 	planet climate.Planet
+	gases  map[data.GasEnum]climate.Gas
+	// As of the last tick, for what goes by the time of day without being given it
+	tick   uint64
 	memory memory
 	// The tiles something harvestable's been taken from since they were last looked at for exhausting the harvest area
 	harvested []utils.Vec2i

@@ -72,6 +72,10 @@ func (cc *ChunkContainer) Planet() climate.Planet {
 	return cc.planet
 }
 
+func (cc *ChunkContainer) SetGases(gases map[data.GasEnum]climate.Gas) {
+	cc.gases = gases
+}
+
 // The temperature outdoors on the tile at the tick
 func (cc *ChunkContainer) AmbientTemperature(t utils.Vec2i, tick uint64) climate.Centicelsius {
 	return climate.Ambient(cc.planet, cc.seed, t, tick)

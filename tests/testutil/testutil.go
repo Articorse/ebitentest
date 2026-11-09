@@ -30,6 +30,7 @@ const (
 	BodyAtlasPath    = "assets/bodies/bodies.json"
 	BlueprintsPath   = "assets/blueprints/blueprints.json"
 	PlanetsPath      = "assets/planets/planets.json"
+	GasesPath        = "assets/gases/gases.json"
 	// Small, since every chunk it loads is generated, and chunks are big
 	PlayerLoaderRadius = 1
 	// Fixed rather than random like the game's, so that a failing test fails the same way every time
@@ -38,9 +39,18 @@ const (
 
 var PlayerStart = utils.Vec2f{X: 100, Y: 100}
 
+func Gases(t testing.TB) map[data.GasEnum]climate.Gas {
+	t.Helper()
+	gases, err := climate.LoadGasesFromJson(filepath.Join(RepoRoot(), GasesPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return gases
+}
+
 func Planets(t testing.TB) map[data.PlanetEnum]climate.Planet {
 	t.Helper()
-	planets, err := climate.LoadPlanetsFromJson(filepath.Join(RepoRoot(), PlanetsPath))
+	planets, err := climate.LoadPlanetsFromJson(filepath.Join(RepoRoot(), PlanetsPath), Gases(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,6 +284,7 @@ func StartSession(t testing.TB) *Session {
 		t.Fatal(err)
 	}
 	cc.SetPlanet(planet)
+	cc.SetGases(Gases(t))
 	s := &Session{t: t, ECS: x, Chunks: cc, Resumed: exists}
 	if exists {
 		if err := tilesystem.RecoverChunkFiles(h.Generation); err != nil {

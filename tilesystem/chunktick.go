@@ -14,6 +14,7 @@ import (
 // Every decision here depends only on loader positions, never on when IO finishes,
 // so that the simulation sees the same chunks on the same ticks every run.
 func (cc *ChunkContainer) Tick(ecsCont *ecs.ECSContainer) error {
+	cc.tick = ecsCont.TickIdx
 	plan, err := buildChunkPlan(ecsCont)
 	if err != nil {
 		log.Printf("error building chunk plan: %v", err)

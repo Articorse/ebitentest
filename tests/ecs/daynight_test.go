@@ -39,9 +39,9 @@ func TestDarknessFollowsTheDayNightCycle(t *testing.T) {
 	}
 }
 
-func TestTheCycleIsTwentyMinutesOfNineDayOneDuskNineNightOneDawn(t *testing.T) {
-	if data.DayTicks != 9*60*data.TPS || data.DuskTicks != 60*data.TPS || data.NightTicks != 9*60*data.TPS || data.DawnTicks != 60*data.TPS {
-		t.Fatalf("the cycle is %d, %d, %d and %d ticks, want 9, 1, 9 and 1 minutes", data.DayTicks, data.DuskTicks, data.NightTicks, data.DawnTicks)
+func TestTheCycleIsTwentyFourMinutesOfTenDayTwoDuskTenNightTwoDawn(t *testing.T) {
+	if data.DayTicks != 10*60*data.TPS || data.DuskTicks != 2*60*data.TPS || data.NightTicks != 10*60*data.TPS || data.DawnTicks != 2*60*data.TPS {
+		t.Fatalf("the cycle is %d, %d, %d and %d ticks, want 10, 2, 10 and 2 minutes", data.DayTicks, data.DuskTicks, data.NightTicks, data.DawnTicks)
 	}
 }
 

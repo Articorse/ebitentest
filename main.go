@@ -87,6 +87,7 @@ type game struct {
 	showColliders bool
 	showChunks    bool
 	showBody      bool
+	showOxygen    bool
 	showPaths     bool
 	touching      touchingColliders
 	// Only drawn without light and fog, so that the simulation, what's remembered included, plays out the same
@@ -283,6 +284,9 @@ func (g *game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF6) {
 		g.fullBright = !g.fullBright
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyO) {
+		g.showOxygen = !g.showOxygen
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF7) {
 		g.ecs.SetUntargetable(g.playerEntity, !g.ecs.IsUntargetable(g.playerEntity))
@@ -684,7 +688,7 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	lines := g.tileTooltip(tile)
 	if g.showFPS {
 		outdoors := fmt.Sprintf("%.1f °C outdoors", g.chunkContainer.AmbientTemperature(tile, g.ecs.TickIdx).Celsius())
-		debug := slices.Concat([]string{outdoors}, g.chunkContainer.RoomDebugLines(tile), g.chunkContainer.RoofDebugLines(tile), g.chunkContainer.RegionDebugLines(tile))
+		debug := slices.Concat([]string{outdoors}, g.chunkContainer.RoomDebugLines(tile), g.chunkContainer.AirDebugLines(tile), g.chunkContainer.RoofDebugLines(tile), g.chunkContainer.RegionDebugLines(tile))
 		lines = append(append([]string{fmt.Sprintf("Tile %d,%d", tile.X, tile.Y)}, debug...), lines...)
 	}
 	if len(lines) == 0 {
@@ -962,6 +966,11 @@ func (g *game) Draw(screen *ebiten.Image) {
 	}
 }
 
+func (g *game) oxygenAt(t utils.Vec2i) (int64, bool) {
+	air, ok := g.chunkContainer.AirAt(t)
+	return air[data.Gas_Oxygen], ok
+}
+
 // Big enough to cover the screen once scaled up by the zoom
 func (g *game) worldImage(screen *ebiten.Image) *ebiten.Image {
 	size := screen.Bounds().Size()
@@ -1008,8 +1017,15 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		log.Println("error while drawing emergencies: ", err)
 	}
 
-	if vision, ok := g.ecs.Visions.Get(g.playerEntity); ok && !g.fullBright {
+	vision, hasVision := g.ecs.Visions.Get(g.playerEntity)
+	if hasVision && !g.fullBright {
 		g.lightOverlay.Draw(world, g.ecs.Camera, vision.Light())
+	}
+	// Above the light, so that it reads the same by night, but under the fog, so that it shows only what's known
+	if g.showOxygen {
+		drawsystem.DrawOxygen(world, g.ecs.Camera, g.oxygenAt)
+	}
+	if hasVision && !g.fullBright {
 		g.visionOverlay.Draw(world, g.ecs.Camera, vision, g.drawMemory)
 	}
 	// Above everything, even what stands on them, so that what's planned looks the same in the light, the dark and the fog
@@ -1288,7 +1304,12 @@ func main() {
 	if err != nil {
 		log.Fatal("error loading world: ", err)
 	}
-	planets, err := climate.LoadPlanetsFromJson("assets/planets/planets.json")
+	gases, err := climate.LoadGasesFromJson("assets/gases/gases.json")
+	if err != nil {
+		log.Fatal("error loading gases: ", err)
+	}
+	g.chunkContainer.SetGases(gases)
+	planets, err := climate.LoadPlanetsFromJson("assets/planets/planets.json", gases)
 	if err != nil {
 		log.Fatal("error loading planets: ", err)
 	}
