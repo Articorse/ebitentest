@@ -18,8 +18,8 @@ type ChunkContainer struct {
 	featureAtlas map[data.FeatureEnum]featureDef
 	blueprints   *ecs.BlueprintAtlas
 	sightVersion uint64
-	// Nil until it's asked for after a chunk comes or goes, or a tile or feature changes
-	regionGraph *regionGraph
+	// For each size of body that's asked about, until a chunk comes or goes, or a tile or feature changes
+	regionGraphs map[bodyBox]*regionGraph
 	// Goes up whenever where bodies fit is forgotten, so that a lookup holding on to what it found knows it's gone
 	bodyFitsVersion uint64
 	// How far the light of the furthest-reaching feature goes

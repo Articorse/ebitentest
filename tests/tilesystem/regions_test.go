@@ -45,11 +45,11 @@ func TestTilesWalledOffFromEachOtherArentReachable(t *testing.T) {
 			middle := doorYard(t, s, colonist)
 			outside := colonistTile(t, s, colonist)
 			gap := at(middle, 0, 3)
-			if !s.Chunks.Reachable(middle, outside, data.Faction_Monsters) {
+			if !s.Chunks.Reachable(middle, outside, data.Faction_Monsters, utils.Vec2i{}, utils.Vec2i{}) {
 				t.Fatal("the middle of open ground can't be reached")
 			}
 			wall(t, s, ring(middle, 3, gap)...)
-			if !s.Chunks.Reachable(middle, outside, data.Faction_Monsters) {
+			if !s.Chunks.Reachable(middle, outside, data.Faction_Monsters, utils.Vec2i{}, utils.Vec2i{}) {
 				t.Fatal("the middle can't be reached through the gap")
 			}
 			if c.door {
@@ -58,23 +58,23 @@ func TestTilesWalledOffFromEachOtherArentReachable(t *testing.T) {
 				wall(t, s, gap)
 			}
 
-			if got := s.Chunks.Reachable(middle, outside, data.Faction_Colony); got != c.colony {
+			if got := s.Chunks.Reachable(middle, outside, data.Faction_Colony, utils.Vec2i{}, utils.Vec2i{}); got != c.colony {
 				t.Errorf("the colony reaches inside %v, want %v", got, c.colony)
 			}
-			if got := s.Chunks.Reachable(outside, middle, data.Faction_Monsters); got != c.monsters {
+			if got := s.Chunks.Reachable(outside, middle, data.Faction_Monsters, utils.Vec2i{}, utils.Vec2i{}); got != c.monsters {
 				t.Errorf("monsters reach inside %v, want %v", got, c.monsters)
 			}
-			if s.Chunks.Reachable(outside, middle, data.Faction_None) {
+			if s.Chunks.Reachable(outside, middle, data.Faction_None, utils.Vec2i{}, utils.Vec2i{}) {
 				t.Error("something of no faction reaches inside")
 			}
-			if c.door && (!s.Chunks.Reachable(gap, middle, data.Faction_Monsters) || !s.Chunks.Reachable(gap, outside, data.Faction_Monsters)) {
+			if c.door && (!s.Chunks.Reachable(gap, middle, data.Faction_Monsters, utils.Vec2i{}, utils.Vec2i{}) || !s.Chunks.Reachable(gap, outside, data.Faction_Monsters, utils.Vec2i{}, utils.Vec2i{})) {
 				t.Error("a monster on the door can't get off it to either side")
 			}
 
 			if destroyed, _ := s.Chunks.DamageTile(at(middle, 3, 0), 1000); !destroyed {
 				t.Fatal("the wall couldn't be knocked down")
 			}
-			if !s.Chunks.Reachable(outside, middle, data.Faction_Monsters) {
+			if !s.Chunks.Reachable(outside, middle, data.Faction_Monsters, utils.Vec2i{}, utils.Vec2i{}) {
 				t.Error("monsters can't reach inside through the knocked-down wall")
 			}
 		})
@@ -90,7 +90,7 @@ func TestRegionsJoinAcrossChunkEdges(t *testing.T) {
 		if s.Chunks.WalkSpeedPercent(a) == 0 || s.Chunks.WalkSpeedPercent(b) == 0 {
 			continue
 		}
-		if !s.Chunks.Reachable(a, b, data.Faction_Monsters) {
+		if !s.Chunks.Reachable(a, b, data.Faction_Monsters, utils.Vec2i{}, utils.Vec2i{}) {
 			t.Fatalf("%v can't be reached from %v next to it across the chunk edge", b, a)
 		}
 		return

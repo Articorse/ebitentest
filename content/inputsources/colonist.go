@@ -1373,9 +1373,8 @@ func standsFor(
 		return t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y
 	}
 	spots := standSpots(target, rangeTiles, inColony, avoid, ecsContainer)
-	faction := ecsContainer.FactionOf(e)
 	for t := range spots {
-		if !ecsContainer.Terrain().Reachable(self, t, faction) {
+		if !ecsContainer.Reachable(e, self, t) {
 			delete(spots, t)
 		}
 	}

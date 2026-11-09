@@ -82,9 +82,17 @@ type Terrain interface {
 	TakeHarvested() []utils.Vec2i
 	// Which way the closed door on the tile runs and whose it is, false without one or while it's open
 	ClosedDoor(t utils.Vec2i) (vertical bool, faction data.FactionEnum, ok bool)
-	// Whether the faction can walk from one tile to the other, going through only its own doors. True where either
-	// isn't walked on, which is left to paths to find out.
-	Reachable(from, to utils.Vec2i, faction data.FactionEnum) bool
+	// Whether a body of the faction, reaching lo to hi tiles past the tile it's in the middle of, can walk from one tile
+	// to touching the other, going through only its faction's doors. True where that can't be told, which is left to
+	// paths to find out.
+	Reachable(from, to utils.Vec2i, faction data.FactionEnum, lo, hi utils.Vec2i) bool
+	// The tile closest to toward within radius tiles of it that such a body can walk to from the tile
+	ClosestReachable(
+		from, toward utils.Vec2i,
+		faction data.FactionEnum,
+		lo, hi utils.Vec2i,
+		radius int,
+	) (utils.Vec2i, bool)
 	// The tiles the faction can walk to from the tile, as if the closed one couldn't be walked on, up to limit of them.
 	// Enclosed if they're all there are, and none is next to where the simulation ends, past which they may go on.
 	Enclosure(from, closed utils.Vec2i, faction data.FactionEnum, limit int) (tiles []utils.Vec2i, enclosed bool)
@@ -215,7 +223,14 @@ func (noTerrain) TakeHarvested() []utils.Vec2i                          { return
 func (noTerrain) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
 	return false, data.Faction_None, false
 }
-func (noTerrain) Reachable(utils.Vec2i, utils.Vec2i, data.FactionEnum) bool { return true }
+func (noTerrain) Reachable(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i) bool {
+	return true
+}
+func (noTerrain) ClosestReachable(
+	utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int,
+) (utils.Vec2i, bool) {
+	return utils.Vec2i{}, false
+}
 func (noTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, int) ([]utils.Vec2i, bool) {
 	return nil, false
 }
@@ -295,6 +310,18 @@ type BodyTerrain interface {
 	// How fast a body reaching lo to hi tiles round a tile walks in the middle of it, 0 where a tile it would take up
 	// can't be walked on, and whether one of them is a door, whose faction the terrain leaves to the walker
 	BodySpeeds(lo, hi utils.Vec2i) func(t utils.Vec2i) (speed int, door bool)
+}
+
+// Whether the entity can walk from one tile to touching the other, as Terrain.Reachable says for its body and faction
+func (x *ECSContainer) Reachable(e common.EntityId, from, to utils.Vec2i) bool {
+	lo, hi := x.bodyReach(e)
+	return x.terrain.Reachable(from, to, x.FactionOf(e), lo, hi)
+}
+
+// The tile closest to toward, within data.PathClosestTiles of it, that the entity can walk to from the tile
+func (x *ECSContainer) ClosestReachable(e common.EntityId, from, toward utils.Vec2i) (utils.Vec2i, bool) {
+	lo, hi := x.bodyReach(e)
+	return x.terrain.ClosestReachable(from, toward, x.FactionOf(e), lo, hi, data.PathClosestTiles)
 }
 
 // How many tiles the entity's physics collider reaches past the tile it's in the middle of, up and left as negative

@@ -29,10 +29,9 @@ type chunk struct {
 	// Every tile's walking speed, worked out when it's first asked for after a tile or feature changes, since paths ask
 	// for it many times over
 	walkSpeeds *[data.ChunkSize * data.ChunkSize]uint8
-	// Which of the chunk's regions each tile is in, -1 where it isn't walked on. Nil until it's asked for after a tile or
-	// feature changes.
-	regionOf *[data.ChunkSize * data.ChunkSize]int32
-	regions  []chunkRegion
+	// For each size of body that's asked about, until a tile or feature here, or for a body bigger than a tile in a chunk
+	// next to it, changes
+	regionSets map[bodyBox]*chunkRegionSet
 	// Lazily for each size of body that asks, until a tile or feature here or in a chunk next to it changes
 	bodyFits map[bodyBox]*[data.ChunkSize * data.ChunkSize]uint8
 	// Nil until it's asked for after the features change
@@ -165,8 +164,7 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, layer data.TileLayerE
 	c.terrainModified = true
 	cc.sightVersion++
 	c.walkSpeeds = nil
-	c.regionOf, cc.regionGraph = nil, nil
-	cc.forgetBodyFits(utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)})
+	cc.forgetWalking(utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)})
 
 	cc.redrawAround(t)
 	cc.turnDoorsAround(t)

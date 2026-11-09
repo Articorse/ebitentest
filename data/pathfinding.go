@@ -9,4 +9,6 @@ const (
 	// How long something chasing what no path reaches waits before looking again, since a search that fails looks at
 	// every tile it may
 	PathRetryTicks = TPS / 4
+	// How far from what can't be reached something looks for the closest it can get to instead
+	PathClosestTiles = 16
 )

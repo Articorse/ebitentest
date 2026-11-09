@@ -48,7 +48,12 @@ func (openGround) SetSiteFaction(utils.Vec2i, data.FactionEnum) bool            
 func (openGround) IsHarvestable(utils.Vec2i) bool                                       { return false }
 func (openGround) IsHarvestItem(data.ItemEnum) bool                                     { return false }
 func (openGround) TakeHarvested() []utils.Vec2i                                         { return nil }
-func (openGround) Reachable(utils.Vec2i, utils.Vec2i, data.FactionEnum) bool            { return true }
+func (openGround) Reachable(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i) bool {
+	return true
+}
+func (openGround) ClosestReachable(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int) (utils.Vec2i, bool) {
+	return utils.Vec2i{}, false
+}
 func (openGround) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, int) ([]utils.Vec2i, bool) {
 	return nil, false
 }

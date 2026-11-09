@@ -68,13 +68,26 @@ func (cc *ChunkContainer) bodySpeed(t utils.Vec2i, box bodyBox) uint8 {
 	return uint8(cc.WalkSpeedPercent(t)+1) | door
 }
 
-// A body round a tile can reach into the chunks next to its own, so theirs go too
-func (cc *ChunkContainer) forgetBodyFits(pos utils.Vec2i) {
+// Where bodies fit and the regions they walk between, after the chunk's tiles or features change or it comes or goes.
+// A body round a tile can reach into the chunks next to its own, so what's kept for bodies bigger than a tile goes for
+// theirs too.
+func (cc *ChunkContainer) forgetWalking(pos utils.Vec2i) {
 	cc.bodyFitsVersion++
+	cc.regionGraphs = nil
 	for dy := -1; dy <= 1; dy++ {
 		for dx := -1; dx <= 1; dx++ {
-			if c, ok := cc.chunks[utils.Vec2i{X: pos.X + dx, Y: pos.Y + dy}]; ok {
-				c.bodyFits = nil
+			c, ok := cc.chunks[utils.Vec2i{X: pos.X + dx, Y: pos.Y + dy}]
+			if !ok {
+				continue
+			}
+			c.bodyFits = nil
+			if dx == 0 && dy == 0 {
+				c.regionSets = nil
+			}
+			for box := range c.regionSets {
+				if box != (bodyBox{}) {
+					delete(c.regionSets, box)
+				}
 			}
 		}
 	}

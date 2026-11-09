@@ -43,8 +43,8 @@ func (p *InputRusherParams) Copy() ecs.InputParams {
 
 // Follows the closest hostile its vision sees, switching whenever another one is closer. Once it sees none, it heads for
 // the tile it last saw its target on, and idles once it's there or as close as it can get. Its vision is as of the last
-// tick, since vision is worked out after inputs are handled. It stands still while regions say it can't get to the
-// target, and otherwise goes as close as a path gets it.
+// tick, since vision is worked out after inputs are handled. Where regions say it can't get to the target, it goes to
+// the closest tile they say it can, and stands still with none nearby. Otherwise, it goes as close as a path gets it.
 func RusherInputSource(
 	entityId common.EntityId,
 	tick uint64,
@@ -77,19 +77,25 @@ func RusherInputSource(
 		p.State = Rusher_Idle
 	}
 
-	self, faction := utils.WorldPosToTilePos(selfPos), ecsContainer.FactionOf(entityId)
+	self, walkSpeed := utils.WorldPosToTilePos(selfPos), ecsContainer.WalkSpeedOf(entityId)
 	switch p.State {
 	case Rusher_Follow:
-		if !ecsContainer.Terrain().Reachable(self, utils.WorldPosToTilePos(targetPos), faction) {
+		goal, ok := reachableGoal(entityId, self, utils.WorldPosToTilePos(targetPos), ecsContainer)
+		if !ok {
 			p.path = nil
 			return ecs.InputState{}, nil
 		}
-		input, _ := p.approach(selfPos, targetPos, ecsContainer.WalkSpeedOf(entityId), tick)
+		dest := targetPos
+		if goal != utils.WorldPosToTilePos(targetPos) {
+			dest = utils.TilePosToWorldPos(goal)
+		}
+		input, _ := p.approach(selfPos, dest, walkSpeed, tick)
 		return input, nil
 	case Rusher_Search:
-		input, ok := ecs.InputState{}, ecsContainer.Terrain().Reachable(self, p.LastSeen, faction)
-		if ok {
-			input, ok = p.approach(selfPos, utils.TilePosToWorldPos(p.LastSeen), ecsContainer.WalkSpeedOf(entityId), tick)
+		goal, ok := reachableGoal(entityId, self, p.LastSeen, ecsContainer)
+		input := ecs.InputState{}
+		if ok = ok && goal != self; ok {
+			input, ok = p.approach(selfPos, utils.TilePosToWorldPos(goal), walkSpeed, tick)
 		}
 		if !ok {
 			p.State = Rusher_Idle
@@ -98,4 +104,12 @@ func RusherInputSource(
 	}
 	p.path = nil
 	return ecs.InputState{}, nil
+}
+
+// The target's tile while regions say it can get there, and otherwise the closest tile to it that it can get to
+func reachableGoal(e common.EntityId, self, target utils.Vec2i, ecsContainer *ecs.ECSContainer) (utils.Vec2i, bool) {
+	if ecsContainer.Reachable(e, self, target) {
+		return target, true
+	}
+	return ecsContainer.ClosestReachable(e, self, target)
 }

@@ -3,6 +3,7 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"slices"
 )
 
@@ -63,7 +64,7 @@ func (x *ECSContainer) NearestVisibleHostile(e common.EntityId) (common.EntityId
 			continue
 		}
 		otherPos, err := x.WorldPos(other)
-		if err != nil || !vision.CanSee(x.SightTile(otherPos)) {
+		if err != nil || !x.seenBy(vision, other, otherPos) {
 			continue
 		}
 		d := otherPos.Subtract(pos)
@@ -73,6 +74,21 @@ func (x *ECSContainer) NearestVisibleHostile(e common.EntityId) (common.EntityId
 		}
 	}
 	return best, best != -1
+}
+
+// Where its sight tile, or any tile it takes up that isn't opaque, is seen, so that a body bigger than a tile is seen
+// where it shows round a wall, while a closed door's tile, which is seen as a wall is, doesn't give away what's behind
+// it
+func (x *ECSContainer) seenBy(vision *Vision, e common.EntityId, pos utils.Vec2f) bool {
+	if vision.CanSee(x.SightTile(pos)) {
+		return true
+	}
+	for _, t := range x.Footprint(e) {
+		if !x.terrain.IsOpaqueTile(t) && vision.CanSee(t) {
+			return true
+		}
+	}
+	return false
 }
 
 func (x Faction) Copy() Faction {

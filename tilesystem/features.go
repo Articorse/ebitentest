@@ -266,8 +266,7 @@ func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum
 		cc.noteHarvested(t)
 	}
 	if cc.featureAtlas[c.features[t]].door == nil || cc.featureAtlas[f].door == nil {
-		c.regionOf, cc.regionGraph = nil, nil
-		cc.forgetBodyFits(utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)})
+		cc.forgetWalking(utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)})
 	}
 	if f == data.Feature_None {
 		delete(c.features, t)

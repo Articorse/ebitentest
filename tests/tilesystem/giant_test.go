@@ -11,6 +11,7 @@ import (
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -124,15 +125,20 @@ func TestAGiantSlimeSlidesAlongAWallWithoutCatchingOnItsTiles(t *testing.T) {
 	}
 }
 
-// Open ground split by a wall along its middle row, with a gap a tile wide at x 3 and one three tiles wide at x 10 to
-// 12, both from the top-left corner. Returns the tiles above and below the narrow gap, 3 tiles from it.
+// Open ground whose bottom half is walled in, with a gap a tile wide at x 3 along the top of the walls and one three
+// tiles wide at x 10 to 12, both from the top-left corner. Returns the tiles above and below the narrow gap, 3 tiles
+// from it.
 func wallWithGaps(t *testing.T, s *testutil.Session, colonist common.EntityId) (corner, above, below utils.Vec2i) {
 	t.Helper()
-	corner = storageSpot(t, s, colonist, 20, 16, 9)
+	corner = storageSpot(t, s, colonist, 20, 16, 10)
 	for x := 0; x < 16; x++ {
 		if x != 3 && (x < 10 || x > 12) {
 			wall(t, s, at(corner, x, 4))
 		}
+		wall(t, s, at(corner, x, 9))
+	}
+	for y := 5; y < 9; y++ {
+		wall(t, s, at(corner, 0, y), at(corner, 15, y))
 	}
 	return corner, at(corner, 3, 1), at(corner, 3, 7)
 }
@@ -237,4 +243,54 @@ func TestWhereABodyFitsFollowsWhatsBuiltAndGrownAcrossChunkEdges(t *testing.T) {
 		return
 	}
 	t.Fatal("no room for a body by the chunk edge")
+}
+
+func TestAGiantSlimeReachesOnlyWhatItsBodyFitsItsWayTo(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	corner, above, below := wallWithGaps(t, s, colonist)
+	giant, err := templates.SpawnGiantSlime(s.ECS, utils.TilePosToWorldPos(above))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.ECS.Reachable(giant, above, below) {
+		t.Fatal("the giant slime can't reach through the wide gap")
+	}
+	if !s.ECS.Reachable(giant, above, at(corner, 3, 4)) {
+		t.Fatal("the giant slime can't reach what stands in the narrow gap, where it can't stand itself")
+	}
+
+	wall(t, s, at(corner, 10, 4), at(corner, 12, 4))
+	if s.ECS.Reachable(giant, above, below) {
+		t.Fatal("the giant slime reaches past a wall whose gaps it doesn't fit through")
+	}
+	if !s.ECS.Reachable(colonist, above, below) {
+		t.Fatal("a colonist can't reach through the gaps")
+	}
+	if closest, ok := s.ECS.ClosestReachable(giant, above, at(corner, 3, 5)); !ok || closest != at(corner, 3, 2) {
+		t.Fatalf("the closest the giant slime can get is %v (%v), want %v, right up to the narrow gap", closest, ok, at(corner, 3, 2))
+	}
+	if lines := s.Chunks.RegionDebugLines(above); !slices.ContainsFunc(lines, func(l string) bool { return strings.HasPrefix(l, "3x3 Region") }) {
+		t.Fatalf("the tooltip shows %v, without the giant slime's regions", lines)
+	}
+}
+
+func TestAGiantSlimeSearchingWhereItCantFitGoesAsCloseAsItCan(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	corner, _, _ := wallWithGaps(t, s, colonist)
+	wall(t, s, at(corner, 10, 4), at(corner, 12, 4))
+	s.ECS.SetDisabled(colonist, true)
+	giant, err := templates.SpawnGiantSlime(s.ECS, utils.TilePosToWorldPos(at(corner, 12, 1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	in, _ := s.ECS.Inputs.Get(giant)
+	p := in.Params().(*inputsources.InputRusherParams)
+	p.State, p.LastSeen = inputsources.Rusher_Search, at(corner, 3, 5)
+
+	if !live(t, s, 30*data.TPS, func() bool { return p.State == inputsources.Rusher_Idle }) {
+		t.Fatalf("the giant slime is still %v, on %v", p.State, utils.WorldPosToTilePos(testutil.WorldPos(t, s.ECS, giant)))
+	}
+	if at := utils.WorldPosToTilePos(testutil.WorldPos(t, s.ECS, giant)); at != (utils.Vec2i{X: corner.X + 3, Y: corner.Y + 2}) {
+		t.Fatalf("the giant slime gave up on %v, want as close as it can get, by the narrow gap", at)
+	}
 }

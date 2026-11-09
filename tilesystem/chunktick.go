@@ -156,8 +156,7 @@ func (cc *ChunkContainer) activateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContain
 
 	cc.chunks[pos] = c
 	cc.sightVersion++
-	cc.regionGraph = nil
-	cc.forgetBodyFits(pos)
+	cc.forgetWalking(pos)
 	cc.redrawEdges(pos)
 
 	return nil
@@ -234,8 +233,7 @@ func (cc *ChunkContainer) deactivateChunk(pos utils.Vec2i, ecsCont *ecs.ECSConta
 	c.freeImage()
 	delete(cc.chunks, pos)
 	cc.sightVersion++
-	cc.regionGraph = nil
-	cc.forgetBodyFits(pos)
+	cc.forgetWalking(pos)
 
 	return nil
 }
