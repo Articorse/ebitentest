@@ -22,6 +22,7 @@ type Header struct {
 	PlayerEntity common.EntityId
 	RngState     []byte
 	Entities     map[common.EntityId][]ecs.ComponentDto
+	Planet       data.PlanetEnum
 }
 
 // Chunkloaders and their compositions are stored here rather than in chunks,

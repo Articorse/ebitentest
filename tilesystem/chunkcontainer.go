@@ -2,6 +2,7 @@ package tilesystem
 
 import (
 	"ebittest/assetmanager"
+	"ebittest/climate"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -44,6 +45,7 @@ type ChunkContainer struct {
 	commitInFlight *inFlightCommit
 
 	seed   uint64
+	planet climate.Planet
 	memory memory
 	// The tiles something harvestable's been taken from since they were last looked at for exhausting the harvest area
 	harvested []utils.Vec2i

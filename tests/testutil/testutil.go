@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"ebittest/assetmanager"
+	"ebittest/climate"
 	"ebittest/content"
 	"ebittest/data"
 	"ebittest/ecs"
@@ -28,6 +29,7 @@ const (
 	ItemAtlasPath    = "assets/items/items.json"
 	BodyAtlasPath    = "assets/bodies/bodies.json"
 	BlueprintsPath   = "assets/blueprints/blueprints.json"
+	PlanetsPath      = "assets/planets/planets.json"
 	// Small, since every chunk it loads is generated, and chunks are big
 	PlayerLoaderRadius = 1
 	// Fixed rather than random like the game's, so that a failing test fails the same way every time
@@ -35,6 +37,15 @@ const (
 )
 
 var PlayerStart = utils.Vec2f{X: 100, Y: 100}
+
+func Planets(t testing.TB) map[data.PlanetEnum]climate.Planet {
+	t.Helper()
+	planets, err := climate.LoadPlanetsFromJson(filepath.Join(RepoRoot(), PlanetsPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return planets
+}
 
 func NewECS(t testing.TB) *ecs.ECSContainer {
 	t.Helper()
@@ -258,6 +269,11 @@ func StartSession(t testing.TB) *Session {
 		t.Fatal(err)
 	}
 
+	planet, err := climate.PlanetOf(Planets(t), h.Planet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc.SetPlanet(planet)
 	s := &Session{t: t, ECS: x, Chunks: cc, Resumed: exists}
 	if exists {
 		if err := tilesystem.RecoverChunkFiles(h.Generation); err != nil {

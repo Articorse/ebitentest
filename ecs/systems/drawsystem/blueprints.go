@@ -312,6 +312,29 @@ func SiteTooltip(site ecs.ConstructionSite, def ecs.BlueprintDef, items *ecs.Ite
 
 // Below and to the right of the cursor, in UI pixels, moved back onto the screen where it would go off it
 func DrawTooltip(screen *ebiten.Image, scale float64, cursor utils.Vec2f, lines []string, assets *assetmanager.AssetManager) error {
+	return drawTextPanel(screen, scale, lines, assets, func(size, screenSize utils.Vec2f) utils.Vec2f {
+		topLeft := cursor.Add(utils.Vec2f{X: data.TooltipOffsetPx, Y: data.TooltipOffsetPx})
+		topLeft.X = max(0, min(topLeft.X, screenSize.X-size.X))
+		topLeft.Y = max(0, min(topLeft.Y, screenSize.Y-size.Y))
+		return topLeft
+	})
+}
+
+// The time, date and anything else about the game as a whole, in the top right corner of the screen
+func DrawClock(screen *ebiten.Image, scale float64, lines []string, assets *assetmanager.AssetManager) error {
+	return drawTextPanel(screen, scale, lines, assets, func(size, screenSize utils.Vec2f) utils.Vec2f {
+		return utils.Vec2f{X: screenSize.X - size.X - data.ClockMarginPx, Y: data.ClockMarginPx}
+	})
+}
+
+// Where it goes is given its size and the screen's, in UI pixels
+func drawTextPanel(
+	screen *ebiten.Image,
+	scale float64,
+	lines []string,
+	assets *assetmanager.AssetManager,
+	place func(size, screenSize utils.Vec2f) utils.Vec2f,
+) error {
 	if len(lines) == 0 {
 		return nil
 	}
@@ -327,11 +350,7 @@ func DrawTooltip(screen *ebiten.Image, scale float64, cursor utils.Vec2f, lines 
 	}
 	pad := float64(data.TooltipPaddingPx)
 	size := utils.Vec2f{X: width + 2*pad, Y: lineHeight*float64(len(lines)) + 2*pad}
-
-	screenSize := ImageSize(screen).Multiply(1 / scale)
-	topLeft := cursor.Add(utils.Vec2f{X: data.TooltipOffsetPx, Y: data.TooltipOffsetPx})
-	topLeft.X = max(0, min(topLeft.X, screenSize.X-size.X))
-	topLeft.Y = max(0, min(topLeft.Y, screenSize.Y-size.Y))
+	topLeft := place(size, ImageSize(screen).Multiply(1/scale))
 
 	panel := image.Rect(int(topLeft.X), int(topLeft.Y), int(math.Ceil(topLeft.X+size.X)), int(math.Ceil(topLeft.Y+size.Y)))
 	if err := drawNineSlice(screen, scale, panel, assets); err != nil {

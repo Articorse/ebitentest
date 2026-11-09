@@ -2,6 +2,7 @@ package main
 
 import (
 	"ebittest/assetmanager"
+	"ebittest/climate"
 	"ebittest/content"
 	"ebittest/content/enemyspawning"
 	"ebittest/content/inputsources"
@@ -99,7 +100,6 @@ type game struct {
 	// Each frame adds the timescale, and each tick run takes 100, so that 10% runs a tick every tenth frame and 200%
 	// two every frame
 	tickBudgetPercent int
-	timescaleText     debugText
 
 	// In screen pixels, which are device pixels
 	screenSize utils.Vec2f
@@ -683,7 +683,8 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	tile := g.cursorTile()
 	lines := g.tileTooltip(tile)
 	if g.showFPS {
-		debug := slices.Concat(g.chunkContainer.RoomDebugLines(tile), g.chunkContainer.RoofDebugLines(tile), g.chunkContainer.RegionDebugLines(tile))
+		outdoors := fmt.Sprintf("%.1f °C outdoors", g.chunkContainer.AmbientTemperature(tile, g.ecs.TickIdx).Celsius())
+		debug := slices.Concat([]string{outdoors}, g.chunkContainer.RoomDebugLines(tile), g.chunkContainer.RoofDebugLines(tile), g.chunkContainer.RegionDebugLines(tile))
 		lines = append(append([]string{fmt.Sprintf("Tile %d,%d", tile.X, tile.Y)}, debug...), lines...)
 	}
 	if len(lines) == 0 {
@@ -949,8 +950,15 @@ func (g *game) Draw(screen *ebiten.Image) {
 			g.bodyText.draw(screen, status, g.uiScale, corner_BottomRight)
 		}
 	}
+	hour, minute := climate.Clock(g.ecs.TickIdx)
+	season, day, year := climate.Date(g.ecs.TickIdx)
+	clock := []string{fmt.Sprintf("%02d:%02d", hour, minute), fmt.Sprintf("%s %d, Year %d", season, day, year)}
+	// In the clock's corner, under it rather than over it
 	if g.timescalePercent != 100 {
-		g.timescaleText.draw(screen, fmt.Sprintf("Speed: %d%%", g.timescalePercent), g.uiScale, corner_TopRight)
+		clock = append(clock, fmt.Sprintf("Speed: %d%%", g.timescalePercent))
+	}
+	if err := drawsystem.DrawClock(screen, g.uiScale, clock, g.assetmanager); err != nil {
+		log.Println("error while drawing the clock: ", err)
 	}
 }
 
@@ -1280,6 +1288,15 @@ func main() {
 	if err != nil {
 		log.Fatal("error loading world: ", err)
 	}
+	planets, err := climate.LoadPlanetsFromJson("assets/planets/planets.json")
+	if err != nil {
+		log.Fatal("error loading planets: ", err)
+	}
+	planet, err := climate.PlanetOf(planets, header.Planet)
+	if err != nil {
+		log.Fatal("error finding the world's planet: ", err)
+	}
+	g.chunkContainer.SetPlanet(planet)
 
 	if worldExists {
 		if err := tilesystem.RecoverChunkFiles(header.Generation); err != nil {

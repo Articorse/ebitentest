@@ -2,8 +2,8 @@ package data
 
 // The day starts at tick 0 and runs day, dusk, night, dawn
 const (
-	DayTicks   = 10 * TPS
-	DuskTicks  = 5 * TPS
-	NightTicks = 10 * TPS
-	DawnTicks  = 5 * TPS
+	DayTicks   = 10 * 60 * TPS
+	DuskTicks  = 2 * 60 * TPS
+	NightTicks = 10 * 60 * TPS
+	DawnTicks  = 2 * 60 * TPS
 )

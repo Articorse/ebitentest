@@ -1,6 +1,7 @@
 package tilesystem
 
 import (
+	"ebittest/climate"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -60,6 +61,20 @@ func (cc *ChunkContainer) SetSeed(seed uint64) {
 
 func (cc *ChunkContainer) Seed() uint64 {
 	return cc.seed
+}
+
+// Must be set before the world is saved, which saves which planet it's on
+func (cc *ChunkContainer) SetPlanet(p climate.Planet) {
+	cc.planet = p
+}
+
+func (cc *ChunkContainer) Planet() climate.Planet {
+	return cc.planet
+}
+
+// The temperature outdoors on the tile at the tick
+func (cc *ChunkContainer) AmbientTemperature(t utils.Vec2i, tick uint64) climate.Centicelsius {
+	return climate.Ambient(cc.planet, cc.seed, t, tick)
 }
 
 func (cc *ChunkContainer) IsCommitting() bool {
@@ -143,6 +158,7 @@ func (cc *ChunkContainer) StartCommit(header world.Header, ecsCont *ecs.ECSConta
 
 	req.rooms = cc.roomsToDto()
 	header.Generation = inFlight.generation
+	header.Planet = cc.planet.Id
 	req.header = header
 
 	cc.commitInFlight = inFlight

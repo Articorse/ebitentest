@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "name": "Earthlike",
+    "spawnCelsius": 15,
+    "northCelsius": -30,
+    "southCelsius": 35,
+    "gradientTiles": 2000,
+    "noiseSwing": 8,
+    "seasonSwing": 20,
+    "dayNightSwing": 8
+  },
+  {
+    "id": 2,
+    "name": "Moon",
+    "spawnCelsius": -20,
+    "northCelsius": -140,
+    "southCelsius": 0,
+    "gradientTiles": 2000,
+    "noiseSwing": 8,
+    "seasonSwing": 10,
+    "dayNightSwing": 250
+  }
+]

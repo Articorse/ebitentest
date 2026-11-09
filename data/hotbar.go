@@ -19,6 +19,8 @@ const (
 	TooltipPaddingPx      = 4
 	// From the cursor to the tooltip's corner, so that the cursor doesn't hide its first letters
 	TooltipOffsetPx = 8
+	// From the top and right of the screen to the clock
+	ClockMarginPx = 4
 	// How far each area button's colour is inset from its slot's edges
 	AreaButtonInsetPx = 8
 	// The row under the inventory's slots showing what it carries against what it can
