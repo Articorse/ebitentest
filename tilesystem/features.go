@@ -269,6 +269,9 @@ func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum
 		cc.forgetWalking(utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)})
 	}
 	doorGone := cc.featureAtlas[c.features[t]].door != nil && cc.featureAtlas[f].door == nil
+	if (cc.featureAtlas[c.features[t]].door == nil) != (cc.featureAtlas[f].door == nil) {
+		cc.forgetPieces(c)
+	}
 	if f == data.Feature_None {
 		delete(c.features, t)
 	} else {

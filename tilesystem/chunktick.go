@@ -46,6 +46,8 @@ func (cc *ChunkContainer) Tick(ecsCont *ecs.ECSContainer) error {
 		return err
 	}
 
+	// What's kept of the rooms in chunks that leave is what they are as they leave
+	cc.updateRooms()
 	for _, pos := range deactivating {
 		if err := cc.deactivateChunk(pos, ecsCont); err != nil {
 			return fmt.Errorf("failed to deactivate chunk at %v: %w", pos, err)
@@ -53,6 +55,7 @@ func (cc *ChunkContainer) Tick(ecsCont *ecs.ECSContainer) error {
 	}
 
 	cc.prefetch(plan)
+	cc.TickRooms(ecsCont)
 
 	return nil
 }
@@ -158,6 +161,7 @@ func (cc *ChunkContainer) activateChunk(pos utils.Vec2i, ecsCont *ecs.ECSContain
 	cc.sightVersion++
 	cc.forgetWalking(pos)
 	cc.redrawEdges(pos)
+	cc.roomsStale = true
 
 	return nil
 }
@@ -234,6 +238,7 @@ func (cc *ChunkContainer) deactivateChunk(pos utils.Vec2i, ecsCont *ecs.ECSConta
 	delete(cc.chunks, pos)
 	cc.sightVersion++
 	cc.forgetWalking(pos)
+	cc.roomsStale = true
 
 	return nil
 }

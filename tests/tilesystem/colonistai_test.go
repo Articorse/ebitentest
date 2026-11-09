@@ -237,6 +237,8 @@ func TestAColonistLeavesBlueprintsItCantFullySupplyOrReachAlone(t *testing.T) {
 	walled := groundAwayWhere(t, s, colonist, 10, canBeWalledIn, pricey)
 	s.Chunks.PlaceSite(pricey, 1)
 	s.Chunks.PlaceSite(walled, 2)
+	// Walled in on home, it would be roofed over, which is work the colonist can do
+	s.ECS.MarkArea(data.Area_NoRoof, utils.Vec2i{X: walled.X - 1, Y: walled.Y - 1}, utils.Vec2i{X: walled.X + 1, Y: walled.Y + 1}, true)
 	for dy := -1; dy <= 1; dy++ {
 		for dx := -1; dx <= 1; dx++ {
 			if wall := (utils.Vec2i{X: walled.X + dx, Y: walled.Y + dy}); wall != walled {

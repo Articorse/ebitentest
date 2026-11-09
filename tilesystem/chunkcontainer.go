@@ -47,6 +47,14 @@ type ChunkContainer struct {
 	memory memory
 	// The tiles something harvestable's been taken from since they were last looked at for exhausting the harvest area
 	harvested []utils.Vec2i
+
+	rooms map[uint64]*room
+	// The chunks with pieces in rooms, active or not
+	roomChunks map[utils.Vec2i]*roomChunk
+	nextRoomId uint64
+	roomsStale bool
+	// Since the roof area was last put over newly enclosed tiles
+	enclosed []enclosedTile
 }
 
 func NewChunkContainer() *ChunkContainer {
@@ -63,6 +71,8 @@ func NewChunkContainer() *ChunkContainer {
 		evictedChunks:  make(map[utils.Vec2i]pendingChunk),
 		queuedEntities: make(map[utils.Vec2i]map[common.EntityId]pendingEntity),
 		memory:         newMemory(),
+		rooms:          map[uint64]*room{},
+		roomChunks:     map[utils.Vec2i]*roomChunk{},
 	}
 
 	cc.StartIOThread()

@@ -44,6 +44,13 @@ type chunk struct {
 	ground map[utils.Vec2i]ecs.GroundStack
 	// Only for roofs being built or taken down
 	roofWork map[utils.Vec2i]roofWork
+	// Nil until it's asked for after a wall or door comes or goes
+	pieces *chunkPieces
+	// The room each piece is in, 0 for none, as of when the rooms were last worked out
+	pieceRooms []uint64
+	// What the pieces were the last time the rooms were worked out, until they're worked out again
+	prevPieces     *chunkPieces
+	prevPieceRooms []uint64
 }
 
 func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
@@ -175,6 +182,9 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, layer data.TileLayerE
 	cc.turnDoorsAround(t)
 	if wallGone {
 		cc.collapseAround(t)
+	}
+	if layer == data.TileLayer_Wall {
+		cc.forgetPieces(c)
 	}
 }
 

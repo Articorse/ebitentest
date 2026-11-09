@@ -683,7 +683,7 @@ func (g *game) drawSiteTooltip(screen *ebiten.Image) error {
 	tile := g.cursorTile()
 	lines := g.tileTooltip(tile)
 	if g.showFPS {
-		debug := slices.Concat(g.chunkContainer.RoofDebugLines(tile), g.chunkContainer.RegionDebugLines(tile))
+		debug := slices.Concat(g.chunkContainer.RoomDebugLines(tile), g.chunkContainer.RoofDebugLines(tile), g.chunkContainer.RegionDebugLines(tile))
 		lines = append(append([]string{fmt.Sprintf("Tile %d,%d", tile.X, tile.Y)}, debug...), lines...)
 	}
 	if len(lines) == 0 {
@@ -1289,6 +1289,9 @@ func main() {
 		g.chunkContainer.SetSeed(header.Seed)
 		if err := g.chunkContainer.LoadMemory(); err != nil {
 			log.Fatal("error loading memory: ", err)
+		}
+		if err := g.chunkContainer.LoadRooms(); err != nil {
+			log.Fatal("error loading rooms: ", err)
 		}
 		g.playerEntity = header.PlayerEntity
 	} else {

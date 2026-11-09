@@ -33,6 +33,7 @@ type commitRequest struct {
 	appends map[utils.Vec2i]map[common.EntityId][]ecs.ComponentDto
 	deletes []utils.Vec2i
 	memory  map[utils.Vec2i]memoryRegionDto
+	rooms   roomsDto
 }
 
 type commitResult struct {
@@ -140,6 +141,7 @@ func (cc *ChunkContainer) StartCommit(header world.Header, ecsCont *ecs.ECSConta
 		}
 	}
 
+	req.rooms = cc.roomsToDto()
 	header.Generation = inFlight.generation
 	req.header = header
 
@@ -309,6 +311,13 @@ func (cc *ChunkContainer) commit(req commitRequest) (committed bool, err error) 
 		}
 		tmpPaths = append(tmpPaths, p)
 	}
+
+	roomsTmp := fmt.Sprintf(data.RoomsFilePath+".%d.tmp", generation)
+	if err := writeGobFile(roomsTmp, req.rooms); err != nil {
+		discard()
+		return false, fmt.Errorf("failed to write rooms: %w", err)
+	}
+	tmpPaths = append(tmpPaths, roomsTmp)
 
 	for _, pos := range req.deletes {
 		if _, err := os.Stat(chunkFilePath(pos)); errors.Is(err, os.ErrNotExist) {

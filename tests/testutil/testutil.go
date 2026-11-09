@@ -268,6 +268,9 @@ func StartSession(t testing.TB) *Session {
 		if err := cc.LoadMemory(); err != nil {
 			t.Fatal(err)
 		}
+		if err := cc.LoadRooms(); err != nil {
+			t.Fatal(err)
+		}
 		s.Player = h.PlayerEntity
 	} else {
 		if err := world.Reset(); err != nil {

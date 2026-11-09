@@ -14,4 +14,6 @@ const (
 	// A colonist's build work, 1 a strike, so about a second
 	RoofWork         = 4
 	RoofSupportTiles = 6
+	// Air walled in over more tiles than this is outdoors
+	RoomMaxTiles = 1000
 )

@@ -6,6 +6,7 @@ const (
 	ChunkDataDir                = "chunkdata"
 	ChunkDataFilePathTemplate   = "chunkdata/chunk_%d_%d.gob"
 	WorldHeaderFilePath         = "chunkdata/world.gob"
+	RoomsFilePath               = "chunkdata/rooms.gob"
 	WorldFormatVersion          = 1
 	WorldSavePeriodSec          = 60
 	ChunkReloadRetries          = 3
