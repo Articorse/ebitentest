@@ -116,17 +116,17 @@ func TestAnEnclosureGoesUpToItsLimitAndOnlyThroughTheFactionsDoors(t *testing.T)
 		{"with the gap open", far, 1000, 1000, false},
 		{"up to a limit", gap, 10, 10, false},
 	} {
-		tiles, enclosed := s.Chunks.Enclosure(middle, c.closed, data.Faction_Colony, c.limit)
+		tiles, enclosed := s.Chunks.Enclosure(middle, c.closed, data.Faction_Colony, utils.Vec2i{}, utils.Vec2i{}, c.limit)
 		if len(tiles) != c.tiles || enclosed != c.enclosed {
 			t.Errorf("%s, the enclosure is %d tiles, enclosed %v; want %d, %v", c.name, len(tiles), enclosed, c.tiles, c.enclosed)
 		}
 	}
 
 	buildDoor(t, s, gap, data.Faction_Colony)
-	if _, enclosed := s.Chunks.Enclosure(middle, far, data.Faction_Colony, 1000); enclosed {
+	if _, enclosed := s.Chunks.Enclosure(middle, far, data.Faction_Colony, utils.Vec2i{}, utils.Vec2i{}, 1000); enclosed {
 		t.Error("the colony is shut in by its own door")
 	}
-	if tiles, enclosed := s.Chunks.Enclosure(middle, far, data.Faction_Monsters, 1000); !enclosed || len(tiles) != 25 {
+	if tiles, enclosed := s.Chunks.Enclosure(middle, far, data.Faction_Monsters, utils.Vec2i{}, utils.Vec2i{}, 1000); !enclosed || len(tiles) != 25 {
 		t.Errorf("monsters are shut in %v, in %d tiles, by the colony's door; want shut in 25", enclosed, len(tiles))
 	}
 }

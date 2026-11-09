@@ -21,7 +21,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 	if err != nil {
 		return -1, err
 	}
-	pAniComp, pPhyColComp, pHitboxComp, err := colonySlimeParts(common.AssetSheetSlime)
+	pAniComp, pPhyColComp, pHitboxComp, err := colonySlimeParts(common.AssetSheetSlime, nil, nil)
 	if err != nil {
 		return -1, err
 	}
@@ -410,15 +410,20 @@ func colonySlimeFrames() map[ecs.AnimationState][]ecs.AnimationFrame {
 	return frames
 }
 
-// The animation and colliders that the player and colonists share, as slimes of the colony drawn from sheet
-func colonySlimeParts(sheet common.ImageAssetTag) (*ecs.Animation, *ecs.PhysicsCollider, *ecs.HitboxCollider, error) {
+// The animation and colliders that the player and colonists share, as slimes of the colony drawn from sheet. Their
+// shapes are those of a slime of a tile when nil.
+func colonySlimeParts(
+	sheet common.ImageAssetTag,
+	physicsShape, hitboxShape shapes.Shape,
+) (*ecs.Animation, *ecs.PhysicsCollider, *ecs.HitboxCollider, error) {
 	anim, err := ecs.NewAnimationComponent(sheet, colonySlimeFrames())
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	physicsShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
-	if err != nil {
-		return nil, nil, nil, err
+	if physicsShape == nil {
+		if physicsShape, err = shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0}); err != nil {
+			return nil, nil, nil, err
+		}
 	}
 	physics := ecs.NewPhysicsColliderComponent(
 		ecs.Layer_Player,
@@ -431,9 +436,10 @@ func colonySlimeParts(sheet common.ImageAssetTag) (*ecs.Animation, *ecs.PhysicsC
 		ecs.Collider_Mob,
 		physicsShape,
 	)
-	hitboxShape, err := shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0})
-	if err != nil {
-		return nil, nil, nil, err
+	if hitboxShape == nil {
+		if hitboxShape, err = shapes.NewCircleShape(5, utils.Vec2f{X: 0, Y: 0}); err != nil {
+			return nil, nil, nil, err
+		}
 	}
 	hitbox := ecs.NewHitboxColliderComponent(
 		ecs.Layer_Player,

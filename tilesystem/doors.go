@@ -86,9 +86,9 @@ func (cc *ChunkContainer) turnDoorsAround(t utils.Vec2i) {
 	}
 }
 
-// A door opens as soon as an entity of its faction is on it or next to it, together with the doors it's in a row with,
-// facing the same way, and closes once there's none, and nothing in the way of any of them. One without a faction is no
-// one's, so it never opens.
+// A door opens as soon as the body of an entity of its faction is on it or next to it, together with the doors it's in a
+// row with, facing the same way, and closes once there's none, and nothing in the way of any of them. One without a
+// faction is no one's, so it never opens.
 func (cc *ChunkContainer) TickDoors(x *ecs.ECSContainer) {
 	doors := []utils.Vec2i{}
 	for _, c := range cc.chunks {
@@ -107,7 +107,7 @@ func (cc *ChunkContainer) TickDoors(x *ecs.ECSContainer) {
 	near := map[data.FactionEnum][]utils.Vec2i{}
 	for e, f := range ecs.Query1(&x.Factions, ecs.Without(&x.Disabled)) {
 		if pos, err := x.WorldPos(e); err == nil && f.Faction() != data.Faction_None {
-			near[f.Faction()] = append(near[f.Faction()], utils.WorldPosToTilePos(pos))
+			near[f.Faction()] = append(near[f.Faction()], x.BodyTiles(e, utils.WorldPosToTilePos(pos))...)
 		}
 	}
 

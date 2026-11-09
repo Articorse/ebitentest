@@ -99,30 +99,30 @@ func (p *InputColonistParams) handleEmergency(
 	return p.getOut(e, selfPos, ecsContainer), true
 }
 
-// To the closest tile round the site that finishing it wouldn't shut it in on, where it waits
+// To the closest tile round the site, off every site, that finishing it wouldn't shut it in on, where it waits
 func (p *InputColonistParams) getOut(e common.EntityId, selfPos utils.Vec2f, ecsContainer *ecs.ECSContainer) ecs.InputState {
 	input := p.emptyHand(e, ecsContainer)
-	terrain := ecsContainer.Terrain()
 	self, site := utils.WorldPosToTilePos(selfPos), p.Emergency.Tile
-	if _, onSite := terrain.Site(self); !onSite {
-		if _, enclosed := terrain.Enclosure(self, site, ecsContainer.FactionOf(e), data.ColonistEnclosedTiles); !enclosed {
+	if !onASite(e, self, ecsContainer) {
+		if _, enclosed := ecsContainer.Enclosure(e, self, site, data.ColonistEnclosedTiles); !enclosed {
 			p.path = nil
 			return keepOffSites(e, selfPos, input, ecsContainer)
 		}
 	}
 	walkSpeed := ecsContainer.WalkSpeedOf(e)
 	if p.path == nil {
+		r := 2 + bodyRadius(e, self, ecsContainer)
 		round := map[utils.Vec2i]bool{}
-		for y := site.Y - 2; y <= site.Y+2; y++ {
-			for x := site.X - 2; x <= site.X+2; x++ {
+		for y := site.Y - r; y <= site.Y+r; y++ {
+			for x := site.X - r; x <= site.X+r; x++ {
 				t := utils.Vec2i{X: x, Y: y}
-				if _, onSite := terrain.Site(t); !onSite && walkSpeed(t) > 0 {
+				if !onASite(e, t, ecsContainer) && walkSpeed(t) > 0 {
 					round[t] = true
 				}
 			}
 		}
 		goals := roomySpots(e, site, round, ecsContainer)
-		path, _, ok := pathfinding.FindTowards(self, site, 2, func(t utils.Vec2i) bool { return goals[t] }, data.PathMaxExpandedTiles, walkSpeed)
+		path, _, ok := pathfinding.FindTowards(self, site, r, func(t utils.Vec2i) bool { return goals[t] }, data.PathMaxExpandedTiles, walkSpeed)
 		if !ok {
 			return input
 		}

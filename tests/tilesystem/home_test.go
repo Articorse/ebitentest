@@ -106,7 +106,7 @@ func TestBuildingOnHomeSpreadsItButBuildingElsewhereDoesnt(t *testing.T) {
 	for dy := -2; dy <= 2 && !found; dy++ {
 		for dx := -2; dx <= 2 && !found; dx++ {
 			builderAt = utils.Vec2i{X: elsewhere.X + dx, Y: elsewhere.Y + dy}
-			_, sees := s.ECS.AimedTileInReach(utils.TilePosToWorldPos(builderAt), utils.TilePosToWorldPos(elsewhere), 3)
+			sees := s.ECS.TileInReachFrom([]utils.Vec2i{builderAt}, elsewhere, 3)
 			found = builderAt != elsewhere && sees && s.Chunks.WalkSpeedPercent(builderAt) > 0
 		}
 	}

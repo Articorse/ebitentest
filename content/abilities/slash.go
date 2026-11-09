@@ -85,7 +85,7 @@ func SlashAbility(
 	}
 
 	if _, err := ecsContainer.AddNewEntity(
-		ecs.NewTransformComponent(slasherPos.Add(toAim.Normalized().Multiply(p.ReachPx)), 1, angle),
+		ecs.NewTransformComponent(slasherPos.Add(toAim.Normalized().Multiply(p.ReachPx+ecsContainer.BodyOverhang(slasher, toAim))), 1, angle),
 		spr,
 		timer,
 		ecs.NewHurtboxColliderComponent(ecs.Layer_FriendlyProjectile, p.Mask, shape),

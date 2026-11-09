@@ -368,17 +368,27 @@ func (cc *ChunkContainer) ClosestReachable(
 	return best, found
 }
 
-// The tiles the faction can walk to from the tile, as if the closed one couldn't be walked on, up to limit of them.
-// Enclosed if they're all there are, with none next to a chunk that isn't active, whose size isn't known.
+// The tiles a body of the faction reaching lo to hi round its own can walk to from the tile, as if the closed one
+// couldn't be walked on or reached over, up to limit of them. Enclosed if they're all there are, with none next to a
+// chunk that isn't active, whose size isn't known. A body bigger than a tile walks on the tiles it fits in the middle
+// of, and not over doors, as its regions go.
 func (cc *ChunkContainer) Enclosure(
 	from, closed utils.Vec2i,
 	faction data.FactionEnum,
+	lo, hi utils.Vec2i,
 	limit int,
 ) (tiles []utils.Vec2i, enclosed bool) {
+	big := lo != (utils.Vec2i{}) || hi != (utils.Vec2i{})
+	speeds := cc.BodySpeeds(lo, hi)
 	walkable := func(t utils.Vec2i) (ok, active bool) {
 		c, active := cc.chunks[utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)}]
 		if !active {
 			return false, false
+		}
+		if big {
+			speed, overDoor := speeds(t)
+			over := closed.X >= t.X+lo.X && closed.X <= t.X+hi.X && closed.Y >= t.Y+lo.Y && closed.Y <= t.Y+hi.Y
+			return speed > 0 && !overDoor && !over, true
 		}
 		if !cc.regionWalkable(c, t) {
 			return false, true

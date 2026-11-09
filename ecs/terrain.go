@@ -93,9 +93,15 @@ type Terrain interface {
 		lo, hi utils.Vec2i,
 		radius int,
 	) (utils.Vec2i, bool)
-	// The tiles the faction can walk to from the tile, as if the closed one couldn't be walked on, up to limit of them.
-	// Enclosed if they're all there are, and none is next to where the simulation ends, past which they may go on.
-	Enclosure(from, closed utils.Vec2i, faction data.FactionEnum, limit int) (tiles []utils.Vec2i, enclosed bool)
+	// The tiles a body of the faction reaching lo to hi round its own can walk to from the tile, as if the closed one
+	// couldn't be walked on or reached over, up to limit of them. Enclosed if they're all there are, and none is next to
+	// where the simulation ends, past which they may go on.
+	Enclosure(
+		from, closed utils.Vec2i,
+		faction data.FactionEnum,
+		lo, hi utils.Vec2i,
+		limit int,
+	) (tiles []utils.Vec2i, enclosed bool)
 }
 
 // Implemented by terrains that can answer for many tiles at once, and say when sight and light have to be worked out
@@ -231,7 +237,7 @@ func (noTerrain) ClosestReachable(
 ) (utils.Vec2i, bool) {
 	return utils.Vec2i{}, false
 }
-func (noTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, int) ([]utils.Vec2i, bool) {
+func (noTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int) ([]utils.Vec2i, bool) {
 	return nil, false
 }
 
@@ -316,6 +322,13 @@ type BodyTerrain interface {
 func (x *ECSContainer) Reachable(e common.EntityId, from, to utils.Vec2i) bool {
 	lo, hi := x.bodyReach(e)
 	return x.terrain.Reachable(from, to, x.FactionOf(e), lo, hi)
+}
+
+// The tiles the entity can walk to from the tile with the closed one in its way, as Terrain.Enclosure says for its body
+// and faction
+func (x *ECSContainer) Enclosure(e common.EntityId, from, closed utils.Vec2i, limit int) ([]utils.Vec2i, bool) {
+	lo, hi := x.bodyReach(e)
+	return x.terrain.Enclosure(from, closed, x.FactionOf(e), lo, hi, limit)
 }
 
 // The tile closest to toward, within data.PathClosestTiles of it, that the entity can walk to from the tile

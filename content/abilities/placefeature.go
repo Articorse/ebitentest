@@ -41,12 +41,12 @@ func decodePlaceFeatureParams(raw json.RawMessage) (ecs.AbilityParams, error) {
 
 // Only the tile under the aim, like placing a tile. Unlike a tile, it may go where something stands, so features placed
 // this way should be walked through.
-func (p *PlaceFeatureParams) TargetTile(from, aim utils.Vec2f, ecsContainer *ecs.ECSContainer) (utils.Vec2i, bool) {
+func (p *PlaceFeatureParams) TargetTile(holder common.EntityId, aim utils.Vec2f, ecsContainer *ecs.ECSContainer) (utils.Vec2i, bool) {
 	if p == nil {
 		return utils.Vec2i{}, false
 	}
 
-	aimed, ok := ecsContainer.AimedTileInReach(from, aim, p.RangeTiles)
+	aimed, ok := ecsContainer.AimedTileInReach(holder, aim, p.RangeTiles)
 	if !ok || !ecsContainer.Terrain().CanPlaceFeature(aimed) {
 		return utils.Vec2i{}, false
 	}
@@ -69,16 +69,11 @@ func PlaceFeatureAbility(
 	if holder := ecsContainer.Parent(self); holder != -1 {
 		placer = holder
 	}
-	placerPos, err := ecsContainer.WorldPos(placer)
-	if err != nil {
-		return false, fmt.Errorf("error getting world position of entity %d for placing a feature: %v", placer, err)
-	}
-
 	if !target.HasPos {
 		return false, nil
 	}
 
-	tile, ok := p.TargetTile(placerPos, target.Pos, ecsContainer)
+	tile, ok := p.TargetTile(placer, target.Pos, ecsContainer)
 	if !ok || !ecsContainer.Terrain().PlaceFeature(tile, p.Feature) {
 		return false, nil
 	}

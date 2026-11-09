@@ -216,11 +216,7 @@ func pickUpInReach(e common.EntityId, p ecs.ItemPickUp, ecsContainer *ecs.ECSCon
 }
 
 func inItemReach(e common.EntityId, t utils.Vec2i, ecsContainer *ecs.ECSContainer) bool {
-	pos, err := ecsContainer.WorldPos(e)
-	if err != nil {
-		return false
-	}
-	_, inReach := ecsContainer.AimedTileInReach(pos, utils.TilePosToWorldPos(t), data.ItemReachTiles)
+	_, inReach := ecsContainer.AimedTileInReach(e, utils.TilePosToWorldPos(t), data.ItemReachTiles)
 	return inReach
 }
 
@@ -231,7 +227,7 @@ func dropOnAim(e common.EntityId, input ecs.InputState, ecsContainer *ecs.ECSCon
 		return err
 	}
 	t := utils.WorldPosToTilePos(pos)
-	if aimed, inReach := ecsContainer.AimedTileInReach(pos, input.AimPos, data.ItemReachTiles); input.HasAim && inReach {
+	if aimed, inReach := ecsContainer.AimedTileInReach(e, input.AimPos, data.ItemReachTiles); input.HasAim && inReach {
 		t = aimed
 	}
 	_, err = ecsContainer.DropSelected(e, t)

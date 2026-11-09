@@ -77,7 +77,7 @@ func TestTorchesArePlacedOnFreeGroundInReachAndSightEvenUnderSomeone(t *testing.
 		if !ok {
 			t.Fatal("torches in hand don't target tiles")
 		}
-		tile, targeted := targeting.TargetTile(utils.Vec2f{}, utils.TilePosToWorldPos(c.aim), x)
+		tile, targeted := targeting.TargetTile(holder, utils.TilePosToWorldPos(c.aim), x)
 		if targeted != c.placed || (targeted && tile != c.aim) {
 			t.Errorf("%s: targets %v, %v; want %v", c.name, tile, targeted, c.placed)
 		}

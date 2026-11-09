@@ -131,7 +131,7 @@ func (f *fakeTerrain) Reachable(utils.Vec2i, utils.Vec2i, data.FactionEnum, util
 func (f *fakeTerrain) ClosestReachable(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int) (utils.Vec2i, bool) {
 	return utils.Vec2i{}, false
 }
-func (f *fakeTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, int) ([]utils.Vec2i, bool) {
+func (f *fakeTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int) ([]utils.Vec2i, bool) {
 	return nil, false
 }
 func (f *fakeTerrain) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
@@ -240,7 +240,7 @@ func TestTileStrikeHitsTheAimedTileOrTheLastTerrainOnTheWay(t *testing.T) {
 		x, holder := newMattockHolder(t, terrain, c.mask)
 
 		params := &abilities.TileStrikeParams{RangeTiles: 2, Mask: c.mask}
-		tile, ok := params.TargetTile(utils.Vec2f{}, utils.TilePosToWorldPos(c.aim), x)
+		tile, ok := params.TargetTile(holder, utils.TilePosToWorldPos(c.aim), x)
 		if !ok {
 			tile = none
 		}
@@ -359,7 +359,7 @@ func TestTheStartingMattockStrikesTrees(t *testing.T) {
 	if !ok {
 		t.Fatal("the mattock in hand doesn't target tiles")
 	}
-	if tile, ok := targeting.TargetTile(utils.Vec2f{}, utils.TilePosToWorldPos(utils.Vec2i{X: 1}), x); !ok || tile != (utils.Vec2i{X: 1}) {
+	if tile, ok := targeting.TargetTile(player, utils.TilePosToWorldPos(utils.Vec2i{X: 1}), x); !ok || tile != (utils.Vec2i{X: 1}) {
 		t.Fatalf("aiming at a tree, the mattock targets %v (%v), want the tree", tile, ok)
 	}
 }

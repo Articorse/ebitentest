@@ -5,6 +5,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/ecs/shapes"
 	"ebittest/utils"
 	"fmt"
 )
@@ -16,11 +17,34 @@ func SpawnColonist(ecsContainer *ecs.ECSContainer, colony common.EntityId) (comm
 	if err != nil {
 		return -1, fmt.Errorf("error getting the position of colony %d for a colonist: %w", colony, err)
 	}
-	spr, err := ecs.NewSpriteComponent(common.AssetSheetGoldSlime, 20, false)
+	return spawnColonist(ecsContainer, colony, pos, common.AssetSheetGoldSlime, nil, nil)
+}
+
+// A colonist with the giant slime's sheet and colliders, at the position, for trying out bodies bigger than a tile
+func SpawnGiantColonist(ecsContainer *ecs.ECSContainer, colony common.EntityId, pos utils.Vec2f) (common.EntityId, error) {
+	physicsShape, err := GiantSlimePhysicsShape()
 	if err != nil {
 		return -1, err
 	}
-	anim, physics, hitbox, err := colonySlimeParts(common.AssetSheetGoldSlime)
+	hitboxShape, err := shapes.NewPolygonShape(giantSlimeOutline, utils.Vec2f{})
+	if err != nil {
+		return -1, err
+	}
+	return spawnColonist(ecsContainer, colony, pos, common.AssetSheetGiantSlime, physicsShape, hitboxShape)
+}
+
+func spawnColonist(
+	ecsContainer *ecs.ECSContainer,
+	colony common.EntityId,
+	pos utils.Vec2f,
+	sheet common.ImageAssetTag,
+	physicsShape, hitboxShape shapes.Shape,
+) (common.EntityId, error) {
+	spr, err := ecs.NewSpriteComponent(sheet, 20, false)
+	if err != nil {
+		return -1, err
+	}
+	anim, physics, hitbox, err := colonySlimeParts(sheet, physicsShape, hitboxShape)
 	if err != nil {
 		return -1, err
 	}

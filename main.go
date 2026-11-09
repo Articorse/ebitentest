@@ -225,7 +225,7 @@ func (g *game) Update() error {
 		g.setZoom(g.zoom - 1)
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyC) && !ebiten.IsKeyPressed(ebiten.KeyAlt) {
 		g.ecs.CameraFollow = !g.ecs.CameraFollow
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) || g.inventoryMenu.IsOpen() && inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
@@ -289,6 +289,9 @@ func (g *game) Update() error {
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyAlt) && inpututil.IsKeyJustPressed(ebiten.KeyG) {
 		g.spawnGiantSlime()
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyAlt) && inpututil.IsKeyJustPressed(ebiten.KeyC) {
+		g.spawnGiantColonist()
 	}
 
 	g.tickBudgetPercent += g.timescalePercent
@@ -779,6 +782,28 @@ func (g *game) spawnGiantSlime() {
 	}
 	if _, err := templates.SpawnGiantSlime(g.ecs, pos); err != nil {
 		log.Println("error spawning a giant slime: ", err)
+	}
+}
+
+// At the cursor, where its body fits, into the first colony, for testing colonists bigger than a tile
+func (g *game) spawnGiantColonist() {
+	colonies := slices.Sorted(slices.Values(g.ecs.Colonies.GetEntities()))
+	if len(colonies) == 0 {
+		log.Println("no colony for a giant colonist to join")
+		return
+	}
+	pos := g.cursorWorldPos()
+	shape, err := templates.GiantSlimePhysicsShape()
+	if err != nil {
+		log.Println("error making the giant colonist's collider: ", err)
+		return
+	}
+	if !g.ecs.FitsAt([]shapes.Shape{shape}, pos) {
+		log.Printf("no room for a giant colonist at %v", pos)
+		return
+	}
+	if _, err := templates.SpawnGiantColonist(g.ecs, colonies[0], pos); err != nil {
+		log.Println("error spawning a giant colonist: ", err)
 	}
 }
 

@@ -151,7 +151,7 @@ func TestAColonistWhoseSiteIsHiddenFromWhereItStandsFindsSomewhereElse(t *testin
 	for _, tile := range between[1 : len(between)-1] {
 		s.Chunks.PlaceTile(tile, data.Tile_WoodWall)
 	}
-	if _, sees := s.ECS.AimedTileInReach(utils.TilePosToWorldPos(stand), utils.TilePosToWorldPos(site), data.PlayerBuildRangeTiles); sees {
+	if s.ECS.TileInReachFrom([]utils.Vec2i{stand}, site, data.PlayerBuildRangeTiles) {
 		t.Fatal("the walls didn't hide the site")
 	}
 	if !live(t, s, 20*data.TPS, isBuilt(s, site)) {

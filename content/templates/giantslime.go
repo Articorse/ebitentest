@@ -11,23 +11,23 @@ import (
 )
 
 // Around the giant slime's body in its sheet, from the middle of a frame, smoothed rather than following its pixels.
-// Its top is between the tallest and the most squashed frame's.
+// It's the smallest frame's, so that it never reaches past the body as drawn.
 var giantSlimeOutline = []utils.Vec2f{
-	{X: -12, Y: -24}, {X: 12, Y: -24}, {X: 28, Y: -12}, {X: 36, Y: 4}, {X: 40, Y: 16},
-	{X: 32, Y: 31}, {X: -32, Y: 31}, {X: -40, Y: 16}, {X: -36, Y: 4}, {X: -28, Y: -12},
+	{X: -12, Y: -16}, {X: 12, Y: -16}, {X: 30, Y: 2}, {X: 40, Y: 16}, {X: 40, Y: 24},
+	{X: 32, Y: 31}, {X: -32, Y: 31}, {X: -40, Y: 24}, {X: -40, Y: 16}, {X: -30, Y: 2},
 }
 
-// Shrunk by 2 pixels all round, so that what it hurts on contact has to have reached a little into it
+// Shrunk by 4 pixels all round, so that what it hurts on contact has to have reached well into it
 var giantSlimeHurtOutline = []utils.Vec2f{
-	{X: -11, Y: -22}, {X: 11, Y: -22}, {X: 26, Y: -11}, {X: 34, Y: 4}, {X: 38, Y: 16},
-	{X: 30, Y: 29}, {X: -30, Y: 29}, {X: -38, Y: 16}, {X: -34, Y: 4}, {X: -26, Y: -11},
+	{X: -10, Y: -12}, {X: 10, Y: -12}, {X: 26, Y: 5}, {X: 36, Y: 17}, {X: 36, Y: 22},
+	{X: 30, Y: 27}, {X: -30, Y: 27}, {X: -36, Y: 22}, {X: -36, Y: 17}, {X: -26, Y: 5},
 }
 
-// Half the outline round the middle of its body, as the smaller slimes' bodies are about twice as wide as what they
-// bump into things with
+// A pixel inside the hurt outline, so that it can't push anything it doesn't hurt. It takes up 5 tiles across and 4
+// down, 1 above the tile it's in the middle of and 2 below.
 var giantSlimeFootprint = []utils.Vec2f{
-	{X: -6, Y: -11}, {X: 6, Y: -11}, {X: 14, Y: -5}, {X: 18, Y: 3}, {X: 20, Y: 9},
-	{X: 16, Y: 17}, {X: -16, Y: 17}, {X: -20, Y: 9}, {X: -18, Y: 3}, {X: -14, Y: -5},
+	{X: -9, Y: -11}, {X: 9, Y: -11}, {X: 25, Y: 6}, {X: 35, Y: 17}, {X: 35, Y: 21},
+	{X: 29, Y: 26}, {X: -29, Y: 26}, {X: -35, Y: 21}, {X: -35, Y: 17}, {X: -25, Y: 6},
 }
 
 func GiantSlimePhysicsShape() (*shapes.PolygonShape, error) {

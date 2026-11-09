@@ -49,7 +49,7 @@ func newBuilder(t *testing.T, wood int) (s *testutil.Session, site utils.Vec2i, 
 	for dy := -2; dy <= 2 && !found; dy++ {
 		for dx := -2; dx <= 2 && !found; dx++ {
 			site = utils.Vec2i{X: origin.X + dx, Y: origin.Y + dy}
-			_, inReach := s.ECS.AimedTileInReach(from, utils.TilePosToWorldPos(site), 3)
+			inReach := s.ECS.TileInReachFrom([]utils.Vec2i{origin}, site, 3)
 			found = site != origin && inReach && s.Chunks.CanPlaceSite(site)
 		}
 	}

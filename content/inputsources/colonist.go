@@ -196,8 +196,9 @@ func ColonistInputSource(
 	if finishing {
 		p.chooseWhereToFinish(entityId, self, constructor, ecsContainer)
 	}
-	_, inReach := ecsContainer.AimedTileInReach(selfPos, target, stopRange(stop, constructor))
-	if inReach && self != stop.Tile && (!finishing || self == p.finishing.stand) {
+	_, inReach := ecsContainer.AimedTileInReach(entityId, target, stopRange(stop, constructor))
+	onStop := slices.Contains(ecsContainer.BodyTiles(entityId, self), stop.Tile)
+	if inReach && !onStop && (!finishing || self == p.finishing.stand) {
 		p.path = nil
 		if finishing && p.shutsInAnother(entityId, self, stop.Tile, tick, ecsContainer) {
 			return keepOffSites(entityId, selfPos, p.emptyHand(entityId, ecsContainer), ecsContainer), nil
@@ -234,7 +235,7 @@ func (p *InputColonistParams) chooseWhereToFinish(e common.EntityId, self utils.
 	}
 
 	p.finishing = &finishPlan{site: site, stand: self, sightVersion: version}
-	if _, enclosed := terrain.Enclosure(self, site, ecsContainer.FactionOf(e), data.ColonistEnclosedTiles); !enclosed {
+	if _, enclosed := ecsContainer.Enclosure(e, self, site, data.ColonistEnclosedTiles); !enclosed {
 		return
 	}
 	first, last, err := ecsContainer.ColonyBounds(p.Colony)
@@ -267,7 +268,7 @@ func (p *InputColonistParams) shutsInAnother(e common.EntityId, self, site utils
 			continue
 		}
 		at := utils.WorldPosToTilePos(pos)
-		tiles, enclosed := ecsContainer.Terrain().Enclosure(at, site, ecsContainer.FactionOf(other), data.ColonistEnclosedTiles)
+		tiles, enclosed := ecsContainer.Enclosure(other, at, site, data.ColonistEnclosedTiles)
 		if enclosed && !slices.Contains(tiles, self) {
 			q.raise(Emergency_GetOut, site, tick)
 			shuts = true
@@ -279,7 +280,6 @@ func (p *InputColonistParams) shutsInAnother(e common.EntityId, self, site utils
 // The spots that finishing the site from wouldn't shut the colonist in. What's found to be on one side or the other is
 // remembered, so that the spots on the same side aren't looked from again.
 func roomySpots(e common.EntityId, site utils.Vec2i, spots map[utils.Vec2i]bool, ecsContainer *ecs.ECSContainer) map[utils.Vec2i]bool {
-	faction := ecsContainer.FactionOf(e)
 	side := map[utils.Vec2i]bool{}
 	roomy := map[utils.Vec2i]bool{}
 	for t := range spots {
@@ -289,7 +289,7 @@ func roomySpots(e common.EntityId, site utils.Vec2i, spots map[utils.Vec2i]bool,
 			}
 			continue
 		}
-		tiles, enclosed := ecsContainer.Terrain().Enclosure(t, site, faction, data.ColonistEnclosedTiles)
+		tiles, enclosed := ecsContainer.Enclosure(e, t, site, data.ColonistEnclosedTiles)
 		for _, s := range tiles {
 			side[s] = !enclosed
 		}
@@ -300,22 +300,22 @@ func roomySpots(e common.EntityId, site utils.Vec2i, spots map[utils.Vec2i]bool,
 	return roomy
 }
 
-// Standing still, unless it's on a site, which can't be finished with it there, so it goes to the closest tile that isn't
-// one
+// Standing still, unless it's on a site, which can't be finished with it there, so it goes to the closest tile it can
+// stand on off every site
 func (p *InputColonistParams) stepOffSite(e common.EntityId, selfPos utils.Vec2f, ecsContainer *ecs.ECSContainer) ecs.InputState {
 	input := p.emptyHand(e, ecsContainer)
-	terrain := ecsContainer.Terrain()
 	self := utils.WorldPosToTilePos(selfPos)
-	if _, onSite := terrain.Site(self); !onSite {
+	if !onASite(e, self, ecsContainer) {
 		p.path = nil
 		return keepOffSites(e, selfPos, input, ecsContainer)
 	}
 	best, found := utils.Vec2i{}, false
-	r := data.ColonistStepOffRangeTiles
+	r := data.ColonistStepOffRangeTiles + bodyRadius(e, self, ecsContainer)
+	walkSpeed := ecsContainer.WalkSpeedOf(e)
 	for y := self.Y - r; y <= self.Y+r; y++ {
 		for x := self.X - r; x <= self.X+r; x++ {
 			t := utils.Vec2i{X: x, Y: y}
-			if _, onSite := terrain.Site(t); onSite || terrain.WalkSpeedPercent(t) <= 0 {
+			if walkSpeed(t) <= 0 || onASite(e, t, ecsContainer) {
 				continue
 			}
 			if !found || utils.Dist2(t, self) < utils.Dist2(best, self) {
@@ -331,14 +331,33 @@ func (p *InputColonistParams) stepOffSite(e common.EntityId, selfPos utils.Vec2f
 	return input
 }
 
-// Its body can reach over onto a site next to the tile it's standing on, which holds up building it, so it moves to the
-// middle of its own tile while it does whatever else it's doing
+// Whether its body standing in the middle of the tile would be on a site
+func onASite(e common.EntityId, at utils.Vec2i, ecsContainer *ecs.ECSContainer) bool {
+	return slices.ContainsFunc(ecsContainer.BodyTiles(e, at), func(t utils.Vec2i) bool {
+		_, onSite := ecsContainer.Terrain().Site(t)
+		return onSite
+	})
+}
+
+// How many tiles its body reaches past the tile it stands in the middle of, at the most, 0 for a body of one tile
+func bodyRadius(e common.EntityId, at utils.Vec2i, ecsContainer *ecs.ECSContainer) int {
+	r := 0
+	for _, t := range ecsContainer.BodyTiles(e, at) {
+		r = max(r, utils.AbsInt(t.X-at.X), utils.AbsInt(t.Y-at.Y))
+	}
+	return r
+}
+
+// Its body can reach over onto a site next to the tiles it takes up standing in the middle of its tile, which holds up
+// building it, so it moves to the middle of its own tile while it does whatever else it's doing
 func keepOffSites(e common.EntityId, selfPos utils.Vec2f, input ecs.InputState, ecsContainer *ecs.ECSContainer) ecs.InputState {
 	self := utils.WorldPosToTilePos(selfPos)
-	for dy := -1; dy <= 1; dy++ {
-		for dx := -1; dx <= 1; dx++ {
+	body := ecsContainer.BodyTiles(e, self)
+	r := bodyRadius(e, self, ecsContainer) + 1
+	for dy := -r; dy <= r; dy++ {
+		for dx := -r; dx <= r; dx++ {
 			t := utils.Vec2i{X: self.X + dx, Y: self.Y + dy}
-			if _, onSite := ecsContainer.Terrain().Site(t); t != self && onSite && ecsContainer.OverlapsTile(e, t) {
+			if _, onSite := ecsContainer.Terrain().Site(t); !slices.Contains(body, t) && onSite && ecsContainer.OverlapsTile(e, t) {
 				toMiddle := utils.TilePosToWorldPos(self).Subtract(selfPos)
 				if toMiddle.Length() > 0 {
 					toMiddle = toMiddle.Multiply(1 / toMiddle.Length())
@@ -401,7 +420,7 @@ func (p *InputColonistParams) pickUpInPassing(e common.EntityId, selfPos utils.V
 	}
 
 	self := utils.WorldPosToTilePos(selfPos)
-	r := data.ItemReachTiles
+	r := data.ItemReachTiles + bodyRadius(e, self, ecsContainer)
 	from := utils.Vec2i{X: max(self.X-r, first.X), Y: max(self.Y-r, first.Y)}
 	to := utils.Vec2i{X: min(self.X+r, last.X), Y: min(self.Y+r, last.Y)}
 	tiles := terrain.GroundStacksIn(from, to)
@@ -422,7 +441,7 @@ func (p *InputColonistParams) pickUpInPassing(e common.EntityId, selfPos utils.V
 		if w := weight(stack.Kind); w > 0 {
 			n = min(n, spare/w)
 		}
-		if _, sees := ecsContainer.AimedTileInReach(selfPos, utils.TilePosToWorldPos(t), r); n > 0 && sees {
+		if _, sees := ecsContainer.AimedTileInReach(e, utils.TilePosToWorldPos(t), data.ItemReachTiles); n > 0 && sees {
 			return JobStop{Action: Stop_PickUp, Tile: t, Kind: stack.Kind, Count: n}, true
 		}
 	}
@@ -447,7 +466,7 @@ func (p *InputColonistParams) deliverInPassing(
 	}
 
 	self := utils.WorldPosToTilePos(selfPos)
-	r := constructor.RangeTiles()
+	r := constructor.RangeTiles() + bodyRadius(e, self, ecsContainer)
 	from := utils.Vec2i{X: max(self.X-r, first.X), Y: max(self.Y-r, first.Y)}
 	to := utils.Vec2i{X: min(self.X+r, last.X), Y: min(self.Y+r, last.Y)}
 	for _, t := range terrain.SitesIn(from, to) {
@@ -455,7 +474,7 @@ func (p *InputColonistParams) deliverInPassing(
 		if !ok || !terrain.InArea(data.Area_Home, t) {
 			continue
 		}
-		if _, sees := ecsContainer.AimedTileInReach(selfPos, utils.TilePosToWorldPos(t), r); !sees {
+		if _, sees := ecsContainer.AimedTileInReach(e, utils.TilePosToWorldPos(t), constructor.RangeTiles()); !sees {
 			continue
 		}
 		for _, cost := range def.Costs() {
@@ -671,7 +690,9 @@ func othersClaims(e, colony common.EntityId, ecsContainer *ecs.ECSContainer) cla
 			continue
 		}
 		if q.State != Colonist_Idle {
-			c.stands[q.Stand] = true
+			for _, t := range ecsContainer.BodyTiles(other, q.Stand) {
+				c.stands[t] = true
+			}
 		}
 		c.add(q.State, q.Stops)
 		if q.Paused != nil && q.Paused.Claimed {
@@ -1237,7 +1258,7 @@ func (p *InputColonistParams) use(e common.EntityId, self utils.Vec2i, target ut
 		return input
 	case Stop_MoveOff:
 		stack, _ := ecsContainer.Terrain().GroundStack(stop.Tile)
-		if to, ok := haulTo(self, stop.Tile, stack, ecsContainer); ok {
+		if to, ok := haulTo(ecsContainer.BodyTiles(e, self), stop.Tile, stack, ecsContainer); ok {
 			input.MoveOnGround = ecs.GroundMove{Move: true, From: stop.Tile, To: to}
 			p.Acted = true
 		}
@@ -1277,15 +1298,19 @@ func (p *InputColonistParams) stillNeeded(ecsContainer *ecs.ECSContainer) map[da
 	return needed
 }
 
-// Somewhere off the site within reach of where it stands for what lies there: the closest tile to the site that can
-// take it and isn't another site
-func haulTo(self, site utils.Vec2i, stack ecs.GroundStack, ecsContainer *ecs.ECSContainer) (utils.Vec2i, bool) {
+// Somewhere off the site within reach of the tiles its body takes up for what lies there: the closest tile to the site
+// that can take it and isn't another site
+func haulTo(body []utils.Vec2i, site utils.Vec2i, stack ecs.GroundStack, ecsContainer *ecs.ECSContainer) (utils.Vec2i, bool) {
 	r := data.ItemReachTiles
+	inReach := func(t utils.Vec2i) bool {
+		return slices.ContainsFunc(body, func(b utils.Vec2i) bool { return utils.Dist2(t, b) <= r*r })
+	}
 	best, found := utils.Vec2i{}, false
-	for y := self.Y - r; y <= self.Y+r; y++ {
-		for x := self.X - r; x <= self.X+r; x++ {
+	first, last := body[0], body[len(body)-1]
+	for y := first.Y - r; y <= last.Y+r; y++ {
+		for x := first.X - r; x <= last.X+r; x++ {
 			t := utils.Vec2i{X: x, Y: y}
-			if _, onSite := ecsContainer.Terrain().Site(t); onSite || utils.Dist2(t, self) > r*r {
+			if _, onSite := ecsContainer.Terrain().Site(t); onSite || !inReach(t) {
 				continue
 			}
 			on, taken := ecsContainer.Terrain().GroundStack(t)
@@ -1372,7 +1397,7 @@ func standsFor(
 	inColony := func(t utils.Vec2i) bool {
 		return t.X >= first.X && t.X <= last.X && t.Y >= first.Y && t.Y <= last.Y
 	}
-	spots := standSpots(target, rangeTiles, inColony, avoid, ecsContainer)
+	spots := standSpots(e, target, rangeTiles, inColony, avoid, ecsContainer)
 	for t := range spots {
 		if !ecsContainer.Reachable(e, self, t) {
 			delete(spots, t)
@@ -1423,17 +1448,27 @@ func walkTo(
 
 // The walkable tiles within reach that see the site, other than the site itself. Other sites, where standing would
 // hold up their building, and the spots to avoid are only stood on when there's nowhere else.
-func standSpots(site utils.Vec2i, rangeTiles int, inColony func(utils.Vec2i) bool, avoid map[utils.Vec2i]bool, ecsContainer *ecs.ECSContainer) map[utils.Vec2i]bool {
+func standSpots(
+	e common.EntityId,
+	site utils.Vec2i,
+	rangeTiles int,
+	inColony func(utils.Vec2i) bool,
+	avoid map[utils.Vec2i]bool,
+	ecsContainer *ecs.ECSContainer,
+) map[utils.Vec2i]bool {
 	spots, better := map[utils.Vec2i]bool{}, map[utils.Vec2i]bool{}
-	for dy := -rangeTiles; dy <= rangeTiles; dy++ {
-		for dx := -rangeTiles; dx <= rangeTiles; dx++ {
+	walkSpeed := ecsContainer.WalkSpeedOf(e)
+	r := rangeTiles + bodyRadius(e, site, ecsContainer)
+	for dy := -r; dy <= r; dy++ {
+		for dx := -r; dx <= r; dx++ {
 			t := utils.Vec2i{X: site.X + dx, Y: site.Y + dy}
-			if t == site || !inColony(t) || ecsContainer.Terrain().WalkSpeedPercent(t) <= 0 {
+			body := ecsContainer.BodyTiles(e, t)
+			if slices.Contains(body, site) || !inColony(t) || walkSpeed(t) <= 0 {
 				continue
 			}
-			if _, sees := ecsContainer.AimedTileInReach(utils.TilePosToWorldPos(t), utils.TilePosToWorldPos(site), rangeTiles); sees {
+			if ecsContainer.TileInReachFrom(body, site, rangeTiles) {
 				spots[t] = true
-				if _, onSite := ecsContainer.Terrain().Site(t); !onSite && !avoid[t] {
+				if !onASite(e, t, ecsContainer) && !slices.ContainsFunc(body, func(b utils.Vec2i) bool { return avoid[b] }) {
 					better[t] = true
 				}
 			}

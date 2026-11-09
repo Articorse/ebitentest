@@ -33,12 +33,7 @@ func DrawTileTarget(
 		return nil
 	}
 
-	holderPos, err := ecsContainer.WorldPos(holder)
-	if err != nil {
-		return err
-	}
-
-	tile, ok := targeting.TargetTile(holderPos, aimPos, ecsContainer)
+	tile, ok := targeting.TargetTile(holder, aimPos, ecsContainer)
 	clr := tileTargetColor
 	if !ok {
 		tile, clr = utils.WorldPosToTilePos(aimPos), tileTargetInvalidColor

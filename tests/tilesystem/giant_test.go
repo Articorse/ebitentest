@@ -55,7 +55,7 @@ func TestABodyFitsWhereAllItWouldTakeUpIsWalkableAndEmpty(t *testing.T) {
 	if !s.ECS.FitsAt(body, pos) {
 		t.Fatal("a giant slime doesn't fit in the middle of open ground")
 	}
-	wall(t, s, at(middle, 1, 1))
+	wall(t, s, at(middle, 2, 2))
 	if s.ECS.FitsAt(body, pos) {
 		t.Fatal("a giant slime fits with a wall where its body would be")
 	}
@@ -68,7 +68,7 @@ func TestABodyFitsWhereAllItWouldTakeUpIsWalkableAndEmpty(t *testing.T) {
 	}
 }
 
-func TestAGiantSlimesHurtboxIsInsideItsHitboxAndItsFootprintSmaller(t *testing.T) {
+func TestAGiantSlimesFootprintIsInsideItsHurtboxAndItsHurtboxInsideItsHitbox(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	slime, err := templates.SpawnGiantSlime(s.ECS, utils.TilePosToWorldPos(doorYard(t, s, colonist)))
 	if err != nil {
@@ -77,16 +77,16 @@ func TestAGiantSlimesHurtboxIsInsideItsHitboxAndItsFootprintSmaller(t *testing.T
 	hit, _ := s.ECS.HitboxColliders.Get(slime)
 	hurt, _ := s.ECS.HurtboxColliders.Get(slime)
 	physics, _ := s.ECS.PhysicsColliders.Get(slime)
-	outline := hit.Shapes()[0].(*shapes.PolygonShape)
-	for _, v := range hurt.Shapes()[0].(*shapes.PolygonShape).GetVertices() {
-		if !shapes.OverlapsBox(outline, v.Subtract(utils.Vec2f{X: 0.5, Y: 0.5}), v.Add(utils.Vec2f{X: 0.5, Y: 0.5})) {
-			t.Fatalf("the hurtbox's corner %v is outside the hitbox", v)
+	inside := func(inner, outer shapes.Shape, name string) {
+		t.Helper()
+		for _, v := range inner.(*shapes.PolygonShape).GetVertices() {
+			if !shapes.OverlapsBox(outer, v.Subtract(utils.Vec2f{X: 0.01, Y: 0.01}), v.Add(utils.Vec2f{X: 0.01, Y: 0.01})) {
+				t.Fatalf("the %s's corner %v is outside", name, v)
+			}
 		}
 	}
-	box, footprint := shapes.BoundingAABB(hit.Shapes()), shapes.BoundingAABB(physics.Shapes())
-	if footprint[0].X <= box[0].X || footprint[1].X >= box[1].X || footprint[0].Y <= box[0].Y || footprint[1].Y >= box[1].Y {
-		t.Fatalf("the footprint %v isn't inside the hitbox %v", footprint, box)
-	}
+	inside(hurt.Shapes()[0], hit.Shapes()[0], "hurtbox")
+	inside(physics.Shapes()[0], hurt.Shapes()[0], "footprint")
 }
 
 func TestAColliderTooBigForTheSpatialHashGridIsRefused(t *testing.T) {
@@ -99,9 +99,9 @@ func TestAColliderTooBigForTheSpatialHashGridIsRefused(t *testing.T) {
 
 func TestAGiantSlimeSlidesAlongAWallWithoutCatchingOnItsTiles(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
-	corner := storageSpot(t, s, colonist, 20, 16, 6)
+	corner := storageSpot(t, s, colonist, 20, 16, 7)
 	wall(t, s, rect(corner, at(corner, 15, 0))...)
-	start := utils.TilePosToWorldPos(at(corner, 3, 2))
+	start := utils.TilePosToWorldPos(at(corner, 3, 4))
 	slime, err := templates.SpawnGiantSlime(s.ECS, start)
 	if err != nil {
 		t.Fatal(err)
@@ -125,22 +125,22 @@ func TestAGiantSlimeSlidesAlongAWallWithoutCatchingOnItsTiles(t *testing.T) {
 	}
 }
 
-// Open ground whose bottom half is walled in, with a gap a tile wide at x 3 along the top of the walls and one three
-// tiles wide at x 10 to 12, both from the top-left corner. Returns the tiles above and below the narrow gap, 3 tiles
-// from it.
+// Open ground whose bottom is walled in, with a gap a tile wide at x 3 along the top of the walls, at y 5, and one five
+// tiles wide at x 8 to 12, both from the top-left corner. Returns the tiles above and below the narrow gap, a giant
+// slime's room from it.
 func wallWithGaps(t *testing.T, s *testutil.Session, colonist common.EntityId) (corner, above, below utils.Vec2i) {
 	t.Helper()
-	corner = storageSpot(t, s, colonist, 20, 16, 10)
+	corner = storageSpot(t, s, colonist, 20, 16, 13)
 	for x := 0; x < 16; x++ {
-		if x != 3 && (x < 10 || x > 12) {
-			wall(t, s, at(corner, x, 4))
+		if x != 3 && (x < 8 || x > 12) {
+			wall(t, s, at(corner, x, 5))
 		}
-		wall(t, s, at(corner, x, 9))
+		wall(t, s, at(corner, x, 12))
 	}
-	for y := 5; y < 9; y++ {
+	for y := 6; y < 12; y++ {
 		wall(t, s, at(corner, 0, y), at(corner, 15, y))
 	}
-	return corner, at(corner, 3, 1), at(corner, 3, 7)
+	return corner, at(corner, 3, 2), at(corner, 3, 9)
 }
 
 func TestAGiantSlimesPathsKeepRoomForItsBody(t *testing.T) {
@@ -155,11 +155,11 @@ func TestAGiantSlimesPathsKeepRoomForItsBody(t *testing.T) {
 	if !ok {
 		t.Fatal("the giant slime found no way round the wall")
 	}
-	if slices.Contains(path, at(corner, 3, 4)) || !slices.Contains(path, at(corner, 11, 4)) {
+	if slices.Contains(path, at(corner, 3, 5)) || !slices.Contains(path, at(corner, 10, 5)) {
 		t.Fatalf("the giant slime's path is %v, want it through the middle of the wide gap", path)
 	}
 	small, ok := pathfinding.Find(above, below, data.PathMaxExpandedTiles, s.ECS.WalkSpeedOf(colonist))
-	if !ok || !slices.Contains(small, at(corner, 3, 4)) {
+	if !ok || !slices.Contains(small, at(corner, 3, 5)) {
 		t.Fatalf("a colonist's path is %v, want it through the narrow gap", small)
 	}
 }
@@ -197,12 +197,13 @@ func TestAGiantSlimeCantWalkWhereAWallIsInItsWay(t *testing.T) {
 		wall utils.Vec2i
 		want bool
 	}{
-		{"above", at(middle, 0, -1), false},
-		{"below", at(middle, 0, 1), false},
-		{"to the left", at(middle, -1, 0), false},
-		{"diagonally", at(middle, 1, 1), false},
+		{"a tile up", at(middle, 0, -1), false},
+		{"two tiles down", at(middle, 0, 2), false},
+		{"two tiles to the left", at(middle, -2, 0), false},
+		{"two tiles diagonally", at(middle, 2, 2), false},
 		{"two tiles up", at(middle, 0, -2), true},
-		{"two tiles to the right", at(middle, 2, 0), true},
+		{"three tiles down", at(middle, 0, 3), true},
+		{"three tiles to the right", at(middle, 3, 0), true},
 	} {
 		wall(t, s, c.wall)
 		if walkable := speed(middle) > 0; walkable != c.want {
@@ -255,21 +256,21 @@ func TestAGiantSlimeReachesOnlyWhatItsBodyFitsItsWayTo(t *testing.T) {
 	if !s.ECS.Reachable(giant, above, below) {
 		t.Fatal("the giant slime can't reach through the wide gap")
 	}
-	if !s.ECS.Reachable(giant, above, at(corner, 3, 4)) {
+	if !s.ECS.Reachable(giant, above, at(corner, 3, 5)) {
 		t.Fatal("the giant slime can't reach what stands in the narrow gap, where it can't stand itself")
 	}
 
-	wall(t, s, at(corner, 10, 4), at(corner, 12, 4))
+	wall(t, s, at(corner, 8, 5), at(corner, 9, 5), at(corner, 11, 5), at(corner, 12, 5))
 	if s.ECS.Reachable(giant, above, below) {
 		t.Fatal("the giant slime reaches past a wall whose gaps it doesn't fit through")
 	}
 	if !s.ECS.Reachable(colonist, above, below) {
 		t.Fatal("a colonist can't reach through the gaps")
 	}
-	if closest, ok := s.ECS.ClosestReachable(giant, above, at(corner, 3, 5)); !ok || closest != at(corner, 3, 2) {
+	if closest, ok := s.ECS.ClosestReachable(giant, above, at(corner, 3, 6)); !ok || closest != at(corner, 3, 2) {
 		t.Fatalf("the closest the giant slime can get is %v (%v), want %v, right up to the narrow gap", closest, ok, at(corner, 3, 2))
 	}
-	if lines := s.Chunks.RegionDebugLines(above); !slices.ContainsFunc(lines, func(l string) bool { return strings.HasPrefix(l, "3x3 Region") }) {
+	if lines := s.Chunks.RegionDebugLines(above); !slices.ContainsFunc(lines, func(l string) bool { return strings.HasPrefix(l, "5x4 Region") }) {
 		t.Fatalf("the tooltip shows %v, without the giant slime's regions", lines)
 	}
 }
@@ -277,15 +278,15 @@ func TestAGiantSlimeReachesOnlyWhatItsBodyFitsItsWayTo(t *testing.T) {
 func TestAGiantSlimeSearchingWhereItCantFitGoesAsCloseAsItCan(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	corner, _, _ := wallWithGaps(t, s, colonist)
-	wall(t, s, at(corner, 10, 4), at(corner, 12, 4))
+	wall(t, s, at(corner, 8, 5), at(corner, 9, 5), at(corner, 11, 5), at(corner, 12, 5))
 	s.ECS.SetDisabled(colonist, true)
-	giant, err := templates.SpawnGiantSlime(s.ECS, utils.TilePosToWorldPos(at(corner, 12, 1)))
+	giant, err := templates.SpawnGiantSlime(s.ECS, utils.TilePosToWorldPos(at(corner, 12, 2)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	in, _ := s.ECS.Inputs.Get(giant)
 	p := in.Params().(*inputsources.InputRusherParams)
-	p.State, p.LastSeen = inputsources.Rusher_Search, at(corner, 3, 5)
+	p.State, p.LastSeen = inputsources.Rusher_Search, at(corner, 3, 6)
 
 	if !live(t, s, 30*data.TPS, func() bool { return p.State == inputsources.Rusher_Idle }) {
 		t.Fatalf("the giant slime is still %v, on %v", p.State, utils.WorldPosToTilePos(testutil.WorldPos(t, s.ECS, giant)))

@@ -6,6 +6,7 @@ import (
 	"ebittest/fov"
 	"ebittest/utils"
 	"fmt"
+	"math"
 )
 
 // Lets an entity deliver materials to construction sites and build them, with what's in hand and an empty hand
@@ -27,21 +28,66 @@ func (x *Constructor) RangeTiles() int {
 	return x.rangeTiles
 }
 
-// The tile under the aim, if it's within the range of the tile at from and can be seen from there
-func (x *ECSContainer) AimedTileInReach(from, aim utils.Vec2f, rangeTiles int) (utils.Vec2i, bool) {
-	origin := utils.WorldPosToTilePos(from)
+// The tile under the aim, and whether it's within rangeTiles of a tile the entity's body takes up and in sight from
+// there, so that a body bigger than a tile reaches as far past its edge as one of a tile does
+func (x *ECSContainer) AimedTileInReach(e common.EntityId, aim utils.Vec2f, rangeTiles int) (utils.Vec2i, bool) {
 	aimed := utils.WorldPosToTilePos(aim)
-	if utils.Dist2(origin, aimed) > rangeTiles*rangeTiles {
-		return utils.Vec2i{}, false
+	pos, err := x.WorldPos(e)
+	if err != nil {
+		return aimed, false
 	}
+	return aimed, x.TileInReachFrom(x.BodyTiles(e, utils.WorldPosToTilePos(pos)), aimed, rangeTiles)
+}
 
-	inSight := false
-	fov.Compute(origin, rangeTiles, x.terrain.IsOpaqueTile, func(t utils.Vec2i) {
-		if t == aimed {
-			inSight = true
+// Whether the tile is within rangeTiles of one of the tiles a body takes up, and in sight from it
+func (x *ECSContainer) TileInReachFrom(body []utils.Vec2i, t utils.Vec2i, rangeTiles int) bool {
+	for _, from := range body {
+		if utils.Dist2(from, t) > rangeTiles*rangeTiles {
+			continue
 		}
-	})
-	return aimed, inSight
+		inSight := false
+		fov.Compute(from, rangeTiles, x.terrain.IsOpaqueTile, func(seen utils.Vec2i) {
+			inSight = inSight || seen == t
+		})
+		if inSight {
+			return true
+		}
+	}
+	return false
+}
+
+// The tiles the entity's body takes up standing in the middle of the tile, as far as its physics collider reaches past
+// it, which is the tile alone for a body that fits in one
+func (x *ECSContainer) BodyTiles(e common.EntityId, at utils.Vec2i) []utils.Vec2i {
+	lo, hi := x.bodyReach(e)
+	tiles := make([]utils.Vec2i, 0, (hi.X-lo.X+1)*(hi.Y-lo.Y+1))
+	for dy := lo.Y; dy <= hi.Y; dy++ {
+		for dx := lo.X; dx <= hi.X; dx++ {
+			tiles = append(tiles, utils.Vec2i{X: at.X + dx, Y: at.Y + dy})
+		}
+	}
+	return tiles
+}
+
+// How far the tiles the entity's body takes up reach past the tile it's in the middle of in the direction, so that what
+// it does at a reach from itself starts from where its reach is measured from. 0 for a body within its tile.
+func (x *ECSContainer) BodyOverhang(e common.EntityId, dir utils.Vec2f) float64 {
+	lo, hi := x.bodyReach(e)
+	dir = dir.Normalized()
+	exit := func(lo, hi utils.Vec2i) float64 {
+		dist := math.Inf(1)
+		axes := []struct{ d, lo, hi float64 }{{dir.X, float64(lo.X), float64(hi.X)}, {dir.Y, float64(lo.Y), float64(hi.Y)}}
+		for _, axis := range axes {
+			switch {
+			case axis.d > 0:
+				dist = math.Min(dist, (axis.hi*data.TileSize+data.TileSize/2)/axis.d)
+			case axis.d < 0:
+				dist = math.Min(dist, (-axis.lo*data.TileSize+data.TileSize/2)/-axis.d)
+			}
+		}
+		return dist
+	}
+	return exit(lo, hi) - exit(utils.Vec2i{}, utils.Vec2i{})
 }
 
 // Delivers what's in the constructor's hand to the construction site under its aim, if the site needs it, one at a time
@@ -53,11 +99,7 @@ func (x *ECSContainer) Construct(e common.EntityId, aim utils.Vec2f, all bool) (
 	if !ok {
 		return false, nil
 	}
-	pos, err := x.WorldPos(e)
-	if err != nil {
-		return false, fmt.Errorf("error getting the world position of entity %d to construct: %w", e, err)
-	}
-	tile, ok := x.AimedTileInReach(pos, aim, c.rangeTiles)
+	tile, ok := x.AimedTileInReach(e, aim, c.rangeTiles)
 	if !ok {
 		return false, nil
 	}

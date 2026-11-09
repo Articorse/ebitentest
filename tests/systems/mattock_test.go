@@ -54,7 +54,7 @@ func (openGround) Reachable(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Ve
 func (openGround) ClosestReachable(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int) (utils.Vec2i, bool) {
 	return utils.Vec2i{}, false
 }
-func (openGround) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, int) ([]utils.Vec2i, bool) {
+func (openGround) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int) ([]utils.Vec2i, bool) {
 	return nil, false
 }
 func (openGround) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
