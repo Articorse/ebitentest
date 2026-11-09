@@ -5,6 +5,7 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
+	"math"
 )
 
 // The tiles the simulation runs on, so that systems and abilities can query and change them
@@ -250,15 +251,69 @@ func (x *ECSContainer) SightTile(pos utils.Vec2f) utils.Vec2i {
 }
 
 // As WalkSpeedPercent, but 0 on a closed door that won't open for the entity, which is any that isn't of its faction.
-// One without a faction is no one's.
+// One without a faction is no one's. A body bigger than a tile walks on a tile only where every tile round it that it
+// takes up standing in its middle can be walked on, at the speed of the tile it's in the middle of, so that its paths
+// and the straight lines it walks keep it clear of walls.
 func (x *ECSContainer) WalkSpeedOf(e common.EntityId) func(utils.Vec2i) int {
 	faction := x.FactionOf(e)
-	return func(t utils.Vec2i) int {
+	tile := func(t utils.Vec2i) int {
 		if _, door, ok := x.terrain.ClosedDoor(t); ok && (door == data.Faction_None || door != faction) {
 			return 0
 		}
 		return x.terrain.WalkSpeedPercent(t)
 	}
+	lo, hi := x.bodyReach(e)
+	if lo == (utils.Vec2i{}) && hi == (utils.Vec2i{}) {
+		return tile
+	}
+	everyTile := func(t utils.Vec2i) int {
+		for dy := lo.Y; dy <= hi.Y; dy++ {
+			for dx := lo.X; dx <= hi.X; dx++ {
+				if tile(utils.Vec2i{X: t.X + dx, Y: t.Y + dy}) <= 0 {
+					return 0
+				}
+			}
+		}
+		return tile(t)
+	}
+	bodies, ok := x.terrain.(BodyTerrain)
+	if !ok {
+		return everyTile
+	}
+	speeds := bodies.BodySpeeds(lo, hi)
+	return func(t utils.Vec2i) int {
+		speed, door := speeds(t)
+		if door && speed > 0 {
+			return everyTile(t)
+		}
+		return speed
+	}
+}
+
+// Terrain that keeps where bodies bigger than a tile fit, rather than their every tile being looked at each time
+type BodyTerrain interface {
+	// How fast a body reaching lo to hi tiles round a tile walks in the middle of it, 0 where a tile it would take up
+	// can't be walked on, and whether one of them is a door, whose faction the terrain leaves to the walker
+	BodySpeeds(lo, hi utils.Vec2i) func(t utils.Vec2i) (speed int, door bool)
+}
+
+// How many tiles the entity's physics collider reaches past the tile it's in the middle of, up and left as negative
+// numbers and down and right as positive. Strictly, so that a body reaching exactly to the next tile's edge stays out of
+// it.
+func (x *ECSContainer) bodyReach(e common.EntityId) (lo, hi utils.Vec2i) {
+	col, ok := x.PhysicsColliders.Get(e)
+	if !ok {
+		return lo, hi
+	}
+	local, err := x.transformedShapes(e, col)
+	if err != nil {
+		return lo, hi
+	}
+	aabb := shapes.BoundingAABB(local)
+	past := func(d float64) int {
+		return max(0, int(math.Ceil((d-data.TileSize/2)/data.TileSize)))
+	}
+	return utils.Vec2i{X: -past(-aabb[0].X), Y: -past(-aabb[0].Y)}, utils.Vec2i{X: past(aabb[1].X), Y: past(aabb[1].Y)}
 }
 
 // Whether an entity is in the way of a tile being placed there: one whose physics collider reaches into it, or an

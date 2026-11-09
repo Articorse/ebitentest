@@ -31,8 +31,25 @@ func Find(from, to utils.Vec2i, maxExpanded int, speedPercent func(utils.Vec2i) 
 		return speedPercent(t)
 	}
 	isGoal := func(t utils.Vec2i) bool { return t == to }
-	path, _, ok := search(from, isGoal, func(t utils.Vec2i) int { return heuristic(t, to) }, maxExpanded, speed)
+	path, _, ok, _ := search(from, isGoal, func(t utils.Vec2i) int { return heuristic(t, to) }, maxExpanded, speed)
 	return path, ok
+}
+
+// As Find, but when no path reaches to, the path to the tile it got to that's closest to it, the cheapest to get to of
+// those as close, with reached false. Nil when that's where it starts.
+func FindNearest(from, to utils.Vec2i, maxExpanded int, speedPercent func(utils.Vec2i) int) (path []utils.Vec2i, reached bool) {
+	speed := func(t utils.Vec2i) int {
+		if t == to {
+			return 100
+		}
+		return speedPercent(t)
+	}
+	isGoal := func(t utils.Vec2i) bool { return t == to }
+	path, _, reached, nearest := search(from, isGoal, func(t utils.Vec2i) int { return heuristic(t, to) }, maxExpanded, speed)
+	if reached {
+		return path, true
+	}
+	return nearest, false
 }
 
 // The cheapest path to any tile that isGoal, all of which are within reach tiles of toward, and what walking it costs.
@@ -47,7 +64,8 @@ func FindTowards(
 	speedPercent func(utils.Vec2i) int,
 ) (path []utils.Vec2i, cost int, ok bool) {
 	h := func(t utils.Vec2i) int { return max(heuristic(t, toward)-reach*diagonalStepCost, 0) }
-	return search(from, isGoal, h, maxExpanded, speedPercent)
+	path, cost, ok, _ = search(from, isGoal, h, maxExpanded, speedPercent)
+	return path, cost, ok
 }
 
 func search(
@@ -56,9 +74,9 @@ func search(
 	h func(utils.Vec2i) int,
 	maxExpanded int,
 	speedPercent func(utils.Vec2i) int,
-) ([]utils.Vec2i, int, bool) {
+) (path []utils.Vec2i, cost int, ok bool, nearest []utils.Vec2i) {
 	if isGoal(from) {
-		return nil, 0, true
+		return nil, 0, true, nil
 	}
 
 	speed := func(t utils.Vec2i) int {
@@ -77,6 +95,17 @@ func search(
 	open := &queue{}
 	seq := 0
 	open.push(entry{tile: from, f: h(from), h: h(from), seq: seq})
+	pathTo := func(to utils.Vec2i) []utils.Vec2i {
+		path := []utils.Vec2i{}
+		for t := to; t != from; t = visits[t].parent {
+			path = append(path, t)
+		}
+		for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
+			path[i], path[j] = path[j], path[i]
+		}
+		return path
+	}
+	best, bestH := from, h(from)
 
 	for expanded := 0; len(*open) > 0 && expanded < maxExpanded; {
 		current := open.pop()
@@ -88,14 +117,10 @@ func search(
 		expanded++
 
 		if isGoal(current.tile) {
-			path := []utils.Vec2i{}
-			for t := current.tile; t != from; t = visits[t].parent {
-				path = append(path, t)
-			}
-			for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
-				path[i], path[j] = path[j], path[i]
-			}
-			return path, v.cost, true
+			return pathTo(current.tile), v.cost, true, nil
+		}
+		if current.h < bestH || current.h == bestH && v.cost < visits[best].cost {
+			best, bestH = current.tile, current.h
 		}
 
 		for i, d := range directions {
@@ -122,7 +147,10 @@ func search(
 			open.push(entry{tile: next, f: cost + nh, h: nh, seq: seq})
 		}
 	}
-	return nil, 0, false
+	if best == from {
+		return nil, 0, false, nil
+	}
+	return nil, 0, false, pathTo(best)
 }
 
 // The cost of the shortest path over open ground, which no path can beat

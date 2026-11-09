@@ -1,11 +1,13 @@
 package tilesystem_test
 
 import (
+	"ebittest/content/inputsources"
 	"ebittest/content/templates"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
+	"ebittest/pathfinding"
 	"ebittest/tests/testutil"
 	"ebittest/utils"
 	"slices"
@@ -120,4 +122,119 @@ func TestAGiantSlimeSlidesAlongAWallWithoutCatchingOnItsTiles(t *testing.T) {
 	if moved := end.X - start.X; moved < 0.8*speed.X*ticks {
 		t.Fatalf("the slime slid %v along the wall in %d ticks, want close to %v", moved, ticks, speed.X*ticks)
 	}
+}
+
+// Open ground split by a wall along its middle row, with a gap a tile wide at x 3 and one three tiles wide at x 10 to
+// 12, both from the top-left corner. Returns the tiles above and below the narrow gap, 3 tiles from it.
+func wallWithGaps(t *testing.T, s *testutil.Session, colonist common.EntityId) (corner, above, below utils.Vec2i) {
+	t.Helper()
+	corner = storageSpot(t, s, colonist, 20, 16, 9)
+	for x := 0; x < 16; x++ {
+		if x != 3 && (x < 10 || x > 12) {
+			wall(t, s, at(corner, x, 4))
+		}
+	}
+	return corner, at(corner, 3, 1), at(corner, 3, 7)
+}
+
+func TestAGiantSlimesPathsKeepRoomForItsBody(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	corner, above, below := wallWithGaps(t, s, colonist)
+	giant, err := templates.SpawnGiantSlime(s.ECS, utils.TilePosToWorldPos(above))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path, ok := pathfinding.Find(above, below, data.PathMaxExpandedTiles, s.ECS.WalkSpeedOf(giant))
+	if !ok {
+		t.Fatal("the giant slime found no way round the wall")
+	}
+	if slices.Contains(path, at(corner, 3, 4)) || !slices.Contains(path, at(corner, 11, 4)) {
+		t.Fatalf("the giant slime's path is %v, want it through the middle of the wide gap", path)
+	}
+	small, ok := pathfinding.Find(above, below, data.PathMaxExpandedTiles, s.ECS.WalkSpeedOf(colonist))
+	if !ok || !slices.Contains(small, at(corner, 3, 4)) {
+		t.Fatalf("a colonist's path is %v, want it through the narrow gap", small)
+	}
+}
+
+func TestAGiantSlimeDoesntHeadStraightForAGapItCantFitThrough(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	_, above, below := wallWithGaps(t, s, colonist)
+	giant, err := templates.SpawnGiantSlime(s.ECS, utils.TilePosToWorldPos(above))
+	if err != nil {
+		t.Fatal(err)
+	}
+	in, _ := s.ECS.Inputs.Get(giant)
+	p := in.Params().(*inputsources.InputRusherParams)
+	p.State, p.LastSeen = inputsources.Rusher_Search, below
+
+	input, err := inputsources.RusherInputSource(giant, s.ECS.TickIdx, p, s.ECS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if input.Analog1X < 0.5 {
+		t.Fatalf("the giant slime heads %v, %v, want towards the wide gap to its right", input.Analog1X, input.Analog1Y)
+	}
+}
+
+func TestAGiantSlimeCantWalkWhereAWallIsInItsWay(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	middle := doorYard(t, s, colonist)
+	giant, err := templates.SpawnGiantSlime(s.ECS, utils.TilePosToWorldPos(at(middle, 0, -3)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	speed := s.ECS.WalkSpeedOf(giant)
+	for _, c := range []struct {
+		name string
+		wall utils.Vec2i
+		want bool
+	}{
+		{"above", at(middle, 0, -1), false},
+		{"below", at(middle, 0, 1), false},
+		{"to the left", at(middle, -1, 0), false},
+		{"diagonally", at(middle, 1, 1), false},
+		{"two tiles up", at(middle, 0, -2), true},
+		{"two tiles to the right", at(middle, 2, 0), true},
+	} {
+		wall(t, s, c.wall)
+		if walkable := speed(middle) > 0; walkable != c.want {
+			t.Errorf("with a wall %s, the giant slime can walk on the tile %v, want %v", c.name, walkable, c.want)
+		}
+		if destroyed, _ := s.Chunks.DamageTile(c.wall, 1000); !destroyed {
+			t.Fatal("couldn't take the wall down")
+		}
+	}
+}
+
+func TestWhereABodyFitsFollowsWhatsBuiltAndGrownAcrossChunkEdges(t *testing.T) {
+	s, _, colonist := colonistAtWork(t)
+	start := colonistTile(t, s, colonist)
+	edge := (start.X/data.ChunkSize + 1) * data.ChunkSize
+	lo, hi := utils.Vec2i{X: -1, Y: -1}, utils.Vec2i{X: 1, Y: 1}
+	for y := start.Y - 40; y <= start.Y+40; y++ {
+		inside, across := utils.Vec2i{X: edge - 1, Y: y}, utils.Vec2i{X: edge, Y: y}
+		if speed, _ := s.Chunks.BodySpeeds(lo, hi)(inside); speed <= 0 || !s.Chunks.CanPlaceTile(across) || !s.Chunks.CanPlaceTile(at(across, 0, 1)) {
+			continue
+		}
+		wall(t, s, across)
+		if speed, _ := s.Chunks.BodySpeeds(lo, hi)(inside); speed > 0 {
+			t.Fatal("a body fits where a wall was built across the chunk edge")
+		}
+		if destroyed, _ := s.Chunks.DamageTile(across, 1000); !destroyed {
+			t.Fatal("couldn't take the wall down")
+		}
+		if speed, _ := s.Chunks.BodySpeeds(lo, hi)(inside); speed <= 0 {
+			t.Fatal("a body doesn't fit once the wall across the chunk edge is gone")
+		}
+		if !s.Chunks.PlaceFeature(at(across, 0, 1), data.Feature_Tree) {
+			t.Fatal("couldn't plant a tree")
+		}
+		if speed, _ := s.Chunks.BodySpeeds(lo, hi)(inside); speed > 0 {
+			t.Fatal("a body fits where a tree grew across the chunk edge")
+		}
+		return
+	}
+	t.Fatal("no room for a body by the chunk edge")
 }

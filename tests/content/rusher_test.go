@@ -121,7 +121,23 @@ func TestTheRusherWalksAroundWhatItCanSeeAcrossButNotWalkThrough(t *testing.T) {
 	}
 }
 
-func TestTheRusherGivesUpSearchingWhereItCantGo(t *testing.T) {
+// Moving the slime by its input each time it rushes, until it stands still or ticks run out. Returns its state then.
+func rushUntilStill(t *testing.T, x *ecs.ECSContainer, slime common.EntityId, ticks int) inputsources.RusherState {
+	t.Helper()
+	for range ticks {
+		input, state := rush(t, x, slime)
+		if reflect.DeepEqual(input, ecs.InputState{}) {
+			return state
+		}
+		if err := x.SetWorldPos(slime, testutil.WorldPos(t, x, slime).Add(utils.Vec2f{X: input.Analog1X, Y: input.Analog1Y})); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Fatal("the slime didn't stop")
+	return 0
+}
+
+func TestTheRusherSearchesAsCloseAsItCanGetThenIdles(t *testing.T) {
 	water := pond(-2, 2, -2, 2)
 	delete(water, utils.Vec2i{})
 	x, player, slime := rusherBy(t, water, utils.Vec2i{X: 6})
@@ -130,19 +146,52 @@ func TestTheRusherGivesUpSearchingWhereItCantGo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if input, state := rush(t, x, slime); state != inputsources.Rusher_Idle || !reflect.DeepEqual(input, ecs.InputState{}) {
-		t.Fatalf("with the player last seen on an island, the slime is in state %v heading %v, %v; want it idle", state, input.Analog1X, input.Analog1Y)
+	if state := rushUntilStill(t, x, slime, 200); state != inputsources.Rusher_Idle {
+		t.Fatalf("with the player last seen on an island, the slime stopped in state %v, want idle", state)
+	}
+	if at := utils.WorldPosToTilePos(testutil.WorldPos(t, x, slime)); at != (utils.Vec2i{X: 3}) {
+		t.Fatalf("the slime stopped on %v, want the shore closest to the island", at)
 	}
 }
 
-func TestTheRusherStandsStillWhenNoPathReachesItsTarget(t *testing.T) {
+// Counting how many tiles walking speeds are asked for, which a path search asks for every tile it looks at
+type countedPondWorld struct {
+	pondWorld
+	asked *int
+}
+
+func (w countedPondWorld) WalkSpeedPercent(t utils.Vec2i) int {
+	*w.asked++
+	return w.pondWorld.WalkSpeedPercent(t)
+}
+
+func TestTheRusherWaitsAsCloseAsItCanGetAndOnlyLooksForAWayAgainNowAndThen(t *testing.T) {
 	water := pond(-2, 2, -2, 2)
 	delete(water, utils.Vec2i{})
 	x, _, slime := rusherBy(t, water, utils.Vec2i{X: 6})
+	asked := 0
+	x.SetTerrain(countedPondWorld{pondWorld: pondWorld{Terrain: x.Terrain().(pondWorld).Terrain, water: water}, asked: &asked})
 
-	input, state := rush(t, x, slime)
-	if state != inputsources.Rusher_Follow || !reflect.DeepEqual(input, ecs.InputState{}) {
-		t.Fatalf("with the player on an island, the slime is in state %v heading %v, %v; want it following but still", state, input.Analog1X, input.Analog1Y)
+	if state := rushUntilStill(t, x, slime, 200); state != inputsources.Rusher_Follow {
+		t.Fatalf("with the player on an island, the slime stopped in state %v, want still following", state)
+	}
+	if at := utils.WorldPosToTilePos(testutil.WorldPos(t, x, slime)); at != (utils.Vec2i{X: 3}) {
+		t.Fatalf("the slime stopped on %v, want the shore closest to the island", at)
+	}
+
+	in, _ := x.Inputs.Get(slime)
+	searched := 0
+	for tick := x.TickIdx; tick < x.TickIdx+4*data.PathRetryTicks; tick++ {
+		asked = 0
+		if _, err := inputsources.RusherInputSource(slime, tick, in.Params(), x); err != nil {
+			t.Fatal(err)
+		}
+		if asked > 1000 {
+			searched++
+		}
+	}
+	if searched < 3 || searched > 5 {
+		t.Fatalf("over %d ticks the slime looked for a way %d times, want about every %d ticks", 4*data.PathRetryTicks, searched, data.PathRetryTicks)
 	}
 }
 
@@ -223,9 +272,9 @@ func TestTheRusherOnlyGoesThroughClosedDoorsOfItsOwn(t *testing.T) {
 			}
 
 			world.open = false
-			input, state := rush(t, x, slime)
-			if through := state == inputsources.Rusher_Search && input.Analog1X < 0; through != c.through {
-				t.Fatalf("with the door closed, the slime is in state %v heading %v, %v; want it going through %v", state, input.Analog1X, input.Analog1Y, c.through)
+			rushUntilStill(t, x, slime, 200)
+			if through := testutil.WorldPos(t, x, slime).X < utils.TilePosToWorldPos(doorTile).X; through != c.through {
+				t.Fatalf("with the door closed, the slime went through %v, want %v", through, c.through)
 			}
 		})
 	}

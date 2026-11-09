@@ -136,7 +136,7 @@ func rush(t *testing.T, x *ecs.ECSContainer, slime common.EntityId) (ecs.InputSt
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := rusher(slime, 0, in.Params(), x)
+	input, err := rusher(slime, x.TickIdx, in.Params(), x)
 	if err != nil {
 		t.Fatal(err)
 	}

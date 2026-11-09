@@ -42,8 +42,9 @@ func (p *InputRusherParams) Copy() ecs.InputParams {
 }
 
 // Follows the closest hostile its vision sees, switching whenever another one is closer. Once it sees none, it heads for
-// the tile it last saw its target on, and idles once it's there or there's no way there. Its vision is as of the last
-// tick, since vision is worked out after inputs are handled. It stands still while it can't get to the target.
+// the tile it last saw its target on, and idles once it's there or as close as it can get. Its vision is as of the last
+// tick, since vision is worked out after inputs are handled. It stands still while regions say it can't get to the
+// target, and otherwise goes as close as a path gets it.
 func RusherInputSource(
 	entityId common.EntityId,
 	tick uint64,
@@ -83,12 +84,12 @@ func RusherInputSource(
 			p.path = nil
 			return ecs.InputState{}, nil
 		}
-		input, _ := p.moveTo(selfPos, targetPos, ecsContainer.WalkSpeedOf(entityId))
+		input, _ := p.approach(selfPos, targetPos, ecsContainer.WalkSpeedOf(entityId), tick)
 		return input, nil
 	case Rusher_Search:
 		input, ok := ecs.InputState{}, ecsContainer.Terrain().Reachable(self, p.LastSeen, faction)
 		if ok {
-			input, ok = p.moveTo(selfPos, utils.TilePosToWorldPos(p.LastSeen), ecsContainer.WalkSpeedOf(entityId))
+			input, ok = p.approach(selfPos, utils.TilePosToWorldPos(p.LastSeen), ecsContainer.WalkSpeedOf(entityId), tick)
 		}
 		if !ok {
 			p.State = Rusher_Idle

@@ -259,13 +259,15 @@ func (cc *ChunkContainer) PlaceFeature(t utils.Vec2i, f data.FeatureEnum) bool {
 	return true
 }
 
-// A door opening or closing leaves the regions as they were, since a door is its own region however it stands
+// A door opening or closing leaves the regions and where bodies fit as they were, since a door is its own region and
+// walked on however it stands
 func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum) {
 	if cc.featureAtlas[c.features[t]].harvestable {
 		cc.noteHarvested(t)
 	}
 	if cc.featureAtlas[c.features[t]].door == nil || cc.featureAtlas[f].door == nil {
 		c.regionOf, cc.regionGraph = nil, nil
+		cc.forgetBodyFits(utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)})
 	}
 	if f == data.Feature_None {
 		delete(c.features, t)
