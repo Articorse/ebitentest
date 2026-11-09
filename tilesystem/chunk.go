@@ -42,6 +42,8 @@ type chunk struct {
 	Image *ebiten.Image
 	// What lies on each tile
 	ground map[utils.Vec2i]ecs.GroundStack
+	// Only for roofs being built or taken down
+	roofWork map[utils.Vec2i]roofWork
 }
 
 func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
@@ -55,6 +57,7 @@ func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
 	c.sites = make(map[utils.Vec2i]*constructionSite)
 	c.ground = make(map[utils.Vec2i]ecs.GroundStack)
 	c.doorFactions = make(map[utils.Vec2i]data.FactionEnum)
+	c.roofWork = make(map[utils.Vec2i]roofWork)
 
 	return &c, nil
 }
@@ -152,10 +155,12 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, layer data.TileLayerE
 	if layer == data.TileLayer_Wall && tile != data.Tile_None {
 		replaced = append(replaced, data.TileLayer_Cover)
 	}
+	wallGone := false
 	for _, l := range replaced {
 		if old := c.tiles[l][idx]; old != data.Tile_None && cc.atlas[old].harvestable {
 			cc.noteHarvested(t)
 		}
+		wallGone = wallGone || (l == data.TileLayer_Wall && cc.isWall(c.tiles[l][idx]) && tile == data.Tile_None)
 		c.tiles[l][idx] = data.Tile_None
 	}
 	c.tiles[layer][idx] = tile
@@ -168,6 +173,9 @@ func (cc *ChunkContainer) setTile(c *chunk, t utils.Vec2i, layer data.TileLayerE
 
 	cc.redrawAround(t)
 	cc.turnDoorsAround(t)
+	if wallGone {
+		cc.collapseAround(t)
+	}
 }
 
 func (cc *ChunkContainer) IsOpenToSky(t utils.Vec2i) bool {

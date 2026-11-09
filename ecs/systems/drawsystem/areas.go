@@ -21,11 +21,13 @@ var areaLooks = [data.AreaCount]areaLook{
 	data.Area_Home:    {name: "Home", shown: data.HomeAreaColor, mark: data.HomeMarkColor, button: data.HomeButtonColor},
 	data.Area_Harvest: {name: "Harvest", shown: data.HarvestAreaColor, mark: data.HarvestMarkColor, button: data.HarvestButtonColor},
 	data.Area_Storage: {name: "Storage", shown: data.StorageAreaColor, mark: data.StorageMarkColor, button: data.StorageButtonColor},
+	data.Area_Roof:    {name: "Roof", shown: data.RoofAreaColor, mark: data.RoofMarkColor, button: data.RoofButtonColor},
+	data.Area_NoRoof:  {name: "No roof", shown: data.NoRoofAreaColor, mark: data.NoRoofMarkColor, button: data.NoRoofButtonColor},
 }
 
 // In the order of the area menu's buttons, which storage, in build mode, isn't one of
 func Areas() []data.AreaEnum {
-	return []data.AreaEnum{data.Area_Home, data.Area_Harvest}
+	return []data.AreaEnum{data.Area_Home, data.Area_Harvest, data.Area_Roof, data.Area_NoRoof}
 }
 
 // The area menu: the area chosen, marked out by dragging rectangles over tiles, and the panel of areas to choose from

@@ -55,6 +55,9 @@ func (x *ECSContainer) MarkArea(area data.AreaEnum, first, last utils.Vec2i, in 
 			x.terrain.SetArea(area, from, to, in)
 		}
 	}
+	if opposite, ok := data.OppositeArea(area); ok && in {
+		x.MarkArea(opposite, first, last, false)
+	}
 }
 
 // A group of harvest area tiles sharing edges is exhausted once none of them has anything harvestable, or anything

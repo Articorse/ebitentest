@@ -386,12 +386,12 @@ func TestTheAreaMenuOpensOnHomeWithItsButtonsInTheBottomRightCorner(t *testing.T
 	if area, ok := p.Area(); !ok || area != data.Area_Home {
 		t.Fatalf("the area menu opened on %v (%v), want home", area, ok)
 	}
-	home := blueprintSlotCenter().Subtract(utils.Vec2f{X: menuSlotPx + data.HotbarSlotGapPx})
+	home := blueprintSlotCenter().Subtract(utils.Vec2f{X: 3 * (menuSlotPx + data.HotbarSlotGapPx)})
 	if area, ok := p.AreaAt(home, menuScreen, assets); !ok || area != data.Area_Home {
 		t.Fatalf("the first button is %v (%v), want home", area, ok)
 	}
-	if area, ok := p.AreaAt(blueprintSlotCenter(), menuScreen, assets); !ok || area != data.Area_Harvest {
-		t.Fatalf("the last button is %v (%v), want harvest", area, ok)
+	if area, ok := p.AreaAt(blueprintSlotCenter(), menuScreen, assets); !ok || area != data.Area_NoRoof {
+		t.Fatalf("the last button is %v (%v), want no roof", area, ok)
 	}
 	between := blueprintSlotCenter().Subtract(utils.Vec2f{X: menuSlotPx/2 + data.HotbarSlotGapPx/2.0})
 	if _, ok := p.AreaAt(between, menuScreen, assets); ok || !p.Covers(between, menuScreen, assets) {

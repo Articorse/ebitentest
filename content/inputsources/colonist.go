@@ -35,6 +35,8 @@ const (
 	// Takes what lies on a site off it onto storage, or nearby without room there, since the site can't be finished
 	// under it
 	Colonist_Haul
+	// Builds a roof on the roof area, or takes one down on the no-roof area
+	Colonist_Roof
 )
 
 type StopAction uint8
@@ -48,6 +50,7 @@ const (
 	Stop_PutDown
 	// What lies on a site, onto the ground nearby
 	Stop_MoveOff
+	Stop_Roof
 )
 
 // One step of a job, on one tile
@@ -108,7 +111,7 @@ type finishPlan struct {
 type planKey struct {
 	sightVersion uint64
 	// The targets of each job
-	targets [7][]utils.Vec2i
+	targets [8][]utils.Vec2i
 }
 
 func (k *planKey) equal(o planKey) bool {
@@ -142,17 +145,18 @@ func (p *InputColonistParams) Copy() ecs.InputParams {
 }
 
 // With no job, it clears what lies on the closest site on the colony's home first, then builds the closest site that
-// has everything delivered, otherwise delivers to the closest that it has all that's still needed for, otherwise
-// fetches what it lacks for one from storage and delivers it, otherwise picks up what lies closest on the harvest area,
-// and otherwise fells the closest tree there, going by walking distance among the few closest as the crow flies, so
-// that one it can't get to doesn't hold it up. With none of that to do, it puts what it carries that no site needs down
-// on the closest storage. It sees to its job until it's done or can't be done any more, and only then looks for
-// another. What other colonists' jobs are going to pick up, deliver or put down, and the trees and sites they're
-// felling, building or clearing, are left to them. It acts from where it's in reach and sees the stop's tile, but never
-// from on it, since a tile can't be finished with someone standing in it. A site is finished from where finishing it
-// won't shut the colonist in, if it can get there, and not while it would shut another colonist in on the other side.
-// What it uses goes on the first hotbar slot as it uses it, and comes off it to build with an empty hand. An emergency
-// comes before all of that, and its job waits until it's over, when it carries on with it if it still can.
+// has everything delivered or roofs the closest tile on the roof area, or unroofs one on the no-roof area, otherwise
+// delivers to the closest that it has all that's still needed for, otherwise fetches what it lacks for one from storage
+// and delivers it, otherwise picks up what lies closest on the harvest area, and otherwise fells the closest tree
+// there, going by walking distance among the few closest as the crow flies, so that one it can't get to doesn't hold it
+// up. With none of that to do, it puts what it carries that no site needs down on the closest storage. It sees to its
+// job until it's done or can't be done any more, and only then looks for another. What other colonists' jobs are going
+// to pick up, deliver or put down, and the trees and sites they're felling, building or clearing, are left to them. It
+// acts from where it's in reach and sees the stop's tile, but never from on it, since a tile can't be finished with
+// someone standing in it. A site is finished from where finishing it won't shut the colonist in, if it can get there,
+// and not while it would shut another colonist in on the other side. What it uses goes on the first hotbar slot as it
+// uses it, and comes off it to build with an empty hand. An emergency comes before all of that, and its job waits until
+// it's over, when it carries on with it if it still can.
 func ColonistInputSource(
 	entityId common.EntityId,
 	tick uint64,
@@ -601,6 +605,8 @@ func (p *InputColonistParams) valid(e common.EntityId, ecsContainer *ecs.ECSCont
 	case Stop_Build:
 		site, def, ok := siteAt(stop.Tile, ecsContainer)
 		return ok && terrain.InArea(data.Area_Home, stop.Tile) && site.Supplied(def)
+	case Stop_Roof:
+		return terrain.RoofJob(stop.Tile)
 	case Stop_Chop:
 		_, hasAxe := axeSlot(e, ecsContainer)
 		return hasAxe && isTree(stop.Tile, ecsContainer) && terrain.InArea(data.Area_Harvest, stop.Tile)
@@ -712,7 +718,7 @@ func (c claims) add(state ColonistState, stops []JobStop) {
 		case Stop_PutDown:
 			c.storing[s.Tile] = JobStop{Kind: s.Kind, Count: c.storing[s.Tile].Count + s.Count}
 		}
-		if i == 0 && (s.Action == Stop_Build || s.Action == Stop_Chop || s.Action == Stop_MoveOff || state == Colonist_Haul) {
+		if i == 0 && (s.Action == Stop_Build || s.Action == Stop_Chop || s.Action == Stop_Roof || s.Action == Stop_MoveOff || state == Colonist_Haul) {
 			c.taken[s.Tile] = true
 		}
 	}
@@ -871,7 +877,7 @@ func (c claims) storeSpots(kind data.ItemEnum, storage []utils.Vec2i, ecsContain
 	return empty
 }
 
-// Hauling comes first, then building, delivering, fetching, gathering, felling and storing, each only while there's
+// Hauling comes first, then building and roofing, delivering, fetching, gathering, felling and storing, each only while there's
 // none of what comes before it, and each to what's closest to walk to, leaving what other colonists are seeing to alone
 func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, constructor *ecs.Constructor, ecsContainer *ecs.ECSContainer) {
 	first, last, err := ecsContainer.ColonyBounds(p.Colony)
@@ -913,6 +919,8 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 		}
 	}
 
+	roof := slices.DeleteFunc(terrain.RoofJobsIn(first, last), func(t utils.Vec2i) bool { return c.taken[t] })
+
 	gather := slices.DeleteFunc(gatherables(e, first, last, ecsContainer), func(t utils.Vec2i) bool {
 		return c.unclaimedStack(t, ecsContainer) <= 0
 	})
@@ -940,6 +948,7 @@ func (p *InputColonistParams) plan(e common.EntityId, self utils.Vec2i, construc
 	}{
 		{Colonist_Haul, haul, data.ItemReachTiles, data.ColonistHaulWeight},
 		{Colonist_Construct, construct, constructor.RangeTiles(), data.ColonistBuildWeight},
+		{Colonist_Roof, roof, constructor.RangeTiles(), data.ColonistRoofWeight},
 		{Colonist_Deliver, deliver, constructor.RangeTiles(), data.ColonistDeliverWeight},
 		{Colonist_Fetch, fetch, data.ItemReachTiles, data.ColonistFetchWeight},
 		{Colonist_Gather, gather, data.ItemReachTiles, data.ColonistGatherWeight},
@@ -1113,6 +1122,8 @@ func (p *InputColonistParams) stopsFor(
 		return c.gatherStops(e, target, first, last, ecsContainer)
 	case Colonist_Chop:
 		return []JobStop{{Action: Stop_Chop, Tile: target}}
+	case Colonist_Roof:
+		return []JobStop{{Action: Stop_Roof, Tile: target}}
 	case Colonist_Store:
 		kind, spare, _ := p.storable(e, ecsContainer)
 		n := min(spare, c.unclaimedRoom(target, kind, ecsContainer))
@@ -1262,6 +1273,10 @@ func (p *InputColonistParams) use(e common.EntityId, self utils.Vec2i, target ut
 			input.MoveOnGround = ecs.GroundMove{Move: true, From: stop.Tile, To: to}
 			p.Acted = true
 		}
+		return input
+	case Stop_Roof:
+		input.Roof = ecs.RoofWork{Work: true, Tile: stop.Tile}
+		input.AimPos, input.HasAim = target, true
 		return input
 	case Stop_Chop:
 		if slot, ok := axeSlot(e, ecsContainer); ok {

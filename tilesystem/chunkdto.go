@@ -23,6 +23,7 @@ type chunkDto struct {
 	Sites           []siteDto
 	Areas           [][]uint64
 	Ground          []groundStackDto
+	RoofWork        []roofWorkDto
 }
 
 type featureDto struct {
@@ -84,6 +85,7 @@ func (cc *ChunkContainer) chunkToDto(
 		Sites:           siteDtos(c),
 		Areas:           areasDto(c),
 		Ground:          groundDtos(c),
+		RoofWork:        roofWorkDtos(c),
 	}, nil
 }
 
@@ -131,6 +133,7 @@ func (*ChunkContainer) dtoToChunkData(dto chunkDto) *chunk {
 		sites:           sitesFromDtos(dto.Sites),
 		areas:           areasFromDto(dto.Areas),
 		ground:          groundFromDtos(dto.Ground),
+		roofWork:        roofWorkFromDtos(dto.RoofWork),
 		terrainModified: dto.TerrainModified,
 	}
 	return chunk

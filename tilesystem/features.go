@@ -268,6 +268,7 @@ func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum
 	if cc.featureAtlas[c.features[t]].door == nil || cc.featureAtlas[f].door == nil {
 		cc.forgetWalking(utils.Vec2i{X: floorDiv(t.X, data.ChunkSize), Y: floorDiv(t.Y, data.ChunkSize)})
 	}
+	doorGone := cc.featureAtlas[c.features[t]].door != nil && cc.featureAtlas[f].door == nil
 	if f == data.Feature_None {
 		delete(c.features, t)
 	} else {
@@ -278,6 +279,9 @@ func (cc *ChunkContainer) setFeature(c *chunk, t utils.Vec2i, f data.FeatureEnum
 	c.walkSpeeds = nil
 	c.opaqueFeatures = nil
 	cc.sightVersion++
+	if doorGone {
+		cc.collapseAround(t)
+	}
 }
 
 // The tiles with a feature that blocks sight, found when they're first asked for after the features change, since

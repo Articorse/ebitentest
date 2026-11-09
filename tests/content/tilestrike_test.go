@@ -134,6 +134,9 @@ func (f *fakeTerrain) ClosestReachable(utils.Vec2i, utils.Vec2i, data.FactionEnu
 func (f *fakeTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int) ([]utils.Vec2i, bool) {
 	return nil, false
 }
+func (f *fakeTerrain) RoofJob(utils.Vec2i) bool                          { return false }
+func (f *fakeTerrain) RoofJobsIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i { return nil }
+func (f *fakeTerrain) WorkOnRoof(utils.Vec2i, int) (bool, bool)          { return false, false }
 func (f *fakeTerrain) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
 	return false, data.Faction_None, false
 }

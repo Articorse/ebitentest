@@ -196,6 +196,13 @@ type InputState struct {
 	PutDown ItemPutDown
 	// What lies on a tile within reach moved onto another within reach, without being carried
 	MoveOnGround GroundMove
+	// The roof over a tile within the constructor's reach built or taken down, which colonists do on their areas
+	Roof RoofWork
+}
+
+type RoofWork struct {
+	Work bool
+	Tile utils.Vec2i
 }
 
 type GroundMove struct {

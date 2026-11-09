@@ -57,6 +57,9 @@ func (openGround) ClosestReachable(utils.Vec2i, utils.Vec2i, data.FactionEnum, u
 func (openGround) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int) ([]utils.Vec2i, bool) {
 	return nil, false
 }
+func (openGround) RoofJob(utils.Vec2i) bool                          { return false }
+func (openGround) RoofJobsIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i { return nil }
+func (openGround) WorkOnRoof(utils.Vec2i, int) (bool, bool)          { return false, false }
 func (openGround) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
 	return false, data.Faction_None, false
 }

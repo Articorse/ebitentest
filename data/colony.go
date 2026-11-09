@@ -19,6 +19,14 @@ var (
 	StorageAreaColor   = color.RGBA{R: 50, G: 20, B: 70, A: 70}
 	StorageMarkColor   = color.RGBA{R: 90, G: 40, B: 120, A: 120}
 	StorageButtonColor = color.RGBA{R: 150, G: 70, B: 200, A: 255}
+	// Orange
+	RoofAreaColor   = color.RGBA{R: 75, G: 30, B: 5, A: 70}
+	RoofMarkColor   = color.RGBA{R: 130, G: 55, B: 10, A: 120}
+	RoofButtonColor = color.RGBA{R: 240, G: 110, B: 30, A: 255}
+	// Light blue, the open sky
+	NoRoofAreaColor   = color.RGBA{R: 30, G: 50, B: 70, A: 70}
+	NoRoofMarkColor   = color.RGBA{R: 55, G: 90, B: 120, A: 120}
+	NoRoofButtonColor = color.RGBA{R: 120, G: 190, B: 240, A: 255}
 )
 
 const (
@@ -64,6 +72,7 @@ const (
 const (
 	ColonistHaulWeight    = 3000
 	ColonistBuildWeight   = 2500
+	ColonistRoofWeight    = 2500
 	ColonistDeliverWeight = 2200
 	ColonistFetchWeight   = 2000
 	ColonistGatherWeight  = 1500

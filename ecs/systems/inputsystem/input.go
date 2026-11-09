@@ -95,6 +95,9 @@ func HandleInputs(
 				log.Printf("error picking up what's on %v for entity %d: %v\n", p.Tile, e, err)
 			}
 		}
+		if r := input.Roof; r.Work {
+			ecsContainer.WorkOnRoof(e, r.Tile)
+		}
 		if m := input.MoveOnGround; m.Move && inItemReach(e, m.From, ecsContainer) && inItemReach(e, m.To, ecsContainer) {
 			ecsContainer.MoveOnGround(m.From, m.To)
 		}

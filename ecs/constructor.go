@@ -157,6 +157,21 @@ func (x *ECSContainer) Construct(e common.EntityId, aim utils.Vec2f, all bool) (
 	return true, nil
 }
 
+// Works on the roof job over the tile once the constructor's ready, if the tile's within its reach
+func (x *ECSContainer) WorkOnRoof(e common.EntityId, t utils.Vec2i) {
+	c, ok := x.Constructors.Get(e)
+	if !ok || x.TickIdx < c.readyTick {
+		return
+	}
+	pos, err := x.WorldPos(e)
+	if err != nil || !x.TileInReachFrom(x.BodyTiles(e, utils.WorldPosToTilePos(pos)), t, c.rangeTiles) {
+		return
+	}
+	if worked, _ := x.terrain.WorkOnRoof(t, c.work); worked {
+		c.readyTick = x.TickIdx + uint64(c.cooldownMs/data.TickMs)
+	}
+}
+
 // Whether the entity's next go at building the site on the tile would finish it
 func (x *ECSContainer) FinishesSite(e common.EntityId, t utils.Vec2i) bool {
 	c, ok := x.Constructors.Get(e)

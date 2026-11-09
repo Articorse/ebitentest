@@ -102,6 +102,12 @@ type Terrain interface {
 		lo, hi utils.Vec2i,
 		limit int,
 	) (tiles []utils.Vec2i, enclosed bool)
+	// Whether there's a roof to build over the tile, on the roof area, or one to take down, on the no-roof area
+	RoofJob(t utils.Vec2i) bool
+	// The tiles from first to last with a roof job, in tile order, row by row
+	RoofJobsIn(first, last utils.Vec2i) []utils.Vec2i
+	// Works on the roof job over the tile, and done once it's built or taken down. Worked is false without a job there.
+	WorkOnRoof(t utils.Vec2i, work int) (worked, done bool)
 }
 
 // Implemented by terrains that can answer for many tiles at once, and say when sight and light have to be worked out
@@ -240,6 +246,9 @@ func (noTerrain) ClosestReachable(
 func (noTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec2i, utils.Vec2i, int) ([]utils.Vec2i, bool) {
 	return nil, false
 }
+func (noTerrain) RoofJob(utils.Vec2i) bool                          { return false }
+func (noTerrain) RoofJobsIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i { return nil }
+func (noTerrain) WorkOnRoof(utils.Vec2i, int) (worked, done bool)   { return false, false }
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {
 	x.terrain = terrain

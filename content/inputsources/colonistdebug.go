@@ -15,6 +15,7 @@ var colonistStateNames = map[ColonistState]string{
 	Colonist_Store:     "Store",
 	Colonist_Fetch:     "Fetch",
 	Colonist_Haul:      "Haul",
+	Colonist_Roof:      "Roof",
 }
 
 var stopActionNames = map[StopAction]string{
@@ -24,6 +25,7 @@ var stopActionNames = map[StopAction]string{
 	Stop_Deliver: "Deliver",
 	Stop_PutDown: "Put down",
 	Stop_MoveOff: "Move off",
+	Stop_Roof:    "Roof",
 }
 
 var emergencyNames = map[EmergencyKind]string{
