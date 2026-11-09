@@ -2,6 +2,7 @@ package ecs
 
 import (
 	"ebittest/assetmanager"
+	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
 	"ebittest/utils"
@@ -291,6 +292,9 @@ func (x *ECSContainer) AddNewEntity(comps ...Component) (common.EntityId, error)
 	if err := x.checkSpawnPos(comps); err != nil {
 		return -1, err
 	}
+	if err := checkColliderSizes(comps); err != nil {
+		return -1, err
+	}
 
 	e := x.AddEmptyEntity()
 
@@ -323,6 +327,22 @@ func (x *ECSContainer) checkSpawnPos(comps []Component) error {
 		return fmt.Errorf("cannot spawn entity at %v, outside the active chunks", t.pos)
 	}
 
+	return nil
+}
+
+// Entities are only checked against those in the spatial hash grid cells around their own, so one wider than a cell
+// could overlap another without either noticing
+func checkColliderSizes(comps []Component) error {
+	for _, comp := range comps {
+		col, ok := comp.(Collider)
+		if !ok {
+			continue
+		}
+		aabb := shapes.BoundingAABB(col.Shapes())
+		if size := aabb[1].Subtract(aabb[0]); size.X > data.SpatialHashGridCellSize || size.Y > data.SpatialHashGridCellSize {
+			return fmt.Errorf("a collider of %v is bigger than a spatial hash grid cell, %d across", size, data.SpatialHashGridCellSize)
+		}
+	}
 	return nil
 }
 

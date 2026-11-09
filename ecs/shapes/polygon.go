@@ -2,6 +2,7 @@ package shapes
 
 import (
 	"ebittest/utils"
+	"fmt"
 	"math"
 	"math/rand/v2"
 )
@@ -24,6 +25,10 @@ type PolygonShape struct {
 func NewPolygonShape(v []utils.Vec2f, o utils.Vec2f) (*PolygonShape, error) {
 	if len(v) < 3 {
 		return nil, nil
+	}
+
+	if !isConvex(v) {
+		return nil, fmt.Errorf("polygon %v isn't convex, which collisions need it to be", v)
 	}
 
 	minX, minY := v[0].X, v[0].Y
@@ -181,3 +186,20 @@ type PolygonParams struct {
 }
 
 func (PolygonParams) isShapeParams() {}
+
+// Every corner turns the same way, which collinear corners don't count against
+func isConvex(v []utils.Vec2f) bool {
+	sign := 0.0
+	for i := range v {
+		a, b, c := v[i], v[(i+1)%len(v)], v[(i+2)%len(v)]
+		cross := (b.X-a.X)*(c.Y-b.Y) - (b.Y-a.Y)*(c.X-b.X)
+		if cross == 0 {
+			continue
+		}
+		if sign != 0 && (cross > 0) != (sign > 0) {
+			return false
+		}
+		sign = cross
+	}
+	return true
+}

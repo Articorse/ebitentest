@@ -14,6 +14,17 @@
         { "name": "right leg", "maxHealth": 15, "coverage": 20, "capacities": [1] }
       ],
       "vitalCapacities": []
+    },
+    {
+      "id": 2,
+      "name": "Giant",
+      "parts": [
+        { "name": "torso", "maxHealth": 80, "coverage": 60, "vital": true },
+        { "name": "eyes", "maxHealth": 40, "coverage": 10, "capacities": [2] },
+        { "name": "left leg", "maxHealth": 60, "coverage": 20, "capacities": [1] },
+        { "name": "right leg", "maxHealth": 60, "coverage": 20, "capacities": [1] }
+      ],
+      "vitalCapacities": []
     }
   ]
 }

@@ -9,6 +9,7 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/ecs/shapes"
 	"ebittest/ecs/systems/abilitysystem"
 	"ebittest/ecs/systems/animationsystem"
 	"ebittest/ecs/systems/collisionsystem"
@@ -285,6 +286,9 @@ func (g *game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF7) {
 		g.ecs.SetUntargetable(g.playerEntity, !g.ecs.IsUntargetable(g.playerEntity))
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyAlt) && inpututil.IsKeyJustPressed(ebiten.KeyG) {
+		g.spawnGiantSlime()
 	}
 
 	g.tickBudgetPercent += g.timescalePercent
@@ -758,6 +762,23 @@ func (g *game) updatePickUp() {
 		if _, onGround := g.chunkContainer.GroundStack(tile); onGround {
 			g.pendingPickUp = ecs.ItemPickUp{PickUp: true, Tile: tile}
 		}
+	}
+}
+
+// At the cursor, where its body fits, for testing what's bigger than a tile
+func (g *game) spawnGiantSlime() {
+	pos := g.cursorWorldPos()
+	shape, err := templates.GiantSlimePhysicsShape()
+	if err != nil {
+		log.Println("error making the giant slime's collider: ", err)
+		return
+	}
+	if !g.ecs.FitsAt([]shapes.Shape{shape}, pos) {
+		log.Printf("no room for a giant slime at %v", pos)
+		return
+	}
+	if _, err := templates.SpawnGiantSlime(g.ecs, pos); err != nil {
+		log.Println("error spawning a giant slime: ", err)
 	}
 }
 

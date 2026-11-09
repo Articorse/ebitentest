@@ -3,6 +3,7 @@ package ecs
 import (
 	"ebittest/data"
 	"ebittest/ecs/common"
+	"ebittest/ecs/shapes"
 	"ebittest/utils"
 )
 
@@ -283,14 +284,82 @@ func (x *ECSContainer) OverlapsTile(e common.EntityId, t utils.Vec2i) bool {
 	return ok && x.colliderOverlapsTile(e, col, t)
 }
 
+// By the collider's shapes rather than the box around them, which reaches into tiles a round or slanted body doesn't
+func (x *ECSContainer) colliderOverlapsTile(e common.EntityId, col *PhysicsCollider, t utils.Vec2i) bool {
+	pos, err := x.WorldPos(e)
+	if err != nil {
+		return false
+	}
+	local, err := x.transformedShapes(e, col)
+	return err == nil && shapesOverlapTile(local, pos, t)
+}
+
 // Strictly inside, since something pressed flat against the tile, such as a player walking along a wall, isn't in the
 // way
-func (x *ECSContainer) colliderOverlapsTile(e common.EntityId, col *PhysicsCollider, t utils.Vec2i) bool {
-	center := utils.TilePosToWorldPos(t)
+func shapesOverlapTile(local []shapes.Shape, pos utils.Vec2f, t utils.Vec2i) bool {
+	center := utils.TilePosToWorldPos(t).Subtract(pos)
 	half := utils.Vec2f{X: data.TileSize / 2, Y: data.TileSize / 2}
-	lo, hi := center.Subtract(half), center.Add(half)
-	aabb, err := x.ColliderWorldAABB(e, col)
-	return err == nil && aabb[0].X < hi.X && aabb[1].X > lo.X && aabb[0].Y < hi.Y && aabb[1].Y > lo.Y
+	for _, s := range local {
+		if shapes.OverlapsBox(s, center.Subtract(half), center.Add(half)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (x *ECSContainer) transformedShapes(e common.EntityId, col Collider) ([]shapes.Shape, error) {
+	local := make([]shapes.Shape, len(col.Shapes()))
+	for i, s := range col.Shapes() {
+		var err error
+		if local[i], err = x.TransformShape(e, s); err != nil {
+			return nil, err
+		}
+	}
+	return local, nil
+}
+
+// The tiles shapes at the position reach into, row by row, which is what a body standing there takes up
+func ShapesFootprint(local []shapes.Shape, pos utils.Vec2f) []utils.Vec2i {
+	aabb := shapes.BoundingAABB(local)
+	first := utils.WorldPosToTilePos(aabb[0].Add(pos))
+	last := utils.WorldPosToTilePos(aabb[1].Add(pos))
+	tiles := []utils.Vec2i{}
+	for y := first.Y; y <= last.Y; y++ {
+		for x := first.X; x <= last.X; x++ {
+			if t := (utils.Vec2i{X: x, Y: y}); shapesOverlapTile(local, pos, t) {
+				tiles = append(tiles, t)
+			}
+		}
+	}
+	return tiles
+}
+
+// The tiles the entity's physics collider takes up, none without one
+func (x *ECSContainer) Footprint(e common.EntityId) []utils.Vec2i {
+	col, ok := x.PhysicsColliders.Get(e)
+	if !ok {
+		return nil
+	}
+	pos, err := x.WorldPos(e)
+	if err != nil {
+		return nil
+	}
+	local, err := x.transformedShapes(e, col)
+	if err != nil {
+		return nil
+	}
+	return ShapesFootprint(local, pos)
+}
+
+// Whether a body of the shapes fits at the position: every tile it would take up walkable, and none with something in
+// it already
+func (x *ECSContainer) FitsAt(local []shapes.Shape, pos utils.Vec2f) bool {
+	for _, t := range ShapesFootprint(local, pos) {
+		if x.terrain.WalkSpeedPercent(t) <= 0 || x.IsEntityInTile(t) {
+			return false
+		}
+	}
+	return true
 }
 
 // How fast e walks on the tile under it, in percent. A tile that can't be walked through doesn't slow it, since

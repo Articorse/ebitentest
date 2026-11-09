@@ -6,6 +6,7 @@ type BodyEnum uint16
 const (
 	Body_None BodyEnum = iota
 	Body_Humanoid
+	Body_Giant
 )
 
 // What a body can do, worked out from its parts. Capacities aren't saved, but the body atlas refers to them by these

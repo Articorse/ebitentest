@@ -393,8 +393,7 @@ func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.
 	)
 }
 
-// The animation and colliders that the player and colonists share, as slimes of the colony drawn from sheet
-func colonySlimeParts(sheet common.ImageAssetTag) (*ecs.Animation, *ecs.PhysicsCollider, *ecs.HitboxCollider, error) {
+func colonySlimeFrames() map[ecs.AnimationState][]ecs.AnimationFrame {
 	frames := make(map[ecs.AnimationState][]ecs.AnimationFrame)
 	frames[ecs.Anim_Idle] = []ecs.AnimationFrame{
 		{FrameIdx: 0, DurationMs: 100},
@@ -408,7 +407,12 @@ func colonySlimeParts(sheet common.ImageAssetTag) (*ecs.Animation, *ecs.PhysicsC
 		{FrameIdx: 2, DurationMs: 50},
 		{FrameIdx: 1, DurationMs: 50},
 	}
-	anim, err := ecs.NewAnimationComponent(sheet, frames)
+	return frames
+}
+
+// The animation and colliders that the player and colonists share, as slimes of the colony drawn from sheet
+func colonySlimeParts(sheet common.ImageAssetTag) (*ecs.Animation, *ecs.PhysicsCollider, *ecs.HitboxCollider, error) {
+	anim, err := ecs.NewAnimationComponent(sheet, colonySlimeFrames())
 	if err != nil {
 		return nil, nil, nil, err
 	}

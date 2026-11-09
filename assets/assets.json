@@ -4,6 +4,7 @@
   { "tag": "treestump", "path": "sprites/treestump.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "goldslime", "path": "sprites/goldslime_ss.png", "frameCount": 3, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "evilslime", "path": "sprites/evilslime_ss.png", "frameCount": 5, "frameSize": { "x": 32, "y": 32 } },
+  { "tag": "giantslime", "path": "sprites/giantslime_ss.png", "frameCount": 3, "frameSize": { "x": 128, "y": 128 } },
   { "tag": "bazooka", "path": "sprites/bazooka_ss.png", "frameCount": 2, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "rocket", "path": "sprites/rocket_ss.png", "frameCount": 2, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "explosion", "path": "sprites/explosion_ss.png", "frameCount": 7, "frameSize": { "x": 128, "y": 128 } },
