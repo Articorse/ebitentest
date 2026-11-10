@@ -1,6 +1,7 @@
 package inputsources
 
 import (
+	"ebittest/climate"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -15,6 +16,8 @@ const (
 	Emergency_None EmergencyKind = iota
 	// Out of what finishing the site on Tile would shut it in
 	Emergency_GetOut
+	// To Tile, the closest with air that's safe to breathe, or failing that, that can be breathed
+	Emergency_GetToAir
 )
 
 type Emergency struct {
@@ -43,7 +46,8 @@ type emergencyLimits struct {
 }
 
 var emergencyLimitsOf = map[EmergencyKind]emergencyLimits{
-	Emergency_GetOut: {data.ColonistGetOutTicks, data.ColonistGetOutClaimTicks},
+	Emergency_GetOut:   {data.ColonistGetOutTicks, data.ColonistGetOutClaimTicks},
+	Emergency_GetToAir: {0, data.ColonistGetToAirClaimTicks},
 }
 
 // Whether the entity is a colonist dealing with an emergency, which is shown over it
@@ -87,16 +91,70 @@ func (p *InputColonistParams) handleEmergency(
 		p.Paused.Claimed = false
 	}
 	over := p.Emergency.Until != 0 && tick >= p.Emergency.Until
-	if p.Emergency.Kind == Emergency_GetOut {
+	switch p.Emergency.Kind {
+	case Emergency_GetOut:
 		_, onSite := ecsContainer.Terrain().Site(p.Emergency.Tile)
 		over = over || !onSite
+	case Emergency_GetToAir:
+		air, ok := ecsContainer.AirOf(e)
+		over = over || (ok && ecs.SafeAir(air)) || ecsContainer.AirTile(selfPos) == p.Emergency.Tile
 	}
 	if over {
 		p.Emergency, p.path = Emergency{}, nil
 		p.resume(e, utils.WorldPosToTilePos(selfPos), constructor, tick, ecsContainer)
 		return ecs.InputState{}, false
 	}
+	if p.Emergency.Kind == Emergency_GetToAir {
+		input, ok := p.getToAir(e, selfPos, ecsContainer)
+		if !ok {
+			p.Emergency, p.path = Emergency{}, nil
+			p.resume(e, utils.WorldPosToTilePos(selfPos), constructor, tick, ecsContainer)
+			return ecs.InputState{}, false
+		}
+		return input, true
+	}
 	return p.getOut(e, selfPos, ecsContainer), true
+}
+
+// Each time the air changes, a colonist breathing air that's bad for it is told to get to the closest air that's safe
+// to breathe, or failing that, that can be breathed, if it can get to any
+func (p *InputColonistParams) checkAir(e common.EntityId, selfPos utils.Vec2f, tick uint64, ecsContainer *ecs.ECSContainer) {
+	if tick%data.AirStepTicks != 0 || p.Emergency.Kind >= Emergency_GetToAir || !ecsContainer.InBadAir(e) {
+		return
+	}
+	terrain := ecsContainer.Terrain()
+	self, walkSpeed := utils.WorldPosToTilePos(selfPos), ecsContainer.WalkSpeedOf(e)
+	for _, good := range []func(climate.Air) bool{ecs.SafeAir, ecs.BreathableAir} {
+		isGoal := func(t utils.Vec2i) bool {
+			air, ok := terrain.AirAt(t)
+			return ok && good(air)
+		}
+		path, ok := pathfinding.FindClosest(self, isGoal, data.PathMaxExpandedTiles, walkSpeed)
+		if !ok {
+			continue
+		}
+		if len(path) > 0 {
+			p.raise(Emergency_GetToAir, path[len(path)-1], tick)
+		}
+		return
+	}
+}
+
+// Along the way to the air it's been told to get to, false once there's no way there any more
+func (p *InputColonistParams) getToAir(e common.EntityId, selfPos utils.Vec2f, ecsContainer *ecs.ECSContainer) (ecs.InputState, bool) {
+	input := p.emptyHand(e, ecsContainer)
+	walkSpeed := ecsContainer.WalkSpeedOf(e)
+	if p.path == nil {
+		self, air := utils.WorldPosToTilePos(selfPos), p.Emergency.Tile
+		path, _, ok := pathfinding.FindTowards(self, air, 0, func(t utils.Vec2i) bool { return t == air }, data.PathMaxExpandedTiles, walkSpeed)
+		if !ok {
+			return input, false
+		}
+		p.follow(self, path)
+	}
+	move, _ := p.moveTo(selfPos, utils.TilePosToWorldPos(p.goal), walkSpeed)
+	input.Analog1X, input.Analog1Y = move.Analog1X, move.Analog1Y
+	return input, true
 }
 
 // To the closest tile round the site, off every site, that finishing it wouldn't shut it in on, where it waits

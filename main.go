@@ -1013,7 +1013,7 @@ func (g *game) drawWorld(world *ebiten.Image) {
 		}
 	}
 	inEmergency := func(e common.EntityId) bool { return inputsources.InEmergency(e, g.ecs) }
-	if err := drawsystem.DrawAlerts(world, g.ecs.Camera, inEmergency, g.ecs, g.assetmanager); err != nil {
+	if err := drawsystem.DrawAlerts(world, g.ecs.Camera, inEmergency, g.ecs.Worsening, g.ecs, g.assetmanager); err != nil {
 		log.Println("error while drawing emergencies: ", err)
 	}
 
@@ -1265,6 +1265,11 @@ func main() {
 		log.Fatal("error loading body atlas from json: ", err)
 	}
 	g.ecs.SetBodyAtlas(bodyAtlas)
+	conditionAtlas, err := ecs.LoadConditionAtlasFromJson("assets/conditions/conditions.json")
+	if err != nil {
+		log.Fatal("error loading condition atlas: ", err)
+	}
+	g.ecs.SetConditionAtlas(conditionAtlas)
 
 	itemAtlas, err := ecs.LoadItemAtlasFromJson("assets/items/items.json")
 	if err != nil {

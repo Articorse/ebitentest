@@ -177,6 +177,7 @@ func ColonistInputSource(
 	}
 	self := utils.WorldPosToTilePos(selfPos)
 
+	p.checkAir(entityId, selfPos, tick, ecsContainer)
 	if p.Emergency.Kind != Emergency_None {
 		if input, ongoing := p.handleEmergency(entityId, selfPos, constructor, tick, ecsContainer); ongoing {
 			return input, nil

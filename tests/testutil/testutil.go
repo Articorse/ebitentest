@@ -31,6 +31,7 @@ const (
 	BlueprintsPath   = "assets/blueprints/blueprints.json"
 	PlanetsPath      = "assets/planets/planets.json"
 	GasesPath        = "assets/gases/gases.json"
+	ConditionsPath   = "assets/conditions/conditions.json"
 	// Small, since every chunk it loads is generated, and chunks are big
 	PlayerLoaderRadius = 1
 	// Fixed rather than random like the game's, so that a failing test fails the same way every time
@@ -72,6 +73,11 @@ func NewECS(t testing.TB) *ecs.ECSContainer {
 		t.Fatal(err)
 	}
 	x.SetBodyAtlas(bodies)
+	conditions, err := ecs.LoadConditionAtlasFromJson(filepath.Join(RepoRoot(), ConditionsPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	x.SetConditionAtlas(conditions)
 	x.SetBlueprintAtlas(Blueprints(t))
 	x.SetAssets(Assets(t))
 	x.TickState = *common.NewTickState()

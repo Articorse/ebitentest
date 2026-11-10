@@ -52,6 +52,13 @@ func FindNearest(from, to utils.Vec2i, maxExpanded int, speedPercent func(utils.
 	return nearest, false
 }
 
+// The cheapest path to the closest tile that isGoal by what walking there costs, for when it isn't known where the goals
+// are. Nil and true if the start is a goal.
+func FindClosest(from utils.Vec2i, isGoal func(utils.Vec2i) bool, maxExpanded int, speedPercent func(utils.Vec2i) int) (path []utils.Vec2i, ok bool) {
+	path, _, ok, _ = search(from, isGoal, func(utils.Vec2i) int { return 0 }, maxExpanded, speedPercent)
+	return path, ok
+}
+
 // The cheapest path to any tile that isGoal, all of which are within reach tiles of toward, and what walking it costs.
 // It's Find heading for toward, with its estimate lowered by as much as reach could save, so that it never thinks a goal
 // further than it is. Only the start counts as walkable whatever it is, since a goal is somewhere to stand. Nil and true

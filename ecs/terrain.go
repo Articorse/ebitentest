@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/climate"
 	"ebittest/data"
 	"ebittest/ecs/common"
 	"ebittest/ecs/shapes"
@@ -108,6 +109,10 @@ type Terrain interface {
 	RoofJobsIn(first, last utils.Vec2i) []utils.Vec2i
 	// Works on the roof job over the tile, and done once it's built or taken down. Worked is false without a job there.
 	WorkOnRoof(t utils.Vec2i, work int) (worked, done bool)
+	// The air on the tile, per tile, in a room or outdoors, false on a wall or door or where nothing is active
+	AirAt(t utils.Vec2i) (climate.Air, bool)
+	// How warm the air on the tile is, in a room or outdoors
+	AirTemperature(t utils.Vec2i) climate.Centicelsius
 }
 
 // Implemented by terrains that can answer for many tiles at once, and say when sight and light have to be worked out
@@ -248,6 +253,8 @@ func (noTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Vec
 }
 func (noTerrain) RoofJob(utils.Vec2i) bool                          { return false }
 func (noTerrain) RoofJobsIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i { return nil }
+func (noTerrain) AirAt(utils.Vec2i) (climate.Air, bool)             { return climate.Air{}, false }
+func (noTerrain) AirTemperature(utils.Vec2i) climate.Centicelsius   { return 0 }
 func (noTerrain) WorkOnRoof(utils.Vec2i, int) (worked, done bool)   { return false, false }
 
 func (x *ECSContainer) SetTerrain(terrain Terrain) {

@@ -15,8 +15,9 @@ type Body struct {
 	kind data.BodyEnum
 	// Only for damaged parts, by name
 	health map[string]int
-	// Worked out from the parts whenever they change, so it isn't saved
+	// Worked out from the parts and conditions whenever they change, so it isn't saved
 	capacities map[data.CapacityEnum]int
+	conditions map[data.ConditionEnum]*condition
 }
 
 func NewBodyComponent(kind data.BodyEnum) *Body {
@@ -37,6 +38,15 @@ func (x *ECSContainer) Capacity(e common.EntityId, capacity data.CapacityEnum) i
 		return c
 	}
 	return data.FullEfficiency
+}
+
+// How much oxygen the entity breathes in a second, and as much carbon dioxide out, 0 without a body
+func (x *ECSContainer) OxygenPerSecond(e common.EntityId) int64 {
+	_, def, err := x.body(e)
+	if err != nil {
+		return 0
+	}
+	return def.oxygenMgPerSecond
 }
 
 func (x *ECSContainer) PartHealth(e common.EntityId, part string) (health, maxHealth int, ok bool) {
@@ -101,7 +111,7 @@ func (x *ECSContainer) Damage(e common.EntityId, damage int) (dead bool, err err
 
 	health := max(def.partHealth(hit, body.health)-damage, 0)
 	body.health[hit.name] = health
-	body.capacities = def.capacities(x.bodyAtlas, body.health)
+	body.capacities = x.capacitiesOf(body, def)
 
 	postHitMs := 0
 	if inv, ok := x.Invulnerabilities.Get(e); ok {
@@ -136,7 +146,12 @@ func (x *ECSContainer) Damage(e common.EntityId, damage int) (dead bool, err err
 }
 
 func (x Body) Copy() Body {
-	return Body{kind: x.kind, health: maps.Clone(x.health), capacities: maps.Clone(x.capacities)}
+	conditions := map[data.ConditionEnum]*condition{}
+	for id, c := range x.conditions {
+		copied := *c
+		conditions[id] = &copied
+	}
+	return Body{kind: x.kind, health: maps.Clone(x.health), capacities: maps.Clone(x.capacities), conditions: conditions}
 }
 
 // The capacities are worked out from the atlas whenever the body is added or loaded
@@ -152,20 +167,34 @@ func (x Body) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 		log.Printf("error working out the capacities of entity %d: %v", e, err)
 		return
 	}
-	body.capacities = def.capacities(ecsContainer.bodyAtlas, body.health)
+	body.capacities = ecsContainer.capacitiesOf(body, def)
 }
 
 type bodyDto struct {
-	Kind   data.BodyEnum
-	Health map[string]int
+	Kind       data.BodyEnum
+	Health     map[string]int
+	Conditions map[data.ConditionEnum]conditionDto
+}
+
+type conditionDto struct {
+	Severity, Damage int64
+	Worsening        bool
 }
 
 func (x Body) toDto() (ComponentDto, error) {
-	return &bodyDto{Kind: x.kind, Health: maps.Clone(x.health)}, nil
+	conditions := map[data.ConditionEnum]conditionDto{}
+	for id, c := range x.conditions {
+		conditions[id] = conditionDto{Severity: c.severity, Damage: c.damage, Worsening: c.worsening}
+	}
+	return &bodyDto{Kind: x.kind, Health: maps.Clone(x.health), Conditions: conditions}, nil
 }
 
 func (x bodyDto) toComponent() (Component, error) {
-	return &Body{kind: x.Kind, health: maps.Clone(x.Health)}, nil
+	conditions := map[data.ConditionEnum]*condition{}
+	for id, c := range x.Conditions {
+		conditions[id] = &condition{severity: c.Severity, damage: c.Damage, worsening: c.Worsening}
+	}
+	return &Body{kind: x.Kind, health: maps.Clone(x.Health), conditions: conditions}, nil
 }
 
 type PartStatus struct {

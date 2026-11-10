@@ -21,6 +21,7 @@
   { "tag": "tile_marker", "path": "sprites/tile_marker.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "slot_highlight", "path": "sprites/slot_highlight.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "exclamation", "path": "sprites/exclamation.png", "frameCount": 1, "frameSize": { "x": 4, "y": 13 } },
+  { "tag": "exclamation_red", "path": "sprites/exclamation_red.png", "frameCount": 1, "frameSize": { "x": 4, "y": 13 } },
   { "tag": "tile_dirt", "path": "tiles/dirt_ss.png", "frameCount": 16, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "tile_grass", "path": "tiles/grass_ss.png", "frameCount": 16, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "tile_rock", "path": "tiles/rock_wall_ss.png", "frameCount": 16, "frameSize": { "x": 16, "y": 16 } },

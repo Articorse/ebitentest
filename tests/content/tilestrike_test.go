@@ -1,6 +1,7 @@
 package content_test
 
 import (
+	"ebittest/climate"
 	"ebittest/content/abilities"
 	"ebittest/data"
 	"ebittest/ecs"
@@ -137,6 +138,8 @@ func (f *fakeTerrain) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, util
 func (f *fakeTerrain) RoofJob(utils.Vec2i) bool                          { return false }
 func (f *fakeTerrain) RoofJobsIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i { return nil }
 func (f *fakeTerrain) WorkOnRoof(utils.Vec2i, int) (bool, bool)          { return false, false }
+func (f *fakeTerrain) AirAt(utils.Vec2i) (climate.Air, bool)             { return climate.Air{}, false }
+func (f *fakeTerrain) AirTemperature(utils.Vec2i) climate.Centicelsius   { return 0 }
 func (f *fakeTerrain) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
 	return false, data.Faction_None, false
 }

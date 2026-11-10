@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"ebittest/climate"
 	"ebittest/data"
+	"ebittest/ecs"
 	"ebittest/utils"
 	"fmt"
 	"maps"
@@ -279,4 +280,24 @@ func (cc *ChunkContainer) AirDebugLines(t utils.Vec2i) []string {
 
 func roundToGrams(mg int64) int64 {
 	return (mg + data.MilligramsPerGram/2) / data.MilligramsPerGram
+}
+
+// What breathes in a room takes a step's worth of oxygen from its air, or what there is, and gives as much back as
+// carbon dioxide. The outdoors' air is the planet's, which nothing changes.
+func (cc *ChunkContainer) breathe(x *ecs.ECSContainer) {
+	for _, e := range slices.Sorted(maps.Keys(maps.Collect(ecs.Query1(&x.Bodies, ecs.Without(&x.Disabled))))) {
+		perSecond := x.OxygenPerSecond(e)
+		pos, err := x.WorldPos(e)
+		if perSecond == 0 || err != nil {
+			continue
+		}
+		id, ok := cc.roomOf(x.AirTile(pos))
+		if !ok || id == 0 {
+			continue
+		}
+		r := cc.rooms[id]
+		mg := min(r.air[data.Gas_Oxygen], perSecond*data.AirStepTicks/data.TPS)
+		r.air[data.Gas_Oxygen] -= mg
+		r.air[data.Gas_CarbonDioxide] += mg
+	}
 }

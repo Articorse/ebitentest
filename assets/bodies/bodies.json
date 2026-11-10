@@ -1,7 +1,8 @@
 {
   "capacities": [
     { "id": 1, "name": "Moving", "floorPercent": 15 },
-    { "id": 2, "name": "Sight", "floorPercent": 0 }
+    { "id": 2, "name": "Sight", "floorPercent": 0 },
+    { "id": 3, "name": "Capability", "floorPercent": 0 }
   ],
   "bodies": [
     {
@@ -11,9 +12,11 @@
         { "name": "torso", "maxHealth": 20, "coverage": 60, "vital": true },
         { "name": "eyes", "maxHealth": 10, "coverage": 10, "capacities": [2] },
         { "name": "left leg", "maxHealth": 15, "coverage": 20, "capacities": [1] },
-        { "name": "right leg", "maxHealth": 15, "coverage": 20, "capacities": [1] }
+        { "name": "right leg", "maxHealth": 15, "coverage": 20, "capacities": [1] },
+        { "name": "lungs", "maxHealth": 15, "coverage": 0, "vital": true }
       ],
-      "vitalCapacities": []
+      "vitalCapacities": [],
+      "oxygenMgPerSecond": 13889
     },
     {
       "id": 2,
@@ -22,9 +25,11 @@
         { "name": "torso", "maxHealth": 80, "coverage": 60, "vital": true },
         { "name": "eyes", "maxHealth": 40, "coverage": 10, "capacities": [2] },
         { "name": "left leg", "maxHealth": 60, "coverage": 20, "capacities": [1] },
-        { "name": "right leg", "maxHealth": 60, "coverage": 20, "capacities": [1] }
+        { "name": "right leg", "maxHealth": 60, "coverage": 20, "capacities": [1] },
+        { "name": "lungs", "maxHealth": 60, "coverage": 0, "vital": true }
       ],
-      "vitalCapacities": []
+      "vitalCapacities": [],
+      "oxygenMgPerSecond": 55556
     }
   ]
 }

@@ -23,4 +23,10 @@ const (
 	OverlayOxygenRedMg   = 100 * MilligramsPerGram
 	OverlayOxygenGreenMg = 500 * MilligramsPerGram
 	OverlayOxygenAlpha   = 110
+	// Air with less oxygen or more carbon dioxide than this per tile is bad to breathe
+	SafeOxygenMg        = 400 * MilligramsPerGram
+	SafeCarbonDioxideMg = 250 * MilligramsPerGram
+	// What can still be breathed, for where to get to when there's no safe air to get to
+	BreathableOxygenMg        = 100 * MilligramsPerGram
+	BreathableCarbonDioxideMg = 500 * MilligramsPerGram
 )

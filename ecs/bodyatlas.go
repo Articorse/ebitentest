@@ -25,6 +25,8 @@ type bodyDef struct {
 	parts []partDef
 	// Killing the body when any of them drops to 0
 	vitalCapacities []data.CapacityEnum
+	// Breathed in from the air it's in, and breathed out again as carbon dioxide
+	oxygenMgPerSecond int64
 }
 
 type partDef struct {
@@ -53,6 +55,8 @@ type bodyDefDTO struct {
 	Name            string       `json:"name"`
 	Parts           []partDefDTO `json:"parts"`
 	VitalCapacities []uint16     `json:"vitalCapacities"`
+	// Integer, so that air is breathed the same on every machine
+	OxygenMgPerSecond int64 `json:"oxygenMgPerSecond"`
 }
 
 type partDefDTO struct {
@@ -108,7 +112,10 @@ func LoadBodyAtlasFromJson(path string) (*BodyAtlas, error) {
 			return nil, fmt.Errorf("body id %d is defined twice", b.Id)
 		}
 
-		def := bodyDef{name: b.Name}
+		if b.OxygenMgPerSecond < 0 {
+			return nil, fmt.Errorf("body %d breathes %d mg of oxygen a second, want it 0 or more", b.Id, b.OxygenMgPerSecond)
+		}
+		def := bodyDef{name: b.Name, oxygenMgPerSecond: b.OxygenMgPerSecond}
 		names := map[string]bool{}
 		totalCoverage := 0
 		for _, p := range b.Parts {
@@ -165,6 +172,15 @@ func (def bodyDef) capacities(atlas *BodyAtlas, health map[string]int) map[data.
 		out[c] = max(sum/counts[c], atlas.capacities[c].floor)
 	}
 	return out
+}
+
+func (def bodyDef) part(name string) (partDef, bool) {
+	for _, p := range def.parts {
+		if p.name == name {
+			return p, true
+		}
+	}
+	return partDef{}, false
 }
 
 // Only damaged parts are in health

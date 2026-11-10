@@ -40,6 +40,7 @@ type ECSContainer struct {
 	itemAtlas      *ItemAtlas
 	blueprintAtlas *BlueprintAtlas
 	bodyAtlas      *BodyAtlas
+	conditionAtlas *ConditionAtlas
 	assets         *assetmanager.AssetManager
 	untargetable   map[common.EntityId]bool
 

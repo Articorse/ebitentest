@@ -29,6 +29,8 @@ const (
 	AssetImageTileMarker ImageAssetTag = "tile_marker"
 	// Over a colonist dealing with an emergency
 	AssetImageExclamation ImageAssetTag = "exclamation"
+	// Over anything breathing air that's bad for it, instead of the other
+	AssetImageExclamationRed ImageAssetTag = "exclamation_red"
 
 	AssetDebug16x16 ImageAssetTag = "debug_16x16"
 )
@@ -40,5 +42,5 @@ var CodeAssetTags = []ImageAssetTag{
 	AssetSheetExplosion, AssetSheetGun, AssetSheetBullet, AssetImageMattock, AssetImageWood, AssetSheetTorchPlaced,
 	AssetImageAxe, AssetImageSlash, AssetImagePlatform, AssetImageSlot, AssetImageSlotHighlight,
 	AssetImageInventoryPanel, AssetImageTileMarker, AssetSheetGoldSlime, AssetDebug16x16, AssetImageExclamation,
-	AssetSheetGiantSlime,
+	AssetSheetGiantSlime, AssetImageExclamationRed,
 }

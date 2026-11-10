@@ -61,6 +61,8 @@ const (
 	// so that a builder that never finishes doesn't keep it away from its job
 	ColonistGetOutTicks      = 5 * TPS
 	ColonistGetOutClaimTicks = 5 * TPS
+	// Getting to air has no time limit, since it's over once it's breathing safe air
+	ColonistGetToAirClaimTicks = 5 * TPS
 	// How far an idle colonist standing on a site looks for somewhere off it
 	ColonistStepOffRangeTiles = 3
 	// How far around the first stack a colonist gathers others of its kind in the same go

@@ -1,6 +1,7 @@
 package systems_test
 
 import (
+	"ebittest/climate"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/tests/testutil"
@@ -60,6 +61,8 @@ func (openGround) Enclosure(utils.Vec2i, utils.Vec2i, data.FactionEnum, utils.Ve
 func (openGround) RoofJob(utils.Vec2i) bool                          { return false }
 func (openGround) RoofJobsIn(utils.Vec2i, utils.Vec2i) []utils.Vec2i { return nil }
 func (openGround) WorkOnRoof(utils.Vec2i, int) (bool, bool)          { return false, false }
+func (openGround) AirAt(utils.Vec2i) (climate.Air, bool)             { return climate.Air{}, false }
+func (openGround) AirTemperature(utils.Vec2i) climate.Centicelsius   { return 0 }
 func (openGround) ClosedDoor(utils.Vec2i) (bool, data.FactionEnum, bool) {
 	return false, data.Faction_None, false
 }
