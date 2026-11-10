@@ -8,4 +8,6 @@ const (
 	ItemReachTiles = PlayerBuildRangeTiles
 	// High enough that it rarely holds the player back, unlike a colonist
 	PlayerMaxCarryMg = 250 * MilligramsPerKg
+	// Either side of the holder's middle, the same for every kind of body until each has mount points of its own
+	HeldItemOffsetPx = 6
 )

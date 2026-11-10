@@ -62,9 +62,10 @@ func TestStartingEquipmentIsHeldWherePlayerIs(t *testing.T) {
 	}
 
 	equipper, _ := x.Equippers.Get(p)
+	inHand := spawn.Add(utils.Vec2f{X: -data.HeldItemOffsetPx})
 	for _, e := range equipper.Equipment() {
-		if got := testutil.WorldPos(t, x, e); !testutil.ApproxEqual(got, spawn) {
-			t.Fatalf("equipment %d is at %v, want the player's position %v", e, got, spawn)
+		if got := testutil.WorldPos(t, x, e); !testutil.ApproxEqual(got, inHand) {
+			t.Fatalf("equipment %d is at %v, want the player's main hand at %v", e, got, inHand)
 		}
 	}
 }

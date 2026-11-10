@@ -106,7 +106,8 @@ func (x *Equipper) SlotOf(e common.EntityId) (EquipSlotEnum, bool) {
 	return 0, false
 }
 
-// Whether the item is worn in a slot other than the main hand, which only follows what's selected on the hotbar
+// Whether the item is worn in a slot other than the main hand, which only follows what's selected on the hotbar. What's
+// in the off hand counts as worn.
 func (x *ECSContainer) IsWorn(owner, item common.EntityId) bool {
 	equipper, ok := x.Equippers.Get(owner)
 	if !ok {
@@ -156,7 +157,7 @@ func (x *ECSContainer) Wear(owner, item common.EntityId, slot EquipSlotEnum) (bo
 		equipper.Unequip(from)
 	}
 	equipper.Equip(slot, item)
-	return true, nil
+	return true, x.refreshHand(owner)
 }
 
 // Takes off what's worn in the slot, which stays in the inventory
@@ -169,6 +170,9 @@ func (x *ECSContainer) TakeOff(owner common.EntityId, slot EquipSlotEnum) error 
 		return fmt.Errorf("entity %d has no equipper", owner)
 	}
 	equipper.Unequip(slot)
+	if x.Inventories.HasComponent(owner) {
+		return x.refreshHand(owner)
+	}
 	return nil
 }
 

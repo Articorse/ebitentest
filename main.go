@@ -195,6 +195,7 @@ func (g *game) Update() error {
 		pInputConfig[ecs.Input_Analog1Y] = ecs.NewKeyboardInputKey(ebiten.KeyS, ebiten.KeyW)
 		pInputConfig[ecs.Input_Analog1X] = ecs.NewKeyboardInputKey(ebiten.KeyD, ebiten.KeyA)
 		pInputConfig[ecs.Input_MainHandAbility1] = ecs.NewMouseInputKey(ebiten.MouseButtonLeft, -1)
+		pInputConfig[ecs.Input_OffHandAbility1] = ecs.NewMouseInputKey(ebiten.MouseButtonRight, -1)
 		pInputConfig[ecs.Input_Ability1] = ecs.NewKeyboardInputKey(ebiten.KeySpace, -1)
 		pInputConfig[ecs.Input_DropItem] = ecs.NewKeyboardInputKey(ebiten.KeyQ, -1)
 		pInputConfig[ecs.Input_All] = ecs.NewKeyboardInputKey(ebiten.KeyShift, -1)
@@ -595,10 +596,10 @@ func (g *game) startedBuilding() {
 	}
 }
 
-// A middle click on a seen tile that a blueprint builds, or on a site, starts build mode with that blueprint. What's
-// remembered of the tile is what's copied, so that copying can't find out what's changed out of sight.
+// V on a seen tile that a blueprint builds, or on a site, starts build mode with that blueprint. What's remembered of
+// the tile is what's copied, so that copying can't find out what's changed out of sight.
 func (g *game) updateBlueprintCopy() {
-	if !inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonMiddle) {
+	if !inpututil.IsKeyJustPressed(ebiten.KeyV) {
 		return
 	}
 	cursor, screen := g.uiCursor(), g.screenSize.Multiply(1/g.uiScale)
@@ -758,11 +759,10 @@ func (g *game) updateBlueprintRemoval() {
 	g.pendingRemoval = ecs.BlueprintRemoval{Remove: true, Tile: tile}
 }
 
-// Holding the right button down picks up what's on each tile the cursor passes over, as the next tick's input, unless
-// the press was a menu's, the cursor is on the inventory menu, or building or marking out areas, where right clicks
-// leave
+// Holding the middle button down picks up what's on each tile the cursor passes over, as the next tick's input, unless
+// the cursor is on the inventory menu, or while building or marking out areas
 func (g *game) updatePickUp() {
-	if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) || g.uiHasMouse || g.placer.IsActive() || g.areaPainter.IsActive() {
+	if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonMiddle) || g.uiHasMouse || g.placer.IsActive() || g.areaPainter.IsActive() {
 		return
 	}
 	cursor, screen := g.uiCursor(), g.screenSize.Multiply(1/g.uiScale)

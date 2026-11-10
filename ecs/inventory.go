@@ -1,7 +1,9 @@
 package ecs
 
 import (
+	"ebittest/data"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 	"slices"
 )
@@ -188,7 +190,7 @@ func (x *ECSContainer) MoveInventoryItem(owner common.EntityId, from, to int) er
 }
 
 // Puts the item the hotbar slot points at in the owner's main hand, if it fits there, and enables it. Every other item
-// in the inventory is disabled, so that what's carried but not in hand isn't drawn or used.
+// in the inventory but what's in the off hand is disabled, so that what's carried but not in hand isn't drawn or used.
 func (x *ECSContainer) SelectHotbarSlot(owner common.EntityId, hotbarSlot int) error {
 	inv, ok := x.Inventories.Get(owner)
 	if !ok {
@@ -207,15 +209,23 @@ func (x *ECSContainer) refreshHand(owner common.EntityId) error {
 		return fmt.Errorf("entity %d has no inventory", owner)
 	}
 	inHand, _ := inv.HotbarItem(inv.selected)
-
-	for _, item := range inv.slots {
-		if item != -1 {
-			x.SetDisabled(item, item != inHand)
+	offHand := common.EntityId(-1)
+	equipper, hasEquipper := x.Equippers.Get(owner)
+	if hasEquipper {
+		if e, ok := equipper.InSlot(Equip_OffHand); ok {
+			offHand = e
 		}
 	}
 
-	equipper, ok := x.Equippers.Get(owner)
-	if !ok {
+	for _, item := range inv.slots {
+		if item != -1 {
+			x.SetDisabled(item, item != inHand && item != offHand)
+		}
+	}
+	x.holdAt(inHand, -data.HeldItemOffsetPx)
+	x.holdAt(offHand, data.HeldItemOffsetPx)
+
+	if !hasEquipper {
 		return nil
 	}
 	equipper.Unequip(Equip_MainHand)
@@ -225,6 +235,13 @@ func (x *ECSContainer) refreshHand(owner common.EntityId) error {
 		}
 	}
 	return nil
+}
+
+// To the side of its holder's middle, which is left for the main hand
+func (x *ECSContainer) holdAt(item common.EntityId, offsetX float64) {
+	if t, ok := x.Transforms.Get(item); ok && item != -1 {
+		t.SetLocalPos(utils.Vec2f{X: offsetX})
+	}
 }
 
 // An item that stops being held by its owner leaves the owner's inventory with it, and any hotbar slot pointing at it

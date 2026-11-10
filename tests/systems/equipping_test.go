@@ -90,13 +90,14 @@ func TestASpacesuitOnlyFitsTheTorsoOfItsKindOfBody(t *testing.T) {
 	}
 }
 
-func TestOnlyWornEquipmentGoesInSlotsOtherThanTheMainHand(t *testing.T) {
-	x, player, mattock, _, _ := newArmedPlayer(t)
+func TestAToolOnlyGoesInTheOffHandOfTheSlotsOtherThanTheMainHand(t *testing.T) {
 	for slot := range ecs.EquipSlotCount {
-		if ok, _ := x.Wear(player, mattock, slot); ok {
-			t.Errorf("the mattock went in the %v", slot)
+		x, player, mattock, _, _ := newArmedPlayer(t)
+		if ok, _ := x.Wear(player, mattock, slot); ok != (slot == ecs.Equip_OffHand) {
+			t.Errorf("putting the mattock in the %v gave %v", slot, ok)
 		}
 	}
+	x, player, _, _, _ := newArmedPlayer(t)
 	if err := x.TakeOff(player, ecs.Equip_MainHand); err == nil {
 		t.Fatal("what's in the main hand was taken off rather than following the hotbar")
 	}
@@ -292,5 +293,40 @@ func TestAnEquipmentSlotsTooltipHasItsNameAndWhatsInIt(t *testing.T) {
 	}
 	if got := drawsystem.EquipSlotTooltip(player, ecs.Equip_MainHand, x); !slices.Equal(got, []string{"Main hand", "Mattock"}) {
 		t.Fatalf("the main hand's tooltip is %v", got)
+	}
+}
+
+func TestTheOffHandHoldsAToolBesideTheMainHandReadyToUse(t *testing.T) {
+	x, player, mattock, _, _ := newArmedPlayer(t)
+	inv, _ := x.Inventories.Get(player)
+	axe, _ := inv.Slot(3)
+	act(t, x, player, ecs.InventoryAction_ToggleWorn, 3, 0)
+	if worn(x, player, ecs.Equip_OffHand) != axe || inHand(x, player) != mattock || hotbarItem(inv, 3) != -1 {
+		t.Fatal("right clicking the axe didn't put it in the off hand, off the hotbar, beside the mattock in the main hand")
+	}
+	at := func(e common.EntityId) utils.Vec2f {
+		return testutil.WorldPos(t, x, e).Subtract(testutil.WorldPos(t, x, player))
+	}
+	if got := at(axe); !testutil.ApproxEqual(got, utils.Vec2f{X: data.HeldItemOffsetPx}) {
+		t.Fatalf("the axe in the off hand is at %v from the player's middle", got)
+	}
+	if got := at(mattock); !testutil.ApproxEqual(got, utils.Vec2f{X: -data.HeldItemOffsetPx}) {
+		t.Fatalf("the mattock in the main hand is at %v from the player's middle", got)
+	}
+
+	if err := x.SelectHotbarSlot(player, 1); err != nil {
+		t.Fatal(err)
+	}
+	if x.IsDisabled(axe) || !x.IsDisabled(mattock) {
+		t.Fatal("selecting another hotbar slot put the axe in the off hand away, or left the mattock out")
+	}
+	target := ecs.AbilityTarget{Pos: testutil.WorldPos(t, x, player).Add(utils.Vec2f{X: 16}), HasPos: true}
+	if ok, err := x.ActivateEquipmentAbility(player, ecs.Equip_OffHand, target, 0); err != nil || !ok {
+		t.Fatalf("the axe in the off hand couldn't be swung (%v)", err)
+	}
+
+	act(t, x, player, ecs.InventoryAction_TakeOff, 0, int(ecs.Equip_OffHand))
+	if worn(x, player, ecs.Equip_OffHand) != -1 || !x.IsDisabled(axe) {
+		t.Fatal("the axe taken out of the off hand is still held out")
 	}
 }
