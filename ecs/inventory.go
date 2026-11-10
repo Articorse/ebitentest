@@ -106,7 +106,7 @@ func (x *ECSContainer) PutInInventory(owner common.EntityId, slot int, item comm
 }
 
 // Points the hotbar slot at an item in the inventory, or at nothing for -1. An item is only ever on one hotbar slot, so
-// binding it again moves it.
+// binding it again moves it. What's worn has to be taken off first, so that it can't be held as well.
 func (x *ECSContainer) BindHotbar(owner common.EntityId, hotbarSlot int, item common.EntityId) error {
 	inv, ok := x.Inventories.Get(owner)
 	if !ok {
@@ -118,6 +118,9 @@ func (x *ECSContainer) BindHotbar(owner common.EntityId, hotbarSlot int, item co
 	if item != -1 {
 		if inv.slotOf(item) == -1 {
 			return fmt.Errorf("entity %d isn't in entity %d's inventory", item, owner)
+		}
+		if x.IsWorn(owner, item) {
+			return nil
 		}
 		if i := inv.HotbarSlotOf(item); i != -1 {
 			inv.hotbar[i] = -1

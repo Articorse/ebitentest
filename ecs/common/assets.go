@@ -31,6 +31,9 @@ const (
 	AssetImageExclamation ImageAssetTag = "exclamation"
 	// Over anything breathing air that's bad for it, instead of the other
 	AssetImageExclamationRed ImageAssetTag = "exclamation_red"
+	AssetImageSpacesuit      ImageAssetTag = "spacesuit"
+	// Over a slime wearing a spacesuit, frame for frame
+	AssetSheetSlimeSpacesuit ImageAssetTag = "slime_spacesuit"
 
 	AssetDebug16x16 ImageAssetTag = "debug_16x16"
 )
@@ -42,5 +45,5 @@ var CodeAssetTags = []ImageAssetTag{
 	AssetSheetExplosion, AssetSheetGun, AssetSheetBullet, AssetImageMattock, AssetImageWood, AssetSheetTorchPlaced,
 	AssetImageAxe, AssetImageSlash, AssetImagePlatform, AssetImageSlot, AssetImageSlotHighlight,
 	AssetImageInventoryPanel, AssetImageTileMarker, AssetSheetGoldSlime, AssetDebug16x16, AssetImageExclamation,
-	AssetSheetGiantSlime, AssetImageExclamationRed,
+	AssetSheetGiantSlime, AssetImageExclamationRed, AssetImageSpacesuit, AssetSheetSlimeSpacesuit,
 }

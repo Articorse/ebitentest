@@ -47,8 +47,8 @@ func TestWoodStacksUpToAHundredPerSlot(t *testing.T) {
 	if countOf(x, first) != 100 || countOf(x, second) != 1 {
 		t.Fatalf("101 wood went into stacks of %d and %d, want 100 and 1", countOf(x, first), countOf(x, second))
 	}
-	if n := len(x.Items.GetEntities()); n != 7 {
-		t.Fatalf("%d items exist, want the 4 tools, the torches and 2 stacks: the wood used to top up a stack should be gone", n)
+	if n := len(x.Items.GetEntities()); n != 8 {
+		t.Fatalf("%d items exist, want the 4 tools, the torches, the spacesuit and 2 stacks: the wood used to top up a stack should be gone", n)
 	}
 	checkConsistency(t, x)
 }

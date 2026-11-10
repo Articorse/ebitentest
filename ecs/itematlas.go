@@ -266,7 +266,7 @@ func (x *ECSContainer) itemEquipment(def ItemDef) (*Equipment, bool) {
 		Params: def.use.params.Copy(),
 		Status: AbilityStatus{State: AbiAct_Ready},
 	}}
-	return NewEquipmentComponent(Equipable_MainHand|Equipable_OffHand, abis), true
+	return NewEquipmentComponent(Equipable_MainHand, abis), true
 }
 
 func (x *ECSContainer) ItemAtlas() *ItemAtlas {

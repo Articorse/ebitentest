@@ -200,6 +200,22 @@ func applyInventoryAction(e common.EntityId, action ecs.InventoryAction, ecsCont
 		return ecsContainer.BindHotbar(e, action.To, item)
 	case ecs.InventoryAction_Unbind:
 		return ecsContainer.BindHotbar(e, action.To, -1)
+	case ecs.InventoryAction_Wear, ecs.InventoryAction_ToggleWorn:
+		inv, ok := ecsContainer.Inventories.Get(e)
+		if !ok {
+			return fmt.Errorf("entity %d has no inventory", e)
+		}
+		item, ok := inv.Slot(action.From)
+		if !ok {
+			return nil
+		}
+		if action.Kind == ecs.InventoryAction_ToggleWorn {
+			return ecsContainer.ToggleWorn(e, item)
+		}
+		_, err := ecsContainer.Wear(e, item, ecs.EquipSlotEnum(action.To))
+		return err
+	case ecs.InventoryAction_TakeOff:
+		return ecsContainer.TakeOff(e, ecs.EquipSlotEnum(action.To))
 	}
 	return nil
 }

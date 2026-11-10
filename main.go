@@ -535,6 +535,8 @@ func (g *game) updateInventoryMenu() {
 		g.uiHasMouse = true
 		if canAct && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			g.pendingInventory = g.inventoryMenu.Click(cursor, screen, inv, g.assetmanager)
+		} else if canAct {
+			g.pendingInventory = g.inventoryMenu.RightClick(cursor, screen, inv, g.assetmanager)
 		}
 	}
 	if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) && !ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
@@ -944,6 +946,12 @@ func (g *game) Draw(screen *ebiten.Image) {
 	}
 	if err := g.drawSiteTooltip(screen); err != nil {
 		log.Println("error while drawing the tooltip of a construction site: ", err)
+	}
+	if slot, ok := g.inventoryMenu.EquipSlotAt(g.uiCursor(), g.screenSize.Multiply(1/g.uiScale), g.assetmanager); ok {
+		lines := drawsystem.EquipSlotTooltip(g.playerEntity, slot, g.ecs)
+		if err := drawsystem.DrawTooltip(screen, g.uiScale, g.uiCursor(), lines, g.assetmanager); err != nil {
+			log.Println("error while drawing the tooltip of an equipment slot: ", err)
+		}
 	}
 
 	if g.showFPS {

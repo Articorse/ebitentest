@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"ebittest/ecs/common"
 	"errors"
 	"fmt"
 	"maps"
@@ -25,6 +26,11 @@ func (x *ECSContainer) CheckConsistency() error {
 				errs = errors.Join(errs, fmt.Errorf("equipper %d references entity %d in slot %v, which has no equipment component", e, eq, slot))
 			case x.Parent(eq) != e || x.LinkKind(eq) != Link_Held:
 				errs = errors.Join(errs, fmt.Errorf("equipment %d in slot %v of equipper %d isn't held by it", eq, slot, e))
+			case slot == Equip_MainHand:
+			case !x.inInventory(e, eq):
+				errs = errors.Join(errs, fmt.Errorf("equipment %d worn in slot %v of equipper %d isn't in its inventory", eq, slot, e))
+			case x.onHotbar(e, eq):
+				errs = errors.Join(errs, fmt.Errorf("equipment %d worn in slot %v of equipper %d is on its hotbar", eq, slot, e))
 			}
 		}
 	}
@@ -88,4 +94,14 @@ func (x *ECSContainer) CheckConsistency() error {
 	errs = errors.Join(errs, x.checkImages())
 
 	return errs
+}
+
+func (x *ECSContainer) inInventory(owner, item common.EntityId) bool {
+	inv, ok := x.Inventories.Get(owner)
+	return ok && inv.slotOf(item) != -1
+}
+
+func (x *ECSContainer) onHotbar(owner, item common.EntityId) bool {
+	inv, ok := x.Inventories.Get(owner)
+	return ok && inv.HotbarSlotOf(item) != -1
 }

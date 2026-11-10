@@ -31,8 +31,8 @@ func TestPlayerTemplateWithStartingEquipment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(members) != 6 {
-		t.Fatalf("player stored with %d entities, want itself, the mattock, the bazooka, the gun, the axe and the torches", len(members))
+	if len(members) != 7 {
+		t.Fatalf("player stored with %d entities, want itself, the mattock, the bazooka, the gun, the axe, the torches and the spacesuit", len(members))
 	}
 
 	if body, ok := x.Bodies.Get(p); !ok || body.Kind() != data.Body_Humanoid {

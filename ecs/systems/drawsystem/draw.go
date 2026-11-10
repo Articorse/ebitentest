@@ -310,6 +310,17 @@ func drawEntitySprite(
 	}
 
 	screen.DrawImage(img, &opts)
+
+	for _, worn := range ecsContainer.WornImages(e) {
+		sheet, err := assetManager.GetAsset(worn)
+		if err != nil {
+			return fmt.Errorf("error getting what entity %d wears: %v", e, err)
+		}
+		if spr.SubImageIdx() >= len(sheet.Frames) {
+			return fmt.Errorf("entity %d shows frame %d, but %s worn over it has %d", e, spr.SubImageIdx(), worn, len(sheet.Frames))
+		}
+		screen.DrawImage(sheet.Frames[spr.SubImageIdx()], &opts)
+	}
 	return nil
 }
 

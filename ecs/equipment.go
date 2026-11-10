@@ -10,17 +10,22 @@ import (
 type EquipableSlotEnum uint8
 
 const (
-	Equipable_MainHand = EquipableSlotEnum(0b00000001)
-	Equipable_OffHand  = EquipableSlotEnum(0b00000010)
-	Equipable_Body     = EquipableSlotEnum(0b00000100)
-	Equipable_Arms     = EquipableSlotEnum(0b00001000)
-	Equipable_Ring1    = EquipableSlotEnum(0b00010000)
-	Equipable_Ring2    = EquipableSlotEnum(0b00100000)
+	Equipable_MainHand = EquipableSlotEnum(1 << Equip_MainHand)
+	Equipable_OffHand  = EquipableSlotEnum(1 << Equip_OffHand)
+	Equipable_Torso    = EquipableSlotEnum(1 << Equip_Torso)
+	Equipable_Arms     = EquipableSlotEnum(1 << Equip_Arms)
+	Equipable_Legs     = EquipableSlotEnum(1 << Equip_Legs)
+	Equipable_Ring1    = EquipableSlotEnum(1 << Equip_Ring1)
+	Equipable_Ring2    = EquipableSlotEnum(1 << Equip_Ring2)
 )
 
 type Equipment struct {
 	slot      EquipableSlotEnum
 	abilities [data.MaxEquipmentAbilitySlots]EntityAbility
+	// The kinds of body that can equip it, or any when empty
+	bodies []data.BodyEnum
+	// Drawn over whoever wears it, at the frame its sprite shows, or nothing if none
+	worn common.ImageAssetTag
 }
 
 func NewEquipmentComponent(slot EquipableSlotEnum, abilities [data.MaxEquipmentAbilitySlots]EntityAbility) *Equipment {
@@ -38,6 +43,19 @@ func NewEquipmentComponent(slot EquipableSlotEnum, abilities [data.MaxEquipmentA
 		slot:      slot,
 		abilities: abis,
 	}
+}
+
+// Equipment with no abilities, such as clothing, which only bodies of the given kinds can wear
+func NewWornEquipmentComponent(slot EquipableSlotEnum, bodies []data.BodyEnum, worn common.ImageAssetTag) *Equipment {
+	return &Equipment{slot: slot, bodies: slices.Clone(bodies), worn: worn}
+}
+
+func (x *Equipment) FitsBody(kind data.BodyEnum) bool {
+	return len(x.bodies) == 0 || slices.Contains(x.bodies, kind)
+}
+
+func (x *Equipment) Worn() common.ImageAssetTag {
+	return x.worn
 }
 
 func (x *Equipment) HasAbility(id AbilityEnum) bool {
@@ -102,6 +120,7 @@ func (x *ECSContainer) TickEquipmentAbilities(e common.EntityId) error {
 
 func (x Equipment) Copy() Equipment {
 	copyAbilityParams(x.abilities[:])
+	x.bodies = slices.Clone(x.bodies)
 	return x
 }
 
@@ -112,6 +131,8 @@ func (x Equipment) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 type equipmentDto struct {
 	Slot      EquipableSlotEnum
 	Abilities [data.MaxEquipmentAbilitySlots]EntityAbility
+	Bodies    []data.BodyEnum
+	Worn      common.ImageAssetTag
 }
 
 func (x Equipment) toDto() (ComponentDto, error) {
@@ -119,6 +140,8 @@ func (x Equipment) toDto() (ComponentDto, error) {
 	return &equipmentDto{
 		Slot:      x.slot,
 		Abilities: x.abilities,
+		Bodies:    slices.Clone(x.bodies),
+		Worn:      x.worn,
 	}, nil
 }
 
@@ -127,5 +150,7 @@ func (x equipmentDto) toComponent() (Component, error) {
 	return &Equipment{
 		slot:      x.Slot,
 		abilities: x.Abilities,
+		bodies:    slices.Clone(x.Bodies),
+		worn:      x.Worn,
 	}, nil
 }

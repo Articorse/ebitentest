@@ -14,6 +14,8 @@
   { "tag": "wood", "path": "sprites/wood.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "oxygen", "path": "sprites/oxygen.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
   { "tag": "carbon", "path": "sprites/carbon.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
+  { "tag": "spacesuit", "path": "sprites/spacesuit.png", "frameCount": 1, "frameSize": { "x": 16, "y": 16 } },
+  { "tag": "slime_spacesuit", "path": "sprites/slime_spacesuit_ss.png", "frameCount": 3, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "torch_placed", "path": "sprites/torch_placed.png", "frameCount": 3, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "axe", "path": "sprites/axe.png", "frameCount": 1, "frameSize": { "x": 32, "y": 32 } },
   { "tag": "slash", "path": "sprites/slash.png", "frameCount": 1, "frameSize": { "x": 20, "y": 36 } },

@@ -70,7 +70,11 @@ func (x *ECSContainer) checkComponentImages(owner string, comp Component) error 
 	case *Abilities:
 		return x.checkAbilityImages(owner, c.abilities[:])
 	case *Equipment:
-		return x.checkAbilityImages(owner+"'s equipment", c.abilities[:])
+		errs := x.checkAbilityImages(owner+"'s equipment", c.abilities[:])
+		if c.worn != "" {
+			errs = errors.Join(errs, x.checkImage(owner+"'s equipment when worn", c.worn, nil))
+		}
+		return errs
 	case *Deathrattle:
 		return x.checkAbilityImages(owner+"'s deathrattle", []EntityAbility{c.ability})
 	case *Spawner:

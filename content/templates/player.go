@@ -175,7 +175,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		Status: ecs.AbilityStatus{State: ecs.AbiAct_Ready},
 		Params: nil,
 	}
-	bazookaEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, bazookaAbis)
+	bazookaEquipmentComp := ecs.NewEquipmentComponent(ecs.Equipable_MainHand, bazookaAbis)
 
 	bazooka, err := ecsContainer.AddNewEntity(
 		bazookaParComp,
@@ -231,6 +231,15 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		return fmt.Errorf("error putting torches in the player's inventory: %w", err)
 	}
 
+	spacesuit, err := spawnSpacesuit(ecsContainer, playerPos)
+	if err != nil {
+		return fmt.Errorf("error spawning spacesuit: %w", err)
+	}
+	// The start of the second row, clear of where what's picked up goes first
+	if err := ecsContainer.PutInInventory(player, data.InventoryColumns, spacesuit); err != nil {
+		return fmt.Errorf("error putting spacesuit in the player's inventory: %w", err)
+	}
+
 	for i, item := range []common.EntityId{mattock, bazooka, gun, axe, torches} {
 		if err := ecsContainer.BindHotbar(player, i, item); err != nil {
 			return fmt.Errorf("error putting item %d on the player's hotbar: %w", item, err)
@@ -265,9 +274,26 @@ func spawnMattock(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Entit
 		ecs.NewTransformComponent(pos, 1, 0),
 		ecs.NewDefaultVelocityComponent(),
 		sprComp,
-		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, abis),
+		ecs.NewEquipmentComponent(ecs.Equipable_MainHand, abis),
 		ecs.NewSwingComponent(2*math.Pi/3, 0.15, utils.Vec2f{X: 15.5, Y: 21.5}),
 		ecs.NewNamedItemComponent("Mattock", 2*data.MilligramsPerKg),
+		ecs.NewPersistentComponent(),
+	)
+}
+
+func spawnSpacesuit(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.EntityId, error) {
+	sprComp, err := ecs.NewSpriteComponent(common.AssetImageSpacesuit, 20, false)
+	if err != nil {
+		return -1, err
+	}
+
+	return ecsContainer.AddNewEntity(
+		ecs.NewHierarchyComponent(),
+		ecs.NewTransformComponent(pos, 1, 0),
+		ecs.NewDefaultVelocityComponent(),
+		sprComp,
+		ecs.NewWornEquipmentComponent(ecs.Equipable_Torso, []data.BodyEnum{data.Body_Humanoid}, common.AssetSheetSlimeSpacesuit),
+		ecs.NewNamedItemComponent("Spacesuit", 10*data.MilligramsPerKg),
 		ecs.NewPersistentComponent(),
 	)
 }
@@ -301,7 +327,7 @@ func spawnAxe(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.EntityId,
 		ecs.NewTransformComponent(pos, 1, 0),
 		ecs.NewDefaultVelocityComponent(),
 		sprComp,
-		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, abis),
+		ecs.NewEquipmentComponent(ecs.Equipable_MainHand, abis),
 		ecs.NewSwingComponent(2*math.Pi/3, 0.15, utils.Vec2f{X: 15.5, Y: 21.5}),
 		ecs.NewNamedItemComponent("Axe", 1500*data.MilligramsPerGram),
 		ecs.NewPersistentComponent(),
@@ -387,7 +413,7 @@ func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.
 		gunAniComp,
 		gunSpaComp,
 		ecs.NewFacingComponent(),
-		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis),
+		ecs.NewEquipmentComponent(ecs.Equipable_MainHand, gunAbis),
 		ecs.NewNamedItemComponent("Gun", 1*data.MilligramsPerKg),
 		ecs.NewPersistentComponent(),
 	)

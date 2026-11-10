@@ -258,6 +258,12 @@ const (
 	InventoryAction_Bind
 	// Points hotbar slot To at nothing
 	InventoryAction_Unbind
+	// Wears the item in inventory slot From in equipment slot To, if it can be worn there
+	InventoryAction_Wear
+	// Takes off what's worn in equipment slot To
+	InventoryAction_TakeOff
+	// Takes off the item in inventory slot From if it's worn, or else wears it wherever it can be
+	InventoryAction_ToggleWorn
 )
 
 type InventoryAction struct {
