@@ -63,11 +63,12 @@ func (cc *ChunkContainer) WorkOnRoof(t utils.Vec2i, work int) (worked, done bool
 		c.roofWork[t] = w
 		return true, false
 	}
-	roof := data.Roof_None
 	if building {
-		roof = data.Roof_Built
+		cc.setRoof(c, t, data.Roof_Built)
+		return true, true
 	}
-	cc.setRoof(c, t, roof)
+	cc.setRoof(c, t, data.Roof_None)
+	cc.collapseAround(t)
 	return true, true
 }
 
@@ -78,32 +79,56 @@ func (cc *ChunkContainer) setRoof(c *chunk, t utils.Vec2i, roof data.RoofEnum) {
 	cc.sightVersion++
 }
 
-// A wall or door within data.RoofSupportTiles, or somewhere within it that isn't loaded, which may have one
+// Over a wall or door, or joined edge to edge through roofs, within data.RoofSupportTiles steps, to a roof over one, to a
+// rock roof, or to somewhere that isn't loaded, which may hold it up
 func (cc *ChunkContainer) roofSupported(t utils.Vec2i) bool {
-	r := data.RoofSupportTiles
-	for dy := -r; dy <= r; dy++ {
-		for dx := -r; dx <= r; dx++ {
-			if dx*dx+dy*dy > r*r {
+	steps := map[utils.Vec2i]int{t: 0}
+	queue := []utils.Vec2i{t}
+	for i := 0; i < len(queue); i++ {
+		at := queue[i]
+		if holds, loaded := cc.holdsRoofUp(at); holds || !loaded {
+			return true
+		}
+		if steps[at] == data.RoofSupportTiles {
+			continue
+		}
+		for _, n := range edgeNeighbours(at) {
+			if _, seen := steps[n]; seen {
 				continue
 			}
-			n := utils.Vec2i{X: t.X + dx, Y: t.Y + dy}
-			tiles, ok := cc.TileAt(n)
-			if !ok || cc.isWall(tiles[data.TileLayer_Wall]) {
-				return true
+			if roof, ok := cc.RoofAt(n); ok && roof == data.Roof_None {
+				continue
 			}
-			if _, door := cc.DoorAt(n); door {
-				return true
-			}
+			steps[n] = steps[at] + 1
+			queue = append(queue, n)
 		}
 	}
 	return false
 }
 
-// Built roofs that what was taken off the tile held up, and nothing else does, fall in
+// A wall or door, or a rock roof, which rock holds up
+func (cc *ChunkContainer) holdsRoofUp(t utils.Vec2i) (holds, loaded bool) {
+	tiles, ok := cc.TileAt(t)
+	if !ok {
+		return false, false
+	}
+	if cc.isWall(tiles[data.TileLayer_Wall]) {
+		return true, true
+	}
+	if _, door := cc.DoorAt(t); door {
+		return true, true
+	}
+	roof, _ := cc.RoofAt(t)
+	return roof == data.Roof_Rock, true
+}
+
+// Built roofs that what was taken off or out from under the tile held up, and nothing else does, fall in. Only roofs
+// within data.RoofSupportTiles steps of it can have been held up through it, and one that falls held up none of the
+// others, since they'd have held it up in turn.
 func (cc *ChunkContainer) collapseAround(t utils.Vec2i) {
 	r := data.RoofSupportTiles
 	for dy := -r; dy <= r; dy++ {
-		for dx := -r; dx <= r; dx++ {
+		for dx := abs(dy) - r; dx <= r-abs(dy); dx++ {
 			n := utils.Vec2i{X: t.X + dx, Y: t.Y + dy}
 			if roof, ok := cc.RoofAt(n); ok && roof == data.Roof_Built && !cc.roofSupported(n) {
 				cc.setRoof(cc.chunks[utils.Vec2i{X: floorDiv(n.X, data.ChunkSize), Y: floorDiv(n.Y, data.ChunkSize)}], n, data.Roof_None)

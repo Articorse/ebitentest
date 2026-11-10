@@ -64,6 +64,12 @@ func (cc *ChunkContainer) buildsDoor(def ecs.BlueprintDef) bool {
 	return cc.featureAtlas[def.Feature()].door != nil
 }
 
+// Whether the site builds a door that opens for the faction
+func (cc *ChunkContainer) siteOpensFor(t utils.Vec2i, faction data.FactionEnum) bool {
+	_, s, def, ok := cc.siteOn(t)
+	return ok && cc.buildsDoor(def) && faction != data.Faction_None && s.faction == faction
+}
+
 // Facing along the walls it's between, which is across unless there's nothing to either side of it but something above
 // or below it
 func (cc *ChunkContainer) doorFacesVertically(t utils.Vec2i) bool {

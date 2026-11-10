@@ -196,10 +196,11 @@ func getsToAir(t *testing.T, safe bool) {
 	if got := colonistJob(s, colonist).Emergency.Tile; got.Y <= beyond {
 		t.Fatalf("the colonist was told to get to %v, want the air beyond y %d", got, beyond)
 	}
+	breathing := func() utils.Vec2i { return s.ECS.AirTile(testutil.WorldPos(t, s.ECS, colonist)) }
 	if !live(t, s, 20*data.TPS, func() bool {
-		return colonistTile(t, s, colonist).Y > beyond && colonistJob(s, colonist).Emergency.Kind == inputsources.Emergency_None
+		return breathing().Y > beyond && colonistJob(s, colonist).Emergency.Kind == inputsources.Emergency_None
 	}) {
-		t.Fatalf("the colonist didn't get through to the air beyond y %d, it's on %v", beyond, colonistTile(t, s, colonist))
+		t.Fatalf("the colonist didn't get through to the air beyond y %d, it breathes the air of %v", beyond, breathing())
 	}
 }
 

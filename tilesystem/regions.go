@@ -369,9 +369,10 @@ func (cc *ChunkContainer) ClosestReachable(
 }
 
 // The tiles a body of the faction reaching lo to hi round its own can walk to from the tile, as if the closed one
-// couldn't be walked on or reached over, up to limit of them. Enclosed if they're all there are, with none next to a
-// chunk that isn't active, whose size isn't known. A body bigger than a tile walks on the tiles it fits in the middle
-// of, and not over doors, as its regions go.
+// couldn't be walked on or reached over, up to limit of them, unless it's a site for a door that opens for the faction,
+// which a body of a tile can walk through once it's built. Enclosed if they're all there are, with none next to a chunk
+// that isn't active, whose size isn't known. A body bigger than a tile walks on the tiles it fits in the middle of, and
+// not over doors, as its regions go.
 func (cc *ChunkContainer) Enclosure(
 	from, closed utils.Vec2i,
 	faction data.FactionEnum,
@@ -401,12 +402,13 @@ func (cc *ChunkContainer) Enclosure(
 	if ok, _ := walkable(from); !ok || from == closed {
 		return nil, false
 	}
+	opens := !big && cc.siteOpensFor(closed, faction)
 	seen := map[utils.Vec2i]bool{from: true}
 	tiles = []utils.Vec2i{from}
 	for i := 0; i < len(tiles); i++ {
 		t := tiles[i]
 		for _, n := range edgeNeighbours(t) {
-			if seen[n] || n == closed {
+			if seen[n] || (n == closed && !opens) {
 				continue
 			}
 			ok, active := walkable(n)

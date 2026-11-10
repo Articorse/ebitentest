@@ -125,3 +125,25 @@ func TestAnEmergencyAndTheJobItPausedAreSaved(t *testing.T) {
 		t.Fatalf("after restarting the emergency is %+v with %+v paused, want %+v with %+v", got.Emergency, got.Paused, want.Emergency, want.Paused)
 	}
 }
+
+func TestFinishingADoorTellsNobodyToGetOut(t *testing.T) {
+	s, colony, builder := colonistAtWork(t)
+	middle := doorYard(t, s, builder)
+	gap := at(middle, 0, 3)
+	wall(t, s, ring(middle, 3, gap)...)
+	if !s.Chunks.PlaceSite(gap, data.Blueprint_WoodDoor) || !s.Chunks.SetSiteFaction(gap, data.Faction_Colony) {
+		t.Fatal("couldn't place the door")
+	}
+	s.Chunks.DeliverToSite(gap, data.Item_Wood, 5*kg)
+	other := anotherColonist(t, s, colony, builder)
+	if !live(t, s, 30*data.TPS, func() bool {
+		testutil.SetPos(t, s.ECS, other, utils.TilePosToWorldPos(middle))
+		if colonistJob(s, other).Emergency.Kind == inputsources.Emergency_GetOut {
+			t.Fatal("the colonist inside was told to get out of the way of a door")
+		}
+		_, isDoor := s.Chunks.DoorAt(gap)
+		return isDoor
+	}) {
+		t.Fatal("the door wasn't finished")
+	}
+}

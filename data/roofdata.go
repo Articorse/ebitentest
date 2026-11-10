@@ -6,7 +6,8 @@ const (
 	Roof_None RoofEnum = iota
 	// What worldgen puts over mountains
 	Roof_Rock
-	// What colonists build on the roof area, which needs a wall or door within RoofSupportTiles to hold it up
+	// What colonists build on the roof area, which has to join edge to edge through roofs, within RoofSupportTiles
+	// steps, to a roof over a wall or door, or to a rock roof, to be held up
 	Roof_Built
 )
 

@@ -52,16 +52,34 @@ func unroof(t *testing.T, s *testutil.Session, tile utils.Vec2i) {
 	}
 }
 
+// Over the tiles but the gaps, after the walls and doors beside them, which hold the roof up, building outward from
+// them as far as it's held up
 func roof(t *testing.T, s *testutil.Session, tiles []utils.Vec2i, gaps ...utils.Vec2i) {
 	t.Helper()
-	for _, tile := range tiles {
-		if slices.Contains(gaps, tile) {
-			continue
+	todo := slices.DeleteFunc(slices.Clone(tiles), func(tile utils.Vec2i) bool { return slices.Contains(gaps, tile) })
+	supports := []utils.Vec2i{}
+	for _, tile := range todo {
+		for _, n := range []utils.Vec2i{at(tile, -1, 0), at(tile, 1, 0), at(tile, 0, -1), at(tile, 0, 1)} {
+			layers, _ := s.Chunks.TileAt(n)
+			_, isDoor := s.Chunks.DoorAt(n)
+			if (layers[data.TileLayer_Wall] != data.Tile_None || isDoor) && roofOver(s, n) == data.Roof_None && !slices.Contains(todo, n) && !slices.Contains(supports, n) {
+				supports = append(supports, n)
+			}
 		}
-		s.Chunks.SetArea(data.Area_Roof, tile, tile, true)
-		if _, done := s.Chunks.WorkOnRoof(tile, data.RoofWork); !done {
-			t.Fatalf("couldn't roof %v", tile)
+	}
+	todo = append(supports, todo...)
+	for len(todo) > 0 {
+		left := todo[:0]
+		for _, tile := range todo {
+			s.Chunks.SetArea(data.Area_Roof, tile, tile, true)
+			if _, done := s.Chunks.WorkOnRoof(tile, data.RoofWork); !done {
+				left = append(left, tile)
+			}
 		}
+		if len(left) == len(todo) {
+			t.Fatalf("couldn't roof %v, which nothing holds up", left)
+		}
+		todo = left
 	}
 }
 
