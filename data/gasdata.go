@@ -26,6 +26,10 @@ const (
 	// Air with less oxygen or more carbon dioxide than this per tile is bad to breathe
 	SafeOxygenMg        = 400 * MilligramsPerGram
 	SafeCarbonDioxideMg = 250 * MilligramsPerGram
+	// How much of a gas below where it condenses drops out of the air in a step, and how much of a stack of its item
+	// above it goes back in, at least one item
+	CondenseFractionDen = 16
+	BoilFractionDen     = 16
 	// What can still be breathed, for where to get to when there's no safe air to get to
 	BreathableOxygenMg        = 100 * MilligramsPerGram
 	BreathableCarbonDioxideMg = 500 * MilligramsPerGram

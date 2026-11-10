@@ -24,5 +24,19 @@
       "cooldownMs": 250,
       "params": { "rangeTiles": 3, "feature": 3 }
     }
+  },
+  {
+    "id": 3,
+    "name": "Oxygen",
+    "imageAsset": "oxygen",
+    "maxStack": 100,
+    "weight": 1
+  },
+  {
+    "id": 4,
+    "name": "Carbon dioxide",
+    "imageAsset": "carbon",
+    "maxStack": 100,
+    "weight": 1
   }
 ]

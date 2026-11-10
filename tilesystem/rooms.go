@@ -429,6 +429,8 @@ func (cc *ChunkContainer) TickRooms(x *ecs.ECSContainer) {
 	cc.updateRooms()
 	if x.TickIdx%data.AirStepTicks == 0 {
 		cc.stepAir()
+		cc.condense(x)
+		cc.boil()
 		cc.breathe(x)
 		x.TickConditions()
 	}

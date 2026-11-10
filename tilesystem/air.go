@@ -301,3 +301,62 @@ func (cc *ChunkContainer) breathe(x *ecs.ECSContainer) {
 		r.air[data.Gas_CarbonDioxide] += mg
 	}
 }
+
+// In a room colder than where a gas condenses, some of it drops out of the air as whole items, onto the room's active
+// tiles row by row where there's room, and what doesn't fit stays in the air. The outdoors' air never changes.
+func (cc *ChunkContainer) condense(x *ecs.ECSContainer) {
+	for _, id := range slices.Sorted(maps.Keys(cc.rooms)) {
+		r := cc.rooms[id]
+		for _, g := range slices.Sorted(maps.Keys(cc.gases)) {
+			gas := cc.gases[g]
+			if r.temperature >= gas.Condense {
+				continue
+			}
+			items := int(r.air[g] / data.CondenseFractionDen / gas.MgPerItem)
+			if items == 0 && r.air[g] >= gas.MgPerItem {
+				items = 1
+			}
+			if items == 0 {
+				continue
+			}
+			cc.roomTiles(id, func(t utils.Vec2i) bool {
+				room := x.GroundRoomFor(t, gas.Item)
+				if room <= 0 {
+					return true
+				}
+				on, _ := cc.GroundStack(t)
+				n := min(room, items)
+				if cc.SetGroundStack(t, ecs.GroundStack{Kind: gas.Item, Count: on.Count + n}) {
+					items -= n
+					r.air[g] -= int64(n) * gas.MgPerItem
+				}
+				return items > 0
+			})
+		}
+	}
+}
+
+// Stacks of a gas's item lying where it's warmer than where the gas condenses go back into the air bit by bit: into
+// the room they're in, or outdoors, where they're lost to the planet's air
+func (cc *ChunkContainer) boil() {
+	gasOf := map[data.ItemEnum]climate.Gas{}
+	for _, gas := range cc.gases {
+		gasOf[gas.Item] = gas
+	}
+	for _, pos := range slices.SortedFunc(maps.Keys(cc.chunks), compareChunkPos) {
+		c := cc.chunks[pos]
+		for _, t := range slices.SortedFunc(maps.Keys(c.ground), compareTiles) {
+			stack := c.ground[t]
+			gas, isGas := gasOf[stack.Kind]
+			if !isGas || stack.Unique != nil || cc.AirTemperature(t) <= gas.Condense {
+				continue
+			}
+			n := max(1, stack.Count/data.BoilFractionDen)
+			stack.Count -= n
+			cc.SetGroundStack(t, stack)
+			if id, _ := cc.roomOf(t); id != 0 {
+				cc.rooms[id].air[gas.Id] += int64(n) * gas.MgPerItem
+			}
+		}
+	}
+}

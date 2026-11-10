@@ -9,4 +9,7 @@ const (
 	Item_None ItemEnum = iota
 	Item_Wood
 	Item_Torch
+	// Gases dropped out of the air, which they go back into once it's warm enough
+	Item_Oxygen
+	Item_CarbonDioxide
 )
