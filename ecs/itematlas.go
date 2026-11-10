@@ -4,6 +4,7 @@ import (
 	"ebittest/assetmanager"
 	"ebittest/data"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -15,8 +16,12 @@ import (
 type ItemDef struct {
 	name       string
 	imageAsset common.ImageAssetTag
-	maxStack   int
-	weight     int
+	// A countable item's amounts are how many there are, each of unitMg, and anything else's are its mass in
+	// milligrams
+	countable bool
+	unitMg    int
+	// In its amounts
+	maxStack int
 	// Nil for items that do nothing in hand
 	use *itemUse
 	// Nil for a still image
@@ -49,8 +54,24 @@ func (x ItemDef) MaxStack() int {
 	return x.maxStack
 }
 
-func (x ItemDef) Weight() int {
-	return x.weight
+func (x ItemDef) Countable() bool {
+	return x.countable
+}
+
+// In milligrams, of an amount of it
+func (x ItemDef) Mass(amount int) int {
+	if x.countable {
+		return amount * x.unitMg
+	}
+	return amount
+}
+
+// A countable item's count goes ahead of its mass
+func (x ItemDef) AmountText(amount int) string {
+	if x.countable {
+		return fmt.Sprintf("%d (%s)", amount, utils.FormatMass(x.Mass(amount)))
+	}
+	return utils.FormatMass(amount)
 }
 
 type ItemAtlas struct {
@@ -58,14 +79,19 @@ type ItemAtlas struct {
 }
 
 type itemDefDTO struct {
-	Id         uint16         `json:"id"`
-	Name       string         `json:"name"`
-	ImageAsset string         `json:"imageAsset"`
-	MaxStack   int            `json:"maxStack"`
-	Weight     int            `json:"weight"`
-	Use        *itemUseDTO    `json:"use"`
-	Animation  []itemFrameDTO `json:"animation"`
-	Light      *itemLightDTO  `json:"light"`
+	Id         uint16 `json:"id"`
+	Name       string `json:"name"`
+	ImageAsset string `json:"imageAsset"`
+	Countable  bool   `json:"countable"`
+	// Of one, which only a countable item has
+	Grams int `json:"grams"`
+	// A countable item's
+	MaxStack int `json:"maxStack"`
+	// Anything else's
+	MaxStackGrams int            `json:"maxStackGrams"`
+	Use           *itemUseDTO    `json:"use"`
+	Animation     []itemFrameDTO `json:"animation"`
+	Light         *itemLightDTO  `json:"light"`
 }
 
 type itemFrameDTO struct {
@@ -108,16 +134,21 @@ func LoadItemAtlasFromJson(path string) (*ItemAtlas, error) {
 			return nil, fmt.Errorf("item %q has id %d, which is kept for unique items", dto.Name, dto.Id)
 		case dto.Name == "" || dto.ImageAsset == "":
 			return nil, fmt.Errorf("item %d needs a name and an image asset", dto.Id)
-		case dto.MaxStack < 1:
-			return nil, fmt.Errorf("item %d stacks up to %d, want at least 1", dto.Id, dto.MaxStack)
-		case dto.Weight < 0:
-			return nil, fmt.Errorf("item %d weighs %d, which is negative", dto.Id, dto.Weight)
+		case dto.Countable && (dto.MaxStack < 1 || dto.MaxStackGrams != 0):
+			return nil, fmt.Errorf("countable item %d stacks up to %d, want at least 1 and no grams", dto.Id, dto.MaxStack)
+		case !dto.Countable && (dto.MaxStackGrams <= 0 || dto.MaxStack != 0 || dto.Grams != 0):
+			return nil, fmt.Errorf("item %d stacks up to %d g, want it positive, and isn't countable to stack by count or weigh one", dto.Id, dto.MaxStackGrams)
+		case dto.Grams < 0:
+			return nil, fmt.Errorf("item %d weighs %d g, which is negative", dto.Id, dto.Grams)
 		}
 		if _, ok := atlas.defs[kind]; ok {
 			return nil, fmt.Errorf("item id %d is defined twice", dto.Id)
 		}
 
-		def := ItemDef{name: dto.Name, imageAsset: common.ImageAssetTag(dto.ImageAsset), maxStack: dto.MaxStack, weight: dto.Weight}
+		def := ItemDef{name: dto.Name, imageAsset: common.ImageAssetTag(dto.ImageAsset), countable: dto.Countable, unitMg: dto.Grams * data.MilligramsPerGram, maxStack: dto.MaxStack}
+		if !dto.Countable {
+			def.maxStack = dto.MaxStackGrams * data.MilligramsPerGram
+		}
 		if u := dto.Use; u != nil {
 			if u.CooldownMs < 0 {
 				return nil, fmt.Errorf("item %d has a negative cooldown", dto.Id)
@@ -140,6 +171,22 @@ func LoadItemAtlasFromJson(path string) (*ItemAtlas, error) {
 	}
 
 	return atlas, nil
+}
+
+// An amount as other atlases give it: a count for a countable item, and grams of anything else
+func (x *ItemAtlas) AmountFromJson(kind data.ItemEnum, count, grams int) (int, error) {
+	def, ok := x.defs[kind]
+	switch {
+	case !ok:
+		return 0, fmt.Errorf("item %d isn't in the item atlas", kind)
+	case def.countable && grams != 0:
+		return 0, fmt.Errorf("item %d is countable, so it's given by count, not %d g", kind, grams)
+	case !def.countable && count != 0:
+		return 0, fmt.Errorf("item %d isn't countable, so it's given in grams, not as %d", kind, count)
+	case def.countable:
+		return count, nil
+	}
+	return grams * data.MilligramsPerGram, nil
 }
 
 func (x *ItemAtlas) Def(kind data.ItemEnum) (ItemDef, bool) {

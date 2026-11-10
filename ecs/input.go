@@ -219,14 +219,14 @@ type StorageMarking struct {
 type ItemPickUp struct {
 	PickUp bool
 	Tile   utils.Vec2i
-	// Up to how many, or as many as there are with none
-	Count int
+	// Up to how much, or all there is with none
+	Amount int
 }
 
 type ItemPutDown struct {
 	PutDown bool
 	From    int
-	Count   int
+	Amount  int
 	Tile    utils.Vec2i
 }
 

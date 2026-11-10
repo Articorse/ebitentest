@@ -18,18 +18,21 @@ func lyingAround(s *testutil.Session, kind data.ItemEnum, near utils.Vec2i) int 
 	n := 0
 	for _, t := range s.Chunks.GroundStacksIn(utils.Vec2i{X: near.X - r, Y: near.Y - r}, utils.Vec2i{X: near.X + r, Y: near.Y + r}) {
 		if stack, _ := s.Chunks.GroundStack(t); stack.Unique == nil && stack.Kind == kind {
-			n += stack.Count
+			n += stack.Amount
 		}
 	}
 	return n
 }
+
+// Wood lies by the milligram, which tests mostly deal in whole kilograms of
+const kg = data.MilligramsPerKg
 
 func onGround(s *testutil.Session, t utils.Vec2i) (data.ItemEnum, int) {
 	stack, ok := s.Chunks.GroundStack(t)
 	if !ok {
 		return data.Item_None, 0
 	}
-	return stack.Kind, stack.Count
+	return stack.Kind, stack.Amount
 }
 
 // A row of open ground, first tile left
@@ -43,14 +46,14 @@ func TestWhatsDroppedJoinsTheStackThereThenSpillsOntoTheClosestEmptyGround(t *te
 	row := openRow(t, s, colonist, 3)
 	right := utils.Vec2i{X: row.X + 1, Y: row.Y}
 
-	if laid := s.ECS.LayDownKind(data.Item_Wood, 90, right); laid != 90 {
-		t.Fatalf("laid down %d of 90 wood", laid)
+	if laid := s.ECS.LayDownKind(data.Item_Wood, 90*kg, right); laid != 90*kg {
+		t.Fatalf("laid down %d of 90 wood", laid/kg)
 	}
-	if laid := s.ECS.LayDownKind(data.Item_Wood, 30, right); laid != 30 {
-		t.Fatalf("laid down %d of 30 more wood", laid)
+	if laid := s.ECS.LayDownKind(data.Item_Wood, 30*kg, right); laid != 30*kg {
+		t.Fatalf("laid down %d of 30 more wood", laid/kg)
 	}
-	if kind, n := onGround(s, right); kind != data.Item_Wood || n != 100 {
-		t.Fatalf("the tile it was dropped on holds %d of %v, want a full stack of 100 wood", n, kind)
+	if kind, n := onGround(s, right); kind != data.Item_Wood || n != 100*kg {
+		t.Fatalf("the tile it was dropped on holds %d of %v, want a full stack of 100 wood", n/kg, kind)
 	}
 	spilled := 0
 	for _, tile := range s.Chunks.GroundStacksIn(utils.Vec2i{X: right.X - 1, Y: right.Y - 1}, utils.Vec2i{X: right.X + 1, Y: right.Y + 1}) {
@@ -59,14 +62,14 @@ func TestWhatsDroppedJoinsTheStackThereThenSpillsOntoTheClosestEmptyGround(t *te
 			spilled += n
 		}
 	}
-	if spilled != 20 {
-		t.Fatalf("%d wood spilled next to the full stack, want 20", spilled)
+	if spilled != 20*kg {
+		t.Fatalf("%d wood spilled next to the full stack, want 20", spilled/kg)
 	}
 
 	if laid := s.ECS.LayDownKind(data.Item_Torch, 2, right); laid != 2 {
 		t.Fatal("torches dropped onto wood didn't go next to it")
 	}
-	if kind, n := onGround(s, right); kind != data.Item_Wood || n != 100 {
+	if kind, n := onGround(s, right); kind != data.Item_Wood || n != 100*kg {
 		t.Fatal("torches went onto a tile of wood")
 	}
 }
@@ -75,28 +78,28 @@ func TestWhatsDroppedStaysAsCloseAsItCanRatherThanJoiningStacksFurtherAway(t *te
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 3)
 	far := utils.Vec2i{X: row.X + 2, Y: row.Y}
-	s.ECS.LayDownKind(data.Item_Wood, 50, far)
+	s.ECS.LayDownKind(data.Item_Wood, 50*kg, far)
 
-	s.ECS.LayDownKind(data.Item_Wood, 10, row)
-	if _, n := onGround(s, row); n != 10 {
-		t.Fatalf("the tile wood was dropped on holds %d, want the 10 dropped", n)
+	s.ECS.LayDownKind(data.Item_Wood, 10*kg, row)
+	if _, n := onGround(s, row); n != 10*kg {
+		t.Fatalf("the tile wood was dropped on holds %d, want the 10 dropped", n/kg)
 	}
-	if _, n := onGround(s, far); n != 50 {
-		t.Fatalf("the stack two tiles away holds %d, want its 50 left alone", n)
+	if _, n := onGround(s, far); n != 50*kg {
+		t.Fatalf("the stack two tiles away holds %d, want its 50 left alone", n/kg)
 	}
 }
 
 func TestNothingLiesOnGroundThatCantBeWalkedOn(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	tree := treeAway(t, s, colonist, 6)
-	s.ECS.LayDownKind(data.Item_Wood, 5, tree)
+	s.ECS.LayDownKind(data.Item_Wood, 5*kg, tree)
 	if _, ok := s.Chunks.GroundStack(tree); ok {
 		t.Fatal("wood was laid down on a tree")
 	}
 	found := false
 	for _, tile := range s.Chunks.GroundStacksIn(utils.Vec2i{X: tree.X - 1, Y: tree.Y - 1}, utils.Vec2i{X: tree.X + 1, Y: tree.Y + 1}) {
 		_, n := onGround(s, tile)
-		found = found || n == 5
+		found = found || n == 5*kg
 	}
 	if !found {
 		t.Fatal("the wood didn't spill next to the tree")
@@ -127,7 +130,7 @@ func TestAGenericItemLaidDownLeavesItsHolder(t *testing.T) {
 func TestAUniqueItemIsKeptWholeOnItsOwnTileAndComesBackTheSame(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 2)
-	s.ECS.LayDownKind(data.Item_Wood, 3, row)
+	s.ECS.LayDownKind(data.Item_Wood, 3*kg, row)
 	axe, _ := colonistAxe(s, colonist)
 
 	if ok, err := s.ECS.LayDown(axe, row); err != nil || !ok {
@@ -169,21 +172,21 @@ func TestAUniqueItemIsKeptWholeOnItsOwnTileAndComesBackTheSame(t *testing.T) {
 func TestPickingUpTakesWhatThereIsRoomForAndLeavesTheRest(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 1)
-	holder, err := s.ECS.AddNewEntity(ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.TilePosToWorldPos(row), 1, 0), ecs.NewInventoryComponent(1, 1, 1000))
+	holder, err := s.ECS.AddNewEntity(ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.TilePosToWorldPos(row), 1, 0), ecs.NewInventoryComponent(1, 1, 1000*kg))
 	if err != nil {
 		t.Fatal(err)
 	}
-	wood, _ := s.ECS.SpawnItemStack(data.Item_Wood, 70, utils.Vec2f{})
+	wood, _ := s.ECS.SpawnItemStack(data.Item_Wood, 70*kg, utils.Vec2f{})
 	if err := s.ECS.PutInInventory(holder, 0, wood); err != nil {
 		t.Fatal(err)
 	}
-	s.ECS.LayDownKind(data.Item_Wood, 50, row)
+	s.ECS.LayDownKind(data.Item_Wood, 50*kg, row)
 
-	if n, err := s.ECS.PickUpFromGround(holder, row); err != nil || n != 30 {
-		t.Fatalf("picked up %d wood, want the 30 there's room for: %v", n, err)
+	if n, err := s.ECS.PickUpFromGround(holder, row); err != nil || n != 30*kg {
+		t.Fatalf("picked up %d wood, want the 30 there's room for: %v", n/kg, err)
 	}
-	if _, n := onGround(s, row); n != 20 || countOf(s, wood) != 100 {
-		t.Fatalf("%d wood was left and %d held, want 20 and 100", n, countOf(s, wood))
+	if _, n := onGround(s, row); n != 20*kg || countOf(s, wood) != 100*kg {
+		t.Fatalf("%d wood was left and %d held, want 20 and 100", n/kg, countOf(s, wood)/kg)
 	}
 
 	s.ECS.LayDownKind(data.Item_Torch, 1, row)
@@ -191,12 +194,12 @@ func TestPickingUpTakesWhatThereIsRoomForAndLeavesTheRest(t *testing.T) {
 		t.Fatal("a full inventory picked something up")
 	}
 
-	other, err := s.ECS.AddNewEntity(ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.TilePosToWorldPos(row), 1, 0), ecs.NewInventoryComponent(1, 1, 1000))
+	other, err := s.ECS.AddNewEntity(ecs.NewHierarchyComponent(), ecs.NewTransformComponent(utils.TilePosToWorldPos(row), 1, 0), ecs.NewInventoryComponent(1, 1, 1000*kg))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n, _ := s.ECS.PickUpFromGround(other, row); n != 20 {
-		t.Fatalf("another picked up %d of the 20 wood", n)
+	if n, _ := s.ECS.PickUpFromGround(other, row); n != 20*kg {
+		t.Fatalf("another picked up %d of the 20 wood", n/kg)
 	}
 	if _, ok := s.Chunks.GroundStack(row); ok {
 		t.Fatal("picking up all of a stack left it on the ground")
@@ -210,7 +213,7 @@ func TestPickingUpTakesWhatThereIsRoomForAndLeavesTheRest(t *testing.T) {
 func TestWhatLiesOnTheGroundIsSavedWithItsChunk(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 1)
-	s.ECS.LayDownKind(data.Item_Wood, 42, row)
+	s.ECS.LayDownKind(data.Item_Wood, 42*kg, row)
 	axe, _ := colonistAxe(s, colonist)
 	if ok, err := s.ECS.LayDown(axe, row); err != nil || !ok {
 		t.Fatalf("couldn't lay down the axe: %v", err)
@@ -218,8 +221,8 @@ func TestWhatLiesOnTheGroundIsSavedWithItsChunk(t *testing.T) {
 	s.Commit()
 
 	r := testutil.StartSession(t)
-	if kind, n := onGround(r, row); kind != data.Item_Wood || n != 42 {
-		t.Fatalf("after restarting, the tile holds %d of %v, want 42 wood", n, kind)
+	if kind, n := onGround(r, row); kind != data.Item_Wood || n != 42*kg {
+		t.Fatalf("after restarting, the tile holds %d of %v, want 42 wood", n/kg, kind)
 	}
 	found := false
 	for _, tile := range r.Chunks.GroundStacksIn(utils.Vec2i{X: row.X - 1, Y: row.Y - 1}, utils.Vec2i{X: row.X + 1, Y: row.Y + 1}) {
@@ -246,7 +249,7 @@ func TestWhatLiesOnATileIsDrawnThereInTileOrderAndBlocksBuilding(t *testing.T) {
 	row := openRow(t, s, colonist, 3)
 	far := utils.Vec2i{X: row.X + 2, Y: row.Y}
 	s.ECS.LayDownKind(data.Item_Torch, 1, far)
-	s.ECS.LayDownKind(data.Item_Wood, 7, row)
+	s.ECS.LayDownKind(data.Item_Wood, 7*kg, row)
 
 	sprites := drawsystem.GroundItemSprites([2]utils.Vec2f{utils.TilePosToWorldPos(row), utils.TilePosToWorldPos(far)}, s.ECS)
 	if len(sprites) != 2 || sprites[0].Pos != utils.TilePosToWorldPos(row) || sprites[1].Pos != utils.TilePosToWorldPos(far) {
@@ -257,7 +260,7 @@ func TestWhatLiesOnATileIsDrawnThereInTileOrderAndBlocksBuilding(t *testing.T) {
 		t.Fatal("the wood isn't drawn as wood")
 	}
 	stack, _ := s.Chunks.GroundStack(row)
-	if lines := drawsystem.GroundStackTooltip(stack, s.ECS); !slices.Equal(lines, []string{"7 Wood"}) {
+	if lines := drawsystem.GroundStackTooltip(stack, s.ECS); !slices.Equal(lines, []string{"7kg Wood"}) {
 		t.Fatalf("the wood's tooltip says %q", lines)
 	}
 	if !s.ECS.IsTileOccupied(row) || s.ECS.IsTileOccupied(utils.Vec2i{X: row.X + 1, Y: row.Y}) {
@@ -265,5 +268,5 @@ func TestWhatLiesOnATileIsDrawnThereInTileOrderAndBlocksBuilding(t *testing.T) {
 	}
 }
 
-func groundTorches(n int) ecs.GroundStack { return ecs.GroundStack{Kind: data.Item_Torch, Count: n} }
-func groundWood(n int) ecs.GroundStack    { return ecs.GroundStack{Kind: data.Item_Wood, Count: n} }
+func groundTorches(n int) ecs.GroundStack { return ecs.GroundStack{Kind: data.Item_Torch, Amount: n} }
+func groundWood(mg int) ecs.GroundStack   { return ecs.GroundStack{Kind: data.Item_Wood, Amount: mg} }

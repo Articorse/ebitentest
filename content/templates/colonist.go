@@ -48,7 +48,7 @@ func spawnColonist(
 	if err != nil {
 		return -1, err
 	}
-	inv := ecs.NewInventoryComponent(data.ColonistInventorySlots, data.ColonistInventorySlots, data.ColonistMaxCarryWeight)
+	inv := ecs.NewInventoryComponent(data.ColonistInventorySlots, data.ColonistInventorySlots, data.ColonistMaxCarryMg)
 	inv.SetPickupsOffHotbar(true)
 
 	colonist, err := ecsContainer.AddNewEntity(

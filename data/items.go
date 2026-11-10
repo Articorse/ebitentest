@@ -7,5 +7,5 @@ const (
 	// How far away what lies on the ground can be picked up, or something put down, which is as far as building reaches
 	ItemReachTiles = PlayerBuildRangeTiles
 	// High enough that it rarely holds the player back, unlike a colonist
-	PlayerMaxCarryWeight = 500
+	PlayerMaxCarryMg = 250 * MilligramsPerKg
 )

@@ -18,7 +18,7 @@ import (
 func wallCost(t *testing.T) int {
 	t.Helper()
 	def, _ := testutil.Blueprints(t).Def(data.Blueprint_WoodWall)
-	return def.Costs()[0].Count
+	return def.Costs()[0].Amount
 }
 
 func siteSprite(t *testing.T, s *testutil.Session, tile utils.Vec2i) (frame int, ghost bool) {
@@ -121,13 +121,13 @@ func TestASiteIsBuiltOnceSuppliedOverItsWorkAndBecomesTheTile(t *testing.T) {
 	if taken := s.Chunks.DeliverToSite(tile, data.Item_Torch, 3); taken != 0 {
 		t.Fatalf("the site took %d torches, which it doesn't need", taken)
 	}
-	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5); taken != wallCost(t) {
+	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5*kg); taken != wallCost(t) {
 		t.Fatalf("the site took %d of 5 wood, want the %d it needs", taken, wallCost(t))
 	}
-	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5); taken != 0 {
+	if taken := s.Chunks.DeliverToSite(tile, data.Item_Wood, 5*kg); taken != 0 {
 		t.Fatalf("the supplied site took %d more wood", taken)
 	}
-	if site, _ := s.Chunks.Site(tile); len(site.Delivered) != 1 || site.Delivered[0] != (ecs.ItemCost{Kind: data.Item_Wood, Count: wallCost(t)}) {
+	if site, _ := s.Chunks.Site(tile); len(site.Delivered) != 1 || site.Delivered[0] != (ecs.ItemCost{Kind: data.Item_Wood, Amount: wallCost(t)}) {
 		t.Fatalf("the site has %v delivered, want %d wood", site.Delivered, wallCost(t))
 	}
 	if frame, ghost := siteSprite(t, s, tile); frame != 1 || ghost {
@@ -176,7 +176,7 @@ func TestMoreWorkBuildsInFewerStrikes(t *testing.T) {
 func TestEveryStrikeAddsAtLeastOneHealth(t *testing.T) {
 	testutil.TempWorld(t)
 	path := filepath.Join(t.TempDir(), "blueprints.json")
-	json := `[{"id": 1, "name": "Slow", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 1}], "work": 1000}]`
+	json := `[{"id": 1, "name": "Slow", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "grams": 1000}], "work": 1000}]`
 	if err := os.WriteFile(path, []byte(json), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestEveryStrikeAddsAtLeastOneHealth(t *testing.T) {
 	}
 	tile := bareGrass(t, s)
 	s.Chunks.PlaceSite(tile, 1)
-	s.Chunks.DeliverToSite(tile, data.Item_Wood, 1)
+	s.Chunks.DeliverToSite(tile, data.Item_Wood, 1*kg)
 
 	s.Chunks.BuildSite(tile, 1, true)
 	if site, _ := s.Chunks.Site(tile); site.Health != 2 {
@@ -211,7 +211,7 @@ func TestSitesAreSavedWithTheirChunk(t *testing.T) {
 	s.Commit()
 	r := testutil.StartSession(t)
 	site, ok := r.Chunks.Site(tile)
-	if !ok || site.Blueprint != data.Blueprint_WoodWall || site.Health != 41 || site.Delivered[0].Count != wallCost(t) {
+	if !ok || site.Blueprint != data.Blueprint_WoodWall || site.Health != 41 || site.Delivered[0].Amount != wallCost(t) {
 		t.Fatalf("after restarting, the site is %+v (%v), want a wooden wall with its wood and 41 health", site, ok)
 	}
 	if frame, _ := siteSprite(t, r, tile); frame != 2 {
@@ -223,7 +223,7 @@ func TestBlueprintsMustBuildATileWithHealthToBuildUp(t *testing.T) {
 	for name, tile := range map[string]int{"a tile that doesn't exist": 99, "dirt, which has no health": 1} {
 		testutil.TempWorld(t)
 		path := filepath.Join(t.TempDir(), "blueprints.json")
-		json := `[{"id": 1, "name": "A", "tile": ` + strconv.Itoa(tile) + `, "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 1}], "work": 10}]`
+		json := `[{"id": 1, "name": "A", "tile": ` + strconv.Itoa(tile) + `, "imageAsset": "tile_planks", "costs": [{"kind": 1, "grams": 1000}], "work": 10}]`
 		if err := os.WriteFile(path, []byte(json), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -296,7 +296,7 @@ func TestBlueprintsAreDrawnApartFromFeaturesAndOtherSites(t *testing.T) {
 			t.Fatalf("couldn't place a blueprint on %v", tile)
 		}
 	}
-	if s.Chunks.DeliverToSite(supplied, data.Item_Wood, 1) != 1 {
+	if s.Chunks.DeliverToSite(supplied, data.Item_Wood, 1*kg) != 1*kg {
 		t.Fatal("couldn't deliver to a blueprint")
 	}
 

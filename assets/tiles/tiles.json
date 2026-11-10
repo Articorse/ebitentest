@@ -54,7 +54,7 @@
     "maxHealth": 100,
     "passable": false,
     "opaque": true,
-    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 2 }] }],
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 2000 }] }],
     "drawOrder": 6
   },
   {

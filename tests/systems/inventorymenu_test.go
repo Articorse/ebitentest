@@ -306,8 +306,8 @@ func TestATileIsCopiedAsTheBlueprintThatBuildsIt(t *testing.T) {
 
 func TestABlueprintsTooltipHasItsNameAndCosts(t *testing.T) {
 	def, _ := testutil.Blueprints(t).Def(data.Blueprint_WoodWall)
-	if lines := drawsystem.BlueprintTooltip(def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Wooden wall", "2 Wood"}) {
-		t.Fatalf("the wooden wall's tooltip says %q, want Wooden wall and 2 Wood", lines)
+	if lines := drawsystem.BlueprintTooltip(def, testutil.ItemAtlas(t)); !slices.Equal(lines, []string{"Wooden wall", "2kg Wood"}) {
+		t.Fatalf("the wooden wall's tooltip says %q, want Wooden wall and 2kg Wood", lines)
 	}
 }
 
@@ -329,12 +329,12 @@ func TestThePlacerHoldsTheChosenBlueprintUntilStopped(t *testing.T) {
 func TestASitesTooltipHasWhatsDeliveredAndHowFarBuildingHasCome(t *testing.T) {
 	def, _ := testutil.Blueprints(t).Def(data.Blueprint_WoodWall)
 	site := ecs.ConstructionSite{Blueprint: data.Blueprint_WoodWall, Delivered: []ecs.ItemCost{{Kind: data.Item_Wood}}, Health: 1, MaxHealth: 100}
-	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Wooden wall", "Wood 0/2", "Construction 0%"}) {
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Wooden wall", "Wood 0mg/2kg", "Construction 0%"}) {
 		t.Fatalf("a new site's tooltip says %q", lines)
 	}
-	site.Delivered[0].Count, site.Health = 2, 34
-	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Wooden wall", "Wood 2/2", "Construction 33%"}) {
-		t.Fatalf("a supplied site a third built has a tooltip saying %q", lines)
+	site.Delivered[0].Amount, site.Health = 1500*data.MilligramsPerGram, 34
+	if lines := drawsystem.SiteTooltip(site, def, testutil.ItemAtlas(t), true); !slices.Equal(lines, []string{"Wooden wall", "Wood 1.5kg/2kg", "Construction 33%"}) {
+		t.Fatalf("a site three quarters supplied and a third built has a tooltip saying %q", lines)
 	}
 }
 

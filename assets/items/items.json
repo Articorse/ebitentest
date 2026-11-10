@@ -3,15 +3,15 @@
     "id": 1,
     "name": "Wood",
     "imageAsset": "wood",
-    "maxStack": 100,
-    "weight": 2
+    "maxStackGrams": 100000
   },
   {
     "id": 2,
     "name": "Torch",
     "imageAsset": "torch_placed",
+    "countable": true,
+    "grams": 200,
     "maxStack": 100,
-    "weight": 1,
     "animation": [
       { "frame": 0, "durationMs": 150 },
       { "frame": 1, "durationMs": 150 },
@@ -29,14 +29,12 @@
     "id": 3,
     "name": "Oxygen",
     "imageAsset": "oxygen",
-    "maxStack": 100,
-    "weight": 1
+    "maxStackGrams": 100000
   },
   {
     "id": 4,
     "name": "Carbon dioxide",
     "imageAsset": "carbon",
-    "maxStack": 100,
-    "weight": 1
+    "maxStackGrams": 100000
   }
 ]

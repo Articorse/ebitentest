@@ -10,6 +10,7 @@ import (
 	"ebittest/utils"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -301,33 +302,31 @@ func TestFelledTreesDropWood(t *testing.T) {
 	woodAround := func(tree utils.Vec2i) int {
 		n := 0
 		for _, tile := range s.Chunks.GroundStacksIn(utils.Vec2i{X: tree.X - 3, Y: tree.Y - 3}, utils.Vec2i{X: tree.X + 3, Y: tree.Y + 3}) {
-			kind, count := onGround(s, tile)
+			kind, mg := onGround(s, tile)
 			if kind != data.Item_Wood {
 				t.Fatalf("a tree dropped %v", kind)
 			}
-			n += count
+			n += mg
 		}
 		return n
 	}
-	dropCounts := map[int]int{}
+	drops := []int{}
 	for _, tree := range trees {
 		before := woodAround(tree)
 		if !s.ECS.DamageFeature(tree, 100) {
 			t.Fatalf("couldn't fell the tree at %v", tree)
 		}
-		dropCounts[woodAround(tree)-before]++
+		drops = append(drops, woodAround(tree)-before)
 	}
 	if len(s.ECS.Items.GetEntities()) > 0 {
 		t.Fatal("felling trees left wood lying around as entities")
 	}
 
-	for n := range dropCounts {
-		if n > 2 {
-			t.Fatalf("drop counts %v, want only 0, 1 or 2 wood per tree", dropCounts)
-		}
+	if slices.Min(drops) < 0 || slices.Max(drops) > 2*kg {
+		t.Fatalf("trees dropped %v mg of wood, want up to 2 kg each", drops)
 	}
-	if dropCounts[1] == 0 || dropCounts[2] == 0 {
-		t.Fatalf("over %d trees, drop counts were %v; want some to drop one and some two", len(trees), dropCounts)
+	if slices.Min(drops) >= kg || slices.Max(drops) < kg {
+		t.Fatalf("over %d trees, the drops were %v mg; want some under a kilogram and some over", len(trees), drops)
 	}
 }
 
@@ -341,7 +340,7 @@ func TestFeatureDropTablesMustAddUpAndDropKnownItems(t *testing.T) {
 		name  string
 		drops string
 	}{
-		{"adding up to 110%", `[{"chance": 60, "items": [{"kind": 1, "count": 1}]}, {"chance": 50, "items": [{"kind": 1, "count": 2}]}]`},
+		{"adding up to 110%", `[{"chance": 60, "items": [{"kind": 1, "grams": 1000}]}, {"chance": 50, "items": [{"kind": 1, "grams": 2000}]}]`},
 		{"dropping an item that isn't in the atlas", `[{"chance": 50, "items": [{"kind": 999, "count": 1}]}]`},
 	} {
 		path := filepath.Join(t.TempDir(), "features.json")

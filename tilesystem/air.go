@@ -302,8 +302,9 @@ func (cc *ChunkContainer) breathe(x *ecs.ECSContainer) {
 	}
 }
 
-// In a room colder than where a gas condenses, some of it drops out of the air as whole items, onto the room's active
-// tiles row by row where there's room, and what doesn't fit stays in the air. The outdoors' air never changes.
+// In a room colder than where a gas condenses, some of it drops out of the air as its item, to the milligram, onto the
+// room's active tiles row by row where there's room, and what doesn't fit stays in the air. The outdoors' air never
+// changes.
 func (cc *ChunkContainer) condense(x *ecs.ECSContainer) {
 	for _, id := range slices.Sorted(maps.Keys(cc.rooms)) {
 		r := cc.rooms[id]
@@ -312,11 +313,8 @@ func (cc *ChunkContainer) condense(x *ecs.ECSContainer) {
 			if r.temperature >= gas.Condense {
 				continue
 			}
-			items := int(r.air[g] / data.CondenseFractionDen / gas.MgPerItem)
-			if items == 0 && r.air[g] >= gas.MgPerItem {
-				items = 1
-			}
-			if items == 0 {
+			mg := int(max(r.air[g]/data.CondenseFractionDen, min(r.air[g], data.CondenseLeastMg)))
+			if mg == 0 {
 				continue
 			}
 			cc.roomTiles(id, func(t utils.Vec2i) bool {
@@ -325,12 +323,12 @@ func (cc *ChunkContainer) condense(x *ecs.ECSContainer) {
 					return true
 				}
 				on, _ := cc.GroundStack(t)
-				n := min(room, items)
-				if cc.SetGroundStack(t, ecs.GroundStack{Kind: gas.Item, Count: on.Count + n}) {
-					items -= n
-					r.air[g] -= int64(n) * gas.MgPerItem
+				n := min(room, mg)
+				if cc.SetGroundStack(t, ecs.GroundStack{Kind: gas.Item, Amount: on.Amount + n}) {
+					mg -= n
+					r.air[g] -= int64(n)
 				}
-				return items > 0
+				return mg > 0
 			})
 		}
 	}
@@ -351,11 +349,11 @@ func (cc *ChunkContainer) boil() {
 			if !isGas || stack.Unique != nil || cc.AirTemperature(t) <= gas.Condense {
 				continue
 			}
-			n := max(1, stack.Count/data.BoilFractionDen)
-			stack.Count -= n
+			n := max(stack.Amount/data.BoilFractionDen, min(stack.Amount, data.BoilLeastMg))
+			stack.Amount -= n
 			cc.SetGroundStack(t, stack)
 			if id, _ := cc.roomOf(t); id != 0 {
-				cc.rooms[id].air[gas.Id] += int64(n) * gas.MgPerItem
+				cc.rooms[id].air[gas.Id] += int64(n)
 			}
 		}
 	}

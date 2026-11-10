@@ -15,13 +15,13 @@ import (
 	"testing"
 )
 
-// A session whose player can build, holding the given wood, with a blueprint costing 3 wood placed on ground it can
-// reach and see
+// A session whose player can build, holding the given kilograms of wood, with a blueprint costing 3 kg of wood placed
+// on ground it can reach and see
 func newBuilder(t *testing.T, wood int) (s *testutil.Session, site utils.Vec2i, stack common.EntityId) {
 	t.Helper()
 	testutil.TempWorld(t)
 	path := filepath.Join(t.TempDir(), "blueprints.json")
-	json := `[{"id": 1, "name": "Wall", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 3}], "work": 10}]`
+	json := `[{"id": 1, "name": "Wall", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "grams": 3000}], "work": 10}]`
 	if err := os.WriteFile(path, []byte(json), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func newBuilder(t *testing.T, wood int) (s *testutil.Session, site utils.Vec2i, 
 		t.Fatal(err)
 	}
 	for _, c := range []ecs.Component{
-		ecs.NewInventoryComponent(2, 2, 1000),
+		ecs.NewInventoryComponent(2, 2, 1000*kg),
 		ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{}),
 		ecs.NewConstructorComponent(3, 1, 250),
 	} {
@@ -59,7 +59,7 @@ func newBuilder(t *testing.T, wood int) (s *testutil.Session, site utils.Vec2i, 
 
 	stack = -1
 	if wood > 0 {
-		if stack, err = s.ECS.SpawnItemStack(data.Item_Wood, wood, from); err != nil {
+		if stack, err = s.ECS.SpawnItemStack(data.Item_Wood, wood*kg, from); err != nil {
 			t.Fatal(err)
 		}
 		if err := s.ECS.GiveItem(s.Player, stack); err != nil {
@@ -79,12 +79,13 @@ func construct(t *testing.T, s *testutil.Session, at utils.Vec2i, all bool) bool
 	return handled
 }
 
+// In whole kilograms
 func delivered(s *testutil.Session, site utils.Vec2i) int {
 	state, _ := s.Chunks.Site(site)
 	if len(state.Delivered) == 0 {
 		return -1
 	}
-	return state.Delivered[0].Count
+	return state.Delivered[0].Amount / kg
 }
 
 func waitOutTheCooldown(s *testutil.Session) {
@@ -94,20 +95,20 @@ func waitOutTheCooldown(s *testutil.Session) {
 func TestAClickDeliversOneOfWhatsInHandAndShiftAllThatsNeeded(t *testing.T) {
 	s, site, stack := newBuilder(t, 5)
 
-	if !construct(t, s, site, false) || delivered(s, site) != 1 || countOf(s, stack) != 4 {
-		t.Fatalf("a click delivered %d and left %d wood, want 1 delivered from the 5", delivered(s, site), countOf(s, stack))
+	if !construct(t, s, site, false) || delivered(s, site) != 1 || countOf(s, stack) != 4*kg {
+		t.Fatalf("a click delivered %d and left %d wood, want 1 delivered from the 5", delivered(s, site), countOf(s, stack)/kg)
 	}
 	if !construct(t, s, site, false) || delivered(s, site) != 1 {
 		t.Fatal("a second click within the cooldown delivered more")
 	}
 
 	waitOutTheCooldown(s)
-	if !construct(t, s, site, true) || delivered(s, site) != 3 || countOf(s, stack) != 2 {
-		t.Fatalf("a shift click delivered up to %d and left %d wood, want the 2 still needed delivered and 2 left", delivered(s, site), countOf(s, stack))
+	if !construct(t, s, site, true) || delivered(s, site) != 3 || countOf(s, stack) != 2*kg {
+		t.Fatalf("a shift click delivered up to %d and left %d wood, want the 2 still needed delivered and 2 left", delivered(s, site), countOf(s, stack)/kg)
 	}
 
 	waitOutTheCooldown(s)
-	if construct(t, s, site, true) || countOf(s, stack) != 2 {
+	if construct(t, s, site, true) || countOf(s, stack) != 2*kg {
 		t.Fatal("wood was delivered to a site that has all it needs, or the click didn't leave it to what's in hand")
 	}
 }
@@ -201,7 +202,7 @@ func TestSitesOutOfReachAreLeftToWhatsInHand(t *testing.T) {
 	})
 	s.Chunks.PlaceSite(far, 1)
 
-	if construct(t, s, far, true) || countOf(s, stack) != 3 {
+	if construct(t, s, far, true) || countOf(s, stack) != 3*kg {
 		t.Fatal("wood was delivered to a site 4 tiles away")
 	}
 }
@@ -256,7 +257,7 @@ func countOf(s *testutil.Session, item common.EntityId) int {
 	if !ok {
 		return 0
 	}
-	return itemComp.Count()
+	return itemComp.Amount()
 }
 
 func woodLyingAround(s *testutil.Session, near utils.Vec2i) int {
@@ -301,8 +302,8 @@ func TestABlueprintIsHitThroughButASiteWithMaterialsIsHitAndDropsThem(t *testing
 		t.Fatal("a site with materials couldn't be hit")
 	}
 	testutil.RemoveScheduled(t, s.ECS)
-	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s, site)-before != 1 {
-		t.Fatalf("the destroyed site dropped %d wood, want the 1 delivered to it", woodLyingAround(s, site)-before)
+	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s, site)-before != 1*kg {
+		t.Fatalf("the destroyed site dropped %d wood, want the 1 delivered to it", (woodLyingAround(s, site)-before)/kg)
 	}
 	if currentTile(s, site) != ground {
 		t.Fatal("the hit that destroyed the site also hit the ground under it")
@@ -328,8 +329,8 @@ func TestASiteUnderConstructionLosesProgressToHitsAndDropsAllItsMaterials(t *tes
 	before := woodLyingAround(s, site)
 	s.ECS.DamageTile(site, 50)
 	testutil.RemoveScheduled(t, s.ECS)
-	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s, site)-before != 3 {
-		t.Fatalf("the destroyed site dropped %d wood, want all 3", woodLyingAround(s, site)-before)
+	if _, ok := s.Chunks.Site(site); ok || woodLyingAround(s, site)-before != 3*kg {
+		t.Fatalf("the destroyed site dropped %d wood, want all 3", (woodLyingAround(s, site)-before)/kg)
 	}
 }
 

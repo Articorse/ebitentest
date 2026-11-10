@@ -90,9 +90,13 @@ type dropOutcomeDTO struct {
 	Items         []itemDropDTO `json:"items"`
 }
 
+// A count of a countable item, or grams of anything else, or anywhere from minGrams to maxGrams of it
 type itemDropDTO struct {
-	Kind  uint16 `json:"kind"`
-	Count int    `json:"count"`
+	Kind     uint16 `json:"kind"`
+	Count    int    `json:"count"`
+	Grams    int    `json:"grams"`
+	MinGrams int    `json:"minGrams"`
+	MaxGrams int    `json:"maxGrams"`
 }
 
 type featureColliderDTO struct {
@@ -458,10 +462,21 @@ func dropTableFromDtos(dtos []dropOutcomeDTO, items *ecs.ItemAtlas) (*ecs.DropTa
 	for i, o := range dtos {
 		outcomes[i].ChancePercent = o.ChancePercent
 		for _, item := range o.Items {
-			if _, ok := items.Def(data.ItemEnum(item.Kind)); !ok {
-				return nil, fmt.Errorf("item %d isn't in the item atlas", item.Kind)
+			kind := data.ItemEnum(item.Kind)
+			if item.MaxGrams > 0 {
+				lo, err := items.AmountFromJson(kind, 0, item.MinGrams)
+				if err != nil {
+					return nil, err
+				}
+				hi, _ := items.AmountFromJson(kind, 0, item.MaxGrams)
+				outcomes[i].Items = append(outcomes[i].Items, ecs.ItemDrop{Kind: kind, Amount: lo, Max: hi})
+				continue
 			}
-			outcomes[i].Items = append(outcomes[i].Items, ecs.ItemDrop{Kind: data.ItemEnum(item.Kind), Count: item.Count})
+			amount, err := items.AmountFromJson(kind, item.Count, item.Grams)
+			if err != nil {
+				return nil, err
+			}
+			outcomes[i].Items = append(outcomes[i].Items, ecs.ItemDrop{Kind: kind, Amount: amount})
 		}
 	}
 	return ecs.NewDropTable(outcomes...)

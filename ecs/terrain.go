@@ -53,8 +53,8 @@ type Terrain interface {
 	SitesIn(first, last utils.Vec2i) []utils.Vec2i
 	// False unless it's still a blueprint, with nothing delivered
 	RemoveSite(t utils.Vec2i) bool
-	// How many of the items the site took, which is no more than it still needs of them
-	DeliverToSite(t utils.Vec2i, item data.ItemEnum, count int) int
+	// How much of the item the site took, which is no more than it still needs of them
+	DeliverToSite(t utils.Vec2i, item data.ItemEnum, amount int) int
 	// Works on a site that has everything delivered, and turns it into its tile once its health reaches the tile's,
 	// unless it mustn't be finished yet, such as while something is in the tile's way. Worked is false if there's no such
 	// site, or the work would finish one that mustn't be.
@@ -129,7 +129,7 @@ type SightTerrain interface {
 // Its health is how far building it has come, from 1 when it's placed up to that of the tile it builds
 type ConstructionSite struct {
 	Blueprint data.BlueprintEnum
-	// For each of the blueprint's costs in turn, how many have been delivered
+	// For each of the blueprint's costs in turn, how much has been delivered
 	Delivered []ItemCost
 	Health    int
 	MaxHealth int
@@ -150,7 +150,7 @@ type SiteOrder struct {
 // Only a plan until something's been delivered to it
 func (x ConstructionSite) IsBlueprint() bool {
 	for _, d := range x.Delivered {
-		if d.Count > 0 {
+		if d.Amount > 0 {
 			return false
 		}
 	}
@@ -176,12 +176,12 @@ func (x ConstructionSite) Needs(item data.ItemEnum, def BlueprintDef) int {
 	needed := 0
 	for _, c := range def.costs {
 		if c.Kind == item {
-			needed += c.Count
+			needed += c.Amount
 		}
 	}
 	for _, d := range x.Delivered {
 		if d.Kind == item {
-			needed -= d.Count
+			needed -= d.Amount
 		}
 	}
 	return needed

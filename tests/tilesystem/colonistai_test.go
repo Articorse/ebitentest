@@ -136,7 +136,7 @@ func woodCarried(s *testutil.Session, colonist common.EntityId) int {
 	for i := range inv.Capacity() {
 		if item, ok := inv.Slot(i); ok {
 			if comp, ok := s.ECS.Items.Get(item); ok && comp.Kind() == data.Item_Wood {
-				n += comp.Count()
+				n += comp.Amount()
 			}
 		}
 	}
@@ -203,8 +203,8 @@ func TestBuildingOutweighsDeliveringButNotMuchFurtherAway(t *testing.T) {
 func TestAColonistLeavesBlueprintsItCantFullySupplyOrReachAlone(t *testing.T) {
 	testutil.TempWorld(t)
 	path := filepath.Join(t.TempDir(), "blueprints.json")
-	json := `[{"id": 1, "name": "Pricey", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 21}], "work": 10},
-		{"id": 2, "name": "Cheap", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "count": 1}], "work": 10}]`
+	json := `[{"id": 1, "name": "Pricey", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "grams": 21000}], "work": 10},
+		{"id": 2, "name": "Cheap", "tile": 6, "imageAsset": "tile_planks", "costs": [{"kind": 1, "grams": 1000}], "work": 10}]`
 	if err := os.WriteFile(path, []byte(json), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -302,8 +302,8 @@ func TestAColonistDeliversAllThatsNeededAtOnce(t *testing.T) {
 	if !live(t, s, 30*data.TPS, func() bool { state, _ := s.Chunks.Site(site); return !state.IsBlueprint() }) {
 		t.Fatal("the colonist never delivered to the blueprint")
 	}
-	if state, _ := s.Chunks.Site(site); state.Delivered[0].Count != wallCost(t) {
-		t.Fatalf("the colonist's first delivery was %d wood, want all %d at once", state.Delivered[0].Count, wallCost(t))
+	if state, _ := s.Chunks.Site(site); state.Delivered[0].Amount != wallCost(t) {
+		t.Fatalf("the colonist's first delivery was %d wood, want all %d at once", state.Delivered[0].Amount, wallCost(t))
 	}
 }
 
@@ -361,7 +361,7 @@ func TestWhatAColonistIsDoingIsSaved(t *testing.T) {
 		t.Fatal("the colonist's input wasn't saved")
 	}
 	p, ok := in.Params().(*inputsources.InputColonistParams)
-	want := []inputsources.JobStop{{Action: inputsources.Stop_Deliver, Tile: site, Kind: data.Item_Wood, Count: wallCost(t)}}
+	want := []inputsources.JobStop{{Action: inputsources.Stop_Deliver, Tile: site, Kind: data.Item_Wood, Amount: wallCost(t)}}
 	if !ok || p.Colony != colony || p.State != inputsources.Colonist_Deliver || !slices.Equal(p.Stops, want) {
 		t.Fatalf("after loading, the colonist is %+v, want delivering to %v for colony %d", p, site, colony)
 	}

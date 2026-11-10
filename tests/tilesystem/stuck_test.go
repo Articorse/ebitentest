@@ -109,7 +109,7 @@ func TestColonistsWallingARoomInTogetherDontGetStuck(t *testing.T) {
 	for _, e := range colonists {
 		withoutWood(t, s, e)
 	}
-	s.Chunks.SetGroundStack(corner, groundWood(80))
+	s.Chunks.SetGroundStack(corner, groundWood(80*kg))
 
 	center := colonistTile(t, s, a)
 	walls := []utils.Vec2i{}

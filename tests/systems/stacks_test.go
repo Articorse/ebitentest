@@ -9,15 +9,16 @@ import (
 	"testing"
 )
 
+// In whole kilograms, of the wood these tests use
 func countOf(x *ecs.ECSContainer, item common.EntityId) int {
 	itemComp, ok := x.Items.Get(item)
 	if !ok {
 		return 0
 	}
-	return itemComp.Count()
+	return itemComp.Amount() / data.MilligramsPerKg
 }
 
-// Spawns a wood where the player stands and gives it to the player
+// Spawns a kilogram of wood where the player stands and gives it to the player
 func pickUpWood(t *testing.T, x *ecs.ECSContainer, player common.EntityId) bool {
 	t.Helper()
 	wood, err := x.SpawnItem(data.Item_Wood, testutil.WorldPos(t, x, player))

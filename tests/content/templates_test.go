@@ -44,7 +44,7 @@ func TestPlayerTemplateWithStartingEquipment(t *testing.T) {
 
 	inv, _ := x.Inventories.Get(p)
 	torches, _ := inv.Slot(4)
-	if item, ok := x.Items.Get(torches); !ok || item.Kind() != data.Item_Torch || item.Count() != 100 {
+	if item, ok := x.Items.Get(torches); !ok || item.Kind() != data.Item_Torch || item.Amount() != 100 {
 		t.Fatal("the player's fifth slot doesn't hold 100 torches")
 	}
 }

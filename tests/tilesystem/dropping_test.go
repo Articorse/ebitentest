@@ -28,7 +28,7 @@ func colonistHoldingWood(t *testing.T) (*testutil.Session, common.EntityId, util
 	return s, colonist, row
 }
 
-func TestDroppingPutsOneOfTheStackInHandOnTheAimedTileWithinReach(t *testing.T) {
+func TestDroppingPutsAKilogramOfTheStackInHandOnTheAimedTileWithinReach(t *testing.T) {
 	s, colonist, row := colonistHoldingWood(t)
 	before := woodCarried(s, colonist)
 	aimed := utils.Vec2i{X: row.X + data.ItemReachTiles, Y: row.Y}
@@ -36,8 +36,8 @@ func TestDroppingPutsOneOfTheStackInHandOnTheAimedTileWithinReach(t *testing.T) 
 	for range 2 {
 		handleInput(t, s, colonist, ecs.InputState{DropItem: true, AimPos: utils.TilePosToWorldPos(aimed), HasAim: true})
 	}
-	if kind, n := onGround(s, aimed); kind != data.Item_Wood || n != 2 || woodCarried(s, colonist) != before-2 {
-		t.Fatalf("dropping twice left %d of %v on the aimed tile and %d carried, want 2 wood and %d", n, kind, woodCarried(s, colonist), before-2)
+	if kind, n := onGround(s, aimed); kind != data.Item_Wood || n != 2*kg || woodCarried(s, colonist) != before-2*kg {
+		t.Fatalf("dropping twice left %d mg of %v on the aimed tile and %d carried, want 2 kg of wood and %d", n, kind, woodCarried(s, colonist), before-2*kg)
 	}
 }
 
@@ -49,7 +49,7 @@ func TestDroppingAimedOutOfReachPutsItUnderfoot(t *testing.T) {
 	if _, ok := s.Chunks.GroundStack(far); ok {
 		t.Fatal("wood was dropped on a tile out of reach")
 	}
-	if kind, n := onGround(s, row); kind != data.Item_Wood || n != 1 {
+	if kind, n := onGround(s, row); kind != data.Item_Wood || n != 1*kg {
 		t.Fatalf("the colonist's tile holds %d of %v, want the wood dropped there", n, kind)
 	}
 }
@@ -87,7 +87,7 @@ func TestAKilledHolderLeavesWhatItCarriedWhereItDied(t *testing.T) {
 	for _, tile := range s.Chunks.GroundStacksIn(utils.Vec2i{X: row.X - 2, Y: row.Y - 2}, utils.Vec2i{X: row.X + 2, Y: row.Y + 2}) {
 		stack, _ := s.Chunks.GroundStack(tile)
 		if stack.Kind == data.Item_Wood {
-			wood += stack.Count
+			wood += stack.Amount
 		}
 		unique = unique || stack.Unique != nil && stack.Unique.Root == axe
 	}
@@ -105,7 +105,7 @@ func TestAKilledHolderLeavesWhatItCarriedWhereItDied(t *testing.T) {
 func TestOnlyKilledEntitiesDropTheirLootAndTheirDropTablesAreSaved(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 1)
-	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: []ecs.ItemDrop{{Kind: data.Item_Wood, Count: 3}}})
+	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: []ecs.ItemDrop{{Kind: data.Item_Wood, Amount: 3 * kg}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,21 @@ func TestOnlyKilledEntitiesDropTheirLootAndTheirDropTablesAreSaved(t *testing.T)
 	}
 	s.ECS.ScheduleKillEntity(killed)
 	testutil.RemoveScheduled(t, s.ECS)
-	if kind, n := onGround(s, row); kind != data.Item_Wood || n != 3 {
+	if kind, n := onGround(s, row); kind != data.Item_Wood || n != 3*kg {
 		t.Fatalf("a killed entity brought back from its saved components left %d of %v where it died, want 3 wood", n, kind)
+	}
+}
+
+func TestDroppingLessThanAKilogramDropsAllOfIt(t *testing.T) {
+	s, colonist, row := colonistHoldingWood(t)
+	inv, _ := s.ECS.Inventories.Get(colonist)
+	wood, _ := inv.HotbarItem(0)
+	if err := s.ECS.UseUp(wood, woodCarried(s, colonist)-kg/2); err != nil {
+		t.Fatal(err)
+	}
+	aimed := utils.Vec2i{X: row.X + 1, Y: row.Y}
+	handleInput(t, s, colonist, ecs.InputState{DropItem: true, AimPos: utils.TilePosToWorldPos(aimed), HasAim: true})
+	if _, n := onGround(s, aimed); n != kg/2 || s.ECS.HasEntity(wood) {
+		t.Fatalf("dropping half a kilogram of wood put %d mg on the aimed tile, or left some in hand", n)
 	}
 }

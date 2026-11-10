@@ -31,8 +31,8 @@ type BlueprintDef struct {
 }
 
 type ItemCost struct {
-	Kind  data.ItemEnum
-	Count int
+	Kind   data.ItemEnum
+	Amount int
 }
 
 func (x BlueprintDef) Name() string {
@@ -89,9 +89,11 @@ type ghostDTO struct {
 	Frame int    `json:"frame"`
 }
 
+// A count of a countable item, or grams of anything else
 type itemCostDTO struct {
 	Kind  uint16 `json:"kind"`
 	Count int    `json:"count"`
+	Grams int    `json:"grams"`
 }
 
 func NewBlueprintAtlas() *BlueprintAtlas {
@@ -158,12 +160,13 @@ func LoadBlueprintAtlasFromJson(path string, items *ItemAtlas, assets *assetmana
 			def.ghostAsset, def.ghostFrame = common.ImageAssetTag(g.Asset), g.Frame
 		}
 		for _, c := range dto.Costs {
-			cost := ItemCost{Kind: data.ItemEnum(c.Kind), Count: c.Count}
-			if _, ok := items.Def(cost.Kind); !ok {
-				return nil, fmt.Errorf("blueprint %d costs item %d, which isn't in the item atlas", dto.Id, c.Kind)
+			amount, err := items.AmountFromJson(data.ItemEnum(c.Kind), c.Count, c.Grams)
+			if err != nil {
+				return nil, fmt.Errorf("blueprint %d's cost: %w", dto.Id, err)
 			}
-			if cost.Count <= 0 || slices.ContainsFunc(def.costs, func(o ItemCost) bool { return o.Kind == cost.Kind }) {
-				return nil, fmt.Errorf("blueprint %d costs %d of item %d, want a positive count once per item", dto.Id, c.Count, c.Kind)
+			cost := ItemCost{Kind: data.ItemEnum(c.Kind), Amount: amount}
+			if cost.Amount <= 0 || slices.ContainsFunc(def.costs, func(o ItemCost) bool { return o.Kind == cost.Kind }) {
+				return nil, fmt.Errorf("blueprint %d costs %d of item %d, want a positive amount once per item", dto.Id, cost.Amount, c.Kind)
 			}
 			def.costs = append(def.costs, cost)
 		}

@@ -52,16 +52,16 @@ func TestTwoColonistsGatherAStackBetweenThemByWhatTheyCanCarry(t *testing.T) {
 	withoutWood(t, s, b)
 	lying := groundAway(t, s, a, 5)
 	harvest(s, lying)
-	fits := (data.ColonistMaxCarryWeight - s.ECS.CarriedWeight(a)) / 2
-	looseWood(t, s, lying, fits+5)
+	fits := data.ColonistMaxCarryMg - s.ECS.CarriedMass(a)
+	looseWood(t, s, lying, fits+5*kg)
 
 	live(t, s, 2, func() bool { return false })
 	ja, jb := colonistJob(s, a), colonistJob(s, b)
-	if len(ja.Stops) != 1 || len(jb.Stops) != 1 || ja.Stops[0].Count+jb.Stops[0].Count != fits+5 {
-		t.Fatalf("the colonists set out to pick up %v and %v, want all %d between them", ja.Stops, jb.Stops, fits+5)
+	if len(ja.Stops) != 1 || len(jb.Stops) != 1 || ja.Stops[0].Amount+jb.Stops[0].Amount != fits+5*kg {
+		t.Fatalf("the colonists set out to pick up %v and %v, want all %d between them", ja.Stops, jb.Stops, fits+5*kg)
 	}
-	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, a)+woodCarried(s, b) == fits+5 }) {
-		t.Fatalf("the colonists carry %d and %d wood, want the %d between them", woodCarried(s, a), woodCarried(s, b), fits+5)
+	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, a)+woodCarried(s, b) == fits+5*kg }) {
+		t.Fatalf("the colonists carry %d and %d wood, want the %d between them", woodCarried(s, a), woodCarried(s, b), fits+5*kg)
 	}
 }
 
@@ -137,7 +137,7 @@ func TestAColonistDeliversWhatItGotWhenSomeoneTookPartOfWhatItWasFetching(t *tes
 	}
 	live(t, s, 1, func() bool { return false })
 	job := colonistJob(s, colonist)
-	if want := wallCost(t) - 1; job.State != inputsources.Colonist_Fetch || len(job.Stops) != 1 || job.Stops[0].Action != inputsources.Stop_Deliver || job.Stops[0].Count != want {
+	if want := wallCost(t) - 1; job.State != inputsources.Colonist_Fetch || len(job.Stops) != 1 || job.Stops[0].Action != inputsources.Stop_Deliver || job.Stops[0].Amount != want {
 		t.Fatalf("the colonist is on %v, want delivering the %d it got", job.Stops, want)
 	}
 	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == 0 }) {
@@ -146,7 +146,7 @@ func TestAColonistDeliversWhatItGotWhenSomeoneTookPartOfWhatItWasFetching(t *tes
 
 	other := storageSpot(t, s, colonist, 6, 1, 1, tile, site)
 	markStorage(t, s, false, other)
-	s.Chunks.SetGroundStack(other, groundWood(1))
+	s.Chunks.SetGroundStack(other, groundWood(1*kg))
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
 		t.Fatalf("the colonist didn't fetch the rest and build, it's %v", colonistState(s, colonist))
 	}
@@ -184,8 +184,8 @@ func TestAColonistHaulsOffASiteOntoStorageInOneGo(t *testing.T) {
 
 	live(t, s, 2, func() bool { return false })
 	want := []inputsources.JobStop{
-		{Action: inputsources.Stop_PickUp, Tile: site, Kind: data.Item_Torch, Count: 3},
-		{Action: inputsources.Stop_PutDown, Tile: tile, Kind: data.Item_Torch, Count: 3},
+		{Action: inputsources.Stop_PickUp, Tile: site, Kind: data.Item_Torch, Amount: 3},
+		{Action: inputsources.Stop_PutDown, Tile: tile, Kind: data.Item_Torch, Amount: 3},
 	}
 	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Haul || !slices.Equal(job.Stops, want) {
 		t.Fatalf("the colonist is on %v, want %v", job.Stops, want)
@@ -200,14 +200,14 @@ func TestTwoColonistsOnlyStoreWhatThereIsRoomFor(t *testing.T) {
 	b := anotherColonist(t, s, colony, a)
 	tile := storageSpot(t, s, a, 6, 1, 1)
 	markStorage(t, s, false, tile)
-	s.Chunks.SetGroundStack(tile, groundWood(97))
+	s.Chunks.SetGroundStack(tile, groundWood(97*kg))
 
 	live(t, s, 2, func() bool { return false })
 	ja, jb := colonistJob(s, a), colonistJob(s, b)
 	if storing := (ja.State == inputsources.Colonist_Store) != (jb.State == inputsources.Colonist_Store); !storing {
 		t.Fatalf("the colonists are %v and %v, want just one storing the 3 there's room for", ja.Stops, jb.Stops)
 	}
-	if !live(t, s, 20*data.TPS, func() bool { _, n := onGround(s, tile); return n == 100 }) {
+	if !live(t, s, 20*data.TPS, func() bool { _, n := onGround(s, tile); return n == 100*kg }) {
 		t.Fatal("storage wasn't filled up")
 	}
 }
@@ -236,7 +236,7 @@ func TestAColonistFetchesFromSeveralStorageTilesInOneGo(t *testing.T) {
 	b := utils.Vec2i{X: a.X + 1, Y: a.Y}
 	markStorage(t, s, false, a, b)
 	withoutWood(t, s, colonist)
-	s.Chunks.SetGroundStack(a, groundWood(1))
+	s.Chunks.SetGroundStack(a, groundWood(1*kg))
 	s.Chunks.SetGroundStack(b, groundWood(wallCost(t)-1))
 	site := groundAway(t, s, colonist, 10, a, b)
 	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
@@ -249,8 +249,8 @@ func TestAColonistFetchesFromSeveralStorageTilesInOneGo(t *testing.T) {
 	if !live(t, s, 20*data.TPS, func() bool { return len(colonistJob(s, colonist).Stops) == 2 }) {
 		t.Fatal("the colonist didn't pick up from the first tile")
 	}
-	if last := colonistJob(s, colonist).Stops[1]; last.Count != wallCost(t) {
-		t.Fatalf("after the first tile the colonist is to deliver %d, want all %d", last.Count, wallCost(t))
+	if last := colonistJob(s, colonist).Stops[1]; last.Amount != wallCost(t) {
+		t.Fatalf("after the first tile the colonist is to deliver %d, want all %d", last.Amount, wallCost(t))
 	}
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
 		t.Fatalf("the colonist didn't build the site, it's %v", colonistState(s, colonist))
@@ -262,8 +262,12 @@ func TestAColonistDoesntFetchWhatItCantCarry(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 6, 1, 1)
 	markStorage(t, s, false, tile)
 	withoutWood(t, s, colonist)
-	s.Chunks.SetGroundStack(tile, groundWood(10))
-	torches, _ := s.ECS.SpawnItemStack(data.Item_Torch, data.ColonistMaxCarryWeight-s.ECS.CarriedWeight(colonist)-1, utils.Vec2f{})
+	s.Chunks.SetGroundStack(tile, groundWood(10*kg))
+	axe, _ := colonistAxe(s, colonist)
+	s.ECS.ScheduleRemoveEntity(axe)
+	testutil.RemoveScheduled(t, s.ECS)
+	torch, _ := testutil.ItemAtlas(t).Def(data.Item_Torch)
+	torches, _ := s.ECS.SpawnItemStack(data.Item_Torch, data.ColonistMaxCarryMg/torch.Mass(1), utils.Vec2f{})
 	if err := s.ECS.PutInInventory(colonist, 0, torches); err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +290,7 @@ func TestAColonistOnlyHaulsOntoStorageWhatThereIsRoomFor(t *testing.T) {
 	s.Chunks.SetGroundStack(site, groundTorches(3))
 
 	live(t, s, 1, func() bool { return false })
-	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Haul || len(job.Stops) != 2 || job.Stops[0].Count != 2 || job.Stops[1].Count != 2 {
+	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Haul || len(job.Stops) != 2 || job.Stops[0].Amount != 2 || job.Stops[1].Amount != 2 {
 		t.Fatalf("the colonist is on %v, want hauling the 2 there's room for", job.Stops)
 	}
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
@@ -302,7 +306,7 @@ func TestAStackAnotherColonistIsPickingUpAllOfIsLeftToIt(t *testing.T) {
 	withoutWood(t, s, a)
 	lying := groundAway(t, s, a, 5)
 	harvest(s, lying)
-	looseWood(t, s, lying, 5)
+	looseWood(t, s, lying, 5*kg)
 	live(t, s, 1, func() bool { return false })
 
 	b := anotherColonist(t, s, colony, a)
@@ -311,7 +315,7 @@ func TestAStackAnotherColonistIsPickingUpAllOfIsLeftToIt(t *testing.T) {
 	if state := colonistState(s, b); state != inputsources.Colonist_Idle {
 		t.Fatalf("the other colonist is %v, with all of the stack being picked up", state)
 	}
-	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, a) == 5 }) {
+	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, a) == 5*kg }) {
 		t.Fatalf("the colonists carry %d and %d, want all 5 with the first", woodCarried(s, a), woodCarried(s, b))
 	}
 }
@@ -345,7 +349,7 @@ func TestAColonistOnlyPutsAwayWhatSitesPlacedOnItsWayDontNeed(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 10, 1, 1)
 	markStorage(t, s, false, tile)
 	live(t, s, 1, func() bool { return false })
-	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Store || job.Stops[0].Count != data.ColonistStartingWood {
+	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Store || job.Stops[0].Amount != data.ColonistStartingWood {
 		t.Fatalf("the colonist is on %v, want putting away all its wood", job.Stops)
 	}
 
@@ -371,13 +375,13 @@ func TestAColonistsDebugLinesShowItsJobAndWhatItCarries(t *testing.T) {
 	lines, ok := inputsources.ColonistDebugLines(colonist, s.ECS)
 	want := []string{
 		fmt.Sprintf("Colonist %d: Fetch", colonist),
-		fmt.Sprintf("> Pick up %d Wood at %d,%d", wallCost(t), tile.X, tile.Y),
-		fmt.Sprintf("  Deliver %d Wood at %d,%d", wallCost(t), site.X, site.Y),
+		fmt.Sprintf("> Pick up %s Wood at %d,%d", utils.FormatMass(wallCost(t)), tile.X, tile.Y),
+		fmt.Sprintf("  Deliver %s Wood at %d,%d", utils.FormatMass(wallCost(t)), site.X, site.Y),
 	}
 	if !ok || len(lines) < len(want)+2 || !slices.Equal(lines[:len(want)], want) {
 		t.Fatalf("the colonist's debug lines are %q, want them to start %q", lines, want)
 	}
-	if carrying := fmt.Sprintf("Carrying %d/%d", s.ECS.CarriedWeight(colonist), data.ColonistMaxCarryWeight); !slices.Contains(lines, carrying) || !slices.Contains(lines, "  Axe") {
+	if carrying := fmt.Sprintf("Carrying %s/%s", utils.FormatMass(s.ECS.CarriedMass(colonist)), utils.FormatMass(data.ColonistMaxCarryMg)); !slices.Contains(lines, carrying) || !slices.Contains(lines, "  1.5kg Axe") {
 		t.Fatalf("the colonist's debug lines %q don't show it carrying its axe, at %q", lines, carrying)
 	}
 	if _, ok := inputsources.ColonistDebugLines(s.Player, s.ECS); ok {

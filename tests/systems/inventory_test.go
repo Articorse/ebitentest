@@ -16,9 +16,10 @@ func act(t *testing.T, x *ecs.ECSContainer, player common.EntityId, kind ecs.Inv
 	checkConsistency(t, x)
 }
 
-func putStack(t *testing.T, x *ecs.ECSContainer, player common.EntityId, slot, count int) common.EntityId {
+// Of kilograms of wood
+func putStack(t *testing.T, x *ecs.ECSContainer, player common.EntityId, slot, kilograms int) common.EntityId {
 	t.Helper()
-	stack, err := x.SpawnItemStack(data.Item_Wood, count, testutil.WorldPos(t, x, player))
+	stack, err := x.SpawnItemStack(data.Item_Wood, kilograms*data.MilligramsPerKg, testutil.WorldPos(t, x, player))
 	if err != nil {
 		t.Fatal(err)
 	}

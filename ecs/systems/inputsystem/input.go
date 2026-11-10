@@ -103,7 +103,7 @@ func HandleInputs(
 		}
 		// After picking up, so that what's picked up can be put down elsewhere in the same tick
 		if d := input.PutDown; d.PutDown && inItemReach(e, d.Tile, ecsContainer) {
-			if _, err := ecsContainer.PutDownOn(e, d.From, d.Count, d.Tile); err != nil {
+			if _, err := ecsContainer.PutDownOn(e, d.From, d.Amount, d.Tile); err != nil {
 				log.Printf("error putting slot %d of entity %d down on %v: %v\n", d.From+1, e, d.Tile, err)
 			}
 		}
@@ -210,8 +210,8 @@ func pickUpInReach(e common.EntityId, p ecs.ItemPickUp, ecsContainer *ecs.ECSCon
 		return nil
 	}
 	var err error
-	if p.Count > 0 {
-		_, err = ecsContainer.PickUpSomeFromGround(e, p.Tile, p.Count)
+	if p.Amount > 0 {
+		_, err = ecsContainer.PickUpSomeFromGround(e, p.Tile, p.Amount)
 	} else {
 		_, err = ecsContainer.PickUpFromGround(e, p.Tile)
 	}

@@ -17,11 +17,12 @@ type Inventory struct {
 	selected int
 	// Leaves what it picks up off its hotbar, which a colonist only uses for what it's using at the moment
 	pickupsOffHotbar bool
-	maxWeight        int
+	// In milligrams
+	maxMass int
 }
 
-func NewInventoryComponent(capacity, hotbarSize, maxWeight int) *Inventory {
-	return &Inventory{slots: emptySlots(capacity), hotbar: emptySlots(hotbarSize), maxWeight: maxWeight}
+func NewInventoryComponent(capacity, hotbarSize, maxMassMg int) *Inventory {
+	return &Inventory{slots: emptySlots(capacity), hotbar: emptySlots(hotbarSize), maxMass: maxMassMg}
 }
 
 func emptySlots(n int) []common.EntityId {
@@ -158,11 +159,11 @@ func (x *ECSContainer) MoveInventoryItem(owner common.EntityId, from, to int) er
 	if there != -1 {
 		movingComp, _ := x.Items.Get(moving)
 		thereComp, _ := x.Items.Get(there)
-		if movingComp != nil && thereComp != nil && x.stacks(movingComp, thereComp) && thereComp.count < x.stackLimit(thereComp) {
-			moved := min(x.stackLimit(thereComp)-thereComp.count, movingComp.count)
-			thereComp.count += moved
-			movingComp.count -= moved
-			if movingComp.count > 0 {
+		if movingComp != nil && thereComp != nil && x.stacks(movingComp, thereComp) && thereComp.amount < x.stackLimit(thereComp) {
+			moved := min(x.stackLimit(thereComp)-thereComp.amount, movingComp.amount)
+			thereComp.amount += moved
+			movingComp.amount -= moved
+			if movingComp.amount > 0 {
 				return nil
 			}
 
@@ -238,33 +239,34 @@ func (x *ECSContainer) takeOutOfInventory(owner, item common.EntityId) {
 	}
 }
 
-func (x *Inventory) MaxWeight() int {
-	return x.maxWeight
+// In milligrams
+func (x *Inventory) MaxMass() int {
+	return x.maxMass
 }
 
-// Of everything in the entity's inventory
-func (x *ECSContainer) CarriedWeight(e common.EntityId) int {
+// Of everything in the entity's inventory, in milligrams
+func (x *ECSContainer) CarriedMass(e common.EntityId) int {
 	inv, ok := x.Inventories.Get(e)
 	if !ok {
 		return 0
 	}
-	return x.carriedWeight(inv)
+	return x.carriedMass(inv)
 }
 
-func (x *ECSContainer) carriedWeight(inv *Inventory) int {
-	w := 0
+func (x *ECSContainer) carriedMass(inv *Inventory) int {
+	m := 0
 	for i := range inv.Capacity() {
 		if held, ok := x.heldItem(inv, i); ok {
-			w += held.count * x.unitWeight(held)
+			m += x.ItemMass(held)
 		}
 	}
-	return w
+	return m
 }
 
 // Never below 0, even for an inventory that was filled past its limit, which can only be done by putting things in it
 // directly
-func (x *ECSContainer) weightRoom(inv *Inventory) int {
-	return max(inv.maxWeight-x.carriedWeight(inv), 0)
+func (x *ECSContainer) massRoom(inv *Inventory) int {
+	return max(inv.maxMass-x.carriedMass(inv), 0)
 }
 
 func (x *Inventory) PickupsOffHotbar() bool {
@@ -276,7 +278,7 @@ func (x *Inventory) SetPickupsOffHotbar(off bool) {
 }
 
 func (x Inventory) Copy() Inventory {
-	return Inventory{slots: slices.Clone(x.slots), hotbar: slices.Clone(x.hotbar), selected: x.selected, pickupsOffHotbar: x.pickupsOffHotbar, maxWeight: x.maxWeight}
+	return Inventory{slots: slices.Clone(x.slots), hotbar: slices.Clone(x.hotbar), selected: x.selected, pickupsOffHotbar: x.pickupsOffHotbar, maxMass: x.maxMass}
 }
 
 func (x Inventory) addTo(ecsContainer *ECSContainer, e common.EntityId) {
@@ -288,13 +290,13 @@ type inventoryDto struct {
 	Hotbar           []common.EntityId
 	Selected         int
 	PickupsOffHotbar bool
-	MaxWeight        int
+	MaxMass          int
 }
 
 func (x Inventory) toDto() (ComponentDto, error) {
-	return &inventoryDto{Slots: slices.Clone(x.slots), Hotbar: slices.Clone(x.hotbar), Selected: x.selected, PickupsOffHotbar: x.pickupsOffHotbar, MaxWeight: x.maxWeight}, nil
+	return &inventoryDto{Slots: slices.Clone(x.slots), Hotbar: slices.Clone(x.hotbar), Selected: x.selected, PickupsOffHotbar: x.pickupsOffHotbar, MaxMass: x.maxMass}, nil
 }
 
 func (x inventoryDto) toComponent() (Component, error) {
-	return &Inventory{slots: slices.Clone(x.Slots), hotbar: slices.Clone(x.Hotbar), selected: x.Selected, pickupsOffHotbar: x.PickupsOffHotbar, maxWeight: x.MaxWeight}, nil
+	return &Inventory{slots: slices.Clone(x.Slots), hotbar: slices.Clone(x.Hotbar), selected: x.Selected, pickupsOffHotbar: x.PickupsOffHotbar, maxMass: x.MaxMass}, nil
 }

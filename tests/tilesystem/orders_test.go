@@ -26,9 +26,17 @@ func placeOrder(t *testing.T, s *testutil.Session, tiles ...utils.Vec2i) {
 func roomForWood(t *testing.T, s *testutil.Session, colonist common.EntityId, wood int) {
 	t.Helper()
 	inv, _ := s.ECS.Inventories.Get(colonist)
-	torches, _ := s.ECS.SpawnItemStack(data.Item_Torch, inv.MaxWeight()-s.ECS.CarriedWeight(colonist)-2*wood, utils.Vec2f{})
-	if err := s.ECS.PutInInventory(colonist, inv.FirstFreeSlot(), torches); err != nil {
-		t.Fatal(err)
+	torch, _ := testutil.ItemAtlas(t).Def(data.Item_Torch)
+	spare := inv.MaxMass() - s.ECS.CarriedMass(colonist) - wood
+	// Torches only come by the 200 g, so oxygen makes up the rest
+	for _, stack := range []ecs.GroundStack{{Kind: data.Item_Torch, Amount: spare / torch.Mass(1)}, {Kind: data.Item_Oxygen, Amount: spare % torch.Mass(1)}} {
+		if stack.Amount == 0 {
+			continue
+		}
+		item, _ := s.ECS.SpawnItemStack(stack.Kind, stack.Amount, utils.Vec2f{})
+		if err := s.ECS.PutInInventory(colonist, inv.FirstFreeSlot(), item); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if room := s.ECS.RoomFor(colonist, data.Item_Wood); room != wood {
 		t.Fatalf("the colonist has room for %d wood, want %d", room, wood)
@@ -105,7 +113,7 @@ func TestAColonistFetchesForTheSitesOfAnOrderInTurnAsFarAsItCanCarry(t *testing.
 	if job.State != inputsources.Colonist_Fetch || !slices.Equal(deliveriesOf(job.Stops), sites[:3]) {
 		t.Fatalf("the colonist is on %v, want fetching for the first three sites of the order", job.Stops)
 	}
-	if job.Stops[0] != (inputsources.JobStop{Action: inputsources.Stop_PickUp, Tile: tile, Kind: data.Item_Wood, Count: 3 * wallCost(t)}) {
+	if job.Stops[0] != (inputsources.JobStop{Action: inputsources.Stop_PickUp, Tile: tile, Kind: data.Item_Wood, Amount: 3 * wallCost(t)}) {
 		t.Fatalf("the colonist is picking up %v, want all three need at once", job.Stops[0])
 	}
 	if !live(t, s, 60*data.TPS, func() bool {
@@ -143,7 +151,7 @@ func TestAColonistDeliversPartOfWhatASiteNeedsWhenItCantCarryAll(t *testing.T) {
 
 	live(t, s, 1, func() bool { return false })
 	job := colonistJob(s, colonist)
-	if want := wallCost(t) - 1; job.State != inputsources.Colonist_Fetch || job.Stops[len(job.Stops)-1].Count != want {
+	if want := wallCost(t) - 1; job.State != inputsources.Colonist_Fetch || job.Stops[len(job.Stops)-1].Amount != want {
 		t.Fatalf("the colonist is on %v, want fetching the %d it can carry", job.Stops, want)
 	}
 	if !live(t, s, 60*data.TPS, isBuilt(s, site)) {
@@ -234,7 +242,7 @@ func TestTwoColonistsTakeSeparateLoadsOfOneOrder(t *testing.T) {
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, a, tile)
 	withoutWood(t, s, b)
-	s.Chunks.SetGroundStack(tile, groundWood(50))
+	s.Chunks.SetGroundStack(tile, groundWood(50*kg))
 	roomForWood(t, s, a, 3*wallCost(t))
 	roomForWood(t, s, b, 3*wallCost(t))
 	sites := rowOf(storageSpot(t, s, a, 10, 6, 1, tile), 6)
@@ -264,7 +272,7 @@ func TestAColonistThatCantCarryMoreDeliversWhatItHas(t *testing.T) {
 	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
 	live(t, s, 1, func() bool { return false })
-	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Deliver || job.Stops[0].Count != wallCost(t)-1 {
+	if job := colonistJob(s, colonist); job.State != inputsources.Colonist_Deliver || job.Stops[0].Amount != wallCost(t)-1 {
 		t.Fatalf("the colonist is on %v, want delivering the %d it has", job.Stops, wallCost(t)-1)
 	}
 	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == 0 }) {
@@ -291,8 +299,8 @@ func TestWhatAColonistGotOfALoadGoesToTheOrdersSitesInTurn(t *testing.T) {
 		t.Fatal("the colonist didn't pick up what was left")
 	}
 	want := []inputsources.JobStop{
-		{Action: inputsources.Stop_Deliver, Tile: sites[0], Kind: data.Item_Wood, Count: wallCost(t)},
-		{Action: inputsources.Stop_Deliver, Tile: sites[1], Kind: data.Item_Wood, Count: got - wallCost(t)},
+		{Action: inputsources.Stop_Deliver, Tile: sites[0], Kind: data.Item_Wood, Amount: wallCost(t)},
+		{Action: inputsources.Stop_Deliver, Tile: sites[1], Kind: data.Item_Wood, Amount: got - wallCost(t)},
 	}
 	if job := colonistJob(s, colonist); !slices.Equal(job.Stops, want) {
 		t.Fatalf("with %d picked up the colonist is on %v, want %v", got, job.Stops, want)

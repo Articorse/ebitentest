@@ -91,21 +91,29 @@ func drawSlotItem(
 	op.GeoM.Scale(scale, scale)
 	screen.DrawImage(icon.Frames[0], op)
 
-	if itemComp, ok := ecsContainer.Items.Get(item); ok && itemComp.Count() > 1 {
-		return drawStackCount(screen, scale, itemComp.Count(), x+slotSize.X/2, y+slotSize.Y/2)
+	itemComp, ok := ecsContainer.Items.Get(item)
+	if !ok || itemComp.Kind() == data.Item_None {
+		return nil
+	}
+	def, _ := ecsContainer.ItemAtlas().Def(itemComp.Kind())
+	switch {
+	case !def.Countable():
+		return drawStackCount(screen, scale, utils.FormatMass(itemComp.Amount()), x+slotSize.X/2, y+slotSize.Y/2)
+	case itemComp.Amount() > 1:
+		return drawStackCount(screen, scale, strconv.Itoa(itemComp.Amount()), x+slotSize.X/2, y+slotSize.Y/2)
 	}
 	return nil
 }
 
-// In the bottom right corner of a slot, whose bottom right is at x, y in UI pixels. Drawn at the size it takes up on
-// screen rather than scaled up, so that it's crisp.
-func drawStackCount(screen *ebiten.Image, scale float64, count int, x, y float64) error {
+// How many of a countable item there are, or the mass of anything else, in the bottom right corner of a slot, whose
+// bottom right is at x, y in UI pixels. Drawn at the size it takes up on screen rather than scaled up, so that it's
+// crisp.
+func drawStackCount(screen *ebiten.Image, scale float64, label string, x, y float64) error {
 	face, err := floatingTextFace(data.HotbarStackCountSizePx * scale)
 	if err != nil {
 		return fmt.Errorf("error getting the font for stack counts: %w", err)
 	}
 
-	label := strconv.Itoa(count)
 	w, h := text.Measure(label, face, 0)
 	op := &text.DrawOptions{}
 	op.GeoM.Translate((x-data.HotbarStackCountInsetPx)*scale-w, (y-data.HotbarStackCountInsetPx)*scale-h)

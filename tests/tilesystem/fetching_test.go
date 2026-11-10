@@ -48,7 +48,7 @@ func TestAColonistFetchesWhatThereIsWhenStorageDoesntMakeUpAllItLacks(t *testing
 	tile := storageSpot(t, s, colonist, 8, 1, 1)
 	markStorage(t, s, false, tile)
 	woodOntoStorage(t, s, colonist, tile)
-	s.Chunks.SetGroundStack(tile, ecs.GroundStack{Kind: data.Item_Wood, Count: wallCost(t) - 1})
+	s.Chunks.SetGroundStack(tile, ecs.GroundStack{Kind: data.Item_Wood, Amount: wallCost(t) - 1})
 	site := groundAway(t, s, colonist, 6, tile)
 	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
@@ -62,7 +62,7 @@ func TestAColonistFetchesWhatThereIsWhenStorageDoesntMakeUpAllItLacks(t *testing
 		t.Fatalf("the colonist is %v carrying %d with nothing left in storage", state, woodCarried(s, colonist))
 	}
 
-	s.ECS.LayDownKind(data.Item_Wood, 1, tile)
+	s.ECS.LayDownKind(data.Item_Wood, 1*kg, tile)
 	if !live(t, s, 30*data.TPS, isBuilt(s, site)) {
 		t.Fatalf("the colonist didn't build once the rest was in storage, it's %v", colonistState(s, colonist))
 	}
@@ -114,15 +114,15 @@ func TestAColonistKeepsWhatSitesNeedWhenPuttingAway(t *testing.T) {
 func TestPickingUpSomeLeavesTheRest(t *testing.T) {
 	s, colonist, row := colonistHoldingWood(t)
 	near := utils.Vec2i{X: row.X + 1, Y: row.Y}
-	s.ECS.LayDownKind(data.Item_Wood, 3, near)
+	s.ECS.LayDownKind(data.Item_Wood, 3*kg, near)
 	before := woodCarried(s, colonist)
 
-	handleInput(t, s, colonist, ecs.InputState{PickUp: ecs.ItemPickUp{PickUp: true, Tile: near, Count: 1}})
-	if _, n := onGround(s, near); n != 2 || woodCarried(s, colonist) != before+1 {
-		t.Fatalf("picking up 1 of 3 left %d and gave %d", n, woodCarried(s, colonist)-before)
+	handleInput(t, s, colonist, ecs.InputState{PickUp: ecs.ItemPickUp{PickUp: true, Tile: near, Amount: kg}})
+	if _, n := onGround(s, near); n != 2*kg || woodCarried(s, colonist) != before+kg {
+		t.Fatalf("picking up 1 kg of 3 left %d mg and gave %d", n, woodCarried(s, colonist)-before)
 	}
 	handleInput(t, s, colonist, ecs.InputState{PickUp: ecs.ItemPickUp{PickUp: true, Tile: near}})
-	if _, ok := s.Chunks.GroundStack(near); ok || woodCarried(s, colonist) != before+3 {
+	if _, ok := s.Chunks.GroundStack(near); ok || woodCarried(s, colonist) != before+3*kg {
 		t.Fatal("picking up with no count didn't take the rest")
 	}
 }

@@ -25,16 +25,20 @@ func TestTheItemAtlasRefusesBrokenItems(t *testing.T) {
 		name string
 		json string
 	}{
-		{"the unique items' id", `[{"id": 0, "name": "Nothing", "imageAsset": "wood", "maxStack": 1}]`},
-		{"no name", `[{"id": 1, "imageAsset": "wood", "maxStack": 1}]`},
-		{"no image", `[{"id": 1, "name": "Wood", "maxStack": 1}]`},
-		{"a stack of nothing", `[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStack": 0}]`},
-		{"a negative weight", `[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStack": 1, "weight": -1}]`},
-		{"no light", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "maxStack": 1, "light": {"level": 0, "rangeTiles": 10}}]`},
-		{"light reaching nowhere", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "maxStack": 1, "light": {"level": 150, "rangeTiles": 0}}]`},
-		{"a frame that doesn't last", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "maxStack": 1, "animation": [{"frame": 0, "durationMs": 0}]}]`},
-		{"a negative frame", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "maxStack": 1, "animation": [{"frame": -1, "durationMs": 150}]}]`},
-		{"an id used twice", `[{"id": 1, "name": "A", "imageAsset": "wood", "maxStack": 1}, {"id": 1, "name": "B", "imageAsset": "wood", "maxStack": 1}]`},
+		{"the unique items' id", `[{"id": 0, "name": "Nothing", "imageAsset": "wood", "maxStackGrams": 1}]`},
+		{"no name", `[{"id": 1, "imageAsset": "wood", "maxStackGrams": 1}]`},
+		{"no image", `[{"id": 1, "name": "Wood", "maxStackGrams": 1}]`},
+		{"a countable stack of nothing", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "countable": true, "maxStack": 0}]`},
+		{"a stack of no grams", `[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStackGrams": 0}]`},
+		{"a countable stack by grams", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "countable": true, "maxStack": 1, "maxStackGrams": 1000}]`},
+		{"a stack by count of what isn't countable", `[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStack": 1}]`},
+		{"one of what isn't countable weighing something", `[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStackGrams": 1000, "grams": 1}]`},
+		{"a negative weight", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "countable": true, "maxStack": 1, "grams": -1}]`},
+		{"no light", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "countable": true, "maxStack": 1, "light": {"level": 0, "rangeTiles": 10}}]`},
+		{"light reaching nowhere", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "countable": true, "maxStack": 1, "light": {"level": 150, "rangeTiles": 0}}]`},
+		{"a frame that doesn't last", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "countable": true, "maxStack": 1, "animation": [{"frame": 0, "durationMs": 0}]}]`},
+		{"a negative frame", `[{"id": 1, "name": "Torch", "imageAsset": "wood", "countable": true, "maxStack": 1, "animation": [{"frame": -1, "durationMs": 150}]}]`},
+		{"an id used twice", `[{"id": 1, "name": "A", "imageAsset": "wood", "countable": true, "maxStack": 1}, {"id": 1, "name": "B", "imageAsset": "wood", "countable": true, "maxStack": 1}]`},
 	} {
 		if _, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, c.json)); err == nil {
 			t.Errorf("an atlas with %s was accepted", c.name)
@@ -49,12 +53,16 @@ func TestTheGamesItemAtlasHasWood(t *testing.T) {
 	}
 
 	def, ok := atlas.Def(data.Item_Wood)
-	if !ok || def.Name() != "Wood" || def.ImageAsset() != common.AssetImageWood || def.MaxStack() != 100 || def.Weight() != 2 {
-		t.Fatalf("wood is %+v (%v), want Wood, drawn as wood, up to 100 a stack, weighing 2", def, ok)
+	if !ok || def.Name() != "Wood" || def.ImageAsset() != common.AssetImageWood || def.Countable() || def.MaxStack() != 100*data.MilligramsPerKg {
+		t.Fatalf("wood is %+v (%v), want Wood, drawn as wood, by mass, up to 100 kg a stack", def, ok)
+	}
+	torch, ok := atlas.Def(data.Item_Torch)
+	if !ok || !torch.Countable() || torch.MaxStack() != 100 || torch.Mass(3) != 600*data.MilligramsPerGram || torch.AmountText(3) != "3 (0.6kg)" {
+		t.Fatalf("torches are %+v (%v), want counted, up to 100 a stack, weighing 200 g each, shown by count then mass", torch, ok)
 	}
 }
 
-func TestGenericItemsAreOnlySavedAsTheirKindAndCount(t *testing.T) {
+func TestGenericItemsAreOnlySavedAsTheirKindAndAmount(t *testing.T) {
 	x := testutil.NewECS(t)
 	torch, err := x.SpawnItem(data.Item_Torch, utils.Vec2f{X: 3})
 	if err != nil {
@@ -84,7 +92,7 @@ func TestGenericItemsAreOnlySavedAsTheirKindAndCount(t *testing.T) {
 
 	// The atlas changed since the torch was saved, which the loaded torch goes by
 	y := testutil.NewECS(t)
-	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, `[{"id": 2, "name": "Torch", "imageAsset": "tree", "maxStack": 2}]`))
+	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, `[{"id": 2, "name": "Torch", "imageAsset": "tree", "countable": true, "maxStack": 2}]`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +124,7 @@ func TestGenericItemsAreOnlySavedAsTheirKindAndCount(t *testing.T) {
 
 func TestStacksAreLimitedByTheAtlas(t *testing.T) {
 	x := testutil.NewECS(t)
-	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, `[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStack": 2}]`))
+	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, `[{"id": 1, "name": "Wood", "imageAsset": "wood", "countable": true, "maxStack": 2}]`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +149,7 @@ func TestStacksAreLimitedByTheAtlas(t *testing.T) {
 	second, _ := inv.Slot(1)
 	firstItem, _ := x.Items.Get(first)
 	secondItem, _ := x.Items.Get(second)
-	if firstItem == nil || secondItem == nil || firstItem.Count() != 2 || secondItem.Count() != 1 {
+	if firstItem == nil || secondItem == nil || firstItem.Amount() != 2 || secondItem.Amount() != 1 {
 		t.Fatal("3 wood stacking up to 2 didn't go into stacks of 2 and 1")
 	}
 }
@@ -158,8 +166,8 @@ func TestOnlyItemsInTheAtlasCanBeSpawned(t *testing.T) {
 func TestOnlyItemsOfTheSameKindStack(t *testing.T) {
 	x := testutil.NewECS(t)
 	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, `[
-		{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStack": 10},
-		{"id": 2, "name": "Stones", "imageAsset": "wood", "maxStack": 10}]`))
+		{"id": 1, "name": "Wood", "imageAsset": "wood", "countable": true, "maxStack": 10},
+		{"id": 2, "name": "Stones", "imageAsset": "wood", "countable": true, "maxStack": 10}]`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +202,7 @@ func TestItemUsesAreCheckedAgainstTheRegisteredAbilities(t *testing.T) {
 		{"the place tile ability, which is gone", `{"ability": 6, "cooldownMs": 250, "params": {"rangeTiles": 3, "tile": 6}}`},
 	} {
 		atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t,
-			`[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStack": 100, "use": `+c.use+`}]`))
+			`[{"id": 1, "name": "Wood", "imageAsset": "wood", "countable": true, "maxStack": 100, "use": `+c.use+`}]`))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -204,14 +212,14 @@ func TestItemUsesAreCheckedAgainstTheRegisteredAbilities(t *testing.T) {
 	}
 
 	if _, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t,
-		`[{"id": 1, "name": "Wood", "imageAsset": "wood", "maxStack": 100, "use": {"ability": 8, "cooldownMs": -1, "params": {"rangeTiles": 3, "feature": 3}}}]`)); err == nil {
+		`[{"id": 1, "name": "Wood", "imageAsset": "wood", "countable": true, "maxStack": 100, "use": {"ability": 8, "cooldownMs": -1, "params": {"rangeTiles": 3, "feature": 3}}}]`)); err == nil {
 		t.Error("an item with a negative cooldown was accepted")
 	}
 }
 
 func TestItemsCantPlaceFeaturesThatDontExist(t *testing.T) {
 	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t,
-		`[{"id": 1, "name": "Torch", "imageAsset": "wood", "maxStack": 100, "use": {"ability": 8, "cooldownMs": 250, "params": {"rangeTiles": 3, "feature": 5}}}]`))
+		`[{"id": 1, "name": "Torch", "imageAsset": "wood", "countable": true, "maxStack": 100, "use": {"ability": 8, "cooldownMs": 250, "params": {"rangeTiles": 3, "feature": 5}}}]`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,14 +235,43 @@ func TestItemsCantPlaceFeaturesThatDontExist(t *testing.T) {
 	}
 }
 
+func TestOtherAtlasesGiveCountableItemsByCountAndAnythingElseInGrams(t *testing.T) {
+	atlas, err := ecs.LoadItemAtlasFromJson(filepath.Join(testutil.RepoRoot(), testutil.ItemAtlasPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		name         string
+		kind         data.ItemEnum
+		count, grams int
+		want         int
+		ok           bool
+	}{
+		{"wood in grams", data.Item_Wood, 0, 1500, 1500 * data.MilligramsPerGram, true},
+		{"torches by count", data.Item_Torch, 3, 0, 3, true},
+		{"wood by count", data.Item_Wood, 3, 0, 0, false},
+		{"torches in grams", data.Item_Torch, 0, 200, 0, false},
+		{"what isn't in the atlas", data.Item_None, 1, 0, 0, false},
+	} {
+		got, err := atlas.AmountFromJson(c.kind, c.count, c.grams)
+		if (err == nil) != c.ok || got != c.want {
+			t.Errorf("%s came to %d (%v), want %d, ok %v", c.name, got, err, c.want, c.ok)
+		}
+	}
+	wood, _ := atlas.Def(data.Item_Wood)
+	if got := wood.AmountText(1500 * data.MilligramsPerGram); got != "1.5kg" {
+		t.Errorf("1.5 kg of wood is shown as %q", got)
+	}
+}
+
 func TestStacksAreSpawnedUpToTheirLimit(t *testing.T) {
 	x := testutil.NewECS(t)
 	torches, err := x.SpawnItemStack(data.Item_Torch, 100, utils.Vec2f{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if item, _ := x.Items.Get(torches); item.Kind() != data.Item_Torch || item.Count() != 100 {
-		t.Fatalf("spawned %v × %d, want 100 torches", item.Kind(), item.Count())
+	if item, _ := x.Items.Get(torches); item.Kind() != data.Item_Torch || item.Amount() != 100 {
+		t.Fatalf("spawned %v × %d, want 100 torches", item.Kind(), item.Amount())
 	}
 
 	for _, count := range []int{0, -1, 101} {
@@ -272,7 +309,7 @@ func TestATorchsFlickerAndLightComeFromTheAtlasNotTheSave(t *testing.T) {
 	}
 
 	y := testutil.NewECS(t)
-	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, `[{"id": 2, "name": "Torch", "imageAsset": "torch_placed", "maxStack": 100}]`))
+	atlas, err := ecs.LoadItemAtlasFromJson(writeItemAtlas(t, `[{"id": 2, "name": "Torch", "imageAsset": "torch_placed", "countable": true, "maxStack": 100}]`))
 	if err != nil {
 		t.Fatal(err)
 	}

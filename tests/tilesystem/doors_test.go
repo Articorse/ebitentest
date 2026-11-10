@@ -37,7 +37,7 @@ func buildDoor(t *testing.T, s *testutil.Session, tile utils.Vec2i, faction data
 	if !s.Chunks.PlaceSite(tile, data.Blueprint_WoodDoor) || !s.Chunks.SetSiteFaction(tile, faction) {
 		t.Fatalf("couldn't place a door on %v", tile)
 	}
-	s.Chunks.DeliverToSite(tile, data.Item_Wood, 5)
+	s.Chunks.DeliverToSite(tile, data.Item_Wood, 5*kg)
 	if _, built := s.Chunks.BuildSite(tile, 1_000_000, true); !built {
 		t.Fatalf("the door on %v wasn't built", tile)
 	}
@@ -233,14 +233,14 @@ func TestADoorKeepsItsHealthOpenAndClosedAndDropsItsWood(t *testing.T) {
 		t.Fatal("the door wasn't destroyed")
 	}
 	s.ECS.LayDownDrops(drops, middle)
-	if kind, n := onGround(s, middle); kind != data.Item_Wood || n != 5 {
-		t.Fatalf("a destroyed door left %d of %v, want its 5 wood", n, kind)
+	if kind, n := onGround(s, middle); kind != data.Item_Wood || n != 5*kg {
+		t.Fatalf("a destroyed door left %d mg of %v, want its 5 kg of wood", n, kind)
 	}
 	if _, ok := s.Chunks.DoorAt(middle); ok {
 		t.Fatal("the door is still there")
 	}
 	s.Chunks.PlaceSite(middle, data.Blueprint_WoodDoor)
-	s.Chunks.DeliverToSite(middle, data.Item_Wood, 5)
+	s.Chunks.DeliverToSite(middle, data.Item_Wood, 5*kg)
 	s.Chunks.BuildSite(middle, 1_000_000, true)
 	if d := door(t, s, middle); d.Faction != data.Faction_None {
 		t.Fatalf("a door built for no one in place of the colony's is the faction %v's", d.Faction)
@@ -253,7 +253,7 @@ func TestADoorGoesInPlaceOfAWallBlueprintOnly(t *testing.T) {
 	blueprint, supplied, ground := middle, at(middle, 1, 0), at(middle, -2, 0)
 	s.Chunks.PlaceSite(blueprint, data.Blueprint_WoodWall)
 	s.Chunks.PlaceSite(supplied, data.Blueprint_WoodWall)
-	s.Chunks.DeliverToSite(supplied, data.Item_Wood, 1)
+	s.Chunks.DeliverToSite(supplied, data.Item_Wood, 1*kg)
 
 	if !s.Chunks.CanPlaceBlueprint(ground, data.Blueprint_WoodDoor) || s.Chunks.CanPlaceBlueprint(supplied, data.Blueprint_WoodDoor) {
 		t.Fatal("a door can't go on open ground, or can on a wall with wood delivered to it")
@@ -278,7 +278,7 @@ func TestADoorPlacedForAFactionIsItsAndSaved(t *testing.T) {
 	if !ok || site.Blueprint != data.Blueprint_WoodDoor || site.Faction != data.Faction_Colony || site.Order.Id != s.ECS.LastOrder {
 		t.Fatalf("the site is %+v, want the colony's door in a new order", site)
 	}
-	s.Chunks.DeliverToSite(middle, data.Item_Wood, 5)
+	s.Chunks.DeliverToSite(middle, data.Item_Wood, 5*kg)
 	s.Chunks.BuildSite(middle, 1_000_000, true)
 	s.Commit()
 
@@ -302,7 +302,7 @@ func TestADoorBeingBuiltShowsItsStages(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	middle := doorYard(t, s, colonist)
 	s.Chunks.PlaceSite(middle, data.Blueprint_WoodDoor)
-	s.Chunks.DeliverToSite(middle, data.Item_Wood, 5)
+	s.Chunks.DeliverToSite(middle, data.Item_Wood, 5*kg)
 	for {
 		if sprite := siteImage(t, s, middle); sprite.Ghost || sprite.ImageAsset != "tile_planks" || sprite.Frame < 1 || sprite.Frame > 3 {
 			t.Fatalf("the door being built is drawn as %+v, want a stage of the planks", sprite)

@@ -11,8 +11,10 @@ import (
 )
 
 type ItemDrop struct {
-	Kind  data.ItemEnum
-	Count int
+	Kind   data.ItemEnum
+	Amount int
+	// Anywhere from Amount to it, evenly, if it's more than Amount
+	Max int
 }
 
 type DropOutcome struct {
@@ -33,8 +35,8 @@ func NewDropTable(outcomes ...DropOutcome) (*DropTable, error) {
 			return nil, fmt.Errorf("drop outcome %d has a negative chance, %v%%", i, o.ChancePercent)
 		}
 		for _, item := range o.Items {
-			if item.Count < 1 {
-				return nil, fmt.Errorf("drop outcome %d drops %d of item kind %v, want at least 1", i, item.Count, item.Kind)
+			if item.Amount < 0 || max(item.Amount, item.Max) < 1 || (item.Max != 0 && item.Max < item.Amount) {
+				return nil, fmt.Errorf("drop outcome %d drops %d to %d of item kind %v, want at least some", i, item.Amount, item.Max, item.Kind)
 			}
 		}
 		total += o.ChancePercent
@@ -46,13 +48,24 @@ func NewDropTable(outcomes ...DropOutcome) (*DropTable, error) {
 	return (&DropTable{outcomes: outcomes}).Copy(), nil
 }
 
+// What's dropped, each of its items rolled from its range, leaving out what comes to none
 func (x *DropTable) Roll(rng *rand.Rand) []ItemDrop {
 	r := rng.Float64() * 100
 	for _, o := range x.outcomes {
-		if r < o.ChancePercent {
-			return o.Items
+		if r >= o.ChancePercent {
+			r -= o.ChancePercent
+			continue
 		}
-		r -= o.ChancePercent
+		drops := []ItemDrop{}
+		for _, item := range o.Items {
+			if item.Max > item.Amount {
+				item.Amount += rng.IntN(item.Max - item.Amount + 1)
+			}
+			if item.Amount > 0 {
+				drops = append(drops, ItemDrop{Kind: item.Kind, Amount: item.Amount})
+			}
+		}
+		return drops
 	}
 	return nil
 }
@@ -60,8 +73,8 @@ func (x *DropTable) Roll(rng *rand.Rand) []ItemDrop {
 // Rolls the table and lays down what it gives at the tile, or as close to it as there's room
 func (x *ECSContainer) LayDownDrops(table *DropTable, t utils.Vec2i) {
 	for _, drop := range table.Roll(x.Rng) {
-		if laid := x.LayDownKind(drop.Kind, drop.Count, t); laid < drop.Count {
-			log.Printf("no room around %v for %d of the %d of item %v dropped there", t, drop.Count-laid, drop.Count, drop.Kind)
+		if laid := x.LayDownKind(drop.Kind, drop.Amount, t); laid < drop.Amount {
+			log.Printf("no room around %v for %d of the %d of item %v dropped there", t, drop.Amount-laid, drop.Amount, drop.Kind)
 		}
 	}
 }

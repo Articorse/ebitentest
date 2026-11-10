@@ -226,7 +226,7 @@ func (m *InventoryMenu) Draw(
 		}
 	}
 
-	if err := drawCarriedWeight(screen, scale, ecsContainer.CarriedWeight(owner), inv.MaxWeight(), l.weightAt); err != nil {
+	if err := drawCarriedWeight(screen, scale, ecsContainer.CarriedMass(owner), inv.MaxMass(), l.weightAt); err != nil {
 		return err
 	}
 
@@ -237,12 +237,12 @@ func (m *InventoryMenu) Draw(
 }
 
 // Right-aligned, with its bottom right at the point in UI pixels
-func drawCarriedWeight(screen *ebiten.Image, scale float64, carried, maxWeight int, at utils.Vec2f) error {
+func drawCarriedWeight(screen *ebiten.Image, scale float64, carriedMg, maxMg int, at utils.Vec2f) error {
 	face, err := floatingTextFace(data.HotbarStackCountSizePx * scale)
 	if err != nil {
 		return fmt.Errorf("error getting the font for the carried weight: %w", err)
 	}
-	label := fmt.Sprintf("%d / %d", carried, maxWeight)
+	label := fmt.Sprintf("%s / %s", utils.FormatMass(carriedMg), utils.FormatMass(maxMg))
 	w, h := text.Measure(label, face, 0)
 	op := &text.DrawOptions{}
 	op.GeoM.Translate(at.X*scale-w, at.Y*scale-h)

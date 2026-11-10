@@ -34,7 +34,7 @@ func (s *constructionSite) isBlueprint() bool {
 
 func (s *constructionSite) isSupplied(def ecs.BlueprintDef) bool {
 	for i, cost := range def.Costs() {
-		if s.delivered[i] < cost.Count {
+		if s.delivered[i] < cost.Amount {
 			return false
 		}
 	}
@@ -132,7 +132,7 @@ func (cc *ChunkContainer) Site(t utils.Vec2i) (ecs.ConstructionSite, bool) {
 
 	site := ecs.ConstructionSite{Blueprint: s.blueprint, Health: s.health, MaxHealth: cc.siteMaxHealth(def), Order: s.order, Faction: s.faction}
 	for i, cost := range def.Costs() {
-		site.Delivered = append(site.Delivered, ecs.ItemCost{Kind: cost.Kind, Count: s.delivered[i]})
+		site.Delivered = append(site.Delivered, ecs.ItemCost{Kind: cost.Kind, Amount: s.delivered[i]})
 	}
 	return site, true
 }
@@ -145,7 +145,7 @@ func (cc *ChunkContainer) SetSiteOrder(t utils.Vec2i, order ecs.SiteOrder) bool 
 	return ok
 }
 
-func (cc *ChunkContainer) DeliverToSite(t utils.Vec2i, item data.ItemEnum, count int) int {
+func (cc *ChunkContainer) DeliverToSite(t utils.Vec2i, item data.ItemEnum, amount int) int {
 	c, s, def, ok := cc.siteOn(t)
 	if !ok {
 		return 0
@@ -156,7 +156,7 @@ func (cc *ChunkContainer) DeliverToSite(t utils.Vec2i, item data.ItemEnum, count
 		if cost.Kind != item {
 			continue
 		}
-		n := min(cost.Count-s.delivered[i], count-taken)
+		n := min(cost.Amount-s.delivered[i], amount-taken)
 		s.delivered[i] += n
 		taken += n
 	}
@@ -253,7 +253,7 @@ func (cc *ChunkContainer) damageSite(t utils.Vec2i, damage int) (drops *ecs.Drop
 	items := []ecs.ItemDrop{}
 	for i, cost := range def.Costs() {
 		if s.delivered[i] > 0 {
-			items = append(items, ecs.ItemDrop{Kind: cost.Kind, Count: s.delivered[i]})
+			items = append(items, ecs.ItemDrop{Kind: cost.Kind, Amount: s.delivered[i]})
 		}
 	}
 	table, err := ecs.NewDropTable(ecs.DropOutcome{ChancePercent: 100, Items: items})

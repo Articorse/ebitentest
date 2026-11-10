@@ -55,7 +55,7 @@ func SpawnPlayer(ecsContainer *ecs.ECSContainer) (common.EntityId, error) {
 		pCLComp,
 		ecs.NewPersistentComponent(),
 		ecs.NewVisionComponent(data.PlayerVisionRangeTiles, 1),
-		ecs.NewInventoryComponent(data.InventoryRows*data.InventoryColumns, data.HotbarSlots, data.PlayerMaxCarryWeight),
+		ecs.NewInventoryComponent(data.InventoryRows*data.InventoryColumns, data.HotbarSlots, data.PlayerMaxCarryMg),
 		ecs.NewAimComponent(),
 		ecs.NewConstructorComponent(data.PlayerBuildRangeTiles, data.PlayerBuildWork, data.PlayerBuildCooldownMs),
 	)
@@ -186,7 +186,7 @@ func SpawnStartingEquipment(ecsContainer *ecs.ECSContainer, player common.Entity
 		bazookaSpaComp,
 		bazookaFacingComp,
 		bazookaEquipmentComp,
-		ecs.NewNamedItemComponent("Bazooka", 8),
+		ecs.NewNamedItemComponent("Bazooka", 4*data.MilligramsPerKg),
 		ecs.NewPersistentComponent(),
 	)
 	if err != nil {
@@ -267,7 +267,7 @@ func spawnMattock(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Entit
 		sprComp,
 		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, abis),
 		ecs.NewSwingComponent(2*math.Pi/3, 0.15, utils.Vec2f{X: 15.5, Y: 21.5}),
-		ecs.NewNamedItemComponent("Mattock", 4),
+		ecs.NewNamedItemComponent("Mattock", 2*data.MilligramsPerKg),
 		ecs.NewPersistentComponent(),
 	)
 }
@@ -303,7 +303,7 @@ func spawnAxe(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.EntityId,
 		sprComp,
 		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, abis),
 		ecs.NewSwingComponent(2*math.Pi/3, 0.15, utils.Vec2f{X: 15.5, Y: 21.5}),
-		ecs.NewNamedItemComponent("Axe", 3),
+		ecs.NewNamedItemComponent("Axe", 1500*data.MilligramsPerGram),
 		ecs.NewPersistentComponent(),
 	)
 }
@@ -388,7 +388,7 @@ func spawnGun(ecsContainer *ecs.ECSContainer, player common.EntityId, pos utils.
 		gunSpaComp,
 		ecs.NewFacingComponent(),
 		ecs.NewEquipmentComponent(ecs.Equipable_MainHand|ecs.Equipable_OffHand, gunAbis),
-		ecs.NewNamedItemComponent("Gun", 2),
+		ecs.NewNamedItemComponent("Gun", 1*data.MilligramsPerKg),
 		ecs.NewPersistentComponent(),
 	)
 }

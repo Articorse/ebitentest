@@ -111,8 +111,8 @@ func TestItemsCantShowFramesTheirImageDoesntHave(t *testing.T) {
 	for _, c := range []struct {
 		name, item string
 	}{
-		{"an image that isn't in the list", `{"id": 1, "name": "X", "imageAsset": "nothing", "maxStack": 1}`},
-		{"a frame past the image's last", `{"id": 1, "name": "X", "imageAsset": "torch_placed", "maxStack": 1, "animation": [{"frame": 3, "durationMs": 100}]}`},
+		{"an image that isn't in the list", `{"id": 1, "name": "X", "imageAsset": "nothing", "countable": true, "maxStack": 1}`},
+		{"a frame past the image's last", `{"id": 1, "name": "X", "imageAsset": "torch_placed", "countable": true, "maxStack": 1, "animation": [{"frame": 3, "durationMs": 100}]}`},
 	} {
 		if err := os.WriteFile(path, []byte(`[`+c.item+`]`), 0o644); err != nil {
 			t.Fatal(err)

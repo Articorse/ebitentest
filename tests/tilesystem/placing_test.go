@@ -47,7 +47,7 @@ func TestPlacedWoodenWallsBlockAndBreakIntoDirtAndWood(t *testing.T) {
 		t.Fatal("a destroyed wall didn't turn into dirt")
 	}
 
-	if kind, n := onGround(r, tile); kind != data.Item_Wood || n != 2 || lyingAround(r, data.Item_Wood, tile) != 2 {
+	if kind, n := onGround(r, tile); kind != data.Item_Wood || n != 2*kg || lyingAround(r, data.Item_Wood, tile) != 2*kg {
 		t.Fatalf("a destroyed wall left %d of %v on its tile, want the 2 wood it drops there", n, kind)
 	}
 }

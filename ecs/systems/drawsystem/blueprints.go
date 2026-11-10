@@ -278,11 +278,11 @@ func (p *BlueprintPlacer) Draw(
 func BlueprintTooltip(def ecs.BlueprintDef, items *ecs.ItemAtlas) []string {
 	lines := []string{def.Name()}
 	for _, c := range def.Costs() {
-		name := "?"
+		name, amount := "?", strconv.Itoa(c.Amount)
 		if item, ok := items.Def(c.Kind); ok {
-			name = item.Name()
+			name, amount = item.Name(), item.AmountText(c.Amount)
 		}
-		lines = append(lines, strconv.Itoa(c.Count)+" "+name)
+		lines = append(lines, amount+" "+name)
 	}
 	return lines
 }
@@ -292,12 +292,12 @@ func BlueprintTooltip(def ecs.BlueprintDef, items *ecs.ItemAtlas) []string {
 func SiteTooltip(site ecs.ConstructionSite, def ecs.BlueprintDef, items *ecs.ItemAtlas, home bool) []string {
 	lines := []string{def.Name()}
 	for _, c := range def.Costs() {
-		name := "?"
+		delivered := c.Amount - site.Needs(c.Kind, def)
+		name, of := "?", fmt.Sprintf("%d/%d", delivered, c.Amount)
 		if item, ok := items.Def(c.Kind); ok {
-			name = item.Name()
+			name, of = item.Name(), item.AmountText(delivered)+"/"+item.AmountText(c.Amount)
 		}
-		delivered := c.Count - site.Needs(c.Kind, def)
-		lines = append(lines, fmt.Sprintf("%s %d/%d", name, delivered, c.Count))
+		lines = append(lines, name+" "+of)
 	}
 	progress := 0
 	if site.MaxHealth > 1 {

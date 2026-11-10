@@ -47,13 +47,13 @@ func TestAColonistPicksUpWhatItPassesWithoutStopping(t *testing.T) {
 	s, _, colonist, row := onItsWayToATree(t)
 	middle := row[passingRow/2]
 	harvest(s, middle)
-	looseWood(t, s, middle, 3)
+	looseWood(t, s, middle, 3*kg)
 	before := woodCarried(s, colonist)
 
 	if !walkToTheTree(t, s, colonist) {
 		t.Fatal("the colonist stopped felling the tree to pick something up")
 	}
-	if _, ok := s.Chunks.GroundStack(middle); ok || woodCarried(s, colonist) != before+3 {
+	if _, ok := s.Chunks.GroundStack(middle); ok || woodCarried(s, colonist) != before+3*kg {
 		t.Fatalf("the colonist carries %d more wood, want the 3 it passed", woodCarried(s, colonist)-before)
 	}
 	if job := colonistJob(s, colonist); job.InPassing.Action != inputsources.Stop_PickUp || job.InPassing.Tile != middle {
@@ -121,7 +121,7 @@ func TestAColonistLeavesWhatAnotherIsGoingToPickUp(t *testing.T) {
 	s, colony, colonist, row := onItsWayToATree(t)
 	middle := row[passingRow/2]
 	harvest(s, middle)
-	looseWood(t, s, middle, 3)
+	looseWood(t, s, middle, 3*kg)
 	other := anotherColonist(t, s, colony, colonist)
 	testutil.SetPos(t, s.ECS, other, utils.TilePosToWorldPos(groundAway(t, s, colonist, 12, row...)))
 	live(t, s, 1, func() bool { return false })
@@ -153,11 +153,11 @@ func TestAColonistLeavesRoomForWhatItsJobIsToPickUp(t *testing.T) {
 
 	middle := row[passingRow/2]
 	harvest(s, middle)
-	looseWood(t, s, middle, 1)
+	looseWood(t, s, middle, 1*kg)
 	if !live(t, s, 20*data.TPS, func() bool { return colonistJob(s, colonist).Stops[0].Action == inputsources.Stop_Deliver }) {
 		t.Fatal("the colonist didn't pick up what it was fetching")
 	}
-	if _, n := onGround(s, middle); n != 1 || woodCarried(s, colonist) != wallCost(t) {
+	if _, n := onGround(s, middle); n != 1*kg || woodCarried(s, colonist) != wallCost(t) {
 		t.Fatalf("the colonist carries %d wood, want just the %d it fetched, leaving what it passed", woodCarried(s, colonist), wallCost(t))
 	}
 }

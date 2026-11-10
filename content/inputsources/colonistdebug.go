@@ -3,6 +3,7 @@ package inputsources
 import (
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 )
 
@@ -46,12 +47,12 @@ func ColonistDebugLines(e common.EntityId, ecsContainer *ecs.ECSContainer) ([]st
 	lines := []string{fmt.Sprintf("Colonist %d: %s", e, colonistStateNames[p.State])}
 	for i, s := range p.Stops {
 		line := "  " + stopActionNames[s.Action]
-		if s.Count > 0 {
-			name := "?"
+		if s.Amount > 0 {
+			name, amount := "?", fmt.Sprint(s.Amount)
 			if def, ok := ecsContainer.ItemAtlas().Def(s.Kind); ok {
-				name = def.Name()
+				name, amount = def.Name(), def.AmountText(s.Amount)
 			}
-			line += fmt.Sprintf(" %d %s", s.Count, name)
+			line += fmt.Sprintf(" %s %s", amount, name)
 		}
 		line += fmt.Sprintf(" at %d,%d", s.Tile.X, s.Tile.Y)
 		if i == 0 {
@@ -73,7 +74,7 @@ func ColonistDebugLines(e common.EntityId, ecsContainer *ecs.ECSContainer) ([]st
 		if def, ok := ecsContainer.ItemAtlas().Def(s.Kind); ok {
 			name = def.Name()
 		}
-		lines = append(lines, fmt.Sprintf("In passing: %s %d %s at %d,%d on tick %d", stopActionNames[s.Action], s.Count, name, s.Tile.X, s.Tile.Y, p.InPassingTick))
+		lines = append(lines, fmt.Sprintf("In passing: %s %d %s at %d,%d on tick %d", stopActionNames[s.Action], s.Amount, name, s.Tile.X, s.Tile.Y, p.InPassingTick))
 	}
 	if em := p.Emergency; em.Kind != Emergency_None {
 		line := fmt.Sprintf("Emergency: %s %d,%d", emergencyNames[em.Kind], em.Tile.X, em.Tile.Y)
@@ -97,7 +98,7 @@ func ColonistDebugLines(e common.EntityId, ecsContainer *ecs.ECSContainer) ([]st
 	if !ok {
 		return lines, true
 	}
-	lines = append(lines, fmt.Sprintf("Carrying %d/%d", ecsContainer.CarriedWeight(e), inv.MaxWeight()))
+	lines = append(lines, fmt.Sprintf("Carrying %s/%s", utils.FormatMass(ecsContainer.CarriedMass(e)), utils.FormatMass(inv.MaxMass())))
 	for i := range inv.Capacity() {
 		item, ok := inv.Slot(i)
 		if !ok {
@@ -107,11 +108,7 @@ func ColonistDebugLines(e common.EntityId, ecsContainer *ecs.ECSContainer) ([]st
 		if !ok {
 			continue
 		}
-		line := "  " + ecsContainer.ItemName(comp)
-		if comp.Count() > 1 {
-			line = fmt.Sprintf("  %d %s", comp.Count(), ecsContainer.ItemName(comp))
-		}
-		lines = append(lines, line)
+		lines = append(lines, fmt.Sprintf("  %s %s", ecsContainer.ItemAmountText(comp), ecsContainer.ItemName(comp)))
 	}
 	return lines, true
 }

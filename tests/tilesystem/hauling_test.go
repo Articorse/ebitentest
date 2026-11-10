@@ -86,17 +86,17 @@ func TestMovingOnTheGroundOnlyMovesWhatFits(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	row := openRow(t, s, colonist, 3)
 	a, b, c := row, utils.Vec2i{X: row.X + 1, Y: row.Y}, utils.Vec2i{X: row.X + 2, Y: row.Y}
-	s.ECS.LayDownKind(data.Item_Wood, 30, a)
-	s.Chunks.SetGroundStack(b, groundWood(90))
+	s.ECS.LayDownKind(data.Item_Wood, 30*kg, a)
+	s.Chunks.SetGroundStack(b, groundWood(90*kg))
 	s.Chunks.SetGroundStack(c, groundTorches(1))
 
 	if n := s.ECS.MoveOnGround(a, c); n != 0 {
 		t.Fatal("wood was moved onto torches")
 	}
-	if n := s.ECS.MoveOnGround(a, b); n != 10 {
+	if n := s.ECS.MoveOnGround(a, b); n != 10*kg {
 		t.Fatalf("moved %d wood onto a stack of 90, want the 10 that fit", n)
 	}
-	if _, n := onGround(s, a); n != 20 {
+	if _, n := onGround(s, a); n != 20*kg {
 		t.Fatalf("%d wood was left behind, want 20", n)
 	}
 	axe, _ := colonistAxe(s, colonist)

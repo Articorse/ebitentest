@@ -1,4 +1,4 @@
 [
-  { "id": 1, "name": "Oxygen", "condenseCelsius": -183, "item": 3, "gramsPerItem": 1000 },
-  { "id": 2, "name": "Carbon dioxide", "condenseCelsius": -78.5, "item": 4, "gramsPerItem": 1000 }
+  { "id": 1, "name": "Oxygen", "condenseCelsius": -183, "item": 3 },
+  { "id": 2, "name": "Carbon dioxide", "condenseCelsius": -78.5, "item": 4 }
 ]

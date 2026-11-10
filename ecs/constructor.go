@@ -90,10 +90,11 @@ func (x *ECSContainer) BodyOverhang(e common.EntityId, dir utils.Vec2f) float64 
 	return exit(lo, hi) - exit(utils.Vec2i{}, utils.Vec2i{})
 }
 
-// Delivers what's in the constructor's hand to the construction site under its aim, if the site needs it, one at a time
-// or all that's needed at once; with an empty hand, it works on the site once everything is delivered, though not the
-// last strike while something is in the way of the tile. Handled is whether the aim is on a site it can do either for,
-// cooldown or not, so that what's in hand isn't also used on it.
+// Delivers what's in the constructor's hand to the construction site under its aim, if the site needs it, one of a
+// countable item or a kilogram of anything else at a time, or all that's needed at once; with an empty hand, it works
+// on the site once everything is delivered, though not the last strike while something is in the way of the tile.
+// Handled is whether the aim is on a site it can do either for, cooldown or not, so that what's in hand isn't also used
+// on it.
 func (x *ECSContainer) Construct(e common.EntityId, aim utils.Vec2f, all bool) (handled bool, err error) {
 	c, ok := x.Constructors.Get(e)
 	if !ok {
@@ -126,13 +127,12 @@ func (x *ECSContainer) Construct(e common.EntityId, aim utils.Vec2f, all bool) (
 			return true, nil
 		}
 
-		count := 1
+		amount := min(x.oneOf(item), item.amount)
 		if all {
-			count = item.count
+			amount = item.amount
 		}
-		taken := x.terrain.DeliverToSite(tile, item.kind, count)
-		for range taken {
-			if err := x.ConsumeItem(held); err != nil {
+		if taken := x.terrain.DeliverToSite(tile, item.kind, amount); taken > 0 {
+			if err := x.UseUp(held, taken); err != nil {
 				return true, fmt.Errorf("error using up item %d delivered to the site at %v: %w", held, tile, err)
 			}
 		}

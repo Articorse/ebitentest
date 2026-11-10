@@ -63,13 +63,13 @@ func TestAHarvestAreaGoesOnceNothingHarvestableOrHarvestedIsLeftInIt(t *testing.
 	s.Chunks.SetGroundStack(corner, groundTorches(2))
 
 	fell(t, s, tree)
-	s.Chunks.SetGroundStack(tree, groundWood(2))
+	s.Chunks.SetGroundStack(tree, groundWood(2*kg))
 	s.ECS.ClearExhaustedHarvest()
 	if inHarvest(s, tiles) != len(tiles) {
 		t.Fatal("the harvest area went while the felled tree's wood was still lying in it")
 	}
 
-	s.Chunks.SetGroundStack(tree, groundWood(1))
+	s.Chunks.SetGroundStack(tree, groundWood(1*kg))
 	s.ECS.ClearExhaustedHarvest()
 	if inHarvest(s, tiles) != len(tiles) {
 		t.Fatal("the harvest area went with some of the wood still lying in it")
@@ -89,7 +89,7 @@ func TestOnlyTheExhaustedPartOfTheHarvestAreaGoes(t *testing.T) {
 	// Touching the first only at a corner, and still with wood on it
 	diagonal := utils.Vec2i{X: corner.X + 3, Y: corner.Y + 3}
 	harvest(s, diagonal)
-	looseWood(t, s, diagonal, 1)
+	looseWood(t, s, diagonal, 1*kg)
 
 	fell(t, s, exhausted)
 	s.ECS.ClearExhaustedHarvest()
@@ -147,7 +147,7 @@ func TestPickingUpNextToAHarvestAreaLeavesItAlone(t *testing.T) {
 	area := []utils.Vec2i{row, {X: row.X + 1, Y: row.Y}, {X: row.X + 2, Y: row.Y}}
 	harvest(s, area...)
 	next := utils.Vec2i{X: row.X + 3, Y: row.Y}
-	looseWood(t, s, next, 2)
+	looseWood(t, s, next, 2*kg)
 	s.Chunks.SetGroundStack(next, ecs.GroundStack{})
 	s.ECS.ClearExhaustedHarvest()
 	if inHarvest(s, area) != len(area) {

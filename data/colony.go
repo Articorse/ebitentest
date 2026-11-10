@@ -40,8 +40,8 @@ const (
 
 	ColonistInventorySlots = 9
 	// Under its carry weight along with its axe, so that it can pick things up from the start
-	ColonistStartingWood   = 15
-	ColonistMaxCarryWeight = 40
+	ColonistStartingWood = 15 * MilligramsPerKg
+	ColonistMaxCarryMg   = 20 * MilligramsPerKg
 	// How often a colonist looks for work while it has none, since looking can mean searching the whole colony
 	ColonistPlanEveryTicks = TPS
 	// How many paths it looks for when choosing a job, best first, before settling for the best it's found

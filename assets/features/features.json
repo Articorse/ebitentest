@@ -7,10 +7,7 @@
     "collider": { "width": 8, "height": 6, "offset": { "x": 0, "y": 3 } },
     "maxHealth": 100,
     "destroyedInto": 2,
-    "drops": [
-      { "chance": 30, "items": [{ "kind": 1, "count": 2 }] },
-      { "chance": 50, "items": [{ "kind": 1, "count": 1 }] }
-    ],
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "minGrams": 0, "maxGrams": 2000 }] }],
     "harvestable": true
   },
   {
@@ -45,7 +42,7 @@
     "opaque": true,
     "maxHealth": 50,
     "destroyedInto": 0,
-    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 5 }] }],
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 5000 }] }],
     "door": { "kind": "wood", "vertical": false, "open": false }
   },
   {
@@ -55,7 +52,7 @@
     "animation": [{ "frame": 1, "durationMs": 1000 }],
     "maxHealth": 50,
     "destroyedInto": 0,
-    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 5 }] }],
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 5000 }] }],
     "door": { "kind": "wood", "vertical": false, "open": true }
   },
   {
@@ -67,7 +64,7 @@
     "opaque": true,
     "maxHealth": 50,
     "destroyedInto": 0,
-    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 5 }] }],
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 5000 }] }],
     "door": { "kind": "wood", "vertical": true, "open": false }
   },
   {
@@ -77,7 +74,7 @@
     "animation": [{ "frame": 3, "durationMs": 1000 }],
     "maxHealth": 50,
     "destroyedInto": 0,
-    "drops": [{ "chance": 100, "items": [{ "kind": 1, "count": 5 }] }],
+    "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 5000 }] }],
     "door": { "kind": "wood", "vertical": true, "open": true }
   }
 ]

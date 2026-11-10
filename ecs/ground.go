@@ -11,7 +11,7 @@ import (
 // picked up, the way an unloaded chunk keeps its entities
 type GroundStack struct {
 	Kind   data.ItemEnum
-	Count  int
+	Amount int
 	Unique *UniqueItem
 }
 
@@ -19,9 +19,10 @@ type UniqueItem struct {
 	Root    common.EntityId
 	Members map[common.EntityId][]ComponentDto
 	// So that it can be drawn, named and weighed without being brought back
-	Name   string
-	Image  common.ImageAssetTag
-	Weight int
+	Name  string
+	Image common.ImageAssetTag
+	// In milligrams
+	Mass int
 }
 
 func (x *ECSContainer) GroundStackName(s GroundStack) string {
@@ -59,7 +60,7 @@ func (x *ECSContainer) groundRoom(t utils.Vec2i, kind data.ItemEnum, unique bool
 	case unique || on.Unique != nil || on.Kind != kind:
 		return 0
 	default:
-		return limit - on.Count
+		return limit - on.Amount
 	}
 }
 
@@ -78,16 +79,16 @@ func spillOrder(near utils.Vec2i) []utils.Vec2i {
 	return tiles
 }
 
-// As many of the kind as fit on the tile and around it, closest first, each tile taking what fits on it, so that
-// what's dropped stays as close as it can to where it was dropped. How many were laid down; the rest have nowhere to
+// As much of the kind as fits on the tile and around it, closest first, each tile taking what fits on it, so that
+// what's dropped stays as close as it can to where it was dropped. How much was laid down; the rest has nowhere to
 // go.
-func (x *ECSContainer) LayDownKind(kind data.ItemEnum, count int, near utils.Vec2i) int {
-	if _, ok := x.itemAtlas.Def(kind); !ok || count <= 0 {
+func (x *ECSContainer) LayDownKind(kind data.ItemEnum, amount int, near utils.Vec2i) int {
+	if _, ok := x.itemAtlas.Def(kind); !ok || amount <= 0 {
 		return 0
 	}
 	laid := 0
 	for _, t := range spillOrder(near) {
-		if laid == count {
+		if laid == amount {
 			break
 		}
 		room := x.groundRoom(t, kind, false)
@@ -95,8 +96,8 @@ func (x *ECSContainer) LayDownKind(kind data.ItemEnum, count int, near utils.Vec
 			continue
 		}
 		on, _ := x.terrain.GroundStack(t)
-		n := min(room, count-laid)
-		if x.terrain.SetGroundStack(t, GroundStack{Kind: kind, Count: on.Count + n}) {
+		n := min(room, amount-laid)
+		if x.terrain.SetGroundStack(t, GroundStack{Kind: kind, Amount: on.Amount + n}) {
 			laid += n
 		}
 	}
@@ -113,12 +114,12 @@ func (x *ECSContainer) LayDown(item common.EntityId, near utils.Vec2i) (bool, er
 	}
 
 	if itemComp.kind != data.Item_None {
-		laid := x.LayDownKind(itemComp.kind, itemComp.count, near)
+		laid := x.LayDownKind(itemComp.kind, itemComp.amount, near)
 		if laid == 0 {
 			return false, nil
 		}
-		itemComp.count -= laid
-		if itemComp.count > 0 {
+		itemComp.amount -= laid
+		if itemComp.amount > 0 {
 			return true, nil
 		}
 		if err := x.letGo(item); err != nil {
@@ -145,11 +146,11 @@ func (x *ECSContainer) LayDown(item common.EntityId, near utils.Vec2i) (bool, er
 	if err != nil {
 		return false, fmt.Errorf("error keeping the components of item %d: %w", item, err)
 	}
-	unique := &UniqueItem{Root: item, Members: members, Name: itemComp.name, Weight: itemComp.weight}
+	unique := &UniqueItem{Root: item, Members: members, Name: itemComp.name, Mass: itemComp.mass}
 	if spr, ok := x.Sprites.Get(item); ok {
 		unique.Image = spr.ImageAsset()
 	}
-	if !x.terrain.SetGroundStack(tile, GroundStack{Count: 1, Unique: unique}) {
+	if !x.terrain.SetGroundStack(tile, GroundStack{Amount: 1, Unique: unique}) {
 		return false, nil
 	}
 	// Right away rather than at the end of the tick, so that it can be picked back up in the same one
@@ -181,11 +182,11 @@ func (x *ECSContainer) letGo(item common.EntityId) error {
 // many it took.
 func (x *ECSContainer) PickUpFromGround(collector common.EntityId, t utils.Vec2i) (int, error) {
 	stack, _ := x.terrain.GroundStack(t)
-	return x.PickUpSomeFromGround(collector, t, stack.Count)
+	return x.PickUpSomeFromGround(collector, t, stack.Amount)
 }
 
-// Up to count of what lies on the tile, as much as there's room for. A unique item is all or nothing.
-func (x *ECSContainer) PickUpSomeFromGround(collector common.EntityId, t utils.Vec2i, count int) (int, error) {
+// Up to the amount of what lies on the tile, as much as there's room for. A unique item is all or nothing.
+func (x *ECSContainer) PickUpSomeFromGround(collector common.EntityId, t utils.Vec2i, amount int) (int, error) {
 	stack, ok := x.terrain.GroundStack(t)
 	inv, invOk := x.Inventories.Get(collector)
 	if !ok || !invOk {
@@ -197,7 +198,7 @@ func (x *ECSContainer) PickUpSomeFromGround(collector common.EntityId, t utils.V
 	}
 
 	if stack.Unique != nil {
-		if inv.FirstFreeSlot() == -1 || stack.Unique.Weight > x.weightRoom(inv) {
+		if inv.FirstFreeSlot() == -1 || stack.Unique.Mass > x.massRoom(inv) {
 			return 0, nil
 		}
 		for e, dtos := range stack.Unique.Members {
@@ -221,7 +222,7 @@ func (x *ECSContainer) PickUpSomeFromGround(collector common.EntityId, t utils.V
 	if !ok {
 		return 0, fmt.Errorf("the stack on %v is of item %v, which isn't in the item atlas", t, stack.Kind)
 	}
-	taking := min(count, stack.Count, x.roomFor(inv, stack.Kind, def))
+	taking := min(amount, stack.Amount, x.roomFor(inv, stack.Kind, def))
 	for left := taking; left > 0; {
 		n := min(left, def.maxStack)
 		item, err := x.SpawnItemStack(stack.Kind, n, pos)
@@ -233,13 +234,13 @@ func (x *ECSContainer) PickUpSomeFromGround(collector common.EntityId, t utils.V
 		}
 		left -= n
 	}
-	x.terrain.SetGroundStack(t, GroundStack{Kind: stack.Kind, Count: stack.Count - taking})
+	x.terrain.SetGroundStack(t, GroundStack{Kind: stack.Kind, Amount: stack.Amount - taking})
 	return taking, nil
 }
 
-// Up to count of what's in the owner's slot goes onto the tile and only it, which has to be empty or hold a stack of
-// the same kind with room. How many went.
-func (x *ECSContainer) PutDownOn(owner common.EntityId, slot, count int, t utils.Vec2i) (int, error) {
+// Up to the amount of what's in the owner's slot goes onto the tile and only it, which has to be empty or hold a stack of
+// the same kind with room. How much went.
+func (x *ECSContainer) PutDownOn(owner common.EntityId, slot, amount int, t utils.Vec2i) (int, error) {
 	inv, ok := x.Inventories.Get(owner)
 	if !ok {
 		return 0, fmt.Errorf("entity %d has no inventory", owner)
@@ -252,16 +253,16 @@ func (x *ECSContainer) PutDownOn(owner common.EntityId, slot, count int, t utils
 	if !ok || itemComp.kind == data.Item_None {
 		return 0, nil
 	}
-	n := min(count, itemComp.count, x.groundRoom(t, itemComp.kind, false))
+	n := min(amount, itemComp.amount, x.groundRoom(t, itemComp.kind, false))
 	if n <= 0 {
 		return 0, nil
 	}
 	on, _ := x.terrain.GroundStack(t)
-	if !x.terrain.SetGroundStack(t, GroundStack{Kind: itemComp.kind, Count: on.Count + n}) {
+	if !x.terrain.SetGroundStack(t, GroundStack{Kind: itemComp.kind, Amount: on.Amount + n}) {
 		return 0, nil
 	}
-	itemComp.count -= n
-	if itemComp.count > 0 {
+	itemComp.amount -= n
+	if itemComp.amount > 0 {
 		return n, nil
 	}
 	if err := x.letGo(item); err != nil {
@@ -272,7 +273,7 @@ func (x *ECSContainer) PutDownOn(owner common.EntityId, slot, count int, t utils
 }
 
 // What lies on from goes onto to, as much as fits there: all of a unique item onto empty ground, or of a stack as much
-// as tops up what's there or makes a new one. How many moved.
+// as tops up what's there or makes a new one. How much moved.
 func (x *ECSContainer) MoveOnGround(from, to utils.Vec2i) int {
 	stack, ok := x.terrain.GroundStack(from)
 	if !ok || from == to {
@@ -285,22 +286,22 @@ func (x *ECSContainer) MoveOnGround(from, to utils.Vec2i) int {
 		x.terrain.SetGroundStack(from, GroundStack{})
 		return 1
 	}
-	n := min(stack.Count, x.groundRoom(to, stack.Kind, false))
+	n := min(stack.Amount, x.groundRoom(to, stack.Kind, false))
 	on, _ := x.terrain.GroundStack(to)
-	if n <= 0 || !x.terrain.SetGroundStack(to, GroundStack{Kind: stack.Kind, Count: on.Count + n}) {
+	if n <= 0 || !x.terrain.SetGroundStack(to, GroundStack{Kind: stack.Kind, Amount: on.Amount + n}) {
 		return 0
 	}
-	x.terrain.SetGroundStack(from, GroundStack{Kind: stack.Kind, Count: stack.Count - n})
+	x.terrain.SetGroundStack(from, GroundStack{Kind: stack.Kind, Amount: stack.Amount - n})
 	return n
 }
 
-// How many of the kind fit on the tile: on empty ground that can be walked on a full stack, and on a stack of it
+// How much of the kind fits on the tile: on empty ground that can be walked on a full stack, and on a stack of it
 // what tops it up
 func (x *ECSContainer) GroundRoomFor(t utils.Vec2i, kind data.ItemEnum) int {
 	return x.groundRoom(t, kind, false)
 }
 
-// How many of the kind fit in the entity's inventory
+// How much of the kind fits in the entity's inventory
 func (x *ECSContainer) RoomFor(e common.EntityId, kind data.ItemEnum) int {
 	inv, ok := x.Inventories.Get(e)
 	def, defOk := x.itemAtlas.Def(kind)
@@ -319,11 +320,11 @@ func (x *ECSContainer) roomFor(inv *Inventory, kind data.ItemEnum, def ItemDef) 
 		case !ok && inv.slots[i] == -1:
 			room += def.maxStack
 		case ok && held.kind == kind && def.maxStack > 1:
-			room += def.maxStack - held.count
+			room += def.maxStack - held.amount
 		}
 	}
-	if def.weight > 0 {
-		room = min(room, x.weightRoom(inv)/def.weight)
+	if unit := def.Mass(1); unit > 0 {
+		room = min(room, x.massRoom(inv)/unit)
 	}
 	return room
 }

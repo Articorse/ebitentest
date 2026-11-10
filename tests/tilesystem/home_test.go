@@ -92,7 +92,7 @@ func TestBuildingOnHomeSpreadsItButBuildingElsewhereDoesnt(t *testing.T) {
 
 	// The player, as a builder, builds off home; the colonist leaves it alone
 	for _, c := range []ecs.Component{
-		ecs.NewInventoryComponent(2, 2, 1000),
+		ecs.NewInventoryComponent(2, 2, 1000*kg),
 		ecs.NewEquipperComponent(map[ecs.EquipSlotEnum]common.EntityId{}),
 		ecs.NewConstructorComponent(3, 1, 250),
 	} {

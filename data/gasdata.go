@@ -12,6 +12,7 @@ const (
 
 const (
 	MilligramsPerGram = 1000
+	MilligramsPerKg   = 1000 * MilligramsPerGram
 	// How often air flows between rooms and the outdoors
 	AirStepTicks = TPS / 4
 	// How much of the difference in a gas per tile either side of an opening crosses it in a step, as that many tiles'
@@ -27,9 +28,12 @@ const (
 	SafeOxygenMg        = 400 * MilligramsPerGram
 	SafeCarbonDioxideMg = 250 * MilligramsPerGram
 	// How much of a gas below where it condenses drops out of the air in a step, and how much of a stack of its item
-	// above it goes back in, at least one item
+	// above it goes back in, but no less than the least, or all of it if there's less, so that the last of it doesn't
+	// take a sixteenth of nearly nothing at a time
 	CondenseFractionDen = 16
 	BoilFractionDen     = 16
+	CondenseLeastMg     = 10 * MilligramsPerGram
+	BoilLeastMg         = 10 * MilligramsPerGram
 	// What can still be breathed, for where to get to when there's no safe air to get to
 	BreathableOxygenMg        = 100 * MilligramsPerGram
 	BreathableCarbonDioxideMg = 500 * MilligramsPerGram

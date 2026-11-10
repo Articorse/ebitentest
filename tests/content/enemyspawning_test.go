@@ -24,7 +24,7 @@ func (w spawnWorld) IsOpaqueTile(utils.Vec2i) bool { return w.walls }
 func (w spawnWorld) IsBlockedAt(utils.Vec2f) bool  { return w.walls }
 
 func (w spawnWorld) GroundStack(utils.Vec2i) (ecs.GroundStack, bool) {
-	return ecs.GroundStack{Kind: data.Item_Wood, Count: 1}, w.items
+	return ecs.GroundStack{Kind: data.Item_Wood, Amount: 1 * data.MilligramsPerKg}, w.items
 }
 
 func spawningPlayer(t *testing.T, world spawnWorld, tick uint64) (*ecs.ECSContainer, common.EntityId) {

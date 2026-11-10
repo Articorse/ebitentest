@@ -59,7 +59,7 @@ type JobStop struct {
 	Tile   utils.Vec2i
 	Kind   data.ItemEnum
 	// How many it picks up, delivers or puts down, which other colonists leave to it
-	Count int
+	Amount int
 }
 
 // Saved with its job, so that a loaded colonist carries on as it was
@@ -393,7 +393,7 @@ func (p *InputColonistParams) inPassing(
 	}
 	c := othersClaims(e, p.Colony, ecsContainer)
 	if pickUp, ok := p.pickUpInPassing(e, selfPos, first, last, c, ecsContainer); ok {
-		input.PickUp = ecs.ItemPickUp{PickUp: true, Tile: pickUp.Tile, Count: pickUp.Count}
+		input.PickUp = ecs.ItemPickUp{PickUp: true, Tile: pickUp.Tile, Amount: pickUp.Amount}
 		p.InPassing, p.InPassingTick = pickUp, tick
 	}
 	if deliver, ok := p.deliverInPassing(e, selfPos, constructor, first, last, c, ecsContainer); ok {
@@ -413,14 +413,14 @@ func (p *InputColonistParams) pickUpInPassing(e common.EntityId, selfPos utils.V
 	if !ok {
 		return JobStop{}, false
 	}
-	weight := func(kind data.ItemEnum) int {
+	unit := func(kind data.ItemEnum) int {
 		def, _ := ecsContainer.ItemAtlas().Def(kind)
-		return def.Weight()
+		return def.Mass(1)
 	}
-	spare := inv.MaxWeight() - ecsContainer.CarriedWeight(e)
+	spare := inv.MaxMass() - ecsContainer.CarriedMass(e)
 	for _, s := range p.Stops {
 		if s.Action == Stop_PickUp {
-			spare -= s.Count * weight(s.Kind)
+			spare -= s.Amount * unit(s.Kind)
 		}
 	}
 
@@ -443,11 +443,11 @@ func (p *InputColonistParams) pickUpInPassing(e common.EntityId, selfPos utils.V
 			continue
 		}
 		n := min(c.unclaimedStack(t, ecsContainer), ecsContainer.RoomFor(e, stack.Kind))
-		if w := weight(stack.Kind); w > 0 {
-			n = min(n, spare/w)
+		if u := unit(stack.Kind); u > 0 {
+			n = min(n, spare/u)
 		}
 		if _, sees := ecsContainer.AimedTileInReach(e, utils.TilePosToWorldPos(t), data.ItemReachTiles); n > 0 && sees {
-			return JobStop{Action: Stop_PickUp, Tile: t, Kind: stack.Kind, Count: n}, true
+			return JobStop{Action: Stop_PickUp, Tile: t, Kind: stack.Kind, Amount: n}, true
 		}
 	}
 	return JobStop{}, false
@@ -466,7 +466,7 @@ func (p *InputColonistParams) deliverInPassing(
 	committed := map[data.ItemEnum]int{}
 	for _, s := range p.Stops {
 		if s.Action == Stop_Deliver || s.Action == Stop_PutDown {
-			committed[s.Kind] += s.Count
+			committed[s.Kind] += s.Amount
 		}
 	}
 
@@ -485,7 +485,7 @@ func (p *InputColonistParams) deliverInPassing(
 		for _, cost := range def.Costs() {
 			need, spare := c.unclaimedNeed(t, cost.Kind, site, def), has[cost.Kind]-committed[cost.Kind]
 			if need > 0 && spare > 0 && (need <= spare || committed[cost.Kind] == 0) {
-				return JobStop{Action: Stop_Deliver, Tile: t, Kind: cost.Kind, Count: min(need, spare)}, true
+				return JobStop{Action: Stop_Deliver, Tile: t, Kind: cost.Kind, Amount: min(need, spare)}, true
 			}
 		}
 	}
@@ -569,9 +569,9 @@ func (p *InputColonistParams) settle(e common.EntityId, kind data.ItemEnum, ecsC
 	kept := []JobStop{}
 	for _, s := range p.Stops {
 		if s.Kind == kind && (s.Action == Stop_Deliver || s.Action == Stop_PutDown) {
-			s.Count = min(s.Count, got)
-			got -= s.Count
-			if s.Count == 0 {
+			s.Amount = min(s.Amount, got)
+			got -= s.Amount
+			if s.Amount == 0 {
 				continue
 			}
 		}
@@ -629,10 +629,10 @@ func (p *InputColonistParams) valid(e common.EntityId, ecsContainer *ecs.ECSCont
 		}
 	case Stop_Deliver:
 		site, def, ok := siteAt(stop.Tile, ecsContainer)
-		return ok && terrain.InArea(data.Area_Home, stop.Tile) && carried(e, stop.Kind, ecsContainer) >= min(stop.Count, site.Needs(stop.Kind, def))
+		return ok && terrain.InArea(data.Area_Home, stop.Tile) && carried(e, stop.Kind, ecsContainer) >= min(stop.Amount, site.Needs(stop.Kind, def))
 	case Stop_PutDown:
-		_, count := p.putDownFrom(e, stop, ecsContainer)
-		return p.Acted || (count > 0 && terrain.InArea(data.Area_Storage, stop.Tile) && ecsContainer.GroundRoomFor(stop.Tile, stop.Kind) > 0)
+		_, amount := p.putDownFrom(e, stop, ecsContainer)
+		return p.Acted || (amount > 0 && terrain.InArea(data.Area_Storage, stop.Tile) && ecsContainer.GroundRoomFor(stop.Tile, stop.Kind) > 0)
 	case Stop_MoveOff:
 		_, onGround := terrain.GroundStack(stop.Tile)
 		return p.Acted || (onSite && onGround && terrain.InArea(data.Area_Home, stop.Tile))
@@ -641,7 +641,7 @@ func (p *InputColonistParams) valid(e common.EntityId, ecsContainer *ecs.ECSCont
 }
 
 // The slot it puts down from and how many, which when storing is only what no site on home needs
-func (p *InputColonistParams) putDownFrom(e common.EntityId, stop JobStop, ecsContainer *ecs.ECSContainer) (slot, count int) {
+func (p *InputColonistParams) putDownFrom(e common.EntityId, stop JobStop, ecsContainer *ecs.ECSContainer) (slot, amount int) {
 	slot, ok := slotOf(e, stop.Kind, ecsContainer)
 	if !ok {
 		return -1, 0
@@ -649,11 +649,11 @@ func (p *InputColonistParams) putDownFrom(e common.EntityId, stop JobStop, ecsCo
 	inv, _ := ecsContainer.Inventories.Get(e)
 	item, _ := inv.Slot(slot)
 	comp, _ := ecsContainer.Items.Get(item)
-	count = min(stop.Count, comp.Count())
+	amount = min(stop.Amount, comp.Amount())
 	if p.State == Colonist_Store {
-		count = min(count, carried(e, stop.Kind, ecsContainer)-p.stillNeeded(ecsContainer)[stop.Kind])
+		amount = min(amount, carried(e, stop.Kind, ecsContainer)-p.stillNeeded(ecsContainer)[stop.Kind])
 	}
-	return slot, count
+	return slot, amount
 }
 
 // The first slot holding a generic item of the kind
@@ -713,11 +713,11 @@ func (c claims) add(state ColonistState, stops []JobStop) {
 	for i, s := range stops {
 		switch s.Action {
 		case Stop_PickUp:
-			c.picking[s.Tile] += s.Count
+			c.picking[s.Tile] += s.Amount
 		case Stop_Deliver:
-			c.delivering[siteNeed{s.Tile, s.Kind}] += s.Count
+			c.delivering[siteNeed{s.Tile, s.Kind}] += s.Amount
 		case Stop_PutDown:
-			c.storing[s.Tile] = JobStop{Kind: s.Kind, Count: c.storing[s.Tile].Count + s.Count}
+			c.storing[s.Tile] = JobStop{Kind: s.Kind, Amount: c.storing[s.Tile].Amount + s.Amount}
 		}
 		if i == 0 && (s.Action == Stop_Build || s.Action == Stop_Chop || s.Action == Stop_Roof || s.Action == Stop_MoveOff || state == Colonist_Haul) {
 			c.taken[s.Tile] = true
@@ -730,7 +730,7 @@ func (c claims) unclaimedStack(t utils.Vec2i, ecsContainer *ecs.ECSContainer) in
 	if !ok || stack.Unique != nil {
 		return 0
 	}
-	return stack.Count - c.picking[t]
+	return stack.Amount - c.picking[t]
 }
 
 func (c claims) unclaimedNeed(t utils.Vec2i, kind data.ItemEnum, site ecs.ConstructionSite, def ecs.BlueprintDef) int {
@@ -742,7 +742,7 @@ func (c claims) unclaimedRoom(t utils.Vec2i, kind data.ItemEnum, ecsContainer *e
 	if ok && going.Kind != kind {
 		return 0
 	}
-	return ecsContainer.GroundRoomFor(t, kind) - going.Count
+	return ecsContainer.GroundRoomFor(t, kind) - going.Amount
 }
 
 // It has all of what's still needed that no one else is bringing, or as much as it can carry of what it can't carry
@@ -770,7 +770,7 @@ func (c claims) load(start utils.Vec2i, toHand map[data.ItemEnum]int, sites []ut
 	stops := []JobStop{}
 	for _, cost := range def.Costs() {
 		if n := min(c.unclaimedNeed(start, cost.Kind, first, def), toHand[cost.Kind]); n > 0 {
-			stops = append(stops, JobStop{Action: Stop_Deliver, Tile: start, Kind: cost.Kind, Count: n})
+			stops = append(stops, JobStop{Action: Stop_Deliver, Tile: start, Kind: cost.Kind, Amount: n})
 			toHand[cost.Kind] -= n
 		}
 	}
@@ -796,14 +796,14 @@ func (c claims) load(start utils.Vec2i, toHand map[data.ItemEnum]int, sites []ut
 		needs := []JobStop{}
 		for _, cost := range def.Costs() {
 			if n := c.unclaimedNeed(t, cost.Kind, site, def); n > 0 {
-				needs = append(needs, JobStop{Action: Stop_Deliver, Tile: t, Kind: cost.Kind, Count: n})
+				needs = append(needs, JobStop{Action: Stop_Deliver, Tile: t, Kind: cost.Kind, Amount: n})
 			}
 		}
-		if slices.ContainsFunc(needs, func(s JobStop) bool { return s.Count > toHand[s.Kind] }) {
+		if slices.ContainsFunc(needs, func(s JobStop) bool { return s.Amount > toHand[s.Kind] }) {
 			continue
 		}
 		for _, s := range needs {
-			toHand[s.Kind] -= s.Count
+			toHand[s.Kind] -= s.Amount
 		}
 		stops = append(stops, needs...)
 	}
@@ -825,7 +825,7 @@ func carriedKinds(e common.EntityId, ecsContainer *ecs.ECSContainer) map[data.It
 	for i := range inv.Capacity() {
 		if item, ok := inv.Slot(i); ok {
 			if comp, ok := ecsContainer.Items.Get(item); ok && comp.Kind() != data.Item_None {
-				kinds[comp.Kind()] += comp.Count()
+				kinds[comp.Kind()] += comp.Amount()
 			}
 		}
 	}
@@ -835,7 +835,7 @@ func carriedKinds(e common.EntityId, ecsContainer *ecs.ECSContainer) map[data.It
 // The first slot holding something of a kind, which is anything it doesn't work with, of which it has more than the
 // sites on home still need between them, and how many more, which is what it puts away, keeping the rest so that what
 // it fetched for a site it can't get to isn't put back straight away
-func (p *InputColonistParams) storable(e common.EntityId, ecsContainer *ecs.ECSContainer) (kind data.ItemEnum, count int, ok bool) {
+func (p *InputColonistParams) storable(e common.EntityId, ecsContainer *ecs.ECSContainer) (kind data.ItemEnum, amount int, ok bool) {
 	inv, ok := ecsContainer.Inventories.Get(e)
 	if !ok {
 		return data.Item_None, 0, false
@@ -1128,7 +1128,7 @@ func (p *InputColonistParams) stopsFor(
 	case Colonist_Store:
 		kind, spare, _ := p.storable(e, ecsContainer)
 		n := min(spare, c.unclaimedRoom(target, kind, ecsContainer))
-		return []JobStop{{Action: Stop_PutDown, Tile: target, Kind: kind, Count: n}}
+		return []JobStop{{Action: Stop_PutDown, Tile: target, Kind: kind, Amount: n}}
 	}
 	return nil
 }
@@ -1139,12 +1139,12 @@ func (p *InputColonistParams) stopsFor(
 func (c claims) haulStops(e common.EntityId, site utils.Vec2i, storage []utils.Vec2i, ecsContainer *ecs.ECSContainer) []JobStop {
 	stack, _ := ecsContainer.Terrain().GroundStack(site)
 	spots := c.storeSpots(stack.Kind, storage, ecsContainer)
-	if n := min(stack.Count, ecsContainer.RoomFor(e, stack.Kind)); stack.Unique == nil && n > 0 && len(spots) > 0 {
+	if n := min(stack.Amount, ecsContainer.RoomFor(e, stack.Kind)); stack.Unique == nil && n > 0 && len(spots) > 0 {
 		to := slices.MinFunc(spots, func(a, b utils.Vec2i) int { return cmp.Compare(utils.Dist2(a, site), utils.Dist2(b, site)) })
 		n = min(n, c.unclaimedRoom(to, stack.Kind, ecsContainer))
 		return []JobStop{
-			{Action: Stop_PickUp, Tile: site, Kind: stack.Kind, Count: n},
-			{Action: Stop_PutDown, Tile: to, Kind: stack.Kind, Count: n},
+			{Action: Stop_PickUp, Tile: site, Kind: stack.Kind, Amount: n},
+			{Action: Stop_PutDown, Tile: to, Kind: stack.Kind, Amount: n},
 		}
 	}
 	return []JobStop{{Action: Stop_MoveOff, Tile: site}}
@@ -1166,7 +1166,7 @@ func (c claims) gatherStops(e common.EntityId, target, first, last utils.Vec2i, 
 	room := ecsContainer.RoomFor(e, stack.Kind)
 	for _, t := range tiles {
 		if n := min(c.unclaimedStack(t, ecsContainer), room); n > 0 {
-			stops = append(stops, JobStop{Action: Stop_PickUp, Tile: t, Kind: stack.Kind, Count: n})
+			stops = append(stops, JobStop{Action: Stop_PickUp, Tile: t, Kind: stack.Kind, Amount: n})
 			room -= n
 		}
 	}
@@ -1228,7 +1228,7 @@ func (c claims) fetchStops(e common.EntityId, site, from utils.Vec2i, storage, s
 	deliveries := c.load(site, toHand, sites, ecsContainer)
 	lacking := map[data.ItemEnum]int{}
 	for _, d := range deliveries {
-		lacking[d.Kind] += d.Count
+		lacking[d.Kind] += d.Amount
 	}
 	for kind, n := range has {
 		lacking[kind] -= n
@@ -1243,7 +1243,7 @@ func (c claims) fetchStops(e common.EntityId, site, from utils.Vec2i, storage, s
 			continue
 		}
 		if n := min(lacking[stack.Kind], c.unclaimedStack(t, ecsContainer)); n > 0 {
-			stops = append(stops, JobStop{Action: Stop_PickUp, Tile: t, Kind: stack.Kind, Count: n})
+			stops = append(stops, JobStop{Action: Stop_PickUp, Tile: t, Kind: stack.Kind, Amount: n})
 			lacking[stack.Kind] -= n
 		}
 	}
@@ -1260,12 +1260,12 @@ func (p *InputColonistParams) use(e common.EntityId, self utils.Vec2i, target ut
 	stop := p.Stops[0]
 	switch stop.Action {
 	case Stop_PickUp:
-		input.PickUp = ecs.ItemPickUp{PickUp: true, Tile: stop.Tile, Count: stop.Count}
+		input.PickUp = ecs.ItemPickUp{PickUp: true, Tile: stop.Tile, Amount: stop.Amount}
 		p.Acted = true
 		return input
 	case Stop_PutDown:
-		slot, count := p.putDownFrom(e, stop, ecsContainer)
-		input.PutDown = ecs.ItemPutDown{PutDown: true, From: slot, Count: count, Tile: stop.Tile}
+		slot, amount := p.putDownFrom(e, stop, ecsContainer)
+		input.PutDown = ecs.ItemPutDown{PutDown: true, From: slot, Amount: amount, Tile: stop.Tile}
 		p.Acted = true
 		return input
 	case Stop_MoveOff:
@@ -1394,7 +1394,7 @@ func carried(e common.EntityId, kind data.ItemEnum, ecsContainer *ecs.ECSContain
 	for i := range inv.Capacity() {
 		if item, ok := inv.Slot(i); ok {
 			if comp, ok := ecsContainer.Items.Get(item); ok && comp.Kind() == kind {
-				n += comp.Count()
+				n += comp.Amount()
 			}
 		}
 	}

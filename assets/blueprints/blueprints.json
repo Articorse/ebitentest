@@ -4,7 +4,7 @@
     "name": "Wooden wall",
     "tile": 6,
     "imageAsset": "tile_planks",
-    "costs": [{ "kind": 1, "count": 2 }],
+    "costs": [{ "kind": 1, "grams": 2000 }],
     "work": 10
   },
   {
@@ -13,7 +13,7 @@
     "feature": 4,
     "imageAsset": "tile_planks",
     "ghost": { "asset": "wood_door", "frame": 0 },
-    "costs": [{ "kind": 1, "count": 5 }],
+    "costs": [{ "kind": 1, "grams": 5000 }],
     "work": 20
   }
 ]

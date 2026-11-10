@@ -11,10 +11,10 @@ import (
 	"testing"
 )
 
-func looseWood(t *testing.T, s *testutil.Session, tile utils.Vec2i, count int) {
+func looseWood(t *testing.T, s *testutil.Session, tile utils.Vec2i, mg int) {
 	t.Helper()
-	if laid := s.ECS.LayDownKind(data.Item_Wood, count, tile); laid != count {
-		t.Fatalf("laid down %d of %d wood on %v", laid, count, tile)
+	if laid := s.ECS.LayDownKind(data.Item_Wood, mg, tile); laid != mg {
+		t.Fatalf("laid down %d of %d mg of wood on %v", laid, mg, tile)
 	}
 	if kind, _ := onGround(s, tile); kind != data.Item_Wood {
 		t.Fatalf("the wood didn't go on %v", tile)
@@ -27,7 +27,8 @@ func withoutWood(t *testing.T, s *testutil.Session, colonist common.EntityId) {
 	for woodCarried(s, colonist) > 0 {
 		inv, _ := s.ECS.Inventories.Get(colonist)
 		wood, _ := inv.Slot(0)
-		if err := s.ECS.ConsumeItem(wood); err != nil {
+		comp, _ := s.ECS.Items.Get(wood)
+		if err := s.ECS.UseUp(wood, comp.Amount()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -40,13 +41,13 @@ func TestAColonistGathersWoodLyingOnTheHarvestAreaButNotElsewhere(t *testing.T) 
 	b := groundAway(t, s, colonist, 8, a)
 	off := groundAway(t, s, colonist, 6, a, b)
 	harvest(s, a, b)
-	looseWood(t, s, a, 4)
-	looseWood(t, s, b, 2)
-	looseWood(t, s, off, 5)
+	looseWood(t, s, a, 4*kg)
+	looseWood(t, s, b, 2*kg)
+	looseWood(t, s, off, 5*kg)
 	withoutWood(t, s, colonist)
 
 	before := woodCarried(s, colonist)
-	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == before+6 }) {
+	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == before+6*kg }) {
 		t.Fatalf("the colonist carries %d wood, want the 6 on the harvest area added to its %d", woodCarried(s, colonist), before)
 	}
 	for _, tile := range []utils.Vec2i{a, b} {
@@ -55,7 +56,7 @@ func TestAColonistGathersWoodLyingOnTheHarvestAreaButNotElsewhere(t *testing.T) 
 		}
 	}
 	live(t, s, 5*data.TPS, func() bool { return false })
-	if _, n := onGround(s, off); n != 5 || colonistState(s, colonist) != inputsources.Colonist_Idle {
+	if _, n := onGround(s, off); n != 5*kg || colonistState(s, colonist) != inputsources.Colonist_Idle {
 		t.Fatalf("the colonist went for wood off the harvest area, it's %v", colonistState(s, colonist))
 	}
 
@@ -72,7 +73,7 @@ func TestGatheringComesAfterDeliveringAndBeforeFellingAsFarAway(t *testing.T) {
 	tree := treeAway(t, s, colonist, 8)
 	lying := groundAway(t, s, colonist, 8, tree)
 	harvest(s, tree, lying)
-	looseWood(t, s, lying, 4)
+	looseWood(t, s, lying, 4*kg)
 	site := groundAway(t, s, colonist, 8, tree, lying)
 	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 
@@ -95,8 +96,8 @@ func TestWhatLiesOnTheGroundIsOnlyPickedUpFromWithinReachAndSight(t *testing.T) 
 	testutil.SetPos(t, s.ECS, colonist, utils.TilePosToWorldPos(row))
 	near := utils.Vec2i{X: row.X + data.ItemReachTiles, Y: row.Y}
 	far := utils.Vec2i{X: row.X + data.ItemReachTiles + 1, Y: row.Y}
-	looseWood(t, s, near, 1)
-	looseWood(t, s, far, 1)
+	looseWood(t, s, near, 1*kg)
+	looseWood(t, s, far, 1*kg)
 	before := woodCarried(s, colonist)
 
 	for _, tile := range []utils.Vec2i{far, near} {
@@ -109,7 +110,7 @@ func TestWhatLiesOnTheGroundIsOnlyPickedUpFromWithinReachAndSight(t *testing.T) 
 	if _, ok := s.Chunks.GroundStack(far); !ok {
 		t.Fatal("wood out of reach was picked up")
 	}
-	if _, ok := s.Chunks.GroundStack(near); ok || woodCarried(s, colonist) != before+1 {
+	if _, ok := s.Chunks.GroundStack(near); ok || woodCarried(s, colonist) != before+1*kg {
 		t.Fatal("wood in reach wasn't picked up")
 	}
 }

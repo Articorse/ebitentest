@@ -46,7 +46,7 @@ func TestAfterFellingATreeAColonistGathersWhatLiesAroundItBeforeBuilding(t *test
 
 	lying := groundNear(t, s, tree, data.ColonistFollowUpRangeTiles)
 	harvest(s, lying)
-	looseWood(t, s, lying, 3)
+	looseWood(t, s, lying, 3*kg)
 	site := groundAway(t, s, colonist, 3, tree, lying)
 	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	s.Chunks.DeliverToSite(site, data.Item_Wood, wallCost(t))
@@ -67,15 +67,15 @@ func TestAColonistGathersTheStacksAroundTheFirstInOneGo(t *testing.T) {
 	stacks := []utils.Vec2i{row, {X: row.X + 1, Y: row.Y}, {X: row.X + 3, Y: row.Y}}
 	harvest(s, stacks...)
 	for _, tile := range stacks {
-		looseWood(t, s, tile, 4)
+		looseWood(t, s, tile, 4*kg)
 	}
 	r := data.ColonistGatherRangeTiles
 	if corner := (utils.Vec2i{X: row.X + r, Y: row.Y + r}); s.Chunks.CanPlaceSite(corner) {
 		harvest(s, corner)
-		looseWood(t, s, corner, 1)
+		looseWood(t, s, corner, 1*kg)
 	} else if corner := (utils.Vec2i{X: row.X + r, Y: row.Y - r}); s.Chunks.CanPlaceSite(corner) {
 		harvest(s, corner)
-		looseWood(t, s, corner, 1)
+		looseWood(t, s, corner, 1*kg)
 	} else {
 		t.Fatal("there's no open ground diagonally out of gathering range")
 	}
@@ -85,7 +85,7 @@ func TestAColonistGathersTheStacksAroundTheFirstInOneGo(t *testing.T) {
 	if job.State != inputsources.Colonist_Gather || len(job.Stops) != 3 {
 		t.Fatalf("the colonist is on %v, want picking up all three stacks", job.Stops)
 	}
-	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == 12 }) {
+	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == 12*kg }) {
 		t.Fatalf("the colonist carries %d wood, want all 12", woodCarried(s, colonist))
 	}
 }
@@ -94,7 +94,7 @@ func TestAColonistOnlyGathersAsManyStacksAsItCanCarry(t *testing.T) {
 	s, _, colonist := colonistAtWork(t)
 	withoutWood(t, s, colonist)
 	row := openRow(t, s, colonist, 3)
-	fits := (data.ColonistMaxCarryWeight - s.ECS.CarriedWeight(colonist)) / 2
+	fits := data.ColonistMaxCarryMg - s.ECS.CarriedMass(colonist)
 	stacks := []utils.Vec2i{row, {X: row.X + 1, Y: row.Y}, {X: row.X + 2, Y: row.Y}}
 	harvest(s, stacks...)
 	for _, tile := range stacks {
@@ -105,7 +105,7 @@ func TestAColonistOnlyGathersAsManyStacksAsItCanCarry(t *testing.T) {
 	job := colonistJob(s, colonist)
 	total := 0
 	for _, stop := range job.Stops {
-		total += stop.Count
+		total += stop.Amount
 	}
 	if len(job.Stops) != 2 || total != fits {
 		t.Fatalf("the colonist is on %v, want picking up the %d it can carry off two stacks", job.Stops, fits)
@@ -119,7 +119,7 @@ func TestAfterGatheringAColonistPutsItAwayBeforeFelling(t *testing.T) {
 	markStorage(t, s, false, tile)
 	lying := groundAway(t, s, colonist, 4, tile)
 	harvest(s, lying)
-	looseWood(t, s, lying, 4)
+	looseWood(t, s, lying, 4*kg)
 	live(t, s, 1, func() bool { return false })
 	if colonistState(s, colonist) != inputsources.Colonist_Gather {
 		t.Fatalf("the colonist didn't go to gather, it's %v", colonistState(s, colonist))
@@ -192,7 +192,7 @@ func TestOnlyTheSiteJustSuppliedIsBuiltAsWhatFollows(t *testing.T) {
 
 	lying := groundAway(t, s, colonist, 2, site)
 	harvest(s, lying)
-	looseWood(t, s, lying, 2)
+	looseWood(t, s, lying, 2*kg)
 	ready := groundAway(t, s, colonist, 13, site, lying)
 	s.Chunks.PlaceSite(ready, data.Blueprint_WoodWall)
 	s.Chunks.DeliverToSite(ready, data.Item_Wood, wallCost(t))
@@ -248,7 +248,7 @@ func TestAColonistRemembersWhatItLastDidWhileIdle(t *testing.T) {
 
 	lying := groundNear(t, s, tree, data.ColonistFollowUpRangeTiles)
 	harvest(s, lying)
-	looseWood(t, s, lying, 2)
+	looseWood(t, s, lying, 2*kg)
 	site := groundAway(t, s, colonist, 4, tree, lying)
 	s.Chunks.PlaceSite(site, data.Blueprint_WoodWall)
 	s.Chunks.DeliverToSite(site, data.Item_Wood, wallCost(t))

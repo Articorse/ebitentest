@@ -46,7 +46,7 @@ func stored(s *testutil.Session, kind data.ItemEnum, first, last utils.Vec2i) in
 	n := 0
 	for _, t := range s.Chunks.AreaTiles(data.Area_Storage, first, last) {
 		if stack, ok := s.Chunks.GroundStack(t); ok && stack.Unique == nil && stack.Kind == kind {
-			n += stack.Count
+			n += stack.Amount
 		}
 	}
 	return n
@@ -96,13 +96,13 @@ func TestErasingStorageTakesItOffJustThoseTilesAndLeavesWhatLiesThere(t *testing
 	first := storageSpot(t, s, colonist, 6, 3, 1)
 	tiles := rect(first, utils.Vec2i{X: first.X + 2, Y: first.Y})
 	markStorage(t, s, false, tiles...)
-	s.ECS.LayDownKind(data.Item_Wood, 5, tiles[1])
+	s.ECS.LayDownKind(data.Item_Wood, 5*kg, tiles[1])
 
 	markStorage(t, s, true, tiles[1])
 	if s.Chunks.InArea(data.Area_Storage, tiles[1]) || !s.Chunks.InArea(data.Area_Storage, tiles[0]) || !s.Chunks.InArea(data.Area_Storage, tiles[2]) {
 		t.Fatal("erasing the middle of storage didn't take just it off")
 	}
-	if kind, n := onGround(s, tiles[1]); kind != data.Item_Wood || n != 5 {
+	if kind, n := onGround(s, tiles[1]); kind != data.Item_Wood || n != 5*kg {
 		t.Fatal("erasing storage took away what lay on it")
 	}
 }
@@ -158,13 +158,13 @@ func TestAColonistPutsAwayWithWhatsAlreadyThereBeforeUsingEmptyStorage(t *testin
 	first := storageSpot(t, s, colonist, 10, 3, 1)
 	last := utils.Vec2i{X: first.X + 2, Y: first.Y}
 	markStorage(t, s, false, rect(first, last)...)
-	s.ECS.LayDownKind(data.Item_Wood, 50, last)
+	s.ECS.LayDownKind(data.Item_Wood, 50*kg, last)
 	before := woodCarried(s, colonist)
 
 	if !live(t, s, 20*data.TPS, func() bool { return woodCarried(s, colonist) == 0 }) {
 		t.Fatalf("the colonist didn't put its wood away, it's %v", colonistState(s, colonist))
 	}
-	if _, n := onGround(s, last); n != 50+before || len(s.Chunks.GroundStacksIn(first, last)) != 1 {
+	if _, n := onGround(s, last); n != 50*kg+before || len(s.Chunks.GroundStacksIn(first, last)) != 1 {
 		t.Fatalf("the stack already on storage holds %d, want the colonist's %d added to its 50", n, before)
 	}
 }
@@ -190,14 +190,14 @@ func TestGatheringLeavesWhatsOnStorage(t *testing.T) {
 	tile := storageSpot(t, s, colonist, 5, 1, 1)
 	harvest(s, tile)
 	markStorage(t, s, false, tile)
-	s.ECS.LayDownKind(data.Item_Wood, 7, tile)
+	s.ECS.LayDownKind(data.Item_Wood, 7*kg, tile)
 	inv, _ := s.ECS.Inventories.Get(colonist)
 	wood, _ := inv.Slot(0)
 	s.ECS.ScheduleRemoveEntity(wood)
 	testutil.RemoveScheduled(t, s.ECS)
 
 	live(t, s, 5*data.TPS, func() bool { return false })
-	if _, n := onGround(s, tile); n != 7 {
+	if _, n := onGround(s, tile); n != 7*kg {
 		t.Fatal("the colonist gathered what was put away on storage")
 	}
 }
@@ -211,7 +211,7 @@ func TestPuttingDownOnlyGoesOnTheTileAskedForWithinReach(t *testing.T) {
 	before := woodCarried(s, colonist)
 
 	for _, tile := range []utils.Vec2i{far, other, near} {
-		handleInput(t, s, colonist, ecs.InputState{PutDown: ecs.ItemPutDown{PutDown: true, From: 0, Count: 3, Tile: tile}})
+		handleInput(t, s, colonist, ecs.InputState{PutDown: ecs.ItemPutDown{PutDown: true, From: 0, Amount: 3 * kg, Tile: tile}})
 	}
 	if _, ok := s.Chunks.GroundStack(far); ok {
 		t.Fatal("wood was put down out of reach")
@@ -219,8 +219,8 @@ func TestPuttingDownOnlyGoesOnTheTileAskedForWithinReach(t *testing.T) {
 	if kind, _ := onGround(s, other); kind != data.Item_Torch {
 		t.Fatal("wood was put down on a torch")
 	}
-	if kind, n := onGround(s, near); kind != data.Item_Wood || n != 3 || woodCarried(s, colonist) != before-3 {
-		t.Fatalf("putting down 3 wood in reach left %d of %v there and %d carried", n, kind, woodCarried(s, colonist))
+	if kind, n := onGround(s, near); kind != data.Item_Wood || n != 3*kg || woodCarried(s, colonist) != before-3*kg {
+		t.Fatalf("putting down 3 kg of wood in reach left %d mg of %v there and %d carried", n, kind, woodCarried(s, colonist))
 	}
 	if len(s.Chunks.GroundStacksIn(utils.Vec2i{X: row.X - 1, Y: row.Y - 1}, utils.Vec2i{X: far.X + 1, Y: row.Y + 1})) != 2 {
 		t.Fatal("putting down spilled onto other tiles")

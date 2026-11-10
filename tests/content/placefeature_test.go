@@ -89,8 +89,8 @@ func TestTorchesArePlacedOnFreeGroundInReachAndSightEvenUnderSomeone(t *testing.
 			left = 1
 		}
 		used := strike(t, x, holder, c.aim)
-		if item, _ := x.Items.Get(stack); used != c.placed || !maps.Equal(terrain.placedFeatures, want) || item.Count() != left {
-			t.Errorf("%s: placing used %v, placed %v and left %d torches; want %v and %d", c.name, used, terrain.placedFeatures, item.Count(), want, left)
+		if item, _ := x.Items.Get(stack); used != c.placed || !maps.Equal(terrain.placedFeatures, want) || item.Amount() != left {
+			t.Errorf("%s: placing used %v, placed %v and left %d torches; want %v and %d", c.name, used, terrain.placedFeatures, item.Amount(), want, left)
 		}
 		if len(terrain.placed) != 0 {
 			t.Errorf("%s: a torch placed tiles %v", c.name, terrain.placed)
@@ -113,8 +113,8 @@ func TestEachPlacementUsesUpATorchAndTheLastEmptiesTheSlot(t *testing.T) {
 	if !strike(t, x, holder, utils.Vec2i{X: 1}) {
 		t.Fatal("the first torch wasn't placed")
 	}
-	if item, _ := x.Items.Get(stack); item.Count() != 1 {
-		t.Fatalf("%d torches are left after placing one of 2, want 1", item.Count())
+	if item, _ := x.Items.Get(stack); item.Amount() != 1 {
+		t.Fatalf("%d torches are left after placing one of 2, want 1", item.Amount())
 	}
 
 	tick(240)
