@@ -37,4 +37,10 @@ const (
 	// What can still be breathed, for where to get to when there's no safe air to get to
 	BreathableOxygenMg        = 100 * MilligramsPerGram
 	BreathableCarbonDioxideMg = 500 * MilligramsPerGram
+	// Inside anything with air sealed in it, until heat passes through what it's made of
+	SealedAirCelsius = 20
+	// A spacesuit holds as much air as 10 tiles, so that its 10 kg of oxygen is a tile's worth of air at about Earthlike
+	// pressure
+	SpacesuitAirTiles = 10
+	SpacesuitOxygenMg = 10 * MilligramsPerKg
 )

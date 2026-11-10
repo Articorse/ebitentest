@@ -4,9 +4,16 @@ import (
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
+	"ebittest/utils"
 	"fmt"
 	"strings"
 )
+
+// What's in it in all, such as "Holding 8.2kg O2, 1.8kg CO2"
+func SealedAirText(sealed *ecs.SealedAir) string {
+	air := sealed.Contents()
+	return fmt.Sprintf("Holding %s O2, %s CO2", utils.FormatMass(int(air[data.Gas_Oxygen])), utils.FormatMass(int(air[data.Gas_CarbonDioxide])))
+}
 
 // Each part's health, then each capacity's efficiency in whole percent
 func BodyStatusText(e common.EntityId, ecsContainer *ecs.ECSContainer) (string, error) {
@@ -26,16 +33,18 @@ func BodyStatusText(e common.EntityId, ecsContainer *ecs.ECSContainer) (string, 
 		lines = append(lines, fmt.Sprintf("%s %d%%", c.Name, c.Efficiency*100/data.FullEfficiency))
 	}
 	if air, ok := ecsContainer.AirOf(e); ok && ecsContainer.OxygenPerSecond(e) > 0 {
-		pos, err := ecsContainer.WorldPos(e)
+		temperature, err := ecsContainer.AirTemperatureOf(e)
 		if err != nil {
 			return "", err
 		}
-		temperature := ecsContainer.Terrain().AirTemperature(ecsContainer.AirTile(pos))
 		lines = append(lines, "",
 			fmt.Sprintf("Air %.1f C, %d g per tile", temperature.Celsius(), air.Total()/data.MilligramsPerGram),
 			fmt.Sprintf("Breathing %d g O2, %d g CO2", air[data.Gas_Oxygen]/data.MilligramsPerGram, air[data.Gas_CarbonDioxide]/data.MilligramsPerGram))
 		if !ecs.SafeAir(air) {
 			lines = append(lines, "Bad air")
+		}
+		if sealed, ok := ecsContainer.WornSealedAir(e); ok {
+			lines = append(lines, SealedAirText(sealed))
 		}
 	}
 	if conditions := ecsContainer.Conditions(e); len(conditions) > 0 {

@@ -367,6 +367,9 @@ func EquipSlotTooltip(owner common.EntityId, slot ecs.EquipSlotEnum, ecsContaine
 		if itemComp, ok := ecsContainer.Items.Get(item); ok {
 			lines = append(lines, ecsContainer.ItemName(itemComp))
 		}
+		if sealed, ok := ecsContainer.SealedAirs.Get(item); ok {
+			lines = append(lines, SealedAirText(sealed))
+		}
 	}
 	return lines
 }

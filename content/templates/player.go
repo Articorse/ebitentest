@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"ebittest/climate"
 	"ebittest/content/abilities"
 	"ebittest/content/timerfuncs"
 	"ebittest/data"
@@ -294,6 +295,7 @@ func spawnSpacesuit(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Ent
 		sprComp,
 		ecs.NewWornEquipmentComponent(ecs.Equipable_Torso, []data.BodyEnum{data.Body_Humanoid}, common.AssetSheetSlimeSpacesuit),
 		ecs.NewNamedItemComponent("Spacesuit", 10*data.MilligramsPerKg),
+		ecs.NewSealedAirComponent(climate.Air{data.Gas_Oxygen: data.SpacesuitOxygenMg}, data.SpacesuitAirTiles),
 		ecs.NewPersistentComponent(),
 	)
 }

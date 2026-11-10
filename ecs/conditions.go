@@ -176,11 +176,10 @@ func (x *ECSContainer) tickConditions(e common.EntityId) (dead bool) {
 	if !ok {
 		return false
 	}
-	pos, err := x.WorldPos(e)
+	temperature, err := x.AirTemperatureOf(e)
 	if err != nil {
 		return false
 	}
-	temperature := x.terrain.AirTemperature(x.AirTile(pos))
 	breathes := def.oxygenMgPerSecond > 0
 	causes := map[conditionCause]int64{
 		cause_Oxygen: air[data.Gas_Oxygen], cause_CarbonDioxide: air[data.Gas_CarbonDioxide],

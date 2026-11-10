@@ -2,6 +2,7 @@ package systems_test
 
 import (
 	"bytes"
+	"ebittest/climate"
 	"ebittest/content/templates"
 	"ebittest/data"
 	"ebittest/ecs"
@@ -47,6 +48,9 @@ func TestThePlayerStartsWithASpacesuitThatIsntWorn(t *testing.T) {
 	}
 	if item, _ := x.Items.Get(suit); x.ItemMass(item) != 10*data.MilligramsPerKg {
 		t.Fatalf("the spacesuit weighs %d mg, want 10 kg", x.ItemMass(item))
+	}
+	if sealed, ok := x.SealedAirs.Get(suit); !ok || sealed.Contents() != (climate.Air{data.Gas_Oxygen: 10 * data.MilligramsPerKg}) {
+		t.Fatal("the spacesuit doesn't start out holding 10 kg of oxygen and nothing else")
 	}
 }
 
@@ -288,7 +292,7 @@ func TestAnEquipmentSlotsTooltipHasItsNameAndWhatsInIt(t *testing.T) {
 		t.Fatalf("the empty torso's tooltip is %v", got)
 	}
 	act(t, x, player, ecs.InventoryAction_Wear, suitSlot, int(ecs.Equip_Torso))
-	if got := drawsystem.EquipSlotTooltip(player, ecs.Equip_Torso, x); !slices.Equal(got, []string{"Torso", "Spacesuit"}) {
+	if got := drawsystem.EquipSlotTooltip(player, ecs.Equip_Torso, x); !slices.Equal(got, []string{"Torso", "Spacesuit", "Holding 10kg O2, 0mg CO2"}) {
 		t.Fatalf("the worn torso's tooltip is %v", got)
 	}
 	if got := drawsystem.EquipSlotTooltip(player, ecs.Equip_MainHand, x); !slices.Equal(got, []string{"Main hand", "Mattock"}) {
@@ -328,5 +332,27 @@ func TestTheOffHandHoldsAToolBesideTheMainHandReadyToUse(t *testing.T) {
 	act(t, x, player, ecs.InventoryAction_TakeOff, 0, int(ecs.Equip_OffHand))
 	if worn(x, player, ecs.Equip_OffHand) != -1 || !x.IsDisabled(axe) {
 		t.Fatal("the axe taken out of the off hand is still held out")
+	}
+}
+
+func TestAirSealedInWhatsHeldIsntBreathed(t *testing.T) {
+	x, player, _, _, _ := newArmedPlayer(t)
+	tank := testutil.AddMovable(t, x, utils.Vec2f{}, false,
+		ecs.NewEquipmentComponent(ecs.Equipable_MainHand, [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}),
+		ecs.NewNamedItemComponent("Tank", data.MilligramsPerKg),
+		ecs.NewSealedAirComponent(climate.Air{data.Gas_Oxygen: data.MilligramsPerKg}, 1),
+	)
+	inv, _ := x.Inventories.Get(player)
+	if err := x.PutInInventory(player, inv.FirstFreeSlot(), tank); err != nil {
+		t.Fatal(err)
+	}
+	if err := x.BindHotbar(player, 0, tank); err != nil {
+		t.Fatal(err)
+	}
+	if inHand(x, player) != tank {
+		t.Fatal("the tank isn't in hand")
+	}
+	if _, ok := x.WornSealedAir(player); ok {
+		t.Fatal("the air in the tank in hand is breathed")
 	}
 }

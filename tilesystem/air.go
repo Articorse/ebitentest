@@ -283,12 +283,13 @@ func roundToGrams(mg int64) int64 {
 }
 
 // What breathes in a room takes a step's worth of oxygen from its air, or what there is, and gives as much back as
-// carbon dioxide. The outdoors' air is the planet's, which nothing changes.
+// carbon dioxide. The outdoors' air is the planet's, which nothing changes. What wears air sealed in something breathes
+// that instead, wherever it is.
 func (cc *ChunkContainer) breathe(x *ecs.ECSContainer) {
 	for _, e := range slices.Sorted(maps.Keys(maps.Collect(ecs.Query1(&x.Bodies, ecs.Without(&x.Disabled))))) {
 		perSecond := x.OxygenPerSecond(e)
 		pos, err := x.WorldPos(e)
-		if perSecond == 0 || err != nil {
+		if perSecond == 0 || err != nil || x.BreatheSealedAir(e, perSecond*data.AirStepTicks/data.TPS) {
 			continue
 		}
 		id, ok := cc.roomOf(x.AirTile(pos))

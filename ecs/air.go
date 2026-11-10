@@ -34,8 +34,12 @@ func (x *ECSContainer) AirTile(pos utils.Vec2f) utils.Vec2i {
 	return t
 }
 
-// The air per tile the entity breathes, false where there's none
+// The air per tile the entity breathes, which is what it wears that has air sealed in it if it does, false where there's
+// none
 func (x *ECSContainer) AirOf(e common.EntityId) (climate.Air, bool) {
+	if sealed, ok := x.WornSealedAir(e); ok {
+		return sealed.PerTile(), true
+	}
 	pos, err := x.WorldPos(e)
 	if err != nil {
 		return climate.Air{}, false
