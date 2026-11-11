@@ -42,6 +42,8 @@ type featureDef struct {
 	opaque bool
 	// Nil for anything but a door
 	door *doorDef
+	// Only for doors, which take heat on and pass it on like walls
+	thermal *thermalDef
 }
 
 // A door is one of four features of its kind, one for each way it can face, open and closed, which it's swapped
@@ -67,6 +69,7 @@ type featureDefDTO struct {
 	Harvestable   bool             `json:"harvestable"`
 	Opaque        bool             `json:"opaque"`
 	Door          *featureDoorDTO  `json:"door"`
+	Thermal       *thermalDTO      `json:"thermal"`
 }
 
 type featureDoorDTO struct {
@@ -171,6 +174,12 @@ func (cc *ChunkContainer) GenerateFeatureAtlasFromJson(input string, items *ecs.
 		def.opaque = dto.Opaque
 		if d := dto.Door; d != nil {
 			def.door = &doorDef{kind: d.Kind, vertical: d.Vertical, open: d.Open}
+		}
+		if def.thermal, err = thermalFromDto(dto.Thermal); err != nil {
+			return fmt.Errorf("feature %d's heat: %w", dto.Id, err)
+		}
+		if def.thermal != nil && def.door == nil {
+			return fmt.Errorf("feature %d keeps heat, but only doors do", dto.Id)
 		}
 
 		defs[data.FeatureEnum(dto.Id)] = def

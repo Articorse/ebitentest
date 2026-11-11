@@ -43,7 +43,8 @@
     "maxHealth": 50,
     "destroyedInto": 0,
     "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 5000 }] }],
-    "door": { "kind": "wood", "vertical": false, "open": false }
+    "door": { "kind": "wood", "vertical": false, "open": false },
+    "thermal": { "specificHeat": 1.7, "conductance": 0.5, "grams": 5000 }
   },
   {
     "id": 5,
@@ -53,7 +54,8 @@
     "maxHealth": 50,
     "destroyedInto": 0,
     "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 5000 }] }],
-    "door": { "kind": "wood", "vertical": false, "open": true }
+    "door": { "kind": "wood", "vertical": false, "open": true },
+    "thermal": { "specificHeat": 1.7, "conductance": 0.5, "grams": 5000 }
   },
   {
     "id": 6,
@@ -65,7 +67,8 @@
     "maxHealth": 50,
     "destroyedInto": 0,
     "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 5000 }] }],
-    "door": { "kind": "wood", "vertical": true, "open": false }
+    "door": { "kind": "wood", "vertical": true, "open": false },
+    "thermal": { "specificHeat": 1.7, "conductance": 0.5, "grams": 5000 }
   },
   {
     "id": 7,
@@ -75,6 +78,7 @@
     "maxHealth": 50,
     "destroyedInto": 0,
     "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 5000 }] }],
-    "door": { "kind": "wood", "vertical": true, "open": true }
+    "door": { "kind": "wood", "vertical": true, "open": true },
+    "thermal": { "specificHeat": 1.7, "conductance": 0.5, "grams": 5000 }
   }
 ]

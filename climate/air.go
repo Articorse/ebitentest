@@ -25,6 +25,11 @@ type Gas struct {
 	// Below it, it drops out of the air as its item, which turns back into it above it
 	Condense Centicelsius
 	Item     data.ItemEnum
+	// In mJ per gram per degree
+	SpecificHeat int64
+	// In mW per degree across an edge between tiles, with a kilogram of it on the tile, and in proportion to how much
+	// of it there is, so that thin air barely passes heat on and none passes none
+	Conductance int64
 }
 
 type gasDto struct {
@@ -32,6 +37,10 @@ type gasDto struct {
 	Name            string  `json:"name"`
 	CondenseCelsius float64 `json:"condenseCelsius"`
 	Item            uint16  `json:"item"`
+	// In J per gram per degree
+	SpecificHeat float64 `json:"specificHeat"`
+	// In W per degree
+	Conductance float64 `json:"conductance"`
 }
 
 func LoadGasesFromJson(path string) (map[data.GasEnum]Gas, error) {
@@ -55,10 +64,14 @@ func LoadGasesFromJson(path string) (map[data.GasEnum]Gas, error) {
 			return nil, fmt.Errorf("gas id %d is defined twice", d.Id)
 		case d.Item == uint16(data.Item_None):
 			return nil, fmt.Errorf("gas %d has no item to drop out of the air as", d.Id)
+		case d.SpecificHeat <= 0 || d.Conductance < 0:
+			return nil, fmt.Errorf("gas %d takes %v J per gram per degree and passes %v W per degree on, want the first positive and the second not negative", d.Id, d.SpecificHeat, d.Conductance)
 		}
 		gases[id] = Gas{
 			Id: id, Name: d.Name, Condense: Centicelsius(math.Round(d.CondenseCelsius * 100)),
-			Item: data.ItemEnum(d.Item),
+			Item:         data.ItemEnum(d.Item),
+			SpecificHeat: int64(math.Round(d.SpecificHeat * 1000)),
+			Conductance:  int64(math.Round(d.Conductance * 1000)),
 		}
 	}
 	return gases, nil

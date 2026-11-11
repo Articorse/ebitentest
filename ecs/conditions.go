@@ -196,6 +196,10 @@ func (x *ECSContainer) tickConditions(e common.EntityId) (dead bool) {
 		}
 		c, has := body.conditions[id]
 		worse := cdef.worsening(causes[cdef.cause])
+		// A vacuum has no temperature to feel
+		if cdef.cause == cause_Temperature && air.Total() == 0 {
+			worse = 0
+		}
 		if !has && worse == 0 {
 			continue
 		}

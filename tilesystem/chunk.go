@@ -44,6 +44,8 @@ type chunk struct {
 	ground map[utils.Vec2i]ecs.GroundStack
 	// Only for roofs being built or taken down
 	roofWork map[utils.Vec2i]roofWork
+	// Only for the walls and doors heat is worked out for, next to a room or behind one that is
+	solidHeat map[utils.Vec2i]*heat
 	// Nil until it's asked for after a wall or door comes or goes
 	pieces *chunkPieces
 	// The room each piece is in, 0 for none, as of when the rooms were last worked out
@@ -65,6 +67,7 @@ func (cc *ChunkContainer) newChunkData(pos utils.Vec2i) (*chunk, error) {
 	c.ground = make(map[utils.Vec2i]ecs.GroundStack)
 	c.doorFactions = make(map[utils.Vec2i]data.FactionEnum)
 	c.roofWork = make(map[utils.Vec2i]roofWork)
+	c.solidHeat = make(map[utils.Vec2i]*heat)
 
 	return &c, nil
 }

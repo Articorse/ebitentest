@@ -258,10 +258,13 @@ func (cc *ChunkContainer) AirTemperature(t utils.Vec2i) climate.Centicelsius {
 	return cc.AmbientTemperature(t, cc.tick)
 }
 
-// The air on the tile, its temperature and what it's made of, for the debug tooltip
+// The air on the tile, its temperature and what it's made of, or a wall or door's temperature, for the debug tooltip
 func (cc *ChunkContainer) AirDebugLines(t utils.Vec2i) []string {
 	air, ok := cc.AirAt(t)
 	if !ok {
+		if temperature, ok := cc.TemperatureAt(t); ok {
+			return []string{fmt.Sprintf("%.1f °C", temperature.Celsius())}
+		}
 		return nil
 	}
 	temperature := cc.AirTemperature(t)

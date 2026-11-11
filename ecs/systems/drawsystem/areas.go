@@ -2,6 +2,7 @@ package drawsystem
 
 import (
 	"ebittest/assetmanager"
+	"ebittest/climate"
 	"ebittest/data"
 	"ebittest/ecs"
 	"ebittest/ecs/common"
@@ -199,14 +200,28 @@ func fillTiles(dst *ebiten.Image, camera utils.Vec2f, first, last utils.Vec2i, c
 
 // Over every tile with air, from red with little oxygen per tile, through yellow, to green with plenty
 func DrawOxygen(dst *ebiten.Image, camera utils.Vec2f, oxygenAt func(utils.Vec2i) (int64, bool)) {
-	first, last := utils.WorldPosToTilePos(camera), utils.WorldPosToTilePos(camera.Add(ImageSize(dst)))
-	shade := func(t utils.Vec2i) (color.RGBA, bool) {
+	drawTileShades(dst, camera, func(t utils.Vec2i) (color.RGBA, bool) {
 		mg, ok := oxygenAt(t)
 		if !ok {
 			return color.RGBA{}, false
 		}
 		return OxygenColor(mg), true
-	}
+	})
+}
+
+// Over every tile with a temperature, from blue where it's cold, through green, to red where it's hot
+func DrawTemperature(dst *ebiten.Image, camera utils.Vec2f, temperatureAt func(utils.Vec2i) (climate.Centicelsius, bool)) {
+	drawTileShades(dst, camera, func(t utils.Vec2i) (color.RGBA, bool) {
+		c, ok := temperatureAt(t)
+		if !ok {
+			return color.RGBA{}, false
+		}
+		return TemperatureColor(c), true
+	})
+}
+
+func drawTileShades(dst *ebiten.Image, camera utils.Vec2f, shade func(utils.Vec2i) (color.RGBA, bool)) {
+	first, last := utils.WorldPosToTilePos(camera), utils.WorldPosToTilePos(camera.Add(ImageSize(dst)))
 	for y := first.Y; y <= last.Y; y++ {
 		// Runs of a colour along the row are drawn as one rectangle, which is far fewer to draw
 		for x := first.X; x <= last.X; x++ {
@@ -226,6 +241,26 @@ func DrawOxygen(dst *ebiten.Image, camera utils.Vec2f, oxygenAt func(utils.Vec2i
 			x = end
 		}
 	}
+}
+
+// Premultiplied, in steps, so that tiles alike draw as one: blue from data.OverlayColdCelsius down, green at
+// data.OverlayMildCelsius and red from data.OverlayHotCelsius up
+func TemperatureColor(c climate.Centicelsius) color.RGBA {
+	const steps = 8
+	celsius := c.Celsius()
+	f := 0.5 * (celsius - data.OverlayColdCelsius) / (data.OverlayMildCelsius - data.OverlayColdCelsius)
+	if celsius > data.OverlayMildCelsius {
+		f = 0.5 + 0.5*(celsius-data.OverlayMildCelsius)/(data.OverlayHotCelsius-data.OverlayMildCelsius)
+	}
+	f = math.Round(max(0, min(1, f))*steps) / steps
+	r, g, b := 0.0, 0.0, 0.0
+	if f < 0.5 {
+		g, b = 2*f, 1-2*f
+	} else {
+		r, g = 2*f-1, 2-2*f
+	}
+	a := float64(data.OverlayOxygenAlpha)
+	return color.RGBA{R: uint8(r * a), G: uint8(g * a), B: uint8(b * a), A: uint8(a)}
 }
 
 // Premultiplied, in steps, so that tiles alike draw as one

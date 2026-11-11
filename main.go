@@ -88,6 +88,7 @@ type game struct {
 	showChunks    bool
 	showBody      bool
 	showOxygen    bool
+	showHeat      bool
 	showPaths     bool
 	touching      touchingColliders
 	// Only drawn without light and fog, so that the simulation, what's remembered included, plays out the same
@@ -288,6 +289,9 @@ func (g *game) Update() error {
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyO) {
 		g.showOxygen = !g.showOxygen
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyT) {
+		g.showHeat = !g.showHeat
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF7) {
 		g.ecs.SetUntargetable(g.playerEntity, !g.ecs.IsUntargetable(g.playerEntity))
@@ -1032,6 +1036,9 @@ func (g *game) drawWorld(world *ebiten.Image) {
 	// Above the light, so that it reads the same by night, but under the fog, so that it shows only what's known
 	if g.showOxygen {
 		drawsystem.DrawOxygen(world, g.ecs.Camera, g.oxygenAt)
+	}
+	if g.showHeat {
+		drawsystem.DrawTemperature(world, g.ecs.Camera, g.chunkContainer.TemperatureAt)
 	}
 	if hasVision && !g.fullBright {
 		g.visionOverlay.Draw(world, g.ecs.Camera, vision, g.drawMemory)

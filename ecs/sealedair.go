@@ -9,16 +9,41 @@ import (
 )
 
 // Air sealed inside something, such as a spacesuit, that nothing gets into or out of. Whoever wears it breathes it
-// rather than the air around them, and feels neither the cold nor the heat outside.
+// rather than the air around them, and feels its temperature, which heat passing through what it's sealed in and the
+// wearer's own heat change.
 type SealedAir struct {
 	// In milligrams in all, not per tile
 	air climate.Air
 	// How many tiles' worth of air it holds, which is what the air in it is spread over when it's breathed
-	tiles int64
+	tiles       int64
+	temperature climate.Centicelsius
+	// Heat taken in or given off short of a whole hundredth of a degree, in mJ, so that slow flows still add up
+	heatRemainder int64
+	// In mW per degree across each of its sides, which is what heat passes through
+	conductance int64
 }
 
-func NewSealedAirComponent(air climate.Air, tiles int64) *SealedAir {
-	return &SealedAir{air: air, tiles: max(tiles, 1)}
+func NewSealedAirComponent(air climate.Air, tiles int64, temperature climate.Centicelsius, conductance int64) *SealedAir {
+	return &SealedAir{air: air, tiles: max(tiles, 1), temperature: temperature, conductance: conductance}
+}
+
+func (x *SealedAir) Temperature() climate.Centicelsius {
+	return x.temperature
+}
+
+func (x *SealedAir) Conductance() int64 {
+	return x.conductance
+}
+
+// Heat in mJ taken in, or given off for a negative amount, by its air, which takes capacity mJ to warm by a hundredth
+// of a degree
+func (x *SealedAir) Heat(mJ, capacity int64) {
+	if capacity <= 0 {
+		return
+	}
+	total := x.heatRemainder + mJ
+	x.temperature += climate.Centicelsius(total / capacity)
+	x.heatRemainder = total % capacity
 }
 
 func (x *SealedAir) Contents() climate.Air {
@@ -65,8 +90,8 @@ func (x *ECSContainer) BreatheSealedAir(e common.EntityId, oxygenMg int64) bool 
 
 // The temperature of the air around the entity, or inside what it wears that has air sealed in it
 func (x *ECSContainer) AirTemperatureOf(e common.EntityId) (climate.Centicelsius, error) {
-	if _, ok := x.WornSealedAir(e); ok {
-		return data.SealedAirCelsius * 100, nil
+	if sealed, ok := x.WornSealedAir(e); ok {
+		return sealed.temperature, nil
 	}
 	pos, err := x.WorldPos(e)
 	if err != nil {
@@ -84,14 +109,19 @@ func (x SealedAir) addTo(ecsContainer *ECSContainer, e common.EntityId) {
 }
 
 type sealedAirDto struct {
-	Air   climate.Air
-	Tiles int64
+	Air           climate.Air
+	Tiles         int64
+	Centicelsius  int32
+	HeatRemainder int64
+	Conductance   int64
 }
 
 func (x SealedAir) toDto() (ComponentDto, error) {
-	return &sealedAirDto{Air: x.air, Tiles: x.tiles}, nil
+	return &sealedAirDto{Air: x.air, Tiles: x.tiles, Centicelsius: int32(x.temperature), HeatRemainder: x.heatRemainder, Conductance: x.conductance}, nil
 }
 
 func (x sealedAirDto) toComponent() (Component, error) {
-	return NewSealedAirComponent(x.Air, x.Tiles), nil
+	sealed := NewSealedAirComponent(x.Air, x.Tiles, climate.Centicelsius(x.Centicelsius), x.Conductance)
+	sealed.heatRemainder = x.HeatRemainder
+	return sealed, nil
 }

@@ -52,6 +52,8 @@ type room struct {
 	air   climate.Air
 	// Of the air, which keeps the last it had once there's none
 	temperature climate.Centicelsius
+	// Heat taken in or given off short of a whole hundredth of a degree, in mJ, so that slow flows still add up
+	heatRemainder int64
 	// Loaded from before rooms had air, so that it's taken to have the outdoors' when it next changes
 	unknownAir bool
 }
@@ -67,9 +69,10 @@ type roomsDto struct {
 }
 
 type roomDto struct {
-	Id           uint64
-	Air          []int64
-	Centicelsius int32
+	Id            uint64
+	Air           []int64
+	Centicelsius  int32
+	HeatRemainder int64
 }
 
 type roomChunkDto struct {
@@ -429,6 +432,7 @@ func (cc *ChunkContainer) TickRooms(x *ecs.ECSContainer) {
 	cc.updateRooms()
 	if x.TickIdx%data.AirStepTicks == 0 {
 		cc.stepAir()
+		cc.stepHeat(x)
 		cc.condense(x)
 		cc.boil()
 		cc.breathe(x)
@@ -549,7 +553,7 @@ func (cc *ChunkContainer) roomsToDto() roomsDto {
 	for _, id := range slices.Sorted(maps.Keys(cc.rooms)) {
 		r := cc.rooms[id]
 		if !r.unknownAir {
-			dto.Rooms = append(dto.Rooms, roomDto{Id: id, Air: slices.Clone(r.air[:]), Centicelsius: int32(r.temperature)})
+			dto.Rooms = append(dto.Rooms, roomDto{Id: id, Air: slices.Clone(r.air[:]), Centicelsius: int32(r.temperature), HeatRemainder: r.heatRemainder})
 		}
 	}
 	return dto
@@ -599,6 +603,7 @@ func (cc *ChunkContainer) LoadRooms() error {
 		}
 		copy(r.air[:], d.Air)
 		r.temperature = climate.Centicelsius(d.Centicelsius)
+		r.heatRemainder = d.HeatRemainder
 		r.unknownAir = false
 	}
 	cc.roomsStale = true

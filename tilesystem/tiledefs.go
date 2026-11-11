@@ -7,6 +7,7 @@ import (
 	"ebittest/ecs/common"
 	"ebittest/utils"
 	"fmt"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -33,6 +34,45 @@ type tileDef struct {
 	// drawn over those of the tiles on its layer with a lower drawOrder where they meet.
 	dualGrid  []*ebiten.Image
 	drawOrder int
+	// Nil for a tile that keeps no heat of its own and passes none on
+	thermal *thermalDef
+}
+
+// How a wall or door takes on heat and passes it on to what's either side of it
+type thermalDef struct {
+	// In mJ per gram per degree
+	specificHeat int64
+	// In mW per degree across an edge between tiles
+	conductance int64
+	massMg      int64
+}
+
+// What it takes to warm it by a hundredth of a degree, in mJ
+func (x thermalDef) capacity() int64 {
+	return x.massMg * x.specificHeat / (data.MilligramsPerGram * 100)
+}
+
+// The mass of what's built is what it costs, which tests check
+type thermalDTO struct {
+	// In J per gram per degree
+	SpecificHeat float64 `json:"specificHeat"`
+	// In W per degree
+	Conductance float64 `json:"conductance"`
+	Grams       int64   `json:"grams"`
+}
+
+func thermalFromDto(dto *thermalDTO) (*thermalDef, error) {
+	if dto == nil {
+		return nil, nil
+	}
+	if dto.SpecificHeat <= 0 || dto.Conductance <= 0 || dto.Grams <= 0 {
+		return nil, fmt.Errorf("it takes %v J per gram per degree, passes %v W per degree on and weighs %d g, want all positive", dto.SpecificHeat, dto.Conductance, dto.Grams)
+	}
+	return &thermalDef{
+		specificHeat: int64(math.Round(dto.SpecificHeat * 1000)),
+		conductance:  int64(math.Round(dto.Conductance * 1000)),
+		massMg:       dto.Grams * data.MilligramsPerGram,
+	}, nil
 }
 
 type promotedTile struct {
@@ -53,7 +93,8 @@ type tileDefDTO struct {
 	Drops           []dropOutcomeDTO `json:"drops"`
 	Harvestable     bool             `json:"harvestable"`
 	// Given for a tile drawn on the dual grid, from a sheet of 16 cells
-	DrawOrder *int `json:"drawOrder"`
+	DrawOrder *int        `json:"drawOrder"`
+	Thermal   *thermalDTO `json:"thermal"`
 }
 
 func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas, assets *assetmanager.AssetManager) (map[data.TileEnum]tileDef, error) {
@@ -111,6 +152,12 @@ func dtosToDefsMap(dtos []tileDefDTO, items *ecs.ItemAtlas, assets *assetmanager
 			return nil, fmt.Errorf("tile %d has an invalid drop table: %w", dto.Id, err)
 		}
 		def.drops = drops
+		if def.thermal, err = thermalFromDto(dto.Thermal); err != nil {
+			return nil, fmt.Errorf("tile %d's heat: %w", dto.Id, err)
+		}
+		if def.thermal != nil && layer != data.TileLayer_Wall {
+			return nil, fmt.Errorf("tile %d keeps heat, but only walls do", dto.Id)
+		}
 
 		tileDefs[data.TileEnum(dto.Id)] = def
 	}

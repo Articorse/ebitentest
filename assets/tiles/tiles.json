@@ -25,7 +25,8 @@
     "maxHealth": 200,
     "passable": false,
     "opaque": true,
-    "drawOrder": 5
+    "drawOrder": 5,
+    "thermal": { "specificHeat": 0.79, "conductance": 3, "grams": 1000000 }
   },
   {
     "id": 4,
@@ -55,7 +56,8 @@
     "passable": false,
     "opaque": true,
     "drops": [{ "chance": 100, "items": [{ "kind": 1, "grams": 2000 }] }],
-    "drawOrder": 6
+    "drawOrder": 6,
+    "thermal": { "specificHeat": 1.7, "conductance": 0.5, "grams": 2000 }
   },
   {
     "id": 7,

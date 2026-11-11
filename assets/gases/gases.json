@@ -1,4 +1,4 @@
 [
-  { "id": 1, "name": "Oxygen", "condenseCelsius": -183, "item": 3 },
-  { "id": 2, "name": "Carbon dioxide", "condenseCelsius": -78.5, "item": 4 }
+  { "id": 1, "name": "Oxygen", "condenseCelsius": -183, "item": 3, "specificHeat": 0.918, "conductance": 1 },
+  { "id": 2, "name": "Carbon dioxide", "condenseCelsius": -78.5, "item": 4, "specificHeat": 0.844, "conductance": 0.6 }
 ]

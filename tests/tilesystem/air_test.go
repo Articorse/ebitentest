@@ -192,24 +192,17 @@ func TestAirFlowsThroughAnOpenDoorAndNotAClosedOne(t *testing.T) {
 func TestAirComingInMixesItsWarmthIn(t *testing.T) {
 	testutil.TempWorld(t)
 	s := testutil.StartSession(t)
-	middle := sealedRoom(t, s, 3)
-	hot := planet(t, data.Planet_Earthlike)
-	hot.SpawnCelsius, hot.NorthCelsius, hot.SouthCelsius = 100, 100, 100
-	hot.NoiseSwing, hot.SeasonSwing, hot.DayNightSwing = 0, 0, 0
+	s.Chunks.SetPlanet(constant(t, 0, 1))
+	open, sealed := sealedRoom(t, s, 3), sealedRoom(t, s, 3)
+	s.Tick(data.AirStepTicks)
+	hot := constant(t, 100, 2)
 	s.Chunks.SetPlanet(hot)
-	before := s.Chunks.AirTemperature(middle)
-	s.Tick(10 * data.TPS)
-	if s.Chunks.AirTemperature(middle) != before {
-		t.Fatal("the sealed room warmed up with no way in for the air outdoors")
-	}
-
-	hot.Atmosphere[data.Gas_Oxygen] += hot.Atmosphere.Total()
-	s.Chunks.SetPlanet(hot)
-	unroof(t, s, at(middle, 2, 2))
+	unroof(t, s, at(open, 2, 2))
 	s.Tick(60 * data.TPS)
-	// Half its air is what it had, and half came in at 100 °C
-	if got, want := s.Chunks.AirTemperature(middle).Celsius(), (before.Celsius()+100)/2; got < want-5 || got > want+5 {
-		t.Fatalf("with as much air again let in at 100 °C, the room is %v °C, want about %v", got, want)
+	// Both warm as much through their walls, but half the open one's air came in at 100 °C, much of whose heat its
+	// walls take in
+	if got := s.Chunks.AirTemperature(open).Celsius() - s.Chunks.AirTemperature(sealed).Celsius(); got < 5 {
+		t.Fatalf("with as much air again let in at 100 °C, the room is %.1f °C warmer than the one sealed off, want it warmer", got)
 	}
 }
 
@@ -327,20 +320,18 @@ func TestAirFromAnotherRoomComesInAsWarmAsThatRoom(t *testing.T) {
 	roof(t, s, rect(at(middle, -2, -2), at(middle, 2, -1)))
 	roomAt(t, s, above)
 	s.Chunks.SetPlanet(constant(t, 100, 2))
-	live(t, s, 60*data.TPS, func() bool { return false })
+	live(t, s, 20*data.TPS, func() bool { return false })
 	if door(t, s, middle).Open {
 		t.Fatal("the door opened with no one by it")
 	}
 	roof(t, s, rect(at(middle, -2, 1), at(middle, 2, 2)))
-	s.Chunks.SetPlanet(constant(t, -50, 2))
+	// A vacuum outdoors passes no heat on, so that only the air the rooms let between them changes how warm they are
+	s.Chunks.SetPlanet(constant(t, -50, 0))
 	// As much air again as it had came in at 100 °C
 	if got := s.Chunks.AirTemperature(below).Celsius(); got < 45 {
 		t.Fatalf("the room left open to the hot outdoors is %v °C", got)
 	}
 	before := s.Chunks.AirTemperature(above).Celsius()
-	if before > 30 {
-		t.Fatalf("the room roofed over is %v °C, warmed with no way in", before)
-	}
 
 	s.ECS.SetDisabled(colonist, false)
 	live(t, s, 30*data.TPS, func() bool {

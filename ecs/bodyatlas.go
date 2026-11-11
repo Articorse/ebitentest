@@ -27,6 +27,8 @@ type bodyDef struct {
 	vitalCapacities []data.CapacityEnum
 	// Breathed in from the air it's in, and breathed out again as carbon dioxide
 	oxygenMgPerSecond int64
+	// Given off into the air it's in
+	heatWatts int64
 }
 
 type partDef struct {
@@ -57,6 +59,7 @@ type bodyDefDTO struct {
 	VitalCapacities []uint16     `json:"vitalCapacities"`
 	// Integer, so that air is breathed the same on every machine
 	OxygenMgPerSecond int64 `json:"oxygenMgPerSecond"`
+	HeatWatts         int64 `json:"heatWatts"`
 }
 
 type partDefDTO struct {
@@ -115,7 +118,10 @@ func LoadBodyAtlasFromJson(path string) (*BodyAtlas, error) {
 		if b.OxygenMgPerSecond < 0 {
 			return nil, fmt.Errorf("body %d breathes %d mg of oxygen a second, want it 0 or more", b.Id, b.OxygenMgPerSecond)
 		}
-		def := bodyDef{name: b.Name, oxygenMgPerSecond: b.OxygenMgPerSecond}
+		if b.HeatWatts < 0 {
+			return nil, fmt.Errorf("body %d gives off %d W, want it 0 or more", b.Id, b.HeatWatts)
+		}
+		def := bodyDef{name: b.Name, oxygenMgPerSecond: b.OxygenMgPerSecond, heatWatts: b.HeatWatts}
 		names := map[string]bool{}
 		totalCoverage := 0
 		for _, p := range b.Parts {

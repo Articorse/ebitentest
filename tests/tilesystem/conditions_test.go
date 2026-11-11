@@ -122,13 +122,15 @@ func TestWhatDoesntBreatheStillFeelsTheColdAndThePressure(t *testing.T) {
 		"bodies": [{"id": 1, "name": "Stone", "parts": [
 			{"name": "torso", "maxHealth": 20, "coverage": 100, "vital": true},
 			{"name": "lungs", "maxHealth": 20, "coverage": 0}]}]}`))
-	s.Chunks.SetPlanet(constant(t, -40, 0))
+	thin := constant(t, -40, 0)
+	thin.Atmosphere[data.Gas_Oxygen] = 100 * data.MilligramsPerGram
+	s.Chunks.SetPlanet(thin)
 	tile := ringSpot(t, s, utils.WorldPosToTilePos(testutil.PlayerStart), 1, anywhere)
 	e := breather(t, s, tile, data.Body_Humanoid)
 	s.Tick(5 * data.TPS)
 	for _, want := range []string{"Hypothermia", "Decompression"} {
 		if severity(s, e, want) == 0 {
-			t.Errorf("in a cold vacuum, what doesn't breathe has no %s", want)
+			t.Errorf("in cold thin air, what doesn't breathe has no %s", want)
 		}
 	}
 	if severity(s, e, "Hypoxia") != 0 {
@@ -167,5 +169,16 @@ func TestConditionsAreShownAndSaved(t *testing.T) {
 	}
 	if got, want := x.Capacity(loaded, data.Capacity_Capability), s.ECS.Capacity(e, data.Capacity_Capability); got != want {
 		t.Fatalf("loaded, its capability is %d, want %d", got, want)
+	}
+}
+
+func TestAVacuumHasNoTemperatureToFeel(t *testing.T) {
+	s, e := outdoorsIn(t, 0, 0, -40, data.Body_Giant)
+	s.Tick(10 * data.TPS)
+	if got := severity(s, e, "Hypothermia"); got != 0 {
+		t.Fatalf("in a vacuum on a -40 °C planet, hypothermia is at %d%%", got)
+	}
+	if severity(s, e, "Decompression") == 0 {
+		t.Fatal("a vacuum doesn't decompress")
 	}
 }

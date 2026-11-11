@@ -23,7 +23,7 @@ func suitUp(t *testing.T, s *testutil.Session, e common.EntityId, oxygenKg, carb
 		ecs.NewTransformComponent(testutil.WorldPos(t, s.ECS, e), 1, 0),
 		ecs.NewWornEquipmentComponent(ecs.Equipable_Torso, []data.BodyEnum{data.Body_Humanoid}, ""),
 		ecs.NewNamedItemComponent("Spacesuit", 10*data.MilligramsPerKg),
-		ecs.NewSealedAirComponent(air, data.SpacesuitAirTiles),
+		ecs.NewSealedAirComponent(air, data.SpacesuitAirTiles, data.SpacesuitCelsius*100, data.SpacesuitConductance),
 	)
 	if err := s.ECS.PutInInventory(e, 0, suit); err != nil {
 		t.Fatal(err)
@@ -56,18 +56,31 @@ func TestTheWearerOfASpacesuitBreathesItsAirRatherThanTheRooms(t *testing.T) {
 	}
 }
 
-func TestASpacesuitKeepsOutTheVacuumAndTheCold(t *testing.T) {
+func TestASpacesuitKeepsOutTheVacuumAndKeepsInItsWearersHeat(t *testing.T) {
 	s, e := outdoorsIn(t, 0, 0, -40, data.Body_Humanoid)
-	suitUp(t, s, e, 10, 0)
-	s.Tick(60 * data.TPS)
+	suit := suitUp(t, s, e, 10, 0)
+	s.Tick(5 * data.TPS)
 	if conditions := s.ECS.Conditions(e); len(conditions) != 0 {
-		t.Fatalf("a minute in a cold vacuum in a full spacesuit gave %v", conditions)
+		t.Fatalf("5 seconds in a cold vacuum in a full spacesuit gave %v", conditions)
 	}
 	if s.ECS.InBadAir(e) {
 		t.Fatal("the full spacesuit's air is bad to breathe")
 	}
-	if got, _ := s.ECS.AirTemperatureOf(e); got.Celsius() != data.SealedAirCelsius {
-		t.Fatalf("inside the spacesuit it's %.1f °C", got.Celsius())
+	// A vacuum passes no heat on, so all of the wearer's stays in: 5 seconds of 100 W, 60 times over, into 10 kg of
+	// oxygen at 0.918 J per gram per degree
+	sealed, _ := s.ECS.SealedAirs.Get(suit)
+	want := data.SpacesuitCelsius + 100*5*data.HeatTimeScale/(10_000*0.918)
+	if got := sealed.Temperature().Celsius(); got < want-0.2 || got > want+0.2 {
+		t.Fatalf("inside the spacesuit it's %.2f °C, want about %.2f °C", got, want)
+	}
+}
+
+func TestASpacesuitInAirSettlesAboveTheAirAroundIt(t *testing.T) {
+	s, e := outdoorsIn(t, 900, 100, 15, data.Body_Humanoid)
+	suitUp(t, s, e, 10, 0)
+	s.Tick(120 * data.TPS)
+	if got, _ := s.ECS.AirTemperatureOf(e); got.Celsius() < 25 || got.Celsius() > 33 {
+		t.Fatalf("after two minutes in 15 °C air, it's %.1f °C inside the spacesuit, want about 29 °C", got.Celsius())
 	}
 }
 

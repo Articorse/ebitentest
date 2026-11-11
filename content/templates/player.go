@@ -295,7 +295,7 @@ func spawnSpacesuit(ecsContainer *ecs.ECSContainer, pos utils.Vec2f) (common.Ent
 		sprComp,
 		ecs.NewWornEquipmentComponent(ecs.Equipable_Torso, []data.BodyEnum{data.Body_Humanoid}, common.AssetSheetSlimeSpacesuit),
 		ecs.NewNamedItemComponent("Spacesuit", 10*data.MilligramsPerKg),
-		ecs.NewSealedAirComponent(climate.Air{data.Gas_Oxygen: data.SpacesuitOxygenMg}, data.SpacesuitAirTiles),
+		ecs.NewSealedAirComponent(climate.Air{data.Gas_Oxygen: data.SpacesuitOxygenMg}, data.SpacesuitAirTiles, data.SpacesuitCelsius*100, data.SpacesuitConductance),
 		ecs.NewPersistentComponent(),
 	)
 }

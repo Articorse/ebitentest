@@ -340,7 +340,7 @@ func TestAirSealedInWhatsHeldIsntBreathed(t *testing.T) {
 	tank := testutil.AddMovable(t, x, utils.Vec2f{}, false,
 		ecs.NewEquipmentComponent(ecs.Equipable_MainHand, [data.MaxEquipmentAbilitySlots]ecs.EntityAbility{}),
 		ecs.NewNamedItemComponent("Tank", data.MilligramsPerKg),
-		ecs.NewSealedAirComponent(climate.Air{data.Gas_Oxygen: data.MilligramsPerKg}, 1),
+		ecs.NewSealedAirComponent(climate.Air{data.Gas_Oxygen: data.MilligramsPerKg}, 1, 2000, data.SpacesuitConductance),
 	)
 	inv, _ := x.Inventories.Get(player)
 	if err := x.PutInInventory(player, inv.FirstFreeSlot(), tank); err != nil {

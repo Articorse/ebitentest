@@ -16,7 +16,8 @@
         { "name": "lungs", "maxHealth": 15, "coverage": 0, "vital": true }
       ],
       "vitalCapacities": [],
-      "oxygenMgPerSecond": 13889
+      "oxygenMgPerSecond": 13889,
+      "heatWatts": 100
     },
     {
       "id": 2,
@@ -29,7 +30,8 @@
         { "name": "lungs", "maxHealth": 60, "coverage": 0, "vital": true }
       ],
       "vitalCapacities": [],
-      "oxygenMgPerSecond": 55556
+      "oxygenMgPerSecond": 55556,
+      "heatWatts": 400
     }
   ]
 }

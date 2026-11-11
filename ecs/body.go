@@ -49,6 +49,15 @@ func (x *ECSContainer) OxygenPerSecond(e common.EntityId) int64 {
 	return def.oxygenMgPerSecond
 }
 
+// How much heat the entity gives off into the air it's in, 0 without a body
+func (x *ECSContainer) HeatWatts(e common.EntityId) int64 {
+	_, def, err := x.body(e)
+	if err != nil {
+		return 0
+	}
+	return def.heatWatts
+}
+
 func (x *ECSContainer) PartHealth(e common.EntityId, part string) (health, maxHealth int, ok bool) {
 	body, def, err := x.body(e)
 	if err != nil {
